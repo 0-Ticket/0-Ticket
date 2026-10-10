@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: 프로젝트 존재 확인
+        id: detect
+        run: |
+          if [ -f pyproject.toml ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::pyproject.toml이 없어 린트와 테스트를 건너뜁니다."
+          fi
+
+      - name: uv 설치
+        if: steps.detect.outputs.ready == 'true'
+        uses: astral-sh/setup-uv@v9.0.0
+
+      - name: 의존성 설치
+        if: steps.detect.outputs.ready == 'true'
+        run: uv sync
+
+      - name: 린트
+        if: steps.detect.outputs.ready == 'true'
+        run: uvx ruff check .
+
+      - name: 테스트
+        if: steps.detect.outputs.ready == 'true'
+        run: uv run pytest || [ $? -eq 5 ]
