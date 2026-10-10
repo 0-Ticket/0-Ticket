@@ -1,5 +1,5 @@
 ---
-name: 작업
+name: 작업 이슈
 about: 구현, 버그, 결정 검토 등 모든 이슈
 title: ""
 labels: []
