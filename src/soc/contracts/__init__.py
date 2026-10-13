@@ -87,3 +87,9 @@ from .generated import (
 from .generated import (
     Verdict as Verdict,
 )
+from .validation import (
+    ContractValidationError as ContractValidationError,
+)
+from .validation import (
+    validate_contract as validate_contract,
+)

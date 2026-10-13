@@ -19,7 +19,7 @@
 | D-011 | 상관 규칙 형식 | 17 | Sigma 2.0 상관 규칙 / SQL 직접 | 후보 | 아키텍처 원본(2026-10-13)은 Sigma Rule을 적어 둠 |
 | D-012 | 티켓 · 케이스 관리 | 10, 22 | 자체 테이블 / TheHive / DFIR-IRIS | 후보 | |
 | D-013 | 사람 검토 화면 | 16, 21 | 웹 | 확정 | 기본 검토 채널은 웹 화면(`frontend/`)과 화면용 API(`src/soc/api/`). 메신저 등 다른 채널은 `review_channels` 플러그인으로 추가 (`docs/frontend.md`) |
-| D-014 | 데이터 계약 코드 형식 | 전체 | JSON Schema | 확정 | `docs/data-contracts.md`의 계약을 JSON Schema로 옮겨 단일 계약 원본으로 사용한다. 동일한 Schema에서 Python Pydantic 모델과 TypeScript 타입을 생성한다. Python에서는 원본 Schema의 조건 검증과 생성된 Pydantic 모델의 필드 검증을 함께 사용한다. 생성된 타입은 직접 수정하지 않는다 |
+| D-014 | 데이터 계약 코드 형식 | 전체 | JSON Schema | 확정 | `docs/data-contracts.md`의 계약을 JSON Schema로 옮겨 단일 계약 원본으로 사용한다. 동일한 Schema에서 Python Pydantic 모델과 TypeScript 타입을 생성한다. Python에서는 원본 Schema의 조건 검증과 생성된 Pydantic 모델의 필드 검증을 함께 사용한다. 생성된 타입은 직접 수정하지 않는다. 런타임 검증과 LLM 출력 검증은 원본 Schema 검증 후 생성 Pydantic 모델로 변환하는 검증 함수 한 경로로 한다. 생성 모델만으로는 객체 수준 조건을 검증하지 못한다. jsonschema는 런타임 의존성이다. |
 | D-015 | 설정 파일 형식 | 전체 | TOML / YAML | 후보 | TOML은 표준 라이브러리(`tomllib`)로 읽을 수 있어 의존성이 없음 (`docs/extensibility.md` 4항) |
 | D-016 | 오픈소스 라이선스 | 전체 | Apache-2.0 / MIT / AGPL-3.0 | 후보 | 기업 커스텀·사내 플러그인 허용 범위에 영향. 데이터셋 라이선스(예: CC BY-NC-SA)와는 별개 |
 | D-017 | OCSF 버전 | 4 | 1.9.0 (2026-08 최신 정식) / 그 이전 1.x | 후보 | 도구·라이브러리 지원 범위와 함께 검토 |
@@ -59,3 +59,4 @@
 - 2026-10-13 · D-030 확정: 화면 린트는 ESLint, 포맷은 Prettier.
 - 2026-10-13 · D-031 확정: 계약 코드 생성은 Python은 datamodel-code-generator(Pydantic), TypeScript는 json-schema-to-typescript.
 - 2026-10-13 · D-032 확정: 계약 Schema는 레포 루트 `contracts/`에 JSON Schema draft-07로 둔다.
+- 2026-10-13 · D-014 보완: 런타임 검증 경로

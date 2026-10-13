@@ -11,24 +11,26 @@ name = "0-ticket-soc"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "jsonschema" },
     { name = "pydantic" },
 ]
 
 [package.dev-dependencies]
 dev = [
     { name = "datamodel-code-generator" },
-    { name = "jsonschema" },
     { name = "pytest" },
     { name = "ruff" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "pydantic", specifier = ">=2.14.1" }]
+requires-dist = [
+    { name = "jsonschema", specifier = ">=4.26.0" },
+    { name = "pydantic", specifier = ">=2.14.1" },
+]
 
 [package.metadata.requires-dev]
 dev = [
     { name = "datamodel-code-generator", specifier = ">=0.83.0" },
-    { name = "jsonschema", specifier = ">=4.26.0" },
     { name = "pytest", specifier = ">=8" },
     { name = "ruff", specifier = ">=0.17.0" },
 ]

@@ -35,6 +35,20 @@
 | TypeScript 생성 코드 | `frontend/src/contracts/generated/` |
 | 생성 명령 | `uv run python scripts/generate_contracts.py` (두 언어 함께 생성; 아래 "계약 생성 구현 (#5)" 참고) |
 
+코드에서 계약 객체를 검증할 때는 공개 함수 `soc.contracts.validate_contract(name, data)`만 쓴다.
+생성 모델을 직접 만드는 것을 계약 검증으로 삼지 않는다. `name`은 Schema의 `title`과 같은
+객체명(예: `HuntFinding`, `Verdict`)이고, `data`는 JSON을 해석한 객체다.
+원본 draft-07 Schema 및 파일 간 `$ref`를 먼저 검증하고, 통과하면 생성 Pydantic 모델을 반환한다.
+
+실패는 `ContractValidationError`로 통일한다. 예외의 `path`는 필드 경로(`/severity_id` 등),
+`rule`은 실패한 규칙명(`const`, `required`, `int_type` 등)이다. 루트 경로는 `/`로 표시한다.
+Schema에 선언되지 않은 동적 키는 `*`로 가린다. 입력값과 원본 검증 예외는 포함하지 않는다.
+계약별 검증기는 모듈 로드 시 한 번만 만들어 재사용한다.
+
+wheel에는 루트 `contracts/`를 `soc/contracts/schemas/` 리소스로 포함한다.
+설치된 패키지는 해당 리소스를 읽고, 편집 가능 설치는 모듈 위치를 기준으로 원본을 찾는다.
+현재 작업 폴더에 의존하지 않으며, 설치용 Schema 사본을 별도 원본으로 관리하지 않는다.
+
 Schema로 옮길 때 지킬 것:
 
 - **선택 필드**: 이 문서의 공통 규칙대로 필드를 빼지 않으므로, 모든 필드를 `required`에 넣고 선택 필드는 타입에 `null`을 더한다. 예: `"type": ["string", "null"]`
@@ -555,9 +569,9 @@ CI와 테스트가 재생성 결과를 검증한다. 생성 폴더는 생성기�
 필드 구조, nullable 참조, enum, 필드 수준 제약은 유지한다. 이 임시 입력은 별도 원본이 아니다.
 **생성된 Pydantic 모델이나 TypeScript 타입만으로 모든 Schema 조건을 검증했다고 간주하면 안 된다.**
 TypeScript는 런타임 검증기가 아니며, Pydantic도 루트 조건을 대신 검사하지 않는다.
-박스에서 입력을 받아들일 때는 원본 Schema 검증 후 생성 모델을 사용해야 한다.
-`jsonschema.Draft7Validator`에 로컬 `$id`별 `referencing.Registry`를 제공하는 사용 예는
-`tests/contracts/test_schemas.py`의 `validator()`에 있다. 네트워크 Schema 참조는 사용하지 않는다.
+박스에서 입력을 받아들일 때는 `soc.contracts.validate_contract()`를 사용한다.
+이 함수가 원본 Schema 검증과 생성 모델 변환을 순서대로 수행한다. `jsonschema`는 런타임 의존성이다.
+로컬 리소스 레지스트리로 `$ref`를 해석하며 네트워크 Schema 참조는 사용하지 않는다.
 
 후속 박스에서 구현할 비즈니스 검증은 K55의 미완료 부분으로 남긴다.
 원문 해시 대조(2), 별칭 적용·변환 실패 처리(4), 시점별 자산 매칭(5),
