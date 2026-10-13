@@ -86,7 +86,7 @@ uvx ruff format .  # 포맷
 
 CI(`.github/workflows/ci.yml`)도 같은 검사를 돌린다. 포맷은 고치지 않고 `uvx ruff format --check .`로 검사만 한다.
 
-웹 화면(`frontend/`)은 Node를 쓴다. 명령은 `docs/frontend.md` "명령"에 있고, D-018·D-024가 확정되기 전에는 비어 있다. 비어 있는 동안에는 화면 코드를 만들지 않는다.
+웹 화면(`frontend/`)은 Node를 쓴다. 명령은 `docs/frontend.md` "명령"에 있고, D-018·D-023·D-024가 확정되면 F0에서 채운다. F0(프론트 기반)이 끝나기 전에는 화면 코드를 만들지 않는다.
 
 ## 작업 흐름
 
