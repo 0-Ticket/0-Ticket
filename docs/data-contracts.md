@@ -15,14 +15,36 @@
 - 여러 객체가 함께 쓰는 작은 객체(Entity, Evidence)는 맨 아래 "공통 객체"에 한 번만 정의한다
 - **확장 필드**: 표에 `extensions`가 있는 객체는 조직이나 플러그인이 붙인 추가 필드를 담는다. 키는 `<조직 또는 플러그인>.<필드>` 형식이고, 코어 코드는 읽지 않고 그대로 전달·저장한다. 원본에서 매핑되지 않은 값은 `unmapped`, 일부러 붙인 값은 `extensions`다
 - **등록형 값**: 타입이 `등록형`인 필드는 열거형처럼 정해진 값만 쓰지만, 플러그인이 새 값을 등록해 늘릴 수 있다. 표에 적힌 값은 기본으로 제공하는 값이다(`docs/extensibility.md`)
-- 코드 정의는 `src/soc/contracts/` 한 곳에 둔다. 정의 방식(dataclass, pydantic 등)은 결정 대장 D-014에서 정한다
+- 계약의 코드 원본은 레포 루트 `contracts/`의 JSON Schema(draft-07)다. Python 모델과 TypeScript 타입은 여기서 생성하고, 생성된 파일은 직접 고치지 않는다(D-014, D-025, D-031, D-032). 아래 "계약 Schema" 참고
 
 ## 바꾸는 절차
 
-1. 바꿀 필드와 이유, 영향받는 박스를 적어 사람에게 제안한다.
-2. 승인되면 같은 PR에서 이 문서 → `src/soc/contracts/` → 영향받는 박스 코드와 테스트 순서로 고친다.
+1. 바꿀 필드와 이유, 영향받는 박스와 화면을 적어 사람에게 제안한다.
+2. 승인되면 같은 PR에서 이 문서 → `contracts/`의 Schema → 생성 명령으로 Python·TypeScript 코드 다시 생성 → 영향받는 박스·화면 코드와 테스트 순서로 고친다.
 3. PR "변경 내용"에 "데이터 계약 변경"이라고 표시한다.
 4. 필드를 없애기보다 `선택`으로 바꾸는 쪽을 먼저 검토한다.
+
+## 계약 Schema
+
+이 문서는 사람이 읽는 설명이고, 코드가 쓰는 원본은 `contracts/`의 JSON Schema다. 둘은 항상 같아야 하고, 바꿀 때는 같은 PR에서 함께 바꾼다.
+
+| 무엇 | 위치 |
+|---|---|
+| 원본 Schema | `contracts/` (객체 하나에 파일 하나. 파일 이름 규칙은 계약 Schema 이슈에서 정함) |
+| Python 생성 코드 (Pydantic) | `src/soc/contracts/generated/` |
+| TypeScript 생성 코드 | `frontend/src/contracts/generated/` |
+| 생성 명령 | 계약 Schema 이슈에서 정하고 이 표에 적는다. 명령 하나로 두 언어를 모두 만든다 |
+
+Schema로 옮길 때 지킬 것:
+
+- **선택 필드**: 이 문서의 공통 규칙대로 필드를 빼지 않으므로, 모든 필드를 `required`에 넣고 선택 필드는 타입에 `null`을 더한다. 예: `"type": ["string", "null"]`
+- **열거형**: `enum`으로 쓴다.
+- **등록형 값**: 플러그인이 늘릴 수 있어야 하므로 `enum`을 쓰지 않고 `"type": "string"`으로 둔다. 기본값은 `description`에 적는다. 값 검증은 플러그인 레지스트리가 한다(`docs/extensibility.md` 5항).
+- **`extensions`**: `"type": "object"`, `"additionalProperties": true`
+- **공통 객체**(Entity, Evidence 등): 파일 하나에 정의하고 `$ref`로 가져다 쓴다.
+- **필드 사이 조건**(예: `overturned`가 `true`면 `reason` 필수, `member_type`에 맞는 ID 필수): 생성 코드로 옮겨지지 않으므로 Schema에 의존하지 않고 코어 검증 코드에서 확인한다. Schema에는 `description`으로 적는다.
+- 생성된 파일 맨 위에 "자동 생성, 직접 수정 금지"와 생성 명령을 적는다.
+- CI는 생성 명령을 다시 돌려 생성 파일에 차이가 생기면 실패한다.
 
 ## 객체 한눈에 보기
 
@@ -278,7 +300,7 @@ L1의 판정 결과. LLM 출력이 이 형식을 통과하지 못하면 판정�
 | title | str | ✅ | |
 | status | enum | ✅ | `open`, `investigating`, `closed_benign`, `escalated_to_case` |
 | created_by | enum | ✅ | `correlation`(규칙이 묶음), `manual`(사람이 직접 묶음). 묶음 항목의 출처는 IncidentMember `source` |
-| severity_id | int | ✅ | 소속 알럿 중 가장 높은 값 |
+| severity_id | int | ✅ | 0~6. `excluded`가 아닌 묶음 항목 중 가장 높은 값. 티켓 항목은 소속 알럿(C5)의 `severity_id`, 헌팅 항목은 C17의 `severity_id`를 쓴다 |
 | first_seen | int | ✅ | |
 | last_seen | int | ✅ | |
 | tactics | list[str] | ✅ | ATT&CK 전술 ID. 예: `TA0001` |
@@ -389,6 +411,7 @@ L3 헌팅 한 번의 결과.
 | query_summary | str | ✅ | 무엇을 어떻게 조회했는지 |
 | evidence | list[Evidence] | ✅ | 찾은 근거. `ref_type`은 주로 `event`. 없으면 `[]` |
 | is_anomaly | bool | ✅ | 이상 징후로 판단했으면 `true` |
+| severity_id | int | ✅ | 0~6 (C3와 같은 척도). L3가 이상 징후의 심각도를 정한다. `is_anomaly`가 `false`면 0(Unknown) |
 | incident_id | str | 선택 | Correlation이 Incident로 묶었으면 그 ID |
 | rule_candidate | bool | ✅ | 반복 가능한 패턴이라 룰 제안으로 넘길지 |
 | needs_human | bool | ✅ | 사람 확인이 필요하면 `true`. LLM 출력 실패 처리는 `docs/llm-policy.md` 4항 |
