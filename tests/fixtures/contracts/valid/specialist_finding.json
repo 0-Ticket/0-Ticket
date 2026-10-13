@@ -1,0 +1,20 @@
+{
+  "ticket_id": "tk_sample",
+  "specialist": "web",
+  "question": "Sample?",
+  "summary": "Sample",
+  "attack_type": null,
+  "succeeded": "unknown",
+  "confidence": 0.5,
+  "evidence": [
+    {
+      "ref_type": "raw",
+      "ref_id": "raw_sample_1",
+      "note": "Synthetic evidence"
+    }
+  ],
+  "details": {},
+  "needs_human": true,
+  "human_reason": "Review",
+  "created_at": 1791849600000
+}

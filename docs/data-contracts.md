@@ -454,3 +454,63 @@ Vector DB에 넣는 문서 한 건. 임베딩할 문장과 원본 연결 정보.
 | ref_type | 등록형 | ✅ | 기본 `alert`, `event`, `raw`, `ticket`. 객체마다 쓸 수 있는 값이 다르면 그 객체 표에 적는다. 새 값을 등록하는 플러그인은 그 ID가 실제로 있는지 확인하는 함수도 함께 등록한다 |
 | ref_id | str | ✅ | 실제로 존재해야 한다. 코드로 확인한다 |
 | note | str | ✅ | 이 근거가 무엇을 보여 주는지 한 줄 |
+
+## 계약 생성 구현 (#5)
+
+이 절은 위 "계약 Schema"의 생성 방법을 구체화한다. C1~C20 및 보조 객체를
+문서와 수동 대조했으며, 테스트에서 이 Markdown 문서를 파싱하지 않는다.
+계약의 코드 원본은 `contracts/`만 유지한다. 이 문서의 상태는 사람 검토 전까지 초안이다.
+
+| 항목 | 구현 |
+|---|---|
+| Schema 파일 | `contracts/<snake_case>.schema.json`, 객체 하나에 파일 하나 (총 29개) |
+| Python 모델 | `src/soc/contracts/generated/*_schema.py`, 공개 진입점 `soc.contracts` |
+| TypeScript 타입 | `frontend/src/contracts/generated/*.ts`, 공개 진입점 `frontend/src/contracts/index.ts` |
+| 두 언어 생성 | `uv run python scripts/generate_contracts.py` |
+| 생성 결과 검사 | `uv run python scripts/generate_contracts.py --check` |
+| 계약 타입 검사 | `pnpm --dir tools/contracts typecheck` |
+| 계약 전체 테스트 | `uv run pytest tests/contracts` |
+
+Python 3.12 이상, Node 22 이상과 pnpm 11.9.0을 사용한다. CI는 Node 22로 검증한다.
+생성 도구용 Node 패키지는 `tools/contracts/`에 두며, F0 화면 앱 설치·빌드와 독립적이다.
+처음에는 저장소 루트에서 다음 명령으로 잠금 파일의 의존성을 설치한다.
+
+```bash
+uv sync --locked
+pnpm --dir tools/contracts install --frozen-lockfile
+uv run python scripts/generate_contracts.py
+```
+
+생성기는 임시 디렉터리에서 두 언어를 모두 만든 다음 결과를 갱신한다.
+입력 순서와 도구 버전(잠금 파일), 포맷을 고정하고 생성 시각은 넣지 않는다.
+`--check`는 기존 파일을 바꾸지 않고 내용 차이, 누락, 추가 파일을 검사한다.
+CI와 테스트가 재생성 결과를 검증한다. 생성 폴더는 생성기가 관리하므로 직접 수정하지 않는다.
+
+### Schema 검증과 생성 타입의 범위
+
+#5에서 승인된 기준에 따라, 위 "필드 사이 조건" 지침을 다음처럼 구체화한다.
+표현 가능한 조건을 설명에만 남기지 않고 원본 draft-07 Schema에 정의한다.
+
+- 모든 필드는 `required`이고 선택 필드는 nullable이다. 등록형 값은 열린 문자열이다.
+- 고정 enum, 명시된 숫자 범위·목록 최소 길이·문자열 최대 길이·ID 접두어를 검사한다.
+- `extensions`는 추가 값을 허용하되 키는 `<조직 또는 플러그인>.<필드>` 형식이다.
+- `if`/`then`: 뒤집기 사유, 반려 유형·코멘트, 멤버 종류별 ID, 제외 사유,
+  `needs_human` 사유, AgentStep의 작업 종류별 필드·주체 ID, 알럿 별칭 표 조건.
+- `anyOf`: C3·C5의 출발지·목적지·호스트 중 하나, C18의 헌팅·Case 근거 중 하나.
+
+생성 도구가 객체 수준 조건을 두 언어에 동일하게 옮기지 못하므로, 생성기는
+원본에서 루트 `allOf` 조건 목록과 설명만 제외한 임시 입력을 만든다.
+필드 구조, nullable 참조, enum, 필드 수준 제약은 유지한다. 이 임시 입력은 별도 원본이 아니다.
+**생성된 Pydantic 모델이나 TypeScript 타입만으로 모든 Schema 조건을 검증했다고 간주하면 안 된다.**
+TypeScript는 런타임 검증기가 아니며, Pydantic도 루트 조건을 대신 검사하지 않는다.
+박스에서 입력을 받아들일 때는 원본 Schema 검증 후 생성 모델을 사용해야 한다.
+`jsonschema.Draft7Validator`에 로컬 `$id`별 `referencing.Registry`를 제공하는 사용 예는
+`tests/contracts/test_schemas.py`의 `validator()`에 있다. 네트워크 Schema 참조는 사용하지 않는다.
+
+후속 박스에서 구현할 비즈니스 검증은 K55의 미완료 부분으로 남긴다.
+원문 해시 대조(2), 별칭 적용·변환 실패 처리(4), 시점별 자산 매칭(5),
+중복 집계(6), 컬렉션별 원본 종결 여부(8), 우선순위·상태 전이(9·10),
+근거 ID 실재 여부·등록형 값의 등록 여부·LLM 실패 처리(관련 박스),
+조사 단계 순번(12), 뒤집기 여부 계산(16), 실제 묶음·심각도 계산(17·18),
+타임라인 정렬(19), 검토 회차·재반려 처리(21), 승인 후 Case 생성(22),
+룰 검사·백테스트·배포 승인(24)이 해당한다.

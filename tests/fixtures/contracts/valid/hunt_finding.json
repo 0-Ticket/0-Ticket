@@ -1,0 +1,14 @@
+{
+  "hunt_id": "ht_sample",
+  "hypothesis": "Sample",
+  "techniques": [],
+  "method": "baseline",
+  "query_summary": "Sample",
+  "evidence": [],
+  "is_anomaly": false,
+  "incident_id": null,
+  "rule_candidate": false,
+  "needs_human": false,
+  "human_reason": null,
+  "created_at": 1791849600000
+}

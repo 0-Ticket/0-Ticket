@@ -1,0 +1,65 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "human_review.schema.json",
+  "title": "HumanReview",
+  "type": "object",
+  "properties": {
+    "ticket_id": {
+      "type": "string",
+      "pattern": "^tk_"
+    },
+    "reviewer": {
+      "type": "string"
+    },
+    "decision": {
+      "type": "string",
+      "enum": [
+        "tp",
+        "fp"
+      ]
+    },
+    "overturned": {
+      "type": "boolean"
+    },
+    "reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "created_at": {
+      "type": "integer"
+    }
+  },
+  "required": [
+    "ticket_id",
+    "reviewer",
+    "decision",
+    "overturned",
+    "reason",
+    "created_at"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "overturned": {
+            "const": true
+          }
+        },
+        "required": [
+          "overturned"
+        ]
+      },
+      "then": {
+        "properties": {
+          "reason": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  ],
+  "description": "Core follow-up: compute overturned from the original verdict and persist the review."
+}

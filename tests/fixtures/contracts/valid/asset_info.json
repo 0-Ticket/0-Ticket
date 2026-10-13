@@ -1,0 +1,18 @@
+{
+  "match": "192.0.2.10",
+  "hostname": "web-01",
+  "criticality": 5,
+  "owner": null,
+  "zone": "dmz",
+  "shared": false,
+  "valid_from": null,
+  "valid_to": null,
+  "extensions": {
+    "example.context": {
+      "labels": [
+        "sample"
+      ],
+      "value": null
+    }
+  }
+}

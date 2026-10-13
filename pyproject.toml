@@ -4,10 +4,17 @@ version = "0.1.0"
 description = "AI 네이티브 SOC 파이프라인"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "pydantic>=2.14.1",
+]
 
 [dependency-groups]
-dev = ["pytest>=8"]
+dev = [
+    "datamodel-code-generator>=0.83.0",
+    "jsonschema>=4.26.0",
+    "pytest>=8",
+    "ruff>=0.17.0",
+]
 
 [build-system]
 requires = ["hatchling"]

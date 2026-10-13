@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "siem_alert.schema.json",
+  "title": "SiemAlert",
+  "type": "object",
+  "properties": {
+    "kind": {
+      "type": "string",
+      "enum": [
+        "alert",
+        "event"
+      ]
+    },
+    "scenario": {
+      "type": "string"
+    },
+    "raw_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^raw_"
+      }
+    },
+    "fields": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "required": [
+    "kind",
+    "scenario",
+    "raw_ids",
+    "fields"
+  ],
+  "additionalProperties": false
+}

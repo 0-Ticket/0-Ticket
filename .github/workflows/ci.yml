@@ -26,6 +26,20 @@ jobs:
       - name: 의존성 설치 (uv.lock 그대로)
         run: uv sync --locked
 
+      - name: Node 설치 (계약 생성 도구)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: pnpm 설치 (계약 생성 도구)
+        run: npm install --global pnpm@11.9.0
+
+      - name: 계약 생성 도구 설치
+        run: pnpm --dir tools/contracts install --frozen-lockfile
+
+      - name: 계약 재생성 차이 검사
+        run: uv run python scripts/generate_contracts.py --check
+
       - name: 포맷 검사
         run: uvx ruff format --check .
 

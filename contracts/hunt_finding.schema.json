@@ -1,0 +1,99 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "hunt_finding.schema.json",
+  "title": "HuntFinding",
+  "type": "object",
+  "properties": {
+    "hunt_id": {
+      "type": "string",
+      "pattern": "^ht_"
+    },
+    "hypothesis": {
+      "type": "string"
+    },
+    "techniques": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "method": {
+      "type": "string",
+      "enum": [
+        "baseline",
+        "hypothesis"
+      ]
+    },
+    "query_summary": {
+      "type": "string"
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "$ref": "evidence.schema.json"
+      }
+    },
+    "is_anomaly": {
+      "type": "boolean"
+    },
+    "incident_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^in_"
+    },
+    "rule_candidate": {
+      "type": "boolean"
+    },
+    "needs_human": {
+      "type": "boolean"
+    },
+    "human_reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "created_at": {
+      "type": "integer"
+    }
+  },
+  "required": [
+    "hunt_id",
+    "hypothesis",
+    "techniques",
+    "method",
+    "query_summary",
+    "evidence",
+    "is_anomaly",
+    "incident_id",
+    "rule_candidate",
+    "needs_human",
+    "human_reason",
+    "created_at"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "needs_human": {
+            "const": true
+          }
+        },
+        "required": [
+          "needs_human"
+        ]
+      },
+      "then": {
+        "properties": {
+          "human_reason": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  ],
+  "description": "Core follow-up: evidence existence and Correlation linkage; LLM fallback."
+}

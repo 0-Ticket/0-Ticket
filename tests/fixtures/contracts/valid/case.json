@@ -1,0 +1,18 @@
+{
+  "case_id": "cs_sample",
+  "incident_id": "in_sample",
+  "title": "Sample",
+  "status": "open",
+  "tasks": [
+    {
+      "task": "Review",
+      "owner": "sample-user",
+      "due_at": null,
+      "status": "todo"
+    }
+  ],
+  "lessons": null,
+  "extensions": {},
+  "created_at": 1791849600000,
+  "closed_at": null
+}

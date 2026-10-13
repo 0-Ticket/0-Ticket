@@ -1,0 +1,10 @@
+{
+  "kind": "alert",
+  "scenario": "sample",
+  "raw_ids": [
+    "raw_sample_1"
+  ],
+  "fields": {
+    "message": "sample"
+  }
+}

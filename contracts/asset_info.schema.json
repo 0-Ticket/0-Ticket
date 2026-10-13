@@ -1,0 +1,66 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "asset_info.schema.json",
+  "title": "AssetInfo",
+  "type": "object",
+  "properties": {
+    "match": {
+      "type": "string"
+    },
+    "hostname": {
+      "type": "string"
+    },
+    "criticality": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5
+    },
+    "owner": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "zone": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "shared": {
+      "type": "boolean"
+    },
+    "valid_from": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "valid_to": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "extensions": {
+      "type": "object",
+      "additionalProperties": true,
+      "propertyNames": {
+        "pattern": "^[^.]+\\..+$"
+      }
+    }
+  },
+  "required": [
+    "match",
+    "hostname",
+    "criticality",
+    "owner",
+    "zone",
+    "shared",
+    "valid_from",
+    "valid_to",
+    "extensions"
+  ],
+  "additionalProperties": false,
+  "description": "Core follow-up: match assets at event time; shared assets are excluded from correlation keys."
+}

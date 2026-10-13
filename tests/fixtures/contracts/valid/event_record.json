@@ -1,0 +1,37 @@
+{
+  "event_id": "ev_sample",
+  "class_uid": 4001,
+  "time": 1791849600000,
+  "activity": "http_request",
+  "src_ip": null,
+  "dst_ip": null,
+  "host": "web-01",
+  "user": null,
+  "http_url": "https://example.com/",
+  "http_status": 200,
+  "api_operation": null,
+  "status": null,
+  "src_asset": null,
+  "dst_asset": {
+    "match": "192.0.2.10",
+    "hostname": "web-01",
+    "criticality": 5,
+    "owner": null,
+    "zone": "dmz",
+    "shared": false,
+    "valid_from": null,
+    "valid_to": null,
+    "extensions": {
+      "example.context": {
+        "labels": [
+          "sample"
+        ],
+        "value": null
+      }
+    }
+  },
+  "user_info": null,
+  "raw_ids": [],
+  "unmapped": {},
+  "extensions": {}
+}

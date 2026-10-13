@@ -1,0 +1,28 @@
+{
+  "class_uid": 2004,
+  "time": 1791849600000,
+  "severity_id": 4,
+  "rule_id": "sample",
+  "rule_name": "Sample",
+  "src_ip": "203.0.113.10",
+  "src_port": null,
+  "dst_ip": null,
+  "dst_port": null,
+  "host": null,
+  "user": null,
+  "http_url": null,
+  "http_status": null,
+  "techniques": [],
+  "raw_ids": [
+    "raw_sample_1"
+  ],
+  "unmapped": {},
+  "extensions": {
+    "example.context": {
+      "labels": [
+        "sample"
+      ],
+      "value": null
+    }
+  }
+}

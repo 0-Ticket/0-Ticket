@@ -1,0 +1,102 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "specialist_finding.schema.json",
+  "title": "SpecialistFinding",
+  "type": "object",
+  "properties": {
+    "ticket_id": {
+      "type": "string",
+      "pattern": "^tk_"
+    },
+    "specialist": {
+      "type": "string",
+      "description": "Registered value; built-in values: web, cloud. Plugins may register more values; the core registry validates them."
+    },
+    "question": {
+      "type": "string"
+    },
+    "summary": {
+      "type": "string"
+    },
+    "attack_type": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Registered value; built-in values: sqli, scan, lfi, rfi, webshell_upload, logging_disabled, role_abuse. Plugins may register more values; the core registry validates them."
+    },
+    "succeeded": {
+      "type": "string",
+      "enum": [
+        "yes",
+        "no",
+        "unknown"
+      ]
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "$ref": "evidence.schema.json"
+      },
+      "minItems": 1
+    },
+    "details": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "needs_human": {
+      "type": "boolean"
+    },
+    "human_reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "created_at": {
+      "type": "integer"
+    }
+  },
+  "required": [
+    "ticket_id",
+    "specialist",
+    "question",
+    "summary",
+    "attack_type",
+    "succeeded",
+    "confidence",
+    "evidence",
+    "details",
+    "needs_human",
+    "human_reason",
+    "created_at"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "needs_human": {
+            "const": true
+          }
+        },
+        "required": [
+          "needs_human"
+        ]
+      },
+      "then": {
+        "properties": {
+          "human_reason": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  ],
+  "description": "Core follow-up: evidence reference policy (alert, event, raw) and existence; LLM fallback."
+}
