@@ -69,6 +69,8 @@ def test_generated_strict_field_types(name):
     "name,field,bad",
     [
         ("normalized_alert", "severity_id", 7),
+        ("hunt_finding", "severity_id", -1),
+        ("hunt_finding", "severity_id", 7),
         ("normalized_alert", "class_uid", 1),
         ("asset_info", "criticality", 6),
         ("verdict", "confidence", -0.1),

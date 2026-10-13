@@ -95,6 +95,14 @@
 | K51 | 전체 | HTML·스크립트 조각이 든 로그 원문, LLM 출력, `extensions` 값이 텍스트로만 표시된다 | ⬜ | |
 | K52 | 전체 | 플러그인이 등록한 새 등록형 값과 새 `extensions` 키가 화면 수정 없이 보인다 | ⬜ | |
 
+## 계약 Schema
+
+| ID | 확인할 것 | 상태 | 테스트 |
+|---|---|---|---|
+| K53 | `contracts/`의 Schema가 `docs/data-contracts.md`의 모든 객체(C1 ~ C20, 공통 객체)와 필드명·타입·필수 여부·열거형이 같다. 선택 필드는 `required`에 있고 `null`을 허용한다 | ✅ 통과 | `test_schema_contract_coverage`, `test_structure_and_fixtures`, `test_nullable_field_schemas` |
+| K54 | 생성 명령 하나로 Python(Pydantic)과 TypeScript 코드가 만들어지고, CI가 다시 생성했을 때 차이가 없다 | ✅ 통과 | `test_generation_reproducible`, `test_all_fixture_types` |
+| K55 | 등록형 필드는 Schema에서 `enum`이 아니고, `extensions`는 추가 키를 허용한다. Schema로 표현 가능한 조건을 검증한다. 코어 비즈니스 조건은 해당 박스에서 검증한다 | 🟡 일부 | `test_structural_conditions`, `test_registered_values`, `test_hunt_severity`; 코어 비즈니스 검증은 후속 작업 |
+
 ## 공통 확인
 
 | 확인할 것 | 상태 |
@@ -104,8 +112,7 @@
 
 ## #5 계약 구현 검증 결과
 
-기존 하네스 변경의 체크리스트 원문은 보존한다. #5의 K53~K55 상태는 아래와 같다.
-하네스 PR 머지 후 최신 `review`와 정리할 때 위 표에도 이 결과를 반영한다.
+PR #4가 머지된 `review`와 하네스 결정 확정을 통합했다. 위 표의 K53~K55 검증 근거와 남은 범위는 아래와 같다.
 
 | ID | 상태 | 검증 및 남은 범위 |
 |---|---|---|

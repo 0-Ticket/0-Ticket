@@ -184,3 +184,20 @@ def test_empty_lists_follow_min_items(name):
         if kind == "array" or kind == ["array", "null"]:
             value = fixture(name) | {field: []}
             assert validator(name).is_valid(value) == (prop.get("minItems", 0) == 0)
+
+
+@pytest.mark.parametrize(
+    "anomaly,severity,valid",
+    [
+        (False, 0, True),
+        (False, 1, False),
+        (True, 0, True),
+        (True, 6, True),
+        (True, -1, False),
+        (True, 7, False),
+        (True, None, False),
+    ],
+)
+def test_hunt_severity(anomaly, severity, valid):
+    value = fixture("hunt_finding") | {"is_anomaly": anomaly, "severity_id": severity}
+    assert validator("hunt_finding").is_valid(value) == valid

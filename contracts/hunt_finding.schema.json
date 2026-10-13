@@ -36,6 +36,12 @@
     "is_anomaly": {
       "type": "boolean"
     },
+    "severity_id": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 6,
+      "description": "Severity on the C3 scale (0-6); non-anomalous findings have severity 0."
+    },
     "incident_id": {
       "type": [
         "string",
@@ -67,6 +73,7 @@
     "query_summary",
     "evidence",
     "is_anomaly",
+    "severity_id",
     "incident_id",
     "rule_candidate",
     "needs_human",
@@ -90,6 +97,25 @@
         "properties": {
           "human_reason": {
             "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "is_anomaly": {
+            "const": false
+          }
+        },
+        "required": [
+          "is_anomaly"
+        ]
+      },
+      "then": {
+        "properties": {
+          "severity_id": {
+            "const": 0
           }
         }
       }

@@ -4,7 +4,15 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, StrictBool, StrictInt, StrictStr, constr
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    StrictBool,
+    StrictInt,
+    StrictStr,
+    conint,
+    constr,
+)
 
 from . import evidence_schema
 
@@ -20,6 +28,7 @@ class HuntFinding(BaseModel):
     query_summary: StrictStr
     evidence: list[evidence_schema.Evidence]
     is_anomaly: StrictBool
+    severity_id: conint(ge=0, le=6, strict=True)
     incident_id: constr(pattern=r"^in_", strict=True) | None
     rule_candidate: StrictBool
     needs_human: StrictBool

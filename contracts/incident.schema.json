@@ -30,7 +30,8 @@
     "severity_id": {
       "type": "integer",
       "minimum": 0,
-      "maximum": 6
+      "maximum": 6,
+      "description": "Maximum severity among non-excluded members: C5 alert severity for tickets, C17 severity for hunts. Computed by the core."
     },
     "first_seen": {
       "type": "integer"

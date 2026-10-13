@@ -9,7 +9,7 @@
 ## 절차
 
 1. `git fetch origin` 후 `origin/review`에서 브랜치를 만든다. 이름은 `<type>/<이슈번호>-<짧은설명>`이다(예: `git switch -c feat/12-ocsf-alias origin/review`). type은 `AGENTS.md` "작업 흐름"을 따른다. fetch가 안 되면 멈추고 알린다.
-2. 계약 변경이 승인됐다면 `docs/data-contracts.md`와 `src/soc/contracts/`부터 고친다.
+2. 계약 변경이 승인됐다면 `docs/data-contracts.md` → `contracts/`의 Schema → 생성 명령 순서로 먼저 고친다. 생성된 파일은 직접 고치지 않는다.
 3. 샘플을 먼저 만든다. `tests/fixtures/`에 손으로 만든 작은 데이터를 둔다. IP는 문서용 대역, 도메인은 `example.com`을 쓴다. 화면 작업이면 `docs/api-contracts.md` 응답 모양 그대로 mock 데이터를 만든다.
 4. 테스트를 먼저 쓰고, 지금은 실패하는지 확인한다.
 5. 테스트가 통과하도록 구현한다. 코드 위치는 `docs/architecture.md`의 "박스 그룹과 코드 위치" 표를 따른다. 화면은 `docs/frontend.md`의 "폴더"를 따르고, 계약 타입은 `frontend/src/contracts/`, API 호출은 `frontend/src/api/`에만 둔다.

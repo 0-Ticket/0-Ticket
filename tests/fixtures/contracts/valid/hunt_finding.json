@@ -10,5 +10,6 @@
   "rule_candidate": false,
   "needs_human": false,
   "human_reason": null,
-  "created_at": 1791849600000
+  "created_at": 1791849600000,
+  "severity_id": 0
 }

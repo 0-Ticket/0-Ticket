@@ -35,7 +35,7 @@
 1. **계획 먼저.** 코드를 쓰기 전에 변경할 파일 목록, 순서, 검증 방법을 보여 주고 사람의 승인을 받는다.
 2. **한 번에 박스 하나.** 이슈가 박스 두 개 이상에 걸치면 나누자고 제안한다. 화면 작업은 `docs/frontend.md`의 화면 순서(F0 ~ F6) 하나가 단위다.
 3. **확정된 것만.** `docs/decisions.md`에서 "확정"된 도구와 데이터셋만 쓴다. 필요하면 대장에 의견을 적고 멈춘다.
-4. **계약을 지킨다.** `docs/data-contracts.md`의 필드명, 타입, 필수 여부를 그대로 쓴다. 바꿔야 하면 멈추고 제안한다. 승인되면 같은 PR에서 계약 문서부터 고치고 PR에 표시한다.
+4. **계약을 지킨다.** `docs/data-contracts.md`의 필드명, 타입, 필수 여부를 그대로 쓴다. 코드에서는 `contracts/`의 JSON Schema에서 생성한 Python·TypeScript 코드만 쓴다. 바꿔야 하면 멈추고 제안한다. 승인되면 같은 PR에서 계약 문서 → Schema → 다시 생성 순서로 고치고 PR에 표시한다.
 5. **확장 가능하게.** 바뀔 수 있는 부분은 인터페이스와 구현체로 나누고 레지스트리로 찾는다. 코어 코드에서 구현체 이름으로 분기하지 않는다. 조직별 값은 설정으로, 조직별 필드는 `extensions`로 뺀다(`docs/extensibility.md`).
 6. **샘플과 테스트 먼저.** `tests/fixtures/`에 손으로 만든 작은 샘플을 두고, 테스트를 먼저 쓴 뒤 구현한다.
 7. **비밀은 환경변수로만.** 키, 토큰, 비밀번호는 `.env`에서 읽는다. 코드와 설정 파일에 하드코딩하지 않고, 설정에는 환경변수 이름만 적는다.
@@ -49,6 +49,7 @@
 
 - "확정"되지 않은 도구나 데이터셋을 코드에 넣기
 - `docs/data-contracts.md`의 필드나 확장 지점 인터페이스를 말없이 바꾸기
+- 생성된 계약 코드(`src/soc/contracts/generated/`, `frontend/src/contracts/generated/`)를 직접 고치기
 - 코어 코드에 특정 구현체(SIEM, 모델, DB 이름 등)를 직접 박아 넣기
 - 비밀 값을 코드, 테스트, 로그, 커밋, PR에 쓰기. `.env` 커밋하기
 - 실제 기업 로그나 공개 데이터셋 원본을 커밋하기
@@ -67,7 +68,7 @@
 1. 이슈의 "완료 기준"을 모두 충족한다.
 2. `uvx ruff format --check .`, `uvx ruff check .`, `uv run pytest`가 통과한다. 화면 작업이면 `docs/frontend.md` "명령"의 타입 검사, 린트·포맷 검사, 테스트, 빌드도 통과한다.
 3. 박스 테스트가 `tests/fixtures/`의 샘플로 그 박스 계약의 입력 → 출력을 검증한다. 화면 작업이면 mock 데이터로 `docs/frontend.md` "완료 기준 (화면 작업)"을 만족한다.
-4. `docs/data-contracts.md`를 지킨다. 바꿨다면 문서도 같은 PR에서 고쳤다.
+4. `docs/data-contracts.md`를 지킨다. 바꿨다면 문서, `contracts/`의 Schema, 생성 코드를 같은 PR에서 함께 고쳤다.
 5. 그 박스에 확장 지점이 있다면 인터페이스, 기본 구현체, 가짜 구현체로 교체하는 테스트가 있다. 새 설정 값은 기본 설정 파일에 기본값과 설명이 있다.
 6. `docs/architecture.md`에 적힌 그 박스의 "완료 조건"을 충족하고, `tests/checklist.md`의 해당 항목을 확인하고 표시했다.
 7. 금지 사항을 어기지 않았다.
@@ -86,7 +87,7 @@ uvx ruff format .  # 포맷
 
 CI(`.github/workflows/ci.yml`)도 같은 검사를 돌린다. 포맷은 고치지 않고 `uvx ruff format --check .`로 검사만 한다.
 
-웹 화면(`frontend/`)은 Node를 쓴다. 명령은 `docs/frontend.md` "명령"에 있고, D-018·D-023·D-024가 확정되면 F0에서 채운다. F0(프론트 기반)이 끝나기 전에는 화면 코드를 만들지 않는다.
+웹 화면(`frontend/`)은 Node와 pnpm을 쓴다. 명령은 `docs/frontend.md` "명령"에 있다. F0(프론트 기반)이 끝나기 전에는 화면 코드를 만들지 않는다. 계약 코드 생성 명령은 `docs/data-contracts.md` "계약 Schema"에 있다.
 
 ## 작업 흐름
 
@@ -142,13 +143,14 @@ docs/
   api-contracts.md   화면용 API 목록과 응답 모양
   development-workflow.md 사람용 개발 흐름 안내 (AI는 읽지 않아도 됨)
 prompts/             단계별 작업 지시 (원본)
+contracts/           계약 원본 JSON Schema (D-032). 여기서 Python·TypeScript 코드를 생성
 config/              기본 설정 (조직 설정은 ZT_CONFIG로 따로, 커밋하지 않음)
 .claude/
   settings.json      Claude Code 공용 설정 (AI 표시 끄기, GitHub 쓰기 명령 차단)
   skills/            Claude Code용 스킬 입구
 .agents/skills/      Codex용 스킬 입구
 src/soc/
-  contracts/         data-contracts.md의 코드 정의 (한 곳에만)
+  contracts/         계약 코드. generated/는 contracts/ Schema에서 생성 (직접 수정 금지)
   llm/               LLM 호출 함수와 제공자 구현체
   api/               화면용 API (docs/api-contracts.md)
   <그룹>/            박스 그룹별 코드 (어느 박스가 어디인지는 docs/architecture.md)

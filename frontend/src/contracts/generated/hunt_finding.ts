@@ -8,6 +8,7 @@ export interface HuntFinding {
   query_summary: string;
   evidence: Evidence[];
   is_anomaly: boolean;
+  severity_id: number;
   incident_id: string | null;
   rule_candidate: boolean;
   needs_human: boolean;
