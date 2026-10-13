@@ -133,10 +133,10 @@ SOC 분석가가 에이전트의 판정과 조사 과정을 보고, 검토하고
 
 ## 데이터와 계약 타입
 
-- 계약 타입은 `contracts/`의 JSON Schema에서 생성한 `frontend/src/contracts/generated/`만 쓴다(D-025, D-031). 생성된 파일은 직접 고치지 않는다. 필드명은 `snake_case`, 선택 필드는 `| null`이다.
-- 화면 코드는 `frontend/src/contracts/`의 진입 파일에서 타입을 가져온다. 생성 폴더를 여기저기서 직접 가져오지 않는다.
+- 계약 타입은 `frontend/src/contracts/` 한 곳에만 둔다. 필드명, 열거형 값, 선택 여부를 `docs/data-contracts.md` 그대로 쓴다. 필드명은 `snake_case`, 선택 필드는 `| null`이다.
 - 화면 전용 모양(라벨, 정렬, 묶음)은 컴포넌트나 `lib`에서 만들고, 계약 타입을 고치지 않는다.
-- 계약이 바뀌면 같은 PR에서 `docs/data-contracts.md` → `contracts/`의 Schema → 생성 명령 → 화면 코드 순서로 고친다(`docs/data-contracts.md` "바꾸는 절차").
+- 계약이 바뀌면 같은 PR에서 `docs/data-contracts.md` → `src/soc/contracts/` → `frontend/src/contracts/` 순서로 고친다.
+- 계약 타입을 손으로 쓸지 생성할지는 D-025를 따른다.
 
 ## API와 mock
 
@@ -162,8 +162,7 @@ F0에서 확정한다. 기본안은 아래와 같다.
 ```
 frontend/
   src/
-    contracts/   계약 타입 진입 파일
-      generated/ contracts/ Schema에서 생성 (직접 수정 금지)
+    contracts/   계약 타입 (한 곳에만)
     api/         API 호출 (한 곳에만)
     mocks/       mock 핸들러와 데이터
     pages/       화면 (F1 ~ F6)
@@ -174,27 +173,24 @@ frontend/
 
 ## 명령
 
-모두 `frontend/` 폴더에서 실행한다. 스크립트 이름은 여기서 정하고, 실제 스크립트는 F0에서 `package.json`에 만든다. F0이 끝나기 전에는 화면 코드를 만들지 않는다.
+D-018, D-023, D-024가 확정되면 F0에서 이 표를 채운다. F0은 이 표를 채우는 작업이고, F0이 끝나기 전에는 화면 코드를 만들지 않는다.
 
-| 하는 일 | 명령 | 도구 |
-|---|---|---|
-| 의존성 설치 | `pnpm install --frozen-lockfile` | pnpm (D-024) |
-| 개발 서버 (mock) | `pnpm dev` | Vite (D-018), MSW (D-022) |
-| 타입 검사 | `pnpm typecheck` | TypeScript |
-| 린트 | `pnpm lint` | ESLint (D-030) |
-| 포맷 검사 | `pnpm format:check` | Prettier (D-030). 고치지 않고 검사만 |
-| 테스트 | `pnpm test` | Vitest + Testing Library (D-023) |
-| 빌드 | `pnpm build` | Vite |
+| 하는 일 | 명령 |
+|---|---|
+| 의존성 설치 | F0에서 정함 |
+| 개발 서버 (mock) | F0에서 정함 |
+| 타입 검사 | F0에서 정함 |
+| 린트 · 포맷 검사 | F0에서 정함 |
+| 테스트 | F0에서 정함 |
+| 빌드 | F0에서 정함 |
 
-계약 타입 생성 명령은 `docs/data-contracts.md` "계약 Schema"에 있다.
-
-F0에서 CI에 화면 검사 작업을 추가한다. `frontend/`나 `contracts/`가 바뀐 PR에서 위 명령을 설치부터 빌드까지 차례로 돌린다.
+F0에서 CI에 화면 검사 작업을 추가한다. `frontend/`가 바뀐 PR에서만 돈다.
 
 ## 완료 기준 (화면 작업)
 
 `AGENTS.md`의 완료 기준에 더해 아래를 만족한다.
 
-1. 위 표의 타입 검사, 린트, 포맷 검사, 테스트, 빌드가 통과한다.
+1. 위 표의 타입 검사, 린트·포맷 검사, 테스트, 빌드가 통과한다.
 2. mock 데이터로 그 화면이 "흐름"대로 동작한다.
 3. 로그 원문, LLM 출력, `extensions` 값이 텍스트로만 표시되는지 테스트가 있다.
 4. 검토 동작이 있는 화면은 필수 입력이 없으면 보내지 않는 테스트가 있다.
