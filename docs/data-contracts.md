@@ -39,13 +39,13 @@
 | C6 | Ticket | 9, 10 → 11, 16, 17 |
 | C7 | Verdict | 11 → 10, 16 |
 | C8 | AgentStep | 9, 11, 13, 14, 19, 23, 24 → 12 |
-| C9 | HumanReview | 16 → 10, 18 (`tp`면 Incident 생성) |
+| C9 | HumanReview | 16 → 10, 17 (`tp`면 Correlation으로) |
 | C10 | Incident | 17, 18 → 19 |
 | C11 | IncidentArtifact | 19 → 20, 21 |
 | C14 | SpecialistFinding | 13, 14 → 11 |
 | C15 | L2Review | 21 → 19, 22 |
-| C16 | Case | 22 → 8 |
-| C17 | HuntFinding | 23 → 18, 24 |
+| C16 | Case | 22 → 8, 23, 24 |
+| C17 | HuntFinding | 23 → 17, 24 |
 | C18 | RuleProposal | 24 → 3 (사람 승인 후) |
 | C19 | VectorDoc | 5, 6, 7, 10, 18, 22 → 8 |
 
@@ -270,14 +270,14 @@ L1의 판정 결과. LLM 출력이 이 형식을 통과하지 못하면 판정�
 
 ## C10 · Incident
 
-한 캠페인으로 묶인 티켓 묶음.
+한 캠페인으로 묶인 티켓·헌팅 결과 묶음. 모든 Incident는 Correlation(17)이 만든다.
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
 | incident_id | str | ✅ | `in_` 접두어 |
 | title | str | ✅ | |
 | status | enum | ✅ | `open`, `investigating`, `closed_benign`, `escalated_to_case` |
-| created_by | enum | ✅ | `correlation`, `human_l1`, `l3` |
+| created_by | enum | ✅ | `correlation`(규칙이 묶음), `manual`(사람이 직접 묶음). 묶음 항목의 출처는 IncidentMember `source` |
 | severity_id | int | ✅ | 소속 알럿 중 가장 높은 값 |
 | first_seen | int | ✅ | |
 | last_seen | int | ✅ | |
@@ -290,7 +290,10 @@ L1의 판정 결과. LLM 출력이 이 형식을 통과하지 못하면 판정�
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| ticket_id | str | ✅ | |
+| member_type | enum | ✅ | `ticket`, `hunt` |
+| ticket_id | str | 선택 | `member_type`이 `ticket`이면 필수 |
+| hunt_id | str | 선택 | `member_type`이 `hunt`이면 필수. C17 |
+| source | enum | ✅ | 이 항목이 Correlation에 들어온 경로. `l1`(L1이 TP로 판정), `human_l1`(사람이 L1 검토에서 TP로 확정), `l3`(L3 이상 징후) |
 | rule | str | ✅ | 묶인 Correlation 규칙 ID. 사람이 묶었으면 `manual` |
 | matched_entity | Entity | 선택 | 묶는 기준이 된 엔티티 (공통 객체) |
 | excluded | bool | ✅ | L2가 노이즈로 뺐으면 `true` |
@@ -386,7 +389,7 @@ L3 헌팅 한 번의 결과.
 | query_summary | str | ✅ | 무엇을 어떻게 조회했는지 |
 | evidence | list[Evidence] | ✅ | 찾은 근거. `ref_type`은 주로 `event`. 없으면 `[]` |
 | is_anomaly | bool | ✅ | 이상 징후로 판단했으면 `true` |
-| incident_id | str | 선택 | Incident로 올렸으면 그 ID |
+| incident_id | str | 선택 | Correlation이 Incident로 묶었으면 그 ID |
 | rule_candidate | bool | ✅ | 반복 가능한 패턴이라 룰 제안으로 넘길지 |
 | needs_human | bool | ✅ | 사람 확인이 필요하면 `true`. LLM 출력 실패 처리는 `docs/llm-policy.md` 4항 |
 | human_reason | str | 선택 | `needs_human`이 `true`일 때 이유 |
@@ -399,7 +402,8 @@ L3 헌팅 한 번의 결과.
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
 | proposal_id | str | ✅ | `rp_` 접두어 |
-| hunt_id | str | ✅ | 근거가 된 C17 |
+| hunt_id | str | 선택 | 근거가 된 C17. `hunt_id`와 `case_id` 중 하나 이상은 필수 |
+| case_id | str | 선택 | 근거가 된 C16 (Case에서 찾은 패턴으로 제안할 때) |
 | title | str | ✅ | |
 | techniques | list[str] | ✅ | ATT&CK 기법 ID |
 | sigma_rule | str | ✅ | Sigma 룰 원문 |

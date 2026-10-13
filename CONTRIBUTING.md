@@ -4,7 +4,7 @@
 
 ## 개발 환경
 
-Python 3.12 이상과 [uv](https://docs.astral.sh/uv/)가 필요합니다.
+백엔드는 Python 3.12 이상과 [uv](https://docs.astral.sh/uv/)가 필요합니다. 웹 화면(`frontend/`)은 Node가 필요하고, 버전과 명령은 [docs/frontend.md](docs/frontend.md) "명령"에 있습니다.
 
 ```bash
 uv sync                 # 의존성 설치
@@ -56,7 +56,7 @@ git switch -c feat/12-ocsf-alias origin/review
 `<type>(<scope>): <summary> (#이슈번호)` 형식입니다.
 
 - **type**: 위 표와 같습니다. 브랜치의 type과 맞춥니다.
-- **scope**: 박스 작업이면 `box<번호>`(예: `box4`). 박스에 속하지 않으면 영역 이름: `core`, `contracts`, `llm`, `config`, `docs`, `ci`, `harness`
+- **scope**: 박스 작업이면 `box<번호>`(예: `box4`). 웹 화면이면 `frontend`, 화면용 API면 `api`. 그 밖에는 영역 이름: `core`, `contracts`, `llm`, `config`, `docs`, `ci`, `harness`
 - **summary**: 영어로 짧게 씁니다. 동사 원형으로 시작하고(`add`, `fix`, `update`), 첫 글자는 소문자, 끝에 마침표를 찍지 않습니다. 50자 안팎을 권장합니다.
 
 ```
@@ -185,7 +185,8 @@ docs/              제품·설계·계약·결정·정책 문서
 prompts/           AI 작업 단계 지시
 .claude/, .agents/ AI 도구별 설정과 스킬
 config/            기본 설정 (조직 설정은 커밋하지 않음)
-src/soc/           코드
+src/soc/           백엔드 코드
+frontend/          웹 화면
 tests/             테스트, 체크리스트, 샘플 데이터
 .github/           이슈·PR 템플릿, CI
 ```

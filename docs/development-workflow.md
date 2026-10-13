@@ -31,9 +31,12 @@
 │   ├── decisions.md #사람이 확정한 기술 결정 (각 개발 과정에 필요한 외부 도구나 방식을 확정짓고, 개발에 이용)
 │   ├── security-policy.md #개발/데이터/비밀 관련 보안 기준 (개발 과정에서도 보안 중시를 위함)
 │   ├── llm-policy.md #LLM 호출 및 출력 검증 기준 (LLM을 호출하는 코드를 짤 때만 읽음)
+│   ├── frontend.md #웹 화면 목록, 표시 규칙, 검토 동작, 화면 명령 (화면 작업할 때 읽음)
+│   ├── api-contracts.md #화면이 부르는 API 목록과 응답 모양 (화면, API 작업할 때 읽음)
 │   └── development-workflow.md #Development Harness의 구조, 역할, 개발 Flow를 설명하는 사람용 가이드
 ├── CONTRIBUTING.md #추후 외부 인원이 기여할 때 확인할 문서
-├── src/soc/ #실제 제품 코드가 위치할 예정
+├── src/soc/ #백엔드 코드가 위치할 예정 (화면용 API는 src/soc/api/)
+├── frontend/ #웹 화면 코드가 위치할 예정 (F0에서 만듦)
 ├── tests/ #테스트 관련 문서
 │   ├── checklist.md #무엇을 구현해야 완료라고 볼 것인가 확인하는 체크리스트
 │   ├── fixtures/ #테스트용 입력 데이터
@@ -193,7 +196,7 @@ ex)
 문서 작업 : docs(harness): update development workflow (#30)
 ```
 
-scope에는 박스 작업이면 `box<번호>`, 아니면 `core`, `contracts`, `llm`, `config`, `docs`, `ci`, `harness` 중 하나를 사용합니다.
+scope에는 박스 작업이면 `box<번호>`, 웹 화면이면 `frontend`, 화면용 API면 `api`, 아니면 `core`, `contracts`, `llm`, `config`, `docs`, `ci`, `harness` 중 하나를 사용합니다.
 
 summary는 영어로 짧게 동사 원형으로 시작하고(`add`, `fix`, `update`) 첫 글자는 소문자, 마침표 없이 작성합니다.
 
