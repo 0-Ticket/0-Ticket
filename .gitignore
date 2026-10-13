@@ -24,3 +24,9 @@ CLAUDE.local.md
 # 조직 설정 (ZT_CONFIG로 지정, 커밋 금지)
 config/local.*
 config/org.*
+
+# 웹 화면 (frontend/)
+node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local

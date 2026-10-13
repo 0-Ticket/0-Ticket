@@ -17,7 +17,7 @@ SOC 분석가가 받는 알럿은 대부분 오탐이고, 진짜 공격은 여�
 |---|---|---|
 | **L1 · 알럿 판정** | 알럿마다 공격·오탐·불명을 판정하고 근거와 확신도를 붙인다. 웹·클라우드 알럿은 전문 에이전트가 깊게 본다. | 확신이 낮거나 중요 자산과 관련된 티켓만 확인한다. |
 | **L2 · 사고 분석** | 관련 티켓을 하나의 사고로 묶고, 관계없는 것을 빼고, 빠진 단계를 로그로 채워 타임라인 보고서를 쓴다. | 보고서를 보고 실제 사고인지 승인한다. 승인된 사고는 대응을 관리한다. |
-| **L3 · 위협 헌팅** | 알럿이 없는 이벤트에서 통계 기준선으로 이상 징후를 찾고, 반복 패턴은 Sigma 탐지 룰로 제안한다. | 백테스트 결과를 보고 룰 반영을 승인한다. |
+| **L3 · 위협 헌팅** | 최근 사고(Case)와 ATT&CK 기법으로 가설을 세워 알럿이 없는 이벤트에서 이상 징후를 찾고, 기존 탐지에 없는 반복 패턴은 Sigma 탐지 룰로 제안한다. | 백테스트 결과를 보고 룰 반영을 승인한다. |
 
 ## 구조
 
@@ -29,9 +29,10 @@ block-beta
   space space RAW("<b>2 · Raw Log</b><br/>원본 보존") space:7
   space space SIEM("<b>3 · SIEM</b>") space:4 LOG("<b>12 · Agent Log</b><br/>+ RDB · 조사 기록") space:2
   space space OCSF("<b>4 · OCSF</b><br/>필드 정규화") LK("<b>5 · Lookup</b><br/>+ RDB · VDB") AL("<b>6 · Alert</b><br/>+ RDB · VDB") AN("<b>9 · Analyst Agent</b><br/>라우팅") TK("<b>10 · Ticket</b><br/>+ RDB · VDB") L1("<b>11 · SOC L1 Agent</b><br/>단건 분석") CL("<b>13 · Cloud Agent</b>") MCP1("<b>15 · MCP</b>")
-  space space:2 EV("<b>7 · Event</b><br/>+ RDB · VDB") VDB("<b>8 · Vector DB</b><br/>유사 사례 · 지식") space COR("<b>17 · Correlation</b><br/>엔티티 + 시간") H1("<b>16 · Human</b><br/>L1 검토") WEB("<b>14 · Web Agent</b>") MCP2("<b>15 · MCP</b>")
+  space space:2 EV("<b>7 · Event</b><br/>+ 이벤트 저장소 · VDB") VDB("<b>8 · Vector DB</b><br/>유사 사례 · 지식") space COR("<b>17 · Correlation</b><br/>엔티티 + 시간") H1("<b>16 · Human</b><br/>L1 검토") WEB("<b>14 · Web Agent</b>") MCP2("<b>15 · MCP</b>")
   RULE("<b>24 · 탐지 룰 제안</b><br/>Sigma · + RDB") space:3 L3("<b>23 · SOC L3 Agent</b><br/>위협 헌팅") space INC("<b>18 · Incident</b><br/>+ RDB · VDB") L2("<b>19 · SOC L2 Agent</b><br/>캠페인 분석") ART("<b>20 · Incident Artifact</b><br/>+ RDB · 타임라인") space
-  space:8 H2("<b>21 · Human</b><br/>L2 검토") CASE("<b>22 · Case</b><br/>+ RDB · VDB")
+  space:8 H2("<b>21 · Human</b><br/>L2 검토") space
+  space:8 CASE("<b>22 · Case</b><br/>+ RDB · VDB") space
 
   ES --> RAW
   RAW --> SIEM
@@ -57,17 +58,18 @@ block-beta
   COR --> INC
   L1 -- "검토 / False" --> H1
   H1 --> L1
-  H1 -- "True / TP" --> INC
-  L3 -- "이상 징후" --> INC
+  H1 -- "True / TP" --> COR
+  L3 -- "이상 징후" --> COR
   INC --> L2
   L2 --> ART
   ART --> H2
   H2 -- "False" --> L2
   H2 -- "True" --> CASE
   L3 --> RULE
-  RULE -- "새 탐지 시나리오" --> SIEM
+  RULE -- "분석가 승인 후 반영" --> SIEM
+  CASE -- "가설 생성용" --> L3
 
-  %% 색상: 회색=수집·사람, 초록=처리 레이어, 주황=데이터 객체(+RDB), 파랑=Agent, 노랑=Vector DB
+  %% 색상: 회색=수집·사람, 초록=처리 레이어, 주황=데이터 객체(+저장소), 파랑=Agent, 노랑=Vector DB
   classDef src fill:#EDEDED,stroke:#3A3A3A,color:#1D2329
   classDef proc fill:#D5E8D4,stroke:#82B366,color:#1D2329
   classDef data fill:#FFE6CC,stroke:#D79B00,color:#1D2329

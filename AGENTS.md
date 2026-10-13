@@ -27,12 +27,13 @@
 6. `docs/decisions.md`: 쓸 수 있는 도구와 데이터셋 ("확정"만)
 7. `docs/security-policy.md`: 비밀, 데이터, 로그 원문
 8. LLM을 호출하는 코드라면 `docs/llm-policy.md`
-9. 지금 단계의 작업 지시: `prompts/01-plan.md`, `02-implement.md`, `03-test-and-fix.md` 중 하나
+9. 웹 화면(`frontend/`)이나 화면용 API(`src/soc/api/`) 작업이라면 `docs/frontend.md`, `docs/api-contracts.md`
+10. 지금 단계의 작업 지시: `prompts/01-plan.md`, `02-implement.md`, `03-test-and-fix.md` 중 하나
 
 ## 작업 원칙
 
 1. **계획 먼저.** 코드를 쓰기 전에 변경할 파일 목록, 순서, 검증 방법을 보여 주고 사람의 승인을 받는다.
-2. **한 번에 박스 하나.** 이슈가 박스 두 개 이상에 걸치면 나누자고 제안한다.
+2. **한 번에 박스 하나.** 이슈가 박스 두 개 이상에 걸치면 나누자고 제안한다. 화면 작업은 `docs/frontend.md`의 화면 순서(F0 ~ F6) 하나가 단위다.
 3. **확정된 것만.** `docs/decisions.md`에서 "확정"된 도구와 데이터셋만 쓴다. 필요하면 대장에 의견을 적고 멈춘다.
 4. **계약을 지킨다.** `docs/data-contracts.md`의 필드명, 타입, 필수 여부를 그대로 쓴다. 바꿔야 하면 멈추고 제안한다. 승인되면 같은 PR에서 계약 문서부터 고치고 PR에 표시한다.
 5. **확장 가능하게.** 바뀔 수 있는 부분은 인터페이스와 구현체로 나누고 레지스트리로 찾는다. 코어 코드에서 구현체 이름으로 분기하지 않는다. 조직별 값은 설정으로, 조직별 필드는 `extensions`로 뺀다(`docs/extensibility.md`).
@@ -56,15 +57,16 @@
 - 커밋과 PR에 AI 표시(`Co-Authored-By`, "Generated with") 넣기. git 작성자 설정 바꾸기
 - 테스트를 지우거나 건너뛰게 하거나, 린트 규칙을 꺼서 통과시키기
 - 공격 재현 도구 실행, 악성코드 샘플 다루기
-- 사람 승인 없이 실행되는 차단·격리 같은 대응 기능 만들기
+- 사람 승인 없이 실행되는 차단·격리 같은 대응 기능 만들기. 화면에 대응 실행 버튼을 두는 것도 포함
+- 화면에서 로그 원문, LLM 출력, `extensions` 값을 HTML이나 마크다운으로 렌더링하기 (`docs/security-policy.md` 7항)
 
 ## 완료 기준
 
 작업이 "끝났다"고 하려면 아래를 모두 만족해야 한다.
 
 1. 이슈의 "완료 기준"을 모두 충족한다.
-2. `uvx ruff format --check .`, `uvx ruff check .`, `uv run pytest`가 통과한다.
-3. 박스 테스트가 `tests/fixtures/`의 샘플로 그 박스 계약의 입력 → 출력을 검증한다.
+2. `uvx ruff format --check .`, `uvx ruff check .`, `uv run pytest`가 통과한다. 화면 작업이면 `docs/frontend.md` "명령"의 타입 검사, 린트·포맷 검사, 테스트, 빌드도 통과한다.
+3. 박스 테스트가 `tests/fixtures/`의 샘플로 그 박스 계약의 입력 → 출력을 검증한다. 화면 작업이면 mock 데이터로 `docs/frontend.md` "완료 기준 (화면 작업)"을 만족한다.
 4. `docs/data-contracts.md`를 지킨다. 바꿨다면 문서도 같은 PR에서 고쳤다.
 5. 그 박스에 확장 지점이 있다면 인터페이스, 기본 구현체, 가짜 구현체로 교체하는 테스트가 있다. 새 설정 값은 기본 설정 파일에 기본값과 설명이 있다.
 6. `docs/architecture.md`에 적힌 그 박스의 "완료 조건"을 충족하고, `tests/checklist.md`의 해당 항목을 확인하고 표시했다.
@@ -84,6 +86,8 @@ uvx ruff format .  # 포맷
 
 CI(`.github/workflows/ci.yml`)도 같은 검사를 돌린다. 포맷은 고치지 않고 `uvx ruff format --check .`로 검사만 한다.
 
+웹 화면(`frontend/`)은 Node를 쓴다. 명령은 `docs/frontend.md` "명령"에 있고, D-018·D-023·D-024가 확정되면 F0에서 채운다. F0(프론트 기반)이 끝나기 전에는 화면 코드를 만들지 않는다.
+
 ## 작업 흐름
 
 1. 작업은 GitHub 이슈 하나에서 시작한다. 이슈는 사람이 만든다. 이슈가 없으면 만들어 달라고 요청한다.
@@ -91,7 +95,7 @@ CI(`.github/workflows/ci.yml`)도 같은 검사를 돌린다. 포맷은 고치�
 3. 브랜치는 최신 `origin/review`에서 만든다. 이름은 `<type>/<이슈번호>-<짧은설명>`이다. 예: `feat/12-ocsf-alias`.
    - type: `feat`(새 기능), `fix`(버그), `docs`(문서만), `test`(테스트·샘플만), `refactor`(동작 그대로 구조만), `chore`(설정·CI·의존성·하네스)
 4. 커밋 메시지와 PR 제목은 `<type>(<scope>): <summary> (#이슈번호)`이다. 예: `feat(box4): add OCSF alias table loader (#12)`.
-   - scope: 박스 작업이면 `box<번호>`, 아니면 `core`, `contracts`, `llm`, `config`, `docs`, `ci`, `harness` 중 하나
+   - scope: 박스 작업이면 `box<번호>`, 웹 화면이면 `frontend`, 화면용 API면 `api`, 아니면 `core`, `contracts`, `llm`, `config`, `docs`, `ci`, `harness` 중 하나. 예: `feat(frontend): add review queue page (#20)`
    - summary는 영어로 짧게. 동사 원형으로 시작하고(`add`, `fix`, `update`) 첫 글자는 소문자, 마침표 없이
 5. PR 대상은 `review`이고, 이슈는 `Refs #<번호>`로 연결한다. `Closes`는 쓰지 않는다. 이슈는 `review` → `main` 릴리스 PR에서 닫힌다.
 6. AI는 로컬 커밋과 PR 제목·본문 초안까지 한다. push, PR 생성, 리뷰, 머지, 릴리스 PR, 태그는 사람이 한다. 자세한 규칙은 `CONTRIBUTING.md`에 있다.
@@ -134,6 +138,9 @@ docs/
   decisions.md       도구·데이터셋 결정 대장
   security-policy.md 보안 규칙
   llm-policy.md      LLM 호출 규칙
+  frontend.md        웹 화면 목록, 표시 규칙, 검토 동작, 화면 명령
+  api-contracts.md   화면용 API 목록과 응답 모양
+  development-workflow.md 사람용 개발 흐름 안내 (AI는 읽지 않아도 됨)
 prompts/             단계별 작업 지시 (원본)
 config/              기본 설정 (조직 설정은 ZT_CONFIG로 따로, 커밋하지 않음)
 .claude/
@@ -143,8 +150,10 @@ config/              기본 설정 (조직 설정은 ZT_CONFIG로 따로, 커밋
 src/soc/
   contracts/         data-contracts.md의 코드 정의 (한 곳에만)
   llm/               LLM 호출 함수와 제공자 구현체
+  api/               화면용 API (docs/api-contracts.md)
   <그룹>/            박스 그룹별 코드 (어느 박스가 어디인지는 docs/architecture.md)
     <확장 지점>/     base.py(인터페이스) + 구현체들
+frontend/            웹 화면 (docs/frontend.md, F0에서 만듦)
 tests/
   checklist.md       박스별·전체 흐름 체크리스트
   fixtures/          손으로 만든 샘플 데이터

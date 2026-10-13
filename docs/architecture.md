@@ -8,9 +8,10 @@ block-beta
   space space RAW("<b>2 · Raw Log</b><br/>원본 보존") space:7
   space space SIEM("<b>3 · SIEM</b>") space:4 LOG("<b>12 · Agent Log</b><br/>+ RDB · 조사 기록") space:2
   space space OCSF("<b>4 · OCSF</b><br/>필드 정규화") LK("<b>5 · Lookup</b><br/>+ RDB · VDB") AL("<b>6 · Alert</b><br/>+ RDB · VDB") AN("<b>9 · Analyst Agent</b><br/>라우팅") TK("<b>10 · Ticket</b><br/>+ RDB · VDB") L1("<b>11 · SOC L1 Agent</b><br/>단건 분석") CL("<b>13 · Cloud Agent</b>") MCP1("<b>15 · MCP</b>")
-  space space:2 EV("<b>7 · Event</b><br/>+ RDB · VDB") VDB("<b>8 · Vector DB</b><br/>유사 사례 · 지식") space COR("<b>17 · Correlation</b><br/>엔티티 + 시간") H1("<b>16 · Human</b><br/>L1 검토") WEB("<b>14 · Web Agent</b>") MCP2("<b>15 · MCP</b>")
+  space space:2 EV("<b>7 · Event</b><br/>+ 이벤트 저장소 · VDB") VDB("<b>8 · Vector DB</b><br/>유사 사례 · 지식") space COR("<b>17 · Correlation</b><br/>엔티티 + 시간") H1("<b>16 · Human</b><br/>L1 검토") WEB("<b>14 · Web Agent</b>") MCP2("<b>15 · MCP</b>")
   RULE("<b>24 · 탐지 룰 제안</b><br/>Sigma · + RDB") space:3 L3("<b>23 · SOC L3 Agent</b><br/>위협 헌팅") space INC("<b>18 · Incident</b><br/>+ RDB · VDB") L2("<b>19 · SOC L2 Agent</b><br/>캠페인 분석") ART("<b>20 · Incident Artifact</b><br/>+ RDB · 타임라인") space
-  space:8 H2("<b>21 · Human</b><br/>L2 검토") CASE("<b>22 · Case</b><br/>+ RDB · VDB")
+  space:8 H2("<b>21 · Human</b><br/>L2 검토") space
+  space:8 CASE("<b>22 · Case</b><br/>+ RDB · VDB") space
 
   ES --> RAW
   RAW --> SIEM
@@ -36,17 +37,18 @@ block-beta
   COR --> INC
   L1 -- "검토 / False" --> H1
   H1 --> L1
-  H1 -- "True / TP" --> INC
-  L3 -- "이상 징후" --> INC
+  H1 -- "True / TP" --> COR
+  L3 -- "이상 징후" --> COR
   INC --> L2
   L2 --> ART
   ART --> H2
   H2 -- "False" --> L2
   H2 -- "True" --> CASE
   L3 --> RULE
-  RULE -- "새 탐지 시나리오" --> SIEM
+  RULE -- "분석가 승인 후 반영" --> SIEM
+  CASE -- "가설 생성용" --> L3
 
-  %% 색상: 회색=수집·사람, 초록=처리 레이어, 주황=데이터 객체(+RDB), 파랑=Agent, 노랑=Vector DB
+  %% 색상: 회색=수집·사람, 초록=처리 레이어, 주황=데이터 객체(+저장소), 파랑=Agent, 노랑=Vector DB
   classDef src fill:#EDEDED,stroke:#3A3A3A,color:#1D2329
   classDef proc fill:#D5E8D4,stroke:#82B366,color:#1D2329
   classDef data fill:#FFE6CC,stroke:#D79B00,color:#1D2329
@@ -69,7 +71,7 @@ block-beta
 - 도구와 데이터셋 이름은 여기에 쓰지 않는다. 무엇을 쓸지는 `docs/decisions.md`에서 "확정"된 것만 따른다.
 - 다이어그램과 박스 이름의 OCSF, Sigma, MCP는 설계 방향을 나타내는 이름이다. 버전과 구체적인 도구는 `docs/decisions.md`에서 정한다(OCSF 버전은 D-017, 상관 규칙 형식은 D-011).
 - 다이어그램에 그리지 않은 연결: L1(11)과 L2(19)는 Vector DB(8)에서 유사 사례를 조회한다.
-- 저장 원칙: 정확한 조건 조회(같은 IP, 1시간 이내)는 RDB, 비슷한 과거 찾기는 Vector DB(VDB)가 맡는다. VDB의 **사례** 컬렉션(종결 티켓, Incident, Case)에는 판정이 끝난 것만 넣는다. 자산 설명이나 알럿·이벤트 요약 같은 **참고** 컬렉션은 판정과 무관하게 넣는다.
+- 저장 원칙: 정확한 조건 조회(같은 IP, 1시간 이내)는 RDB, 비슷한 과거 찾기는 Vector DB(VDB)가 맡는다. 양이 많은 Event(7)는 이벤트 저장소에 둔다(D-028). VDB의 **사례** 컬렉션(종결 티켓, Incident, Case)에는 판정이 끝난 것만 넣는다. 자산 설명이나 알럿·이벤트 요약 같은 **참고** 컬렉션은 판정과 무관하게 넣는다.
 
 ## 박스 그룹과 코드 위치
 
@@ -82,6 +84,7 @@ block-beta
 | L1 · 알럿 단건 분석 | 9 ~ 16 | `src/soc/l1/` |
 | L2 · 캠페인 분석 | 17 ~ 22 | `src/soc/l2/` |
 | L3 · 위협 헌팅 | 23, 24 | `src/soc/l3/` |
+| 사용자 접점 | 박스 없음 (16, 21의 검토 화면 포함) | `frontend/` (웹 화면), `src/soc/api/` (화면용 API) |
 
 ## 아키텍처를 바꿀 때
 
@@ -104,7 +107,20 @@ block-beta
 | 4 · L2 | 17 → 18 → 19 → 20 → 21 → 22 | D-011 |
 | 5 · L3 | 23 → 24 | |
 
-각 박스의 확인 항목은 `tests/checklist.md`에 있다.
+**화면 트랙**: 웹 화면은 위 단계와 나란히 진행한다. 화면은 백엔드 대신 mock API(`docs/api-contracts.md`)로 먼저 만들고, 해당 박스와 화면용 API가 생기면 실제 API로 바꾼다.
+
+| 순서 | 화면 | 관련 박스 | 먼저 필요한 결정 |
+|---|---|---|---|
+| F0 · 프론트 기반 | 폴더, 도구, 계약 타입, API 호출 계층, mock, CI | | D-013, D-018 ~ D-025 |
+| F1 | 검토 대기함, 티켓 목록 | 5, 10, 16 | |
+| F2 | 티켓 상세 | 5, 11 ~ 14, 16 | |
+| F3 | Incident 목록 · 상세, 보고서, L2 검토 | 17 ~ 21 | |
+| F4 | Case | 22 | |
+| F5 | 헌팅 결과, 룰 제안 | 23, 24 | |
+| F6 | 지표 대시보드 | 4, 16, 21 | D-026 |
+| 실제 API 연결 | 화면용 API(`src/soc/api/`) | 화면마다 관련 박스 | D-027 |
+
+각 박스의 확인 항목은 `tests/checklist.md`에 있다. 화면 구성은 `docs/frontend.md`에 있다.
 
 ---
 
@@ -170,7 +186,7 @@ block-beta
 ### 7 · Event
 
 - **하는 일**: 알럿까지는 아닌 info 수준 기록. 주로 L3 헌팅이 쓴다.
-- **입력 → 출력**: Lookup을 거친 C13 EventRecord → RDB, 일부만 VDB
+- **입력 → 출력**: Lookup을 거친 C13 EventRecord → 이벤트 저장소(D-028), 일부만 VDB
 - **핵심**: Alert와 같은 구조지만 양이 몇 자릿수 많다고 전제한다. VDB에는 드문 유형만 짧은 보관 기간으로 넣는다.
 - **완료 조건**: C13을 저장하고, 드문 유형은 짧은 보관 기간으로 VDB에 넣는다.
 
@@ -215,6 +231,7 @@ block-beta
   - 추가 조회는 읽기 전용 도구로만 한다.
   - 판정은 JSON 스키마로 강제하고, 근거마다 알럿·로그 ID를 달아 실제로 존재하는지 코드로 검사한다.
   - confidence가 낮거나, 자산 중요도가 높거나, 되돌릴 수 없는 조치가 필요하면 사람(16)에게 넘긴다.
+  - TP로 판정한 티켓은 Correlation(17)으로 넘긴다.
   - 모든 단계를 Agent Log(12)에 남긴다.
   - 로그 원문은 공격자가 쓴 문자열일 수 있다. `docs/security-policy.md` 3항을 따른다.
 - **완료 조건**: 모든 처리 유형에 대해 C7 판정을 낸다. 필요하면 전문 에이전트(13, 14)를 부르고, 근거 ID를 검증하며, 조건에 따라 사람(16)에게 넘긴다. 모든 단계를 12에 남긴다.
@@ -250,7 +267,7 @@ block-beta
 ### 16 · Human (L1 검토)
 
 - **하는 일**: L1이 확신하지 못하거나 위험한 티켓을 사람이 확인한다.
-- **입력 → 출력**: 넘어온 티켓 → 확정 판정과 코멘트. False면 L1로, True면 Incident(18)로.
+- **입력 → 출력**: 넘어온 티켓 → 확정 판정과 코멘트. False면 L1로, True면 Correlation(17)으로.
 - **핵심**: 판정을 뒤집을 때는 이유 입력을 필수로 한다. 이유는 종결 티켓과 함께 VDB에 넣어 다음 판정에 쓴다. 사람이 뒤집은 비율을 지표로 추적한다.
 - **완료 조건**: 넘어온 티켓에 동의 또는 뒤집기(이유 필수)를 받아 C9로 남기고, 뒤집은 비율을 지표로 낸다. 화면 형태는 D-013에 따른다.
 
@@ -258,21 +275,24 @@ block-beta
 
 ### 17 · Correlation
 
-- **하는 일**: 판정이 끝난 티켓들을 같은 엔티티와 시간 기준으로 묶어 Incident 후보를 만든다. LLM 없이 규칙으로 처리한다.
-- **입력 → 출력**: C6 Ticket의 엔티티(TP 또는 불명 판정) → Incident 후보, 소속 티켓, 묶인 이유
+- **하는 일**: TP로 판정된 티켓과 L3의 이상 징후를 같은 엔티티와 시간 기준으로 묶어 Incident를 만든다. 모든 Incident는 여기를 거친다. LLM 없이 규칙으로 처리한다.
+- **입력 → 출력**: 세 가지 입력 → C10 Incident(새로 만들거나 열린 Incident에 합침), 묶음 항목마다 출처와 묶인 이유
+  - L1이 TP로 판정한 티켓(11)
+  - 사람이 L1 검토에서 TP로 확정한 티켓(16)
+  - L3가 이상 징후로 판단한 헌팅 결과 C17(23)
 - **핵심**:
   - 규칙 예: 같은 출발지→같은 목적지 1시간 내 반복, 같은 출발지가 내부 목적지 N개 이상 접근, 웹 공격 받은 호스트에서 이후 악성 행위.
   - 공용 자산(5번의 shared 표시)은 묶는 기준에서 뺀다.
   - 기존 열린 Incident와 엔티티가 겹치면 합친다.
-  - 묶인 이유(어떤 규칙, 어떤 엔티티)를 남긴다. L2가 노이즈를 뺄 때 근거가 된다.
-- **완료 조건**: Correlation 규칙(형식은 D-011)으로 티켓을 묶고, 공용 자산을 빼며, 열린 Incident와 병합하고, 묶인 이유를 남긴다.
+  - 묶인 이유(어떤 규칙, 어떤 엔티티)와 출처(L1 판정, 사람 확정, L3)를 묶음 항목마다 남긴다. L2가 노이즈를 뺄 때 근거가 된다.
+- **완료 조건**: 세 입력을 Correlation 규칙(형식은 D-011)으로 묶어 C10을 만들고, 공용 자산을 빼며, 열린 Incident와 병합하고, 묶음 항목마다 출처와 묶인 이유를 남긴다.
 
 ### 18 · Incident
 
-- **하는 일**: 한 공격자의 한 캠페인으로 묶인 티켓 묶음. Correlation, L1 검토의 True, L3 이상 징후 세 곳에서 생긴다.
-- **입력 → 출력**: 위 세 경로 → C10 Incident, 종결 시 VDB
+- **하는 일**: 한 공격자의 한 캠페인으로 묶인 티켓·헌팅 결과 묶음. 모든 Incident는 Correlation(17)이 만든다.
+- **입력 → 출력**: Correlation 결과 → C10 Incident, 종결 시 VDB
 - **핵심**: 필드는 `docs/data-contracts.md` C10을 따른다. 상태: `open → investigating → closed_benign | escalated_to_case`. 종결 전에는 새 티켓이 계속 붙을 수 있다.
-- **완료 조건**: 세 경로(Correlation, L1 검토, L3)에서 C10을 만들고 상태 전이를 관리한다.
+- **완료 조건**: Correlation이 만든 C10을 저장하고 상태 전이를 관리한다. 묶음 항목의 출처(L1 판정, 사람 확정, L3)를 조회할 수 있다.
 
 ### 19 · SOC L2 Agent
 
@@ -305,32 +325,44 @@ block-beta
 ### 22 · Case
 
 - **하는 일**: 사람이 확정한 실제 사고. 대응 진행을 관리하고, 끝나면 다음 분석의 지식이 된다.
-- **입력 → 출력**: 승인된 Incident + Artifact → C16 Case, VDB
-- **핵심**: 대응 작업(담당자, 마감, 상태)과 교훈을 기록한다. 요약·공격 흐름·대응 내용을 VDB에 넣는다.
-- **완료 조건**: 승인된 Incident로 C16을 만들고 대응 작업과 교훈을 관리하며, 종결 시 VDB에 넣는다.
+- **입력 → 출력**: 승인된 Incident + Artifact → C16 Case, VDB, L3 가설 재료
+- **핵심**: 대응 작업(담당자, 마감, 상태)과 교훈을 기록한다. 요약·공격 흐름·대응 내용을 VDB에 넣는다. 최근 Case는 L3의 가설 생성(23)과 탐지 룰 제안(24)에 쓴다.
+- **완료 조건**: 승인된 Incident로 C16을 만들고 대응 작업과 교훈을 관리하며, 종결 시 VDB에 넣는다. L3가 최근 Case를 조회할 수 있다.
 
 ## L3 · 위협 헌팅
 
 ### 23 · SOC L3 Agent
 
 - **하는 일**: 알럿이 없는 곳에서 아직 시나리오가 없는 위협을 찾는다.
-- **입력 → 출력**: 헌팅 가설 + Event·VDB → C17 HuntFinding. 이상 징후는 Incident로, 반복 패턴은 24로
+- **입력 → 출력**: 최근 Case와 ATT&CK 기법으로 세운 가설 + Event·Alert·VDB → C17 HuntFinding. 이상 징후는 Correlation(17)으로, 반복 패턴은 24로
 - **핵심**:
   - 준비(가설과 데이터) → 실행(조회와 분석) → 정리(기록, 룰 제안) 순서로 한다.
   - 통계 기준선(드문 프로세스, 드문 부모·자식 조합, 처음 보는 국가 로그인, 평소보다 큰 전송량)으로 먼저 좁힌다.
   - 좁혀진 결과만 LLM이 해석한다. 원본 로그 수만 건을 LLM에 바로 주지 않는다.
-  - 가설은 LLM이 만든다: "이 기법이 우리 환경에서 쓰였다면 어떤 흔적이 남는가".
-- **완료 조건**: 기준선 쿼리와 LLM 가설로 헌팅해 C17을 남기고, 이상 징후는 Incident로, 반복 패턴은 24로 넘긴다.
+  - 이상 징후에는 심각도(`severity_id`, 0~6)를 매긴다. 헌팅 결과만 묶인 Incident의 심각도가 여기서 정해진다.
+  - 가설은 최근 Case(22)와 ATT&CK 기법을 바탕으로 LLM이 만든다: "이 기법이 우리 환경에서 쓰였다면 어떤 흔적이 남는가".
+- **완료 조건**: 기준선 쿼리와 Case·ATT&CK 기반 가설로 헌팅해 C17을 남기고, 이상 징후는 Correlation으로, 반복 패턴은 24로 넘긴다.
 
 ### 24 · 탐지 룰 제안
 
-- **하는 일**: L3가 찾은 패턴을 Sigma 룰로 만들어 SIEM 시나리오로 제안한다. 자동 배포하지 않는다.
-- **입력 → 출력**: C17 HuntFinding → C18 RuleProposal(Sigma 룰, 변환된 SIEM 쿼리, 백테스트 결과)
+- **하는 일**: L3와 Case에서 찾은 패턴 중 기존 SIEM 시나리오에 없는 것을 Sigma 룰로 만들어 제안한다. 자동 배포하지 않는다.
+- **입력 → 출력**: C17 HuntFinding 또는 C16 Case → C18 RuleProposal(Sigma 룰, 변환된 SIEM 쿼리, 백테스트 결과)
 - **핵심**: LLM이 처음부터 룰을 쓰지 않고, ATT&CK 기법별 템플릿의 빈칸만 채운다. 문법 검사 → SIEM 쿼리 변환 → 저장된 Event로 백테스트(공격 구간에서 몇 건 잡고 정상 구간에서 몇 건 오탐하는지) → 사람이 검토해 반영한다.
-- **완료 조건**: C18을 만든다. 문법 검사, SIEM 쿼리 변환, 백테스트를 거쳐 사람이 검토한 룰만 SIEM에 반영한다.
+- **완료 조건**: 헌팅 결과와 Case에서 C18을 만든다. 문법 검사, SIEM 쿼리 변환, 백테스트를 거쳐 사람이 검토한 룰만 SIEM에 반영한다.
 
 ---
+
+## 사용자 접점
+
+박스가 아니라, 사람이 파이프라인을 보고 검토하는 입구다. 박스 사이의 흐름은 바꾸지 않는다.
+
+- **웹 화면** (`frontend/`): 티켓, Incident, Case, 헌팅 결과, 룰 제안, Agent Log, 지표를 보여 주고 사람의 검토 입력을 받는다. 박스 16, 21의 기본 검토 화면이다(D-013). 화면 목록과 규칙은 `docs/frontend.md`에 있다.
+- **화면용 API** (`src/soc/api/`): 저장소의 계약 객체를 화면에 돌려주고, 검토 입력을 코어로 넘긴다. 검토 입력의 검증(뒤집을 때 이유 필수 등)과 기록(C9, C15)은 코어가 한다. API 목록은 `docs/api-contracts.md`에 있다.
+- **하지 않는 일**: 판정·묶음 계산, LLM·SIEM 직접 호출, 대응 실행
+- **완료 조건**: `docs/frontend.md`의 화면 F1 ~ F6이 `docs/api-contracts.md`의 API로 동작하고, 메신저 같은 다른 검토 채널을 `review_channels` 플러그인으로 붙여도 코어와 화면을 고치지 않는다.
 
 ## 변경 이력
 
 - v1 · 2026-10-10 · 최초 작성
+- v1 · 2026-10-13 · 박스 변경 없이 "사용자 접점"(웹 화면, 화면용 API) 절과 화면 트랙 추가
+- v1 · 2026-10-13 · 아키텍처 원본 수정 반영: 사람 확정 TP와 L3 이상 징후도 Correlation을 거쳐 Incident가 됨, Case가 L3 가설과 룰 제안의 재료가 됨, Event는 이벤트 저장소에 둠
