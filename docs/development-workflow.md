@@ -32,7 +32,7 @@
 │   ├── security-policy.md #개발/데이터/비밀 관련 보안 기준 (개발 과정에서도 보안 중시를 위함)
 │   ├── llm-policy.md #LLM 호출 및 출력 검증 기준 (LLM을 호출하는 코드를 짤 때만 읽음)
 │   ├── frontend.md #웹 화면 목록, 표시 규칙, 검토 동작, 화면 명령 (화면 작업할 때 읽음)
-│   ├── api-contracts.md #화면이 부르는 API 목록과 응답 모양 (화면, API 작업할 때 읽음)
+│   ├── api-contracts.md #화면이 부르는 API 목록과 응답 모양 (화면·API 작업할 때 읽음)
 │   └── development-workflow.md #Development Harness의 구조, 역할, 개발 Flow를 설명하는 사람용 가이드
 ├── CONTRIBUTING.md #추후 외부 인원이 기여할 때 확인할 문서
 ├── src/soc/ #백엔드 코드가 위치할 예정 (화면용 API는 src/soc/api/)
