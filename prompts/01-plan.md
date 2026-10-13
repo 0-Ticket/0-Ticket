@@ -14,7 +14,7 @@
 4. `docs/decisions.md`에서 필요한 결정이 "확정"인지 확인한다.
 5. `tests/checklist.md`에서 이 박스에 해당하는 항목을 찾는다.
 6. LLM을 부르는 박스라면 `docs/llm-policy.md`를 읽는다.
-7. 화면 작업이면 `docs/frontend.md`에서 그 화면(F 번호)의 경로, 쓰는 계약, 표시 규칙, 검토 동작을 찾고, `docs/api-contracts.md`에서 그 화면이 부르는 API를 찾는다. `docs/frontend.md` "명령" 표가 비어 있으면(F0 전) 화면 코드 계획을 세우지 않고 멈춘다.
+7. 화면 작업이면 `docs/frontend.md`에서 그 화면(F 번호)의 경로, 쓰는 계약, 표시 규칙, 검토 동작을 찾고, `docs/api-contracts.md`에서 그 화면이 부르는 API를 찾는다. F0(프론트 기반)은 `docs/frontend.md` "명령" 표의 스크립트를 만드는 작업이므로 그대로 계획한다. F1 이후 화면은 F0이 끝났는지(`frontend/package.json`에 "명령" 표의 스크립트가 모두 있는지) 확인하고, 끝나지 않았으면 화면 코드 계획을 세우지 않고 멈춘다.
 8. 기존 코드가 있으면 앞뒤 박스 코드를 확인한다.
 
 ## 출력 (아래 형식 그대로)
