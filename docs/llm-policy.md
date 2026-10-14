@@ -60,8 +60,8 @@ LLM 없이 규칙으로 해야 하는 곳: 4(실행 중 정규화), 5, 6, 17. �
 ## 4. 출력 검증
 
 1. 출력은 JSON만 받는다. 앞뒤 설명 문장이 붙으면 실패로 본다.
-2. `data-contracts.md`의 해당 객체 스키마로 검증한다. L1은 C7, 전문 에이전트는 C14, L2는 C11, L3는 C17, 룰 제안은 C18이다.
-3. 실패하면 오류 내용을 붙여 **한 번만** 다시 요청한다.
+2. JSON을 해석한 출력 객체는 `soc.contracts.validate_contract(name, data)`로 검증한다. 원본 Schema 검증 후 생성 Pydantic 모델로 변환하는 한 경로만 사용하며, 생성 모델 직접 생성을 검증으로 삼지 않는다. L1은 C7 `Verdict`, 전문 에이전트는 C14 `SpecialistFinding`, L2는 C11 `IncidentArtifact`, L3는 C17 `HuntFinding`, 룰 제안은 C18 `RuleProposal`이다.
+3. 실패하면 `ContractValidationError`의 필드 경로(`path`)와 규칙(`rule`)만 붙여 **한 번만** 다시 요청한다. 입력값이나 원본 검증 예외는 오류 내용에 넣지 않는다.
 4. 근거(`evidence`)의 `ref_id`가 실제로 존재하는지 코드로 확인한다.
 5. 다시 요청해도 실패하거나, 없는 근거 ID가 하나라도 있으면 아래처럼 처리한다. 위 객체들은 모두 `needs_human`과 `human_reason` 필드를 갖는다.
 

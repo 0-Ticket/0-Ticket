@@ -1,0 +1,114 @@
+[
+  {
+    "schema": "human_review",
+    "changes": {
+      "reason": null
+    }
+  },
+  {
+    "schema": "l2_review",
+    "changes": {
+      "decision": "reject"
+    }
+  },
+  {
+    "schema": "incident_member",
+    "changes": {
+      "ticket_id": null
+    }
+  },
+  {
+    "schema": "incident_member",
+    "changes": {
+      "excluded": true
+    }
+  },
+  {
+    "schema": "rule_proposal",
+    "changes": {
+      "hunt_id": null
+    }
+  },
+  {
+    "schema": "normalized_alert",
+    "changes": {
+      "src_ip": null
+    }
+  },
+  {
+    "schema": "alias_table",
+    "changes": {
+      "severity_map": null
+    }
+  },
+  {
+    "schema": "verdict",
+    "changes": {
+      "human_reason": null
+    }
+  },
+  {
+    "schema": "agent_step",
+    "changes": {
+      "subject_id": "in_sample"
+    }
+  },
+  {
+    "schema": "agent_step",
+    "changes": {
+      "action": "tool_call"
+    }
+  },
+  {
+    "schema": "agent_step",
+    "changes": {
+      "action": "llm_call"
+    }
+  },
+  {
+    "schema": "incident_artifact",
+    "changes": {
+      "needs_human": true,
+      "human_reason": null
+    }
+  },
+  {
+    "schema": "specialist_finding",
+    "changes": {
+      "needs_human": true,
+      "human_reason": null
+    }
+  },
+  {
+    "schema": "hunt_finding",
+    "changes": {
+      "needs_human": true,
+      "human_reason": null
+    }
+  },
+  {
+    "schema": "rule_proposal",
+    "changes": {
+      "needs_human": true,
+      "human_reason": null
+    }
+  },
+  {
+    "schema": "alert_record",
+    "changes": {
+      "src_ip": null
+    }
+  },
+  {
+    "schema": "incident_member",
+    "changes": {
+      "member_type": "hunt"
+    }
+  },
+  {
+    "schema": "alias_table",
+    "changes": {
+      "class_uid": null
+    }
+  }
+]

@@ -1,0 +1,34 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "user_info.schema.json",
+  "title": "UserInfo",
+  "type": "object",
+  "properties": {
+    "user": {
+      "type": "string"
+    },
+    "dept": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "privileged": {
+      "type": "boolean"
+    },
+    "extensions": {
+      "type": "object",
+      "additionalProperties": true,
+      "propertyNames": {
+        "pattern": "^[^.]+\\..+$"
+      }
+    }
+  },
+  "required": [
+    "user",
+    "dept",
+    "privileged",
+    "extensions"
+  ],
+  "additionalProperties": false
+}

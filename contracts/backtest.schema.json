@@ -1,0 +1,27 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "backtest.schema.json",
+  "title": "Backtest",
+  "type": "object",
+  "properties": {
+    "window_start_at": {
+      "type": "integer"
+    },
+    "window_end_at": {
+      "type": "integer"
+    },
+    "attack_hits": {
+      "type": "integer"
+    },
+    "benign_hits": {
+      "type": "integer"
+    }
+  },
+  "required": [
+    "window_start_at",
+    "window_end_at",
+    "attack_hits",
+    "benign_hits"
+  ],
+  "additionalProperties": false
+}

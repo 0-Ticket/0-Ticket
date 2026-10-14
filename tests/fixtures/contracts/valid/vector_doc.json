@@ -1,0 +1,10 @@
+{
+  "doc_id": "doc_sample",
+  "collection": "alerts_summary",
+  "text": "Sample",
+  "source_kind": "alert",
+  "source_id": "al_sample",
+  "keywords": [],
+  "created_at": 1791849600000,
+  "expires_at": null
+}

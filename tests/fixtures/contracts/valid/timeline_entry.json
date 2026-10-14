@@ -1,0 +1,13 @@
+{
+  "time": 1791849600000,
+  "tactic": null,
+  "technique": null,
+  "description": "Sample",
+  "evidence": [
+    {
+      "ref_type": "raw",
+      "ref_id": "raw_sample_1",
+      "note": "Synthetic evidence"
+    }
+  ]
+}

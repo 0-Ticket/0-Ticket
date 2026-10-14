@@ -95,9 +95,35 @@
 | K51 | 전체 | HTML·스크립트 조각이 든 로그 원문, LLM 출력, `extensions` 값이 텍스트로만 표시된다 | ⬜ | |
 | K52 | 전체 | 플러그인이 등록한 새 등록형 값과 새 `extensions` 키가 화면 수정 없이 보인다 | ⬜ | |
 
+## 계약 Schema
+
+| ID | 확인할 것 | 상태 | 테스트 |
+|---|---|---|---|
+| K53 | `contracts/`의 Schema가 `docs/data-contracts.md`의 모든 객체(C1 ~ C20, 공통 객체)와 필드명·타입·필수 여부·열거형이 같다. 선택 필드는 `required`에 있고 `null`을 허용한다 | ✅ 통과 | `test_schema_contract_coverage`, `test_structure_and_fixtures`, `test_nullable_field_schemas` |
+| K54 | 생성 명령 하나로 Python(Pydantic)과 TypeScript 코드가 만들어지고, CI가 다시 생성했을 때 차이가 없다 | ✅ 통과 | `test_generation_reproducible`, `test_all_fixture_types` |
+| K55 | 등록형 필드는 Schema에서 `enum`이 아니고, `extensions`는 추가 키를 허용한다. Schema로 표현 가능한 조건을 검증한다. 코어 비즈니스 조건은 해당 박스에서 검증한다 | 🟡 일부 | `test_structural_conditions`, `test_registered_values`, `test_hunt_severity`, `test_runtime_rejects_condition_accepted_by_generated_model`; 코어 비즈니스 검증은 후속 작업 |
+
 ## 공통 확인
 
 | 확인할 것 | 상태 |
 |---|---|
 | 실제 LLM 키 없이 `uv run pytest`가 통과한다 | ⬜ |
 | 샘플 데이터와 화면 mock 데이터에 실제 IP·도메인·계정이 없다 (문서용 대역, `example.com`) | ⬜ |
+
+## #5 계약 구현 검증 결과
+
+PR #4가 머지된 `review`와 하네스 결정 확정을 통합했다. 위 표의 K53~K55 검증 근거와 남은 범위는 아래와 같다.
+
+| ID | 상태 | 검증 및 남은 범위 |
+|---|---|---|
+| K53 | ✅ 통과 | C1~C20·보조 객체 29종을 문서와 수동 대조. `test_schema_contract_coverage`, `test_structure_and_fixtures`, `test_nullable_field_schemas`, `test_all_references_are_local_and_resolve` |
+| K54 | ✅ 통과 | `test_generation_reproducible`, `test_typescript_types`, `test_all_fixture_types`; 생성 한 명령 및 CI `--check` |
+| K55 | 🟡 일부 | `test_structural_conditions`, `test_condition_branches_accept_valid_values`, `test_field_constraints`, `test_registered_values`, `test_extensions_and_unknown_fields`. Schema로 표현 가능한 구조·필드 조건 완료. 원본 참조 확인·계산·상태 전이 등 코어 비즈니스 검증은 해당 박스에서 완료 |
+
+K34·K38은 이번에 계약 값 보존·새 문자열 허용만 검사했다. 전체 파이프라인과
+플러그인 레지스트리는 아직 없으므로 해당 항목을 완료로 표시하지 않는다.
+F0 앱·mock·화면은 이번 이슈 범위가 아니며 K40도 완료로 표시하지 않는다.
+
+런타임 계약 검증: `tests/contracts/test_validation.py`에서 공개 함수의 조건 검증·모델 변환,
+등록형·확장 값, 입력값 없는 예외, 검증기 재사용, 다른 작업 폴더 및 wheel 리소스를 확인한다.
+K55는 여전히 일부이며 코어 비즈니스 검증은 해당 박스에서 완료한다.

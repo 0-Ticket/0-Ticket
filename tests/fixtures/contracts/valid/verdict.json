@@ -1,0 +1,15 @@
+{
+  "verdict": "unknown",
+  "confidence": 0.5,
+  "summary": "Sample",
+  "evidence": [
+    {
+      "ref_type": "raw",
+      "ref_id": "raw_sample_1",
+      "note": "Synthetic evidence"
+    }
+  ],
+  "recommended_action": "Review",
+  "needs_human": true,
+  "human_reason": "Sample reason"
+}

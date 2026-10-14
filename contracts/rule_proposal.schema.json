@@ -1,0 +1,151 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "rule_proposal.schema.json",
+  "title": "RuleProposal",
+  "type": "object",
+  "properties": {
+    "proposal_id": {
+      "type": "string",
+      "pattern": "^rp_"
+    },
+    "hunt_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^ht_"
+    },
+    "case_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^cs_"
+    },
+    "title": {
+      "type": "string"
+    },
+    "techniques": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "sigma_rule": {
+      "type": "string"
+    },
+    "siem_query": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "syntax_ok": {
+      "type": "boolean"
+    },
+    "backtest": {
+      "anyOf": [
+        {
+          "$ref": "backtest.schema.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "approved",
+        "rejected",
+        "deployed"
+      ]
+    },
+    "reviewer": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "needs_human": {
+      "type": "boolean"
+    },
+    "human_reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "created_at": {
+      "type": "integer"
+    }
+  },
+  "required": [
+    "proposal_id",
+    "hunt_id",
+    "case_id",
+    "title",
+    "techniques",
+    "sigma_rule",
+    "siem_query",
+    "syntax_ok",
+    "backtest",
+    "status",
+    "reviewer",
+    "needs_human",
+    "human_reason",
+    "created_at"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "anyOf": [
+        {
+          "properties": {
+            "hunt_id": {
+              "not": {
+                "type": "null"
+              }
+            }
+          },
+          "required": [
+            "hunt_id"
+          ]
+        },
+        {
+          "properties": {
+            "case_id": {
+              "not": {
+                "type": "null"
+              }
+            }
+          },
+          "required": [
+            "case_id"
+          ]
+        }
+      ]
+    },
+    {
+      "if": {
+        "properties": {
+          "needs_human": {
+            "const": true
+          }
+        },
+        "required": [
+          "needs_human"
+        ]
+      },
+      "then": {
+        "properties": {
+          "human_reason": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  ],
+  "description": "Core follow-up: syntax validation, backtest, approval and deployment authorization."
+}

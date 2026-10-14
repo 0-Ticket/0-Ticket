@@ -1,0 +1,83 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "incident.schema.json",
+  "title": "Incident",
+  "type": "object",
+  "properties": {
+    "incident_id": {
+      "type": "string",
+      "pattern": "^in_"
+    },
+    "title": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "open",
+        "investigating",
+        "closed_benign",
+        "escalated_to_case"
+      ]
+    },
+    "created_by": {
+      "type": "string",
+      "enum": [
+        "correlation",
+        "manual"
+      ]
+    },
+    "severity_id": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 6,
+      "description": "Maximum severity among non-excluded members: C5 alert severity for tickets, C17 severity for hunts. Computed by the core."
+    },
+    "first_seen": {
+      "type": "integer"
+    },
+    "last_seen": {
+      "type": "integer"
+    },
+    "tactics": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "summary": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "members": {
+      "type": "array",
+      "items": {
+        "$ref": "incident_member.schema.json"
+      }
+    },
+    "extensions": {
+      "type": "object",
+      "additionalProperties": true,
+      "propertyNames": {
+        "pattern": "^[^.]+\\..+$"
+      }
+    }
+  },
+  "required": [
+    "incident_id",
+    "title",
+    "status",
+    "created_by",
+    "severity_id",
+    "first_seen",
+    "last_seen",
+    "tactics",
+    "summary",
+    "members",
+    "extensions"
+  ],
+  "additionalProperties": false,
+  "description": "Core follow-up: only Correlation creates incidents, computes member severity and grouping provenance."
+}

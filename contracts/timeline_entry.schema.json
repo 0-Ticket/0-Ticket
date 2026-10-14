@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "timeline_entry.schema.json",
+  "title": "TimelineEntry",
+  "type": "object",
+  "properties": {
+    "time": {
+      "type": "integer"
+    },
+    "tactic": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "technique": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "description": {
+      "type": "string"
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "$ref": "evidence.schema.json"
+      },
+      "minItems": 1
+    }
+  },
+  "required": [
+    "time",
+    "tactic",
+    "technique",
+    "description",
+    "evidence"
+  ],
+  "additionalProperties": false
+}

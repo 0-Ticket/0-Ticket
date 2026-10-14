@@ -15,14 +15,50 @@
 - 여러 객체가 함께 쓰는 작은 객체(Entity, Evidence)는 맨 아래 "공통 객체"에 한 번만 정의한다
 - **확장 필드**: 표에 `extensions`가 있는 객체는 조직이나 플러그인이 붙인 추가 필드를 담는다. 키는 `<조직 또는 플러그인>.<필드>` 형식이고, 코어 코드는 읽지 않고 그대로 전달·저장한다. 원본에서 매핑되지 않은 값은 `unmapped`, 일부러 붙인 값은 `extensions`다
 - **등록형 값**: 타입이 `등록형`인 필드는 열거형처럼 정해진 값만 쓰지만, 플러그인이 새 값을 등록해 늘릴 수 있다. 표에 적힌 값은 기본으로 제공하는 값이다(`docs/extensibility.md`)
-- 코드 정의는 `src/soc/contracts/` 한 곳에 둔다. 정의 방식(dataclass, pydantic 등)은 결정 대장 D-014에서 정한다
+- 계약의 코드 원본은 레포 루트 `contracts/`의 JSON Schema(draft-07)다. Python 모델과 TypeScript 타입은 여기서 생성하고, 생성된 파일은 직접 고치지 않는다(D-014, D-025, D-031, D-032). 아래 "계약 Schema" 참고
 
 ## 바꾸는 절차
 
 1. 바꿀 필드와 이유, 영향받는 박스와 화면을 적어 사람에게 제안한다.
-2. 승인되면 같은 PR에서 이 문서 → `src/soc/contracts/` → `frontend/src/contracts/` → 영향받는 박스·화면 코드와 테스트 순서로 고친다.
+2. 승인되면 같은 PR에서 이 문서 → `contracts/`의 Schema → 생성 명령으로 Python·TypeScript 코드 다시 생성 → 영향받는 박스·화면 코드와 테스트 순서로 고친다.
 3. PR "변경 내용"에 "데이터 계약 변경"이라고 표시한다.
 4. 필드를 없애기보다 `선택`으로 바꾸는 쪽을 먼저 검토한다.
+
+## 계약 Schema
+
+이 문서는 사람이 읽는 설명이고, 코드가 쓰는 원본은 `contracts/`의 JSON Schema다. 둘은 항상 같아야 하고, 바꿀 때는 같은 PR에서 함께 바꾼다.
+
+| 무엇 | 위치 |
+|---|---|
+| 원본 Schema | `contracts/<snake_case>.schema.json` (객체 하나에 파일 하나) |
+| Python 생성 코드 (Pydantic) | `src/soc/contracts/generated/` |
+| TypeScript 생성 코드 | `frontend/src/contracts/generated/` |
+| 생성 명령 | `uv run python scripts/generate_contracts.py` (두 언어 함께 생성; 아래 "계약 생성 구현 (#5)" 참고) |
+
+코드에서 계약 객체를 검증할 때는 공개 함수 `soc.contracts.validate_contract(name, data)`만 쓴다.
+생성 모델을 직접 만드는 것을 계약 검증으로 삼지 않는다. `name`은 Schema의 `title`과 같은
+객체명(예: `HuntFinding`, `Verdict`)이고, `data`는 JSON을 해석한 객체다.
+원본 draft-07 Schema 및 파일 간 `$ref`를 먼저 검증하고, 통과하면 생성 Pydantic 모델을 반환한다.
+
+실패는 `ContractValidationError`로 통일한다. 예외의 `path`는 필드 경로(`/severity_id` 등),
+`rule`은 실패한 규칙명(`const`, `required`, `int_type` 등)이다. 루트 경로는 `/`로 표시한다.
+Schema에 선언되지 않은 동적 키는 `*`로 가린다. 입력값과 원본 검증 예외는 포함하지 않는다.
+계약별 검증기는 모듈 로드 시 한 번만 만들어 재사용한다.
+
+wheel에는 루트 `contracts/`를 `soc/contracts/schemas/` 리소스로 포함한다.
+설치된 패키지는 해당 리소스를 읽고, 편집 가능 설치는 모듈 위치를 기준으로 원본을 찾는다.
+현재 작업 폴더에 의존하지 않으며, 설치용 Schema 사본을 별도 원본으로 관리하지 않는다.
+
+Schema로 옮길 때 지킬 것:
+
+- **선택 필드**: 이 문서의 공통 규칙대로 필드를 빼지 않으므로, 모든 필드를 `required`에 넣고 선택 필드는 타입에 `null`을 더한다. 예: `"type": ["string", "null"]`
+- **열거형**: `enum`으로 쓴다.
+- **등록형 값**: 플러그인이 늘릴 수 있어야 하므로 `enum`을 쓰지 않고 `"type": "string"`으로 둔다. 기본값은 `description`에 적는다. 값 검증은 플러그인 레지스트리가 한다(`docs/extensibility.md` 5항).
+- **`extensions`**: `"type": "object"`, `"additionalProperties": true`
+- **공통 객체**(Entity, Evidence 등): 파일 하나에 정의하고 `$ref`로 가져다 쓴다.
+- **필드 사이 조건**: draft-07로 표현 가능한 조건은 원본 Schema의 `if`/`then`, `anyOf` 등으로 검증한다. 생성 타입만으로 이를 대체하지 않는다. 원본 참조 확인·계산·상태 전이처럼 코어 동작이 필요한 비즈니스 조건은 설명과 후속 박스의 검증으로 남긴다. 아래 "Schema 검증과 생성 타입의 범위" 참고.
+- 생성된 파일 맨 위에 "자동 생성, 직접 수정 금지"와 생성 명령을 적는다.
+- CI는 생성 명령을 다시 돌려 생성 파일에 차이가 생기면 실패한다.
 
 ## 객체 한눈에 보기
 
@@ -308,12 +344,27 @@ L2의 분석 결과물. 사람이 읽는 보고서는 이 객체로부터 만든
 | incident_id | str | ✅ | |
 | timeline | list[TimelineEntry] | ✅ | 시간순 |
 | affected_assets | list[str] | ✅ | 호스트명 |
-| iocs | list[Ioc] | ✅ | `type` (등록형, 기본 `ip`, `domain`, `url`, `hash`), `value` (str) |
+| iocs | list[Ioc] | ✅ | 아래 Ioc |
 | suspected_cause | str | ✅ | |
-| recommendations | list[Recommendation] | ✅ | `action` (str), `risk` (enum: `low`, `medium`, `high`), `reversible` (bool) |
+| recommendations | list[Recommendation] | ✅ | 아래 Recommendation |
 | needs_human | bool | ✅ | 사람 확인이 필요하면 `true`. LLM 출력 실패 처리는 `docs/llm-policy.md` 4항 |
 | human_reason | str | 선택 | `needs_human`이 `true`일 때 이유 |
 | generated_at | int | ✅ | |
+
+**Ioc**
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| type | 등록형 | ✅ | 기본 `ip`, `domain`, `url`, `hash` |
+| value | str | ✅ | IOC 값 |
+
+**Recommendation**
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| action | str | ✅ | 권고 조치 |
+| risk | enum | ✅ | `low`, `medium`, `high` |
+| reversible | bool | ✅ | 되돌릴 수 있는지 여부 |
 
 **TimelineEntry**
 
@@ -374,7 +425,14 @@ L2의 분석 결과물. 사람이 읽는 보고서는 이 객체로부터 만든
 | created_at | int | ✅ | |
 | closed_at | int | 선택 | |
 
-**CaseTask**: `task` (str), `owner` (str), `due_at` (int, 선택), `status` (enum: `todo`, `doing`, `done`). `due_at` 외에는 필수.
+**CaseTask**
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| task | str | ✅ | 작업 내용 |
+| owner | str | ✅ | 담당자 |
+| due_at | int | 선택 | 마감 시각 |
+| status | enum | ✅ | `todo`, `doing`, `done` |
 
 ## C17 · HuntFinding
 
@@ -417,7 +475,14 @@ L3 헌팅 한 번의 결과.
 | human_reason | str | 선택 | `needs_human`이 `true`일 때 이유 |
 | created_at | int | ✅ | |
 
-**Backtest**: `window_start_at`, `window_end_at` (int, 시간 범위), `attack_hits` (int, 공격 구간에서 잡은 건수), `benign_hits` (int, 정상 구간 오탐 건수). 모두 필수.
+**Backtest**
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| window_start_at | int | ✅ | 시간 범위 시작 |
+| window_end_at | int | ✅ | 시간 범위 끝 |
+| attack_hits | int | ✅ | 공격 구간에서 잡은 건수 |
+| benign_hits | int | ✅ | 정상 구간 오탐 건수 |
 
 ## C19 · VectorDoc
 
@@ -454,3 +519,64 @@ Vector DB에 넣는 문서 한 건. 임베딩할 문장과 원본 연결 정보.
 | ref_type | 등록형 | ✅ | 기본 `alert`, `event`, `raw`, `ticket`. 객체마다 쓸 수 있는 값이 다르면 그 객체 표에 적는다. 새 값을 등록하는 플러그인은 그 ID가 실제로 있는지 확인하는 함수도 함께 등록한다 |
 | ref_id | str | ✅ | 실제로 존재해야 한다. 코드로 확인한다 |
 | note | str | ✅ | 이 근거가 무엇을 보여 주는지 한 줄 |
+
+## 계약 생성 구현 (#5)
+
+이 절은 위 "계약 Schema"의 생성 방법을 구체화한다. C1~C20 및 보조 객체를
+문서와 수동 대조했으며, 테스트에서 이 Markdown 문서를 파싱하지 않는다.
+계약의 코드 원본은 `contracts/`만 유지한다. 이 문서의 상태는 사람 검토 전까지 초안이다.
+
+| 항목 | 구현 |
+|---|---|
+| Schema 파일 | `contracts/<snake_case>.schema.json`, 객체 하나에 파일 하나 (총 29개) |
+| Python 모델 | `src/soc/contracts/generated/*_schema.py`, 공개 진입점 `soc.contracts` |
+| TypeScript 타입 | `frontend/src/contracts/generated/*.ts`, 공개 진입점 `frontend/src/contracts/index.ts` |
+| 두 언어 생성 | `uv run python scripts/generate_contracts.py` |
+| 생성 결과 검사 | `uv run python scripts/generate_contracts.py --check` |
+| 계약 타입 검사 | `pnpm --dir tools/contracts typecheck` |
+| 계약 전체 테스트 | `uv run pytest tests/contracts` |
+
+Python 3.12 이상, Node 22 이상과 pnpm 11.9.0을 사용한다. CI는 Node 22로 검증한다.
+생성 도구용 Node 패키지는 `tools/contracts/`에 두며, F0 화면 앱 설치·빌드와 독립적이다.
+처음에는 저장소 루트에서 다음 명령으로 잠금 파일의 의존성을 설치한다.
+
+```bash
+uv sync --locked
+pnpm --dir tools/contracts install --frozen-lockfile
+uv run python scripts/generate_contracts.py
+```
+
+생성기는 임시 디렉터리에서 두 언어를 모두 만든 다음 결과를 갱신한다.
+입력 순서와 도구 버전(잠금 파일), 포맷을 고정하고 생성 시각은 넣지 않는다.
+`--check`는 기존 파일을 바꾸지 않고 내용 차이, 누락, 추가 파일을 검사한다.
+CI와 테스트가 재생성 결과를 검증한다. 생성 폴더는 생성기가 관리하므로 직접 수정하지 않는다.
+
+### Schema 검증과 생성 타입의 범위
+
+#5에서 승인된 기준에 따라, 위 "필드 사이 조건" 지침을 다음처럼 구체화한다.
+표현 가능한 조건을 설명에만 남기지 않고 원본 draft-07 Schema에 정의한다.
+
+- 모든 필드는 `required`이고 선택 필드는 nullable이다. 등록형 값은 열린 문자열이다.
+- 고정 enum, 명시된 숫자 범위·목록 최소 길이·문자열 최대 길이·ID 접두어를 검사한다.
+- `extensions`는 추가 값을 허용하되 키는 `<조직 또는 플러그인>.<필드>` 형식이다.
+- `if`/`then`: 뒤집기 사유, 반려 유형·코멘트, 멤버 종류별 ID, 제외 사유,
+  `needs_human` 사유, AgentStep의 작업 종류별 필드·주체 ID, 알럿 별칭 표 조건,
+  C17의 `is_anomaly`가 `false`일 때 `severity_id`가 0인 조건.
+- `anyOf`: C3·C5의 출발지·목적지·호스트 중 하나, C18의 헌팅·Case 근거 중 하나.
+
+생성 도구가 객체 수준 조건을 두 언어에 동일하게 옮기지 못하므로, 생성기는
+원본에서 루트 `allOf` 조건 목록과 설명만 제외한 임시 입력을 만든다.
+필드 구조, nullable 참조, enum, 필드 수준 제약은 유지한다. 이 임시 입력은 별도 원본이 아니다.
+**생성된 Pydantic 모델이나 TypeScript 타입만으로 모든 Schema 조건을 검증했다고 간주하면 안 된다.**
+TypeScript는 런타임 검증기가 아니며, Pydantic도 루트 조건을 대신 검사하지 않는다.
+박스에서 입력을 받아들일 때는 `soc.contracts.validate_contract()`를 사용한다.
+이 함수가 원본 Schema 검증과 생성 모델 변환을 순서대로 수행한다. `jsonschema`는 런타임 의존성이다.
+로컬 리소스 레지스트리로 `$ref`를 해석하며 네트워크 Schema 참조는 사용하지 않는다.
+
+후속 박스에서 구현할 비즈니스 검증은 K55의 미완료 부분으로 남긴다.
+원문 해시 대조(2), 별칭 적용·변환 실패 처리(4), 시점별 자산 매칭(5),
+중복 집계(6), 컬렉션별 원본 종결 여부(8), 우선순위·상태 전이(9·10),
+근거 ID 실재 여부·등록형 값의 등록 여부·LLM 실패 처리(관련 박스),
+조사 단계 순번(12), 뒤집기 여부 계산(16), 실제 묶음·심각도 계산(17·18),
+타임라인 정렬(19), 검토 회차·재반려 처리(21), 승인 후 Case 생성(22),
+룰 검사·백테스트·배포 승인(24)이 해당한다.

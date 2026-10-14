@@ -1,0 +1,15 @@
+{
+  "subject_type": "ticket",
+  "subject_id": "tk_sample",
+  "step": 1,
+  "agent": "l1",
+  "action": "decision",
+  "tool": null,
+  "prompt_version": null,
+  "input_excerpt": "sample",
+  "output_excerpt": "sample",
+  "model": null,
+  "tokens": null,
+  "latency_ms": 1,
+  "created_at": 1791849600000
+}

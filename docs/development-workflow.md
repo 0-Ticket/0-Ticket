@@ -35,6 +35,7 @@
 │   ├── api-contracts.md #화면이 부르는 API 목록과 응답 모양 (화면·API 작업할 때 읽음)
 │   └── development-workflow.md #Development Harness의 구조, 역할, 개발 Flow를 설명하는 사람용 가이드
 ├── CONTRIBUTING.md #추후 외부 인원이 기여할 때 확인할 문서
+├── contracts/ #계약 원본 JSON Schema. 여기서 Python·TypeScript 코드를 생성 (생성된 코드는 직접 수정 금지)
 ├── src/soc/ #백엔드 코드가 위치할 예정 (화면용 API는 src/soc/api/)
 ├── frontend/ #웹 화면 코드가 위치할 예정 (F0에서 만듦)
 ├── tests/ #테스트 관련 문서
@@ -165,10 +166,10 @@ $soc-decision (결정이 필요한 항목)
 ex)
 ```text
 #Claude Code
-/soc-decision D-014
+/soc-decision D-015
 
 #Codex
-$soc-decision D-014
+$soc-decision D-015
 ```
 
 Agent가 기술 결정을 임의로 확정하지 않고, 최종 결정은 사람이 내린 후 `docs/decisions.md`에 반영합니다.

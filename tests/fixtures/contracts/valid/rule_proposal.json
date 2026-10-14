@@ -1,0 +1,21 @@
+{
+  "proposal_id": "rp_sample",
+  "hunt_id": "ht_sample",
+  "case_id": null,
+  "title": "Sample",
+  "techniques": [],
+  "sigma_rule": "title: Sample",
+  "siem_query": null,
+  "syntax_ok": false,
+  "backtest": {
+    "window_start_at": 1791849600000,
+    "window_end_at": 1791849601000,
+    "attack_hits": 1,
+    "benign_hits": 0
+  },
+  "status": "draft",
+  "reviewer": null,
+  "needs_human": false,
+  "human_reason": null,
+  "created_at": 1791849600000
+}
