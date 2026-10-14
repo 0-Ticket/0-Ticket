@@ -1,0 +1,495 @@
+{
+  "tickets": [
+    {
+      "ticket_id": "tk_sample",
+      "status": "awaiting_human",
+      "handling_type": "web_attack",
+      "specialist": "none",
+      "priority": 20,
+      "alert_ids": [
+        "al_sample"
+      ],
+      "entities": [
+        {
+          "type": "ip",
+          "value": "203.0.113.10"
+        }
+      ],
+      "verdict": {
+        "verdict": "unknown",
+        "confidence": 0.5,
+        "summary": "Sample",
+        "evidence": [
+          {
+            "ref_type": "raw",
+            "ref_id": "raw_sample_1",
+            "note": "Synthetic evidence"
+          }
+        ],
+        "recommended_action": "Review",
+        "needs_human": true,
+        "human_reason": "Sample reason"
+      },
+      "extensions": {},
+      "created_at": 1791849600000,
+      "updated_at": 1791849600000
+    },
+    {
+      "ticket_id": "tk_cloud",
+      "status": "awaiting_human",
+      "handling_type": "cloud",
+      "specialist": "cloud",
+      "priority": 10,
+      "alert_ids": [
+        "al_cloud"
+      ],
+      "entities": [
+        {
+          "type": "ip",
+          "value": "203.0.113.10"
+        }
+      ],
+      "verdict": {
+        "verdict": "unknown",
+        "confidence": 0.5,
+        "summary": "Sample",
+        "evidence": [
+          {
+            "ref_type": "raw",
+            "ref_id": "raw_cloud_1",
+            "note": "Synthetic evidence"
+          }
+        ],
+        "recommended_action": "Review",
+        "needs_human": true,
+        "human_reason": "Sample reason"
+      },
+      "extensions": {
+        "example.department": "demo"
+      },
+      "created_at": 1791849600000,
+      "updated_at": 1791849600000
+    },
+    {
+      "ticket_id": "tk_custom",
+      "status": "awaiting_human",
+      "handling_type": "example.custom",
+      "specialist": "example.specialist",
+      "priority": 5,
+      "alert_ids": [
+        "al_sample"
+      ],
+      "entities": [
+        {
+          "type": "ip",
+          "value": "203.0.113.10"
+        }
+      ],
+      "verdict": {
+        "verdict": "unknown",
+        "confidence": 0.5,
+        "summary": "Sample",
+        "evidence": [
+          {
+            "ref_type": "raw",
+            "ref_id": "raw_sample_1",
+            "note": "Synthetic evidence"
+          }
+        ],
+        "recommended_action": "Review",
+        "needs_human": true,
+        "human_reason": "Sample reason"
+      },
+      "extensions": {
+        "example.context": {
+          "label": "synthetic"
+        }
+      },
+      "created_at": 1791849600000,
+      "updated_at": 1791849600000
+    }
+  ],
+  "alerts": [
+    {
+      "class_uid": 2004,
+      "time": 1791849600000,
+      "severity_id": 4,
+      "rule_id": "sample",
+      "rule_name": "Sample",
+      "src_ip": "203.0.113.10",
+      "src_port": null,
+      "dst_ip": null,
+      "dst_port": null,
+      "host": null,
+      "user": null,
+      "http_url": null,
+      "http_status": null,
+      "techniques": [],
+      "raw_ids": [
+        "raw_sample_1"
+      ],
+      "unmapped": {},
+      "extensions": {
+        "example.context": {
+          "labels": [
+            "sample"
+          ],
+          "value": null
+        }
+      },
+      "alert_id": "al_sample",
+      "src_asset": null,
+      "dst_asset": {
+        "match": "192.0.2.10",
+        "hostname": "web-01",
+        "criticality": 5,
+        "owner": null,
+        "zone": "dmz",
+        "shared": false,
+        "valid_from": null,
+        "valid_to": null,
+        "extensions": {
+          "example.context": {
+            "labels": [
+              "sample"
+            ],
+            "value": null
+          }
+        }
+      },
+      "user_info": {
+        "user": "sample-user",
+        "dept": null,
+        "privileged": false,
+        "extensions": {}
+      },
+      "count": 1,
+      "first_seen": 1791849600000,
+      "last_seen": 1791849600000
+    },
+    {
+      "class_uid": 2004,
+      "time": 1791849600000,
+      "severity_id": 4,
+      "rule_id": "cloud-audit",
+      "rule_name": "Synthetic cloud audit",
+      "src_ip": "203.0.113.10",
+      "src_port": null,
+      "dst_ip": null,
+      "dst_port": null,
+      "host": null,
+      "user": null,
+      "http_url": null,
+      "http_status": null,
+      "techniques": [],
+      "raw_ids": [
+        "raw_cloud_1"
+      ],
+      "unmapped": {},
+      "extensions": {
+        "example.context": {
+          "labels": [
+            "sample"
+          ],
+          "value": null
+        }
+      },
+      "alert_id": "al_cloud",
+      "src_asset": null,
+      "dst_asset": {
+        "match": "192.0.2.10",
+        "hostname": "web-01",
+        "criticality": 5,
+        "owner": null,
+        "zone": "dmz",
+        "shared": false,
+        "valid_from": null,
+        "valid_to": null,
+        "extensions": {
+          "example.context": {
+            "labels": [
+              "sample"
+            ],
+            "value": null
+          }
+        }
+      },
+      "user_info": {
+        "user": "sample-user",
+        "dept": null,
+        "privileged": false,
+        "extensions": {}
+      },
+      "count": 1,
+      "first_seen": 1791849600000,
+      "last_seen": 1791849600000
+    }
+  ],
+  "raw": [
+    {
+      "raw_id": "raw_sample_1",
+      "source_type": "web",
+      "received_at": 1791849600000,
+      "payload": "sample",
+      "sha256": "af2bdbe1aa9b6ec1e2ade1d694f41fc71a831d0268e9891562113d8a62add1bf"
+    },
+    {
+      "raw_id": "raw_cloud_1",
+      "source_type": "cloud",
+      "received_at": 1791849600000,
+      "payload": "sample",
+      "sha256": "af2bdbe1aa9b6ec1e2ade1d694f41fc71a831d0268e9891562113d8a62add1bf"
+    }
+  ],
+  "events": [
+    {
+      "event_id": "ev_sample",
+      "class_uid": 4001,
+      "time": 1791849600000,
+      "activity": "http_request",
+      "src_ip": null,
+      "dst_ip": null,
+      "host": "web-01",
+      "user": null,
+      "http_url": "https://example.com/",
+      "http_status": 200,
+      "api_operation": null,
+      "status": null,
+      "src_asset": null,
+      "dst_asset": {
+        "match": "192.0.2.10",
+        "hostname": "web-01",
+        "criticality": 5,
+        "owner": null,
+        "zone": "dmz",
+        "shared": false,
+        "valid_from": null,
+        "valid_to": null,
+        "extensions": {
+          "example.context": {
+            "labels": [
+              "sample"
+            ],
+            "value": null
+          }
+        }
+      },
+      "user_info": null,
+      "raw_ids": [],
+      "unmapped": {},
+      "extensions": {}
+    }
+  ],
+  "incidents": [
+    {
+      "incident_id": "in_sample",
+      "title": "Sample",
+      "status": "open",
+      "created_by": "correlation",
+      "severity_id": 4,
+      "first_seen": 1791849600000,
+      "last_seen": 1791849600000,
+      "tactics": [],
+      "summary": null,
+      "members": [
+        {
+          "member_type": "ticket",
+          "ticket_id": "tk_sample",
+          "hunt_id": null,
+          "source": "human_l1",
+          "rule": "sample",
+          "matched_entity": {
+            "type": "ip",
+            "value": "203.0.113.10"
+          },
+          "excluded": false,
+          "excluded_reason": null
+        },
+        {
+          "member_type": "hunt",
+          "ticket_id": null,
+          "hunt_id": "ht_sample",
+          "source": "l3",
+          "rule": "sample",
+          "matched_entity": {
+            "type": "ip",
+            "value": "203.0.113.10"
+          },
+          "excluded": false,
+          "excluded_reason": null
+        }
+      ],
+      "extensions": {}
+    }
+  ],
+  "artifacts": [
+    {
+      "incident_id": "in_sample",
+      "timeline": [
+        {
+          "time": 1791849600000,
+          "tactic": null,
+          "technique": null,
+          "description": "Sample",
+          "evidence": [
+            {
+              "ref_type": "raw",
+              "ref_id": "raw_sample_1",
+              "note": "Synthetic evidence"
+            }
+          ]
+        }
+      ],
+      "affected_assets": [
+        "web-01"
+      ],
+      "iocs": [
+        {
+          "type": "ip",
+          "value": "203.0.113.10"
+        }
+      ],
+      "suspected_cause": "Sample",
+      "recommendations": [
+        {
+          "action": "Review",
+          "risk": "low",
+          "reversible": true
+        }
+      ],
+      "needs_human": false,
+      "human_reason": null,
+      "generated_at": 1791849600000
+    }
+  ],
+  "cases": [
+    {
+      "case_id": "cs_sample",
+      "incident_id": "in_sample",
+      "title": "Sample",
+      "status": "open",
+      "tasks": [
+        {
+          "task": "Review",
+          "owner": "sample-user",
+          "due_at": null,
+          "status": "todo"
+        }
+      ],
+      "lessons": null,
+      "extensions": {},
+      "created_at": 1791849600000,
+      "closed_at": null
+    }
+  ],
+  "hunts": [
+    {
+      "hunt_id": "ht_sample",
+      "hypothesis": "Sample",
+      "techniques": [],
+      "method": "baseline",
+      "query_summary": "Sample",
+      "evidence": [],
+      "is_anomaly": true,
+      "incident_id": "in_sample",
+      "rule_candidate": true,
+      "needs_human": false,
+      "human_reason": null,
+      "created_at": 1791849600000,
+      "severity_id": 3
+    }
+  ],
+  "rules": [
+    {
+      "proposal_id": "rp_sample",
+      "hunt_id": "ht_sample",
+      "case_id": null,
+      "title": "Sample",
+      "techniques": [],
+      "sigma_rule": "title: Sample",
+      "siem_query": null,
+      "syntax_ok": false,
+      "backtest": {
+        "window_start_at": 1791849600000,
+        "window_end_at": 1791849601000,
+        "attack_hits": 1,
+        "benign_hits": 0
+      },
+      "status": "draft",
+      "reviewer": null,
+      "needs_human": false,
+      "human_reason": null,
+      "created_at": 1791849600000
+    }
+  ],
+  "findings": [
+    {
+      "ticket_id": "tk_sample",
+      "specialist": "web",
+      "question": "Sample?",
+      "summary": "Sample",
+      "attack_type": null,
+      "succeeded": "unknown",
+      "confidence": 0.5,
+      "evidence": [
+        {
+          "ref_type": "raw",
+          "ref_id": "raw_sample_1",
+          "note": "Synthetic evidence"
+        }
+      ],
+      "details": {},
+      "needs_human": true,
+      "human_reason": "Review",
+      "created_at": 1791849600000
+    }
+  ],
+  "steps": [
+    {
+      "subject_type": "ticket",
+      "subject_id": "tk_sample",
+      "step": 1,
+      "agent": "l1",
+      "action": "decision",
+      "tool": null,
+      "prompt_version": null,
+      "input_excerpt": "sample",
+      "output_excerpt": "sample",
+      "model": null,
+      "tokens": null,
+      "latency_ms": 1,
+      "created_at": 1791849600000
+    }
+  ],
+  "reviews": [
+    {
+      "ticket_id": "tk_sample",
+      "reviewer": "sample-reviewer",
+      "decision": "tp",
+      "overturned": true,
+      "reason": "Sample reason",
+      "created_at": 1791849600000
+    }
+  ],
+  "l2_reviews": [
+    {
+      "incident_id": "in_sample",
+      "reviewer": "sample-reviewer",
+      "decision": "approve",
+      "reject_type": null,
+      "comment": null,
+      "round": 1,
+      "created_at": 1791849600000
+    }
+  ],
+  "normalize_failures": [
+    {
+      "scenario": "sample",
+      "raw_ids": [],
+      "reason": "bad_value",
+      "missing_fields": [],
+      "detail": null,
+      "failed_at": 1791849600000
+    }
+  ]
+}
