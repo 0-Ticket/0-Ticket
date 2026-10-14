@@ -211,6 +211,11 @@ ESLint가 진입점 밖 생성 폴더 import, API 폴더 밖 직접 요청, HTML
   Vitest가 실제 HTTP 요청을 MSW로 보내 문서의 19개 메서드·경로와 응답 묶음을 확인한다.
 - 브라우저와 Vitest는 `src/mocks/handlers.ts`를 공유한다. MSW worker 준비 후 앱을 시작하며,
   `VITE_USE_MOCK=false`이면 worker 모듈을 불러오지 않는다.
+- 고정 버전 MSW 3.0.3의 옵션 이름은 `onUnhandledFrame`이다. 브라우저는 `bypass`,
+  테스트 서버는 `error`로 설정한다. MSW 2의 `onUnhandledRequest`에서 이름이 바뀌었다
+  ([공식 마이그레이션](https://mswjs.io/docs/migrations/2.x-to-3.x)).
+  브라우저 시작 함수와 테스트 대역은 설치된 MSW 타입에서 유도한다.
+  테스트 서버의 최초 시작·재시작 뒤 미등록 요청이 MSW 오류로 차단되는지 확인한다.
 - mock의 목록은 필터·커서·기본 50/최대 200을 지원하고 검토·Case 수정은 메모리에만 남는다.
   새로고침 및 테스트 종료 시 초기화한다. 지표는 고정된 합성 집계이며 기간별 실제 집계는 하지 않는다.
   검토 오류와 처리 충돌을 흉내 낼 뿐, 코어 검증·상태 전이·분석 기능의 구현을 대신하지 않는다.
@@ -218,6 +223,10 @@ ESLint가 진입점 밖 생성 폴더 import, API 폴더 밖 직접 요청, HTML
   MSW 버전을 바꾸면 같은 명령으로 갱신한다.
 - F0의 텍스트 표시 테스트는 공통 `PlainText`의 안전성을 확인한다. F1~F6은 각 화면의
   실제 데이터 표시·검토 동작을 별도로 검증해야 한다.
+
+API 요청 취소는 fetch 단계와 응답 본문 읽기 단계 모두에서 원래 `AbortError`를 그대로
+전달한다. 오류 객체의 `name`을 확인하여 다른 realm의 오류도 구분한다. JSON 파싱 실패나
+그 밖의 본문 읽기 실패는 기존대로 `ApiError('internal')`로 전달한다.
 
 UI 기반은 [shadcn/ui 수동 구성](https://ui.shadcn.com/docs/installation/manual)의
 로컬 컴포넌트·별칭·CSS 변수 구조를 사용하며, mock 시작은

@@ -1,9 +1,10 @@
 import { expect, it, vi } from 'vitest';
 import { readConfig } from './config';
 import { startMocks } from './mocks/start';
+import type { setupWorker } from 'msw/browser';
 
 it('switches interception with one environment variable and defaults off in production', async () => {
-  const start = vi.fn();
+  const start = vi.fn<ReturnType<typeof setupWorker>['start']>().mockResolvedValue(undefined);
   const load = vi.fn(async () => ({ worker: { start } }));
   await startMocks(readConfig({ DEV: true, VITE_USE_MOCK: 'false' }), load);
   expect(load).not.toHaveBeenCalled();
@@ -11,6 +12,7 @@ it('switches interception with one environment variable and defaults off in prod
   expect(load).not.toHaveBeenCalled();
   await startMocks(readConfig({ DEV: true, VITE_USE_MOCK: 'true' }), load);
   expect(start).toHaveBeenCalledOnce();
+  expect(start).toHaveBeenCalledWith({ onUnhandledFrame: 'bypass' });
   expect(readConfig({ DEV: true }).useMock).toBe(true);
 });
 

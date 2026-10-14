@@ -25,6 +25,13 @@ function isApiErrorBody(body: unknown): body is { error: { code: ErrorCode; mess
   );
 }
 
+function isAbortError(error: unknown): boolean {
+  // Check the name rather than instanceof: errors may come from another realm.
+  return (
+    typeof error === 'object' && error !== null && 'name' in error && error.name === 'AbortError'
+  );
+}
+
 export async function request<T>(
   path: string,
   options: {
@@ -51,13 +58,14 @@ export async function request<T>(
       signal: options.signal,
     });
   } catch (error) {
-    if (options.signal?.aborted) throw error;
+    if (options.signal?.aborted || isAbortError(error)) throw error;
     throw new ApiError('internal', 'API 연결에 실패했습니다.', 0);
   }
   let body: unknown;
   try {
     body = await response.json();
-  } catch {
+  } catch (error) {
+    if (isAbortError(error)) throw error;
     throw new ApiError('internal', 'API 응답을 읽을 수 없습니다.', response.status);
   }
   if (!response.ok) {
