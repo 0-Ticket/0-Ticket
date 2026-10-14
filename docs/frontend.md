@@ -157,7 +157,7 @@ SOC 분석가가 에이전트의 판정과 조사 과정을 보고, 검토하고
 
 ## 폴더
 
-F0에서 확정한다. 기본안은 아래와 같다.
+F0(#8)에서 아래 구조로 확정했다.
 
 ```
 frontend/
@@ -166,11 +166,62 @@ frontend/
       generated/ contracts/ Schema에서 생성 (직접 수정 금지)
     api/         API 호출 (한 곳에만)
     mocks/       mock 핸들러와 데이터
-    pages/       화면 (F1 ~ F6)
+    app/         Query·테마 제공자, 빈 경로와 공통 셸
+    pages/       화면 (F1 ~ F6에서 생성)
     components/  공통 컴포넌트
     lib/         라벨·색·시간 변환 등
+    test/        Vitest 초기화 (브라우저와 같은 mock 핸들러)
   .env.example   환경변수 이름만
 ```
+
+### F0 실행 환경과 설정
+
+Node **24 메이저**를 사용한다. `frontend/.nvmrc`는 `24`, `package.json`의
+`engines.node`는 `>=24 <25`다. pnpm은 `packageManager`의 `pnpm@11.9.0`과
+`pnpm-lock.yaml`로 고정한다. 계약 생성 도구(`tools/contracts/`)와 두 CI 검사 작업도
+Node 24를 사용한다. Node 버전 전환 도구를 쓴다면 `frontend/`에서 `nvm use` 후 설치한다.
+
+| 환경변수 | 기본값 | 설명 |
+|---|---|---|
+| `VITE_USE_MOCK` | 개발 `true`, 빌드 `false` | `true` 또는 `false` 하나로 MSW 사용 여부를 전환 |
+| `VITE_API_BASE_URL` | `/api` | API 접두어까지 포함한 공개 주소. 실제 API 서버 주소로 바꿀 수 있음 |
+| `VITE_POLL_INTERVAL_MS` | `30000` | Query 목록·상세 조회 기본 폴링 간격, 양의 정수 밀리초 |
+
+`.env.example`에는 이름만 두고 값은 비운다. 로컬 설정은 커밋하지 않는
+`frontend/.env.local`에 쓴다. 빈 값은 기본값을 따른다. Vite 환경변수는 빌드 시 결정되므로
+배포 주소를 바꾸면 다시 빌드한다. 여기에 비밀 값을 넣지 않는다.
+실제 API 개발 연결은 `VITE_USE_MOCK=false`와 공개 API 주소로 설정하며,
+다른 origin을 쓰는 경우 서버의 CORS 설정이 필요하다.
+
+F0의 셸은 제목과 테마 전환만 제공하고 업무 경로는 비워 둔다.
+API 함수는 `src/api/endpoints.ts`, HTTP 오류는 `ApiError`로 모은다.
+API 응답의 계약 타입은 생성 코드의 진입점에서 가져온다. TypeScript 타입 단언은
+런타임 검증이 아니며, 실제 서버의 계약 검증은 `soc.contracts.validate_contract()`가 맡는다.
+ESLint가 진입점 밖 생성 폴더 import, API 폴더 밖 직접 요청, HTML 주입을 제한한다.
+
+### 공유 샘플과 mock
+
+- `tests/fixtures/frontend/scenarios.json`은 S1~S5를 위한 손으로 만든 최소 객체 모음이다.
+  기존 계약 샘플을 바탕으로 웹·클라우드·새 등록형 값과 연결 ID를 구성했다.
+  `api-responses.json`은 페이지·지표, `api-errors.json`은 네 오류,
+  `untrusted-text.json`은 텍스트 표시 보안 사례를 담는다.
+- Python 테스트와 MSW는 이 JSON 파일을 직접 읽는다. 프론트 폴더에 샘플 사본을 두지 않는다.
+  Vite 개발 서버는 프론트 폴더와 해당 공유 샘플 폴더만 접근 허용한다.
+- `tests/frontend/test_fixtures.py`가 공개 계약 검증 함수로 객체를 검증하고 참조 ID를 확인한다.
+  Vitest가 실제 HTTP 요청을 MSW로 보내 문서의 19개 메서드·경로와 응답 묶음을 확인한다.
+- 브라우저와 Vitest는 `src/mocks/handlers.ts`를 공유한다. MSW worker 준비 후 앱을 시작하며,
+  `VITE_USE_MOCK=false`이면 worker 모듈을 불러오지 않는다.
+- mock의 목록은 필터·커서·기본 50/최대 200을 지원하고 검토·Case 수정은 메모리에만 남는다.
+  새로고침 및 테스트 종료 시 초기화한다. 지표는 고정된 합성 집계이며 기간별 실제 집계는 하지 않는다.
+  검토 오류와 처리 충돌을 흉내 낼 뿐, 코어 검증·상태 전이·분석 기능의 구현을 대신하지 않는다.
+- `public/mockServiceWorker.js`는 설치된 MSW의 `pnpm exec msw init public --save`로 생성한다.
+  MSW 버전을 바꾸면 같은 명령으로 갱신한다.
+- F0의 텍스트 표시 테스트는 공통 `PlainText`의 안전성을 확인한다. F1~F6은 각 화면의
+  실제 데이터 표시·검토 동작을 별도로 검증해야 한다.
+
+UI 기반은 [shadcn/ui 수동 구성](https://ui.shadcn.com/docs/installation/manual)의
+로컬 컴포넌트·별칭·CSS 변수 구조를 사용하며, mock 시작은
+[MSW 시작 API](https://mswjs.io/api/setup-worker/start)를 따른다.
 
 ## 명령
 

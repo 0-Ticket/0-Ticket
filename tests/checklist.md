@@ -81,8 +81,8 @@
 
 | ID | 화면 | 확인할 것 | 상태 | 테스트 |
 |---|---|---|---|---|
-| K40 | F0 | 계약 타입이 `frontend/src/contracts/` 한 곳에 있고 필드명·열거형이 `docs/data-contracts.md`와 같다. mock이 `docs/api-contracts.md`의 경로와 응답 모양을 따른다 | ⬜ | |
-| K41 | F0 | 환경변수 하나로 mock과 실제 API를 바꿀 수 있고, 화면 코드는 어느 쪽인지 모른다 | ⬜ | |
+| K40 | F0 | 계약 타입이 `frontend/src/contracts/` 한 곳에 있고 필드명·열거형이 `docs/data-contracts.md`와 같다. mock이 `docs/api-contracts.md`의 경로와 응답 모양을 따른다 | ✅ 통과 | `test_frontend_fixture_contracts`, `test_frontend_fixture_references`, `api-contracts.test.ts`, `api-errors.test.ts`, 타입·ESLint 검사 |
+| K41 | F0 | 환경변수 하나로 mock과 실제 API를 바꿀 수 있고, 화면 코드는 어느 쪽인지 모른다 | ✅ 통과 | `mock-mode.test.ts`, `api-errors.test.ts`의 MSW 없는 동일 client 검사 |
 | K42 | F1 | 검토 대기함에 `awaiting_human` 티켓만 나오고, 목록이 `priority` 순으로 정렬되며 자산 정보(없으면 "자산 정보 없음")가 보인다 | ⬜ | |
 | K43 | F2 | 판정·확신도·요약 옆에 근거가 있고, 근거를 누르면 해당 알럿·이벤트·원문이 보인다. 권고 조치에 실행 버튼이 없다 | ⬜ | |
 | K44 | F2 | Agent Log가 `step` 순서로 보이고, 전문 에이전트 결과가 판정 옆에 보인다 | ⬜ | |
@@ -127,3 +127,16 @@ F0 앱·mock·화면은 이번 이슈 범위가 아니며 K40도 완료로 표�
 런타임 계약 검증: `tests/contracts/test_validation.py`에서 공개 함수의 조건 검증·모델 변환,
 등록형·확장 값, 입력값 없는 예외, 검증기 재사용, 다른 작업 폴더 및 wheel 리소스를 확인한다.
 K55는 여전히 일부이며 코어 비즈니스 검증은 해당 박스에서 완료한다.
+
+## #8 F0 검증 결과
+
+- Node 24.21.0·pnpm 11.9.0에서 고정 lockfile 설치, 프론트 타입·린트·포맷 검사,
+  Vitest 30개, Vite 빌드를 통과했다.
+- 같은 Node 24 환경에서 기존 계약 도구의 고정 lockfile 설치·타입 검사·재생성 차이 검사를 통과했다.
+  Python 전체 366개와 Ruff 포맷·린트 검사를 통과했다.
+- K40은 19개 문서 API 경로·응답 묶음, 목록 필터·커서, 오류·검토 요청,
+  계약 JSON 샘플 검증을 포함한다. K41은 환경변수에 따른 worker 로딩과
+  MSW 유무에 관계없이 같은 API client가 요청하는 것을 확인했다.
+- K51은 공통 `PlainText`에 대한 보안 문자열 테스트만, K52는 API에서 새 등록형 값과
+  확장 필드를 보존하는 부분만 확인했다. 실제 F1~F6 화면 표시 테스트가 남아 있어 완료로 표시하지 않는다.
+- CI에 변경 경로 감지와 프론트 검사 작업을 구성했다. GitHub에서의 실행 결과는 사람이 push한 뒤 확인한다.
