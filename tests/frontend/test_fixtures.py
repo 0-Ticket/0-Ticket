@@ -85,3 +85,22 @@ def test_frontend_fixture_references():
                 check_evidence(nested)
 
     check_evidence(data)
+
+
+def test_f1_fixture_sort_boundaries():
+    data = json.loads((FIXTURES / "scenarios.json").read_text())
+    ordered = sorted(
+        data["tickets"],
+        key=lambda ticket: (-ticket["priority"], ticket["created_at"], ticket["ticket_id"]),
+    )
+    assert [ticket["ticket_id"] for ticket in ordered] == [
+        "tk_sample",
+        "tk_cloud",
+        "tk_custom",
+        "tk_tie_a",
+        "tk_tie_z",
+        "tk_later",
+    ]
+    assert len({ticket["status"] for ticket in ordered}) > 1
+    assert any(ticket["verdict"] is None for ticket in ordered)
+    assert any(len(ticket["alert_ids"]) > 1 for ticket in ordered)

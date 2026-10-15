@@ -33,9 +33,9 @@ describe('documented API contracts', () => {
     expect(next.items[0].ticket_id).toBe('tk_cloud');
     expect(await api.tickets({ cursor: '2', limit: 1 })).toEqual({
       items: [data.tickets[2]],
-      next_cursor: null,
+      next_cursor: '3',
     });
-    expect((await api.tickets({ limit: 200 })).items).toHaveLength(3);
+    expect((await api.tickets({ limit: 200 })).items).toHaveLength(6);
     expect(await api.tickets({ handling_type: 'missing' })).toEqual({
       items: [],
       next_cursor: null,
@@ -162,4 +162,16 @@ describe('documented API contracts', () => {
       request('cases/cs_sample', { method: 'PATCH', body: { execute: 'anything' } }),
     ).rejects.toMatchObject({ code: 'invalid_input' });
   });
+});
+
+it('orders every cursor page by priority DESC, created_at ASC, ticket_id ASC', async () => {
+  const ids: string[] = [];
+  let cursor: string | undefined;
+  do {
+    const page = await api.tickets({ limit: 1, cursor });
+    ids.push(...page.items.map((ticket) => ticket.ticket_id));
+    cursor = page.next_cursor ?? undefined;
+  } while (cursor);
+  expect(ids).toEqual(['tk_sample', 'tk_cloud', 'tk_custom', 'tk_tie_a', 'tk_tie_z', 'tk_later']);
+  expect(new Set(ids).size).toBe(data.tickets.length);
 });
