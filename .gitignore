@@ -27,6 +27,7 @@ config/org.*
 
 # 웹 화면 (frontend/)
 node_modules/
+.pnpm-store/
 frontend/dist/
 frontend/.env
 frontend/.env.local

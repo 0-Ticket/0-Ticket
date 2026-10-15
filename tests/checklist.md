@@ -81,8 +81,8 @@
 
 | ID | 화면 | 확인할 것 | 상태 | 테스트 |
 |---|---|---|---|---|
-| K40 | F0 | 계약 타입이 `frontend/src/contracts/` 한 곳에 있고 필드명·열거형이 `docs/data-contracts.md`와 같다. mock이 `docs/api-contracts.md`의 경로와 응답 모양을 따른다 | ⬜ | |
-| K41 | F0 | 환경변수 하나로 mock과 실제 API를 바꿀 수 있고, 화면 코드는 어느 쪽인지 모른다 | ⬜ | |
+| K40 | F0 | 계약 타입이 `frontend/src/contracts/` 한 곳에 있고 필드명·열거형이 `docs/data-contracts.md`와 같다. mock이 `docs/api-contracts.md`의 경로와 응답 모양을 따른다 | ✅ 통과 | `test_frontend_fixture_contracts`, `test_frontend_fixture_references`, `api-contracts.test.ts`, `api-errors.test.ts`, 타입·ESLint 검사 |
+| K41 | F0 | 환경변수 하나로 mock과 실제 API를 바꿀 수 있고, 화면 코드는 어느 쪽인지 모른다 | ✅ 통과 | `mock-mode.test.ts`, `api-errors.test.ts`의 MSW 없는 동일 client 검사 |
 | K42 | F1 | 검토 대기함에 `awaiting_human` 티켓만 나오고, 목록이 `priority` 순으로 정렬되며 자산 정보(없으면 "자산 정보 없음")가 보인다 | ⬜ | |
 | K43 | F2 | 판정·확신도·요약 옆에 근거가 있고, 근거를 누르면 해당 알럿·이벤트·원문이 보인다. 권고 조치에 실행 버튼이 없다 | ⬜ | |
 | K44 | F2 | Agent Log가 `step` 순서로 보이고, 전문 에이전트 결과가 판정 옆에 보인다 | ⬜ | |
@@ -127,3 +127,46 @@ F0 앱·mock·화면은 이번 이슈 범위가 아니며 K40도 완료로 표�
 런타임 계약 검증: `tests/contracts/test_validation.py`에서 공개 함수의 조건 검증·모델 변환,
 등록형·확장 값, 입력값 없는 예외, 검증기 재사용, 다른 작업 폴더 및 wheel 리소스를 확인한다.
 K55는 여전히 일부이며 코어 비즈니스 검증은 해당 박스에서 완료한다.
+
+## #8 F0 검증 결과
+
+- Node 24.21.0·pnpm 11.9.0에서 고정 lockfile 설치, 프론트 타입·린트·포맷 검사,
+  Vitest 30개, Vite 빌드를 통과했다.
+- 같은 Node 24 환경에서 기존 계약 도구의 고정 lockfile 설치·타입 검사·재생성 차이 검사를 통과했다.
+  Python 전체 366개와 Ruff 포맷·린트 검사를 통과했다.
+- K40은 19개 문서 API 경로·응답 묶음, 목록 필터·커서, 오류·검토 요청,
+  계약 JSON 샘플 검증을 포함한다. K41은 환경변수에 따른 worker 로딩과
+  MSW 유무에 관계없이 같은 API client가 요청하는 것을 확인했다.
+- K51은 공통 `PlainText`에 대한 보안 문자열 테스트만, K52는 API에서 새 등록형 값과
+  확장 필드를 보존하는 부분만 확인했다. 실제 F1~F6 화면 표시 테스트가 남아 있어 완료로 표시하지 않는다.
+- CI에 변경 경로 감지와 프론트 검사 작업을 구성했다. GitHub에서의 실행 결과는 사람이 push한 뒤 확인한다.
+
+### PR #9 리뷰 후 회귀 검증
+
+- MSW는 고정 버전 3.0.3을 유지한다. 이 버전의 공식 옵션은 `onUnhandledFrame`이며,
+  `onUnhandledRequest`로 바꾸면 설치된 타입 정의에서 TS2353이 발생함을 확인했다.
+- K41: `mock-mode.test.ts`가 실제 MSW에서 유도한 시작 함수 타입과 `bypass` 옵션을 확인한다.
+  `api-errors.test.ts`가 테스트 서버의 최초 시작·재시작 후 미등록 요청이 MSW의 `error`
+  정책으로 차단되는지 확인한다. 단순 네트워크 실패로는 이 검사를 통과하지 못한다.
+- K40: 네 API 오류 코드·네트워크 오류를 유지하면서, 정상/실패 HTTP의 비 JSON 응답,
+  본문 읽기 실패, 본문 읽기 중 AbortError 원본 보존을 확인한다.
+  기존 취소 테스트는 fetch 이전 취소만 다뤘으며 새 테스트는 실제 `Response.json()`의
+  스트림 읽기 오류를 재현한다.
+- Node 24.21.0·pnpm 11.9.0에서 프론트 고정 설치·타입·린트·포맷·테스트 **35개**·빌드,
+  Ruff 포맷·린트, Python **366개**, 계약 재생성 차이 검사·계약 TypeScript 검사를 통과했다.
+
+### PR #9 동시 검토 요청 회귀 검증
+
+- 수정 전 Ticket·Incident·Rule 모두 본문 파싱을 기다리는 사이 중복 검사를 통과하여
+  두 요청이 함께 성공하는 것을 `review-concurrency.test.ts`의 3개 테스트로 재현했다.
+- 본문 파싱을 현재 상태 조회보다 먼저 끝낸다. 중복 확인부터 기록·상태 변경 완료까지
+  await가 없으며 기존 not_found/conflict/invalid_input 응답 우선순위를 유지한다.
+- K40: 두 요청의 본문 읽기를 같은 비동기 경계에서 대기시킨 뒤 `Promise.allSettled`로
+  성공 1개와 HTTP 409 conflict 1개를 확인한다. 요청 순서로 승자를 가정하지 않는다.
+  Ticket·Incident 기록은 기존보다 정확히 하나 증가하고, Ticket 상태와 Rule 상태·검토자는
+  성공 응답과 일치한다. Incident는 기존 F0 동작대로 검토 기록·회차만 갱신하며,
+  Rule은 별도 검토 이력 계약 없이 기존 C18 하나의 상태·검토자를 갱신한다.
+- 다른 쓰기 핸들러인 Case PATCH에는 중복 검토 선행 조건이 없어 같은 문제가 없다.
+  기존 부분 수정 동작을 유지하며 계약·라이브러리 변경은 없다.
+- Node 24.21.0·pnpm 11.9.0에서 요청된 전체 검사 통과: 프론트 **38개**(6개 파일),
+  Python **366개**, Ruff 포맷·린트, 계약 재생성·타입 검사, 프론트 고정 설치·타입·린트·포맷·빌드.

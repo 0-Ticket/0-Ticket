@@ -1,0 +1,58 @@
+import type {
+  AgentStep,
+  AlertRecord,
+  Case,
+  HumanReview,
+  HuntFinding,
+  Incident,
+  IncidentArtifact,
+  L2Review,
+  RuleProposal,
+  SpecialistFinding,
+  Ticket,
+} from '../contracts';
+
+// Only HTTP envelopes and request shapes live here. Domain types are generated.
+export type Page<T> = { items: T[]; next_cursor: string | null };
+export type Pagination = { cursor?: string; limit?: number };
+export type ErrorCode = 'not_found' | 'invalid_input' | 'conflict' | 'internal';
+export type TicketDetail = {
+  ticket: Ticket;
+  alerts: AlertRecord[];
+  findings: SpecialistFinding[];
+  steps: AgentStep[];
+  reviews: HumanReview[];
+  incident_ids: string[];
+};
+export type IncidentDetail = {
+  incident: Incident;
+  tickets: Ticket[];
+  hunts: HuntFinding[];
+  artifact: IncidentArtifact | null;
+  steps: AgentStep[];
+  reviews: L2Review[];
+  case_id: string | null;
+};
+export type CaseDetail = { case: Case; proposal_ids: string[] };
+export type HuntDetail = { hunt: HuntFinding; steps: AgentStep[]; proposal_ids: string[] };
+export type TicketReviewInput = Pick<HumanReview, 'reviewer' | 'decision'> &
+  Partial<Pick<HumanReview, 'reason'>>;
+export type IncidentReviewInput = Pick<L2Review, 'reviewer' | 'decision'> &
+  Partial<Pick<L2Review, 'reject_type' | 'comment'>>;
+export type RuleReviewInput = {
+  reviewer: NonNullable<RuleProposal['reviewer']>;
+  decision: L2Review['decision'];
+};
+export type CasePatch = Partial<Pick<Case, 'status' | 'tasks' | 'lessons'>>;
+export type Metrics = {
+  from: number;
+  to: number;
+  tickets_total: number;
+  tickets_awaiting_human: number;
+  l1_reviews_total: number;
+  l1_overturned: number;
+  l2_reviews_total: number;
+  l2_rejects_by_type: Record<string, number>;
+  incident_members_by_source: Record<string, number>;
+  normalize_failures_by_reason: Record<string, number>;
+};

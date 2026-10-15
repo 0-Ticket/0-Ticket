@@ -536,7 +536,7 @@ Vector DB에 넣는 문서 한 건. 임베딩할 문장과 원본 연결 정보.
 | 계약 타입 검사 | `pnpm --dir tools/contracts typecheck` |
 | 계약 전체 테스트 | `uv run pytest tests/contracts` |
 
-Python 3.12 이상, Node 22 이상과 pnpm 11.9.0을 사용한다. CI는 Node 22로 검증한다.
+Python 3.12 이상, Node 24와 pnpm 11.9.0을 사용한다. F0(#8)에서 프론트와 계약 생성 CI를 Node 24로 통일했다.
 생성 도구용 Node 패키지는 `tools/contracts/`에 두며, F0 화면 앱 설치·빌드와 독립적이다.
 처음에는 저장소 루트에서 다음 명령으로 잠금 파일의 의존성을 설치한다.
 
