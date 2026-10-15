@@ -110,7 +110,7 @@ export function TicketList({ tickets }: { tickets: Ticket[] }) {
                 <ul>
                   {ticket.verdict.evidence.map((evidence, index) => (
                     <li key={index}>
-                      {evidence.ref_type} · {evidence.ref_id}: {evidence.note}
+                      {evidence.ref_type} · <ObjectId value={evidence.ref_id} />: {evidence.note}
                     </li>
                   ))}
                 </ul>

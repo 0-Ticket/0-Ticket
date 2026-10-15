@@ -1,7 +1,8 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { http, HttpResponse } from 'msw';
 import { expect, it } from 'vitest';
+import userEvent from '@testing-library/user-event';
 import { Providers } from '../app/providers';
 import { routes } from '../app/router';
 import { server } from '../mocks/server';
@@ -41,4 +42,28 @@ it('shows only awaiting_human tickets with the shared mock', async () => {
   expect(await screen.findAllByRole('link', { name: /^tk_/ })).toHaveLength(3);
   expect(screen.queryByRole('link', { name: 'tk_tie_a' })).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: /동의|뒤집기/ })).not.toBeInTheDocument();
+});
+
+it('retries a metrics error and displays zero as the current waiting count', async () => {
+  server.use(
+    http.get('*/api/metrics', () =>
+      HttpResponse.json(
+        { error: { code: 'invalid_input', message: '지표 조회 실패' } },
+        { status: 400 },
+      ),
+    ),
+  );
+  render(
+    <Providers>
+      <RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/review'] })} />
+    </Providers>,
+  );
+  const error = await screen.findByRole('alert');
+  expect(error).toHaveTextContent('지표 조회 실패');
+  expect(screen.queryByText(/검토 대기 \d+건/)).not.toBeInTheDocument();
+  server.use(
+    http.get('*/api/metrics', () => HttpResponse.json({ ...metrics, tickets_awaiting_human: 0 })),
+  );
+  await userEvent.click(within(error).getByRole('button', { name: '다시 시도' }));
+  expect(await screen.findByText('검토 대기 0건')).toBeInTheDocument();
 });

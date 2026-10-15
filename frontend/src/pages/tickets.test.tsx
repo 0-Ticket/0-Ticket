@@ -173,3 +173,123 @@ it('keeps loaded rows when the next page fails and retries the same cursor', asy
   expect(await screen.findByRole('link', { name: 'tk_cloud' })).toBeInTheDocument();
   expect(screen.getAllByRole('link', { name: /^tk_/ })).toHaveLength(2);
 });
+
+it('makes evidence IDs copyable while keeping untrusted references as text', async () => {
+  const user = userEvent.setup();
+  server.use(
+    http.get('*/api/tickets', () =>
+      HttpResponse.json({ items: [data.tickets[0]], next_cursor: null }),
+    ),
+  );
+  mount();
+  const reference = data.tickets[0].verdict!.evidence[0].ref_id;
+  await user.click(await screen.findByRole('button', { name: `${reference} 복사` }));
+  expect(await navigator.clipboard.readText()).toBe(reference);
+});
+
+it('refreshes three loaded pages atomically, retries failed polling, and removes obsolete pages when results shrink', async () => {
+  let version = 0;
+  let fail = false;
+  const requests: string[] = [];
+  server.use(
+    http.get('*/api/tickets', ({ request }) => {
+      const cursor = new URL(request.url).searchParams.get('cursor') ?? 'first';
+      requests.push(`${version}:${cursor}`);
+      if (version === 2) return HttpResponse.json({ items: [data.tickets[3]], next_cursor: null });
+      const page =
+        cursor === 'first'
+          ? 0
+          : cursor === `${version}-second`
+            ? 1
+            : cursor === `${version}-third`
+              ? 2
+              : -1;
+      if (page < 0)
+        return HttpResponse.json(
+          { error: { code: 'invalid_input', message: 'stale cursor' } },
+          { status: 400 },
+        );
+      if (fail && page === 2)
+        return HttpResponse.json(
+          { error: { code: 'internal', message: '폴링 실패' } },
+          { status: 500 },
+        );
+      const order = version === 0 ? [0, 1, 2] : [2, 0, 4];
+      return HttpResponse.json({
+        items: [data.tickets[order[page]]],
+        next_cursor: page === 2 ? null : `${version}-${page === 0 ? 'second' : 'third'}`,
+      });
+    }),
+  );
+  const { client, unmount } = mount('/tickets', 100);
+  const ids = () => screen.getAllByRole('link', { name: /^tk_/ }).map((link) => link.textContent);
+  await screen.findByRole('link', { name: 'tk_sample' });
+  for (const id of ['tk_cloud', 'tk_custom']) {
+    await waitFor(() => expect(screen.getByRole('button', { name: '더 보기' })).toBeEnabled());
+    await userEvent.click(screen.getByRole('button', { name: '더 보기' }));
+    await screen.findByRole('link', { name: id });
+  }
+  fail = true;
+  version = 1;
+  await screen.findByText('폴링 실패');
+  expect(ids()).toEqual(['tk_sample', 'tk_cloud', 'tk_custom']);
+  // A failed refresh must not combine the new first pages with stale trailing pages.
+  fail = false;
+  await waitFor(() => expect(ids()).toEqual(['tk_custom', 'tk_sample', 'tk_later']));
+  expect(requests).toEqual(expect.arrayContaining(['1:first', '1:1-second', '1:1-third']));
+  expect(requests).not.toContain('1:0-second');
+  version = 2;
+  await waitFor(() => expect(ids()).toEqual(['tk_tie_z']));
+  expect(
+    requests
+      .filter((request) => request.startsWith('2:'))
+      .every((request) => request === '2:first'),
+  ).toBe(true);
+  unmount();
+  client.clear();
+});
+
+it.each(['/review', '/tickets'])('uses only the approved GET APIs at %s', async (path) => {
+  const requests: string[] = [];
+  const listener = ({ request }: { request: Request }) =>
+    requests.push(`${request.method} ${new URL(request.url).pathname}`);
+  server.events.on('request:start', listener);
+  try {
+    mount(path);
+    await screen.findAllByText('web-01');
+    expect(requests.length).toBeGreaterThan(0);
+    expect(
+      requests.every((request) => /^GET \/api\/(tickets|metrics|alerts\/[^/]+)$/.test(request)),
+    ).toBe(true);
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+  } finally {
+    server.events.removeListener('request:start', listener);
+  }
+});
+
+it('renders null account and verdict, registered entity types and local timestamps without interpreting values', async () => {
+  const ticket = structuredClone(data.tickets[0]);
+  ticket.verdict = null;
+  ticket.entities = [{ type: 'example.device', value: untrusted.input_excerpt }];
+  const alert = structuredClone(data.alerts[0]);
+  alert.src_asset = null;
+  alert.dst_asset = null;
+  alert.user_info = null;
+  alert.rule_name = untrusted.output_excerpt;
+  server.use(
+    http.get('*/api/tickets', () => HttpResponse.json({ items: [ticket], next_cursor: null })),
+    http.get('*/api/alerts/:id', () => HttpResponse.json(alert)),
+  );
+  const { container } = mount();
+  await screen.findByText(untrusted.output_excerpt, { exact: false });
+  expect(screen.getAllByText('자산 정보 없음')).toHaveLength(2);
+  expect(screen.getAllByText('없음').length).toBeGreaterThanOrEqual(2);
+  expect(screen.getByText(/example.device/)).toHaveTextContent(untrusted.input_excerpt);
+  for (const time of container.querySelectorAll('time')) {
+    const value = Number(time.getAttribute('title'));
+    expect(time).toHaveTextContent(new Date(value).toLocaleString());
+    expect(time).toHaveAttribute('datetime', new Date(value).toISOString());
+  }
+  expect(container.querySelector('a[href^="https://example.com"], b')).toBeNull();
+});
