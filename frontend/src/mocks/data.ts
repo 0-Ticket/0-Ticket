@@ -1,4 +1,5 @@
 import scenarios from '../../../tests/fixtures/frontend/scenarios.json';
+import detail from '../../../tests/fixtures/frontend/ticket-detail.json';
 import responses from '../../../tests/fixtures/frontend/api-responses.json';
 import type {
   AgentStep,
@@ -37,5 +38,15 @@ type MockData = {
 
 // JSON enum strings widen on import. Python validates these exact files with
 // soc.contracts.validate_contract; this assertion is not runtime validation.
-export const data = scenarios as unknown as MockData;
+export const data = {
+  ...scenarios,
+  findings: [
+    ...scenarios.findings.filter((item) => item.ticket_id !== detail.ticket.ticket_id),
+    ...detail.findings,
+  ],
+  steps: [
+    ...scenarios.steps.filter((item) => item.subject_id !== detail.ticket.ticket_id),
+    ...detail.steps,
+  ],
+} as unknown as MockData;
 export const metrics: Metrics = responses.metrics;

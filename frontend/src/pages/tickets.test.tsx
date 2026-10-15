@@ -146,7 +146,7 @@ it('shows all statuses and nullable verdicts, multiple alerts, shared assets and
   await user.click(screen.getByRole('button', { name: '라이트 모드' }));
   expect(document.documentElement).not.toHaveClass('dark');
   await user.click(screen.getByRole('link', { name: 'tk_tie_a' }));
-  expect(screen.getByRole('main')).toBeEmptyDOMElement();
+  expect(await screen.findByRole('heading', { name: '티켓 tk_tie_a' })).toBeInTheDocument();
 });
 
 it('keeps loaded rows when the next page fails and retries the same cursor', async () => {

@@ -3,7 +3,8 @@ import { Shell } from './shell';
 import { TicketsPage } from '../pages/tickets';
 import { ReviewPage } from '../pages/review';
 
-// F1 supplies list pages; later screens retain their reserved routes.
+// F1/F2 supply ticket pages; later screens retain their reserved routes.
+import { TicketDetailPage } from '../pages/ticket-detail';
 export const routes: RouteObject[] = [
   {
     element: <Shell />,
@@ -22,7 +23,14 @@ export const routes: RouteObject[] = [
       '/rules/:proposal_id',
     ].map((path) => ({
       path,
-      element: path === '/review' ? <ReviewPage /> : path === '/tickets' ? <TicketsPage /> : null,
+      element:
+        path === '/review' ? (
+          <ReviewPage />
+        ) : path === '/tickets' ? (
+          <TicketsPage />
+        ) : path === '/tickets/:ticket_id' ? (
+          <TicketDetailPage />
+        ) : null,
     })),
   },
 ];

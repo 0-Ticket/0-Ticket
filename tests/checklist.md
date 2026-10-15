@@ -84,16 +84,16 @@
 | K40 | F0 | 계약 타입이 `frontend/src/contracts/` 한 곳에 있고 필드명·열거형이 `docs/data-contracts.md`와 같다. mock이 `docs/api-contracts.md`의 경로와 응답 모양을 따른다 | ✅ 통과 | `test_frontend_fixture_contracts`, `test_frontend_fixture_references`, `api-contracts.test.ts`, `api-errors.test.ts`, 타입·ESLint 검사 |
 | K41 | F0 | 환경변수 하나로 mock과 실제 API를 바꿀 수 있고, 화면 코드는 어느 쪽인지 모른다 | ✅ 통과 | `mock-mode.test.ts`, `api-errors.test.ts`의 MSW 없는 동일 client 검사 |
 | K42 | F1 | 검토 대기함에 `awaiting_human` 티켓만 나오고, 목록이 `priority` 내림차순 → `created_at` 오름차순 → `ticket_id` 오름차순이며 자산 정보(없으면 "자산 정보 없음")가 보인다 | ✅ 통과 | `api-contracts.test.ts`, `tickets.test.tsx`, `review.test.tsx` |
-| K43 | F2 | 판정·확신도·요약 옆에 근거가 있고, 근거를 누르면 해당 알럿·이벤트·원문이 보인다. 권고 조치에 실행 버튼이 없다 | ⬜ | |
-| K44 | F2 | Agent Log가 `step` 순서로 보이고, 전문 에이전트 결과가 판정 옆에 보인다 | ⬜ | |
-| K45 | F2 | 판정을 뒤집을 때 이유가 없으면 보내지 않고, API가 `invalid_input`을 주면 그 내용을 보여 준다 | ⬜ | |
+| K43 | F2 | 판정·확신도·요약 옆에 근거가 있고, 근거를 누르면 해당 알럿·이벤트·원문이 보인다. 권고 조치에 실행 버튼이 없다 | ✅ 통과 | `ticket-detail.test.tsx`: 판정·근거 펼치기·복사, 권고 표시 |
+| K44 | F2 | Agent Log가 `step` 순서로 보이고, 전문 에이전트 결과가 판정 옆에 보인다 | ✅ 통과 | `ticket-detail.test.tsx`: 전문 결과·AgentStep 순서·발췌 |
+| K45 | F2 | 판정을 뒤집을 때 이유가 없으면 보내지 않고, API가 `invalid_input`을 주면 그 내용을 보여 준다 | ✅ 통과 | `ticket-review.test.tsx`: 이유 필수·invalid_input·중복 제출·재조회 |
 | K46 | F3 | Incident의 묶음 항목(티켓·헌팅 결과)마다 출처(`source`)와 묶인 이유(`rule`, `matched_entity`)가 보이고, 뺀 항목과 이유가 따로 보이며, 공용 자산이 묶는 기준으로 표시되지 않는다 | ⬜ | |
 | K47 | F3 | 보고서 타임라인이 시간순이고 모든 항목에 근거 링크가 있다. 반려에는 유형과 코멘트가 필수이고, 두 번 반려되면 "사람 직접 처리"로 표시된다 | ⬜ | |
 | K48 | F4 | Case 작업의 상태·담당자·마감과 교훈을 수정할 수 있다 | ⬜ | |
 | K49 | F5 | 룰 제안에 문법 검사 결과와 백테스트가 보이고, 승인해도 화면이 SIEM 반영을 하지 않는다 | ⬜ | |
 | K50 | F6 | 지표 대시보드가 뒤집은 비율, 반려 유형 통계, 정규화 실패 수를 보여 준다 | ⬜ | |
-| K51 | 전체 | HTML·스크립트 조각이 든 로그 원문, LLM 출력, `extensions` 값이 텍스트로만 표시된다 | 🟡 일부 | F1: `tickets.test.tsx`; 다른 화면은 후속 검증 |
-| K52 | 전체 | 플러그인이 등록한 새 등록형 값과 새 `extensions` 키가 화면 수정 없이 보인다 | 🟡 일부 | F1: `tickets.test.tsx`; 다른 화면은 후속 검증 |
+| K51 | 전체 | HTML·스크립트 조각이 든 로그 원문, LLM 출력, `extensions` 값이 텍스트로만 표시된다 | 🟡 일부 | F1: `tickets.test.tsx`; F2: `ticket-detail.test.tsx`; 다른 화면은 후속 검증 |
+| K52 | 전체 | 플러그인이 등록한 새 등록형 값과 새 `extensions` 키가 화면 수정 없이 보인다 | 🟡 일부 | F1: `tickets.test.tsx`; F2: `ticket-detail.test.tsx`; 다른 화면은 후속 검증 |
 
 ## 계약 Schema
 
@@ -238,3 +238,25 @@ K55는 여전히 일부이며 코어 비즈니스 검증은 해당 박스에서 
   문서에는 현재 상태 전이에 재진입 경로가 없다는 범위 설명만 있다.
 - 전체 재검증: Python 376 tests, 프론트 54 tests, ruff format/check, 계약 TS typecheck,
   프론트 typecheck/lint/format:check/build 모두 통과. 구현 수정 없이 검토 결과만 기록했다.
+
+## #15 F2 구현 검증
+
+- K43: 기존 상세 응답의 `ticket.verdict`, `findings`, `steps`, `reviews`,
+  `incident_ids`를 사용한다. 별도 조회 API·계약 필드 추가 없음. 근거 종류별 기존
+  GET 조회·ID 복사, 원본 연결, null, 지역 시간·epoch ms, 검토 대기 진입 시각을 확인했다.
+- K44: subject_id별 step 순서, 접힌 발췌, 판정 옆 전문 분석 결과를 확인했다.
+- K45: 동의는 tp/fp로 전송하고 reason·reviewer 누락을 차단한다. overturned를
+  요청에 넣지 않는다. 네 API 오류, conflict 최신 조회, 대기 중 이중 제출 방지,
+  POST 성공 후 GET 실패를 구분한다. POST를 자동 재시도하지 않는다.
+- F1 연계는 POST → GET 재조회 → 상세·검토 기록·두 목록·대기 건수 반영으로 확인했다.
+  서버가 FP 요청에 closed_benign을 반환하는 테스트에서도 서버 상태만 표시한다.
+  클라이언트 상태 전이 계산·캐시 직접 수정이 없다. 기존 MSW가 상태와 C9를 생성하고
+  현재 대기 건수만 mock 상태에서 집계한다. 코어 박스 K12·K19 완료를 뜻하지 않는다.
+- K51·K52는 F2 표시 검증을 추가했다. HTML·마크다운·URL·등록형 값·중첩 확장 값이
+  plain text로 남으며 모르는 근거 유형의 조회 경로를 만들지 않는다. 전체 상태는 일부 유지.
+- Python 377개, Ruff format/check, 프론트 typecheck/lint/format:check/build 통과.
+  Node 24.22.0·pnpm 11.9.0에서 `pnpm test --maxWorkers=2`로 전체 71개 통과.
+  기본 병렬 실행에서는 F1/F2 조회 대기 시간 초과가 반복되어 워커 수를 제한했다.
+  테스트·린트 규칙을 제외하거나 제한 시간을 늘리지 않았다.
+- Chrome에서 라이트·다크 모드의 판정·근거·전문 결과 배치를 확인했다.
+  새 라이브러리, 계약·생성 코드 변경 없음. 실제 백엔드 연결과 F3 화면은 후속 범위다.

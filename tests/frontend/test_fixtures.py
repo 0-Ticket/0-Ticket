@@ -104,3 +104,32 @@ def test_f1_fixture_sort_boundaries():
     assert len({ticket["status"] for ticket in ordered}) > 1
     assert any(ticket["verdict"] is None for ticket in ordered)
     assert any(len(ticket["alert_ids"]) > 1 for ticket in ordered)
+
+
+def test_ticket_detail_fixture_contracts_and_references():
+    detail = json.loads((FIXTURES / "ticket-detail.json").read_text())
+    assert set(detail) == {"ticket", "alerts", "findings", "steps", "reviews", "incident_ids"}
+    validate_contract("Ticket", detail["ticket"])
+    for key, name in {
+        "alerts": "AlertRecord",
+        "findings": "SpecialistFinding",
+        "steps": "AgentStep",
+        "reviews": "HumanReview",
+    }.items():
+        for item in detail[key]:
+            validate_contract(name, item)
+    data = json.loads((FIXTURES / "scenarios.json").read_text())
+    ids = {
+        kind: {row[field] for row in data[key]}
+        for kind, key, field in [
+            ("alert", "alerts", "alert_id"),
+            ("event", "events", "event_id"),
+            ("raw", "raw", "raw_id"),
+        ]
+    }
+    for evidence in detail["ticket"]["verdict"]["evidence"]:
+        if evidence["ref_type"] in ids:
+            assert evidence["ref_id"] in ids[evidence["ref_type"]]
+    assert set(detail["ticket"]["alert_ids"]) == {a["alert_id"] for a in detail["alerts"]}
+    assert set(detail["incident_ids"]) <= {i["incident_id"] for i in data["incidents"]}
+    assert all(s["subject_id"] == detail["ticket"]["ticket_id"] for s in detail["steps"])
