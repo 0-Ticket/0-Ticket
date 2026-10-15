@@ -107,6 +107,79 @@
       },
       "created_at": 1791849600000,
       "updated_at": 1791849600000
+    },
+    {
+      "ticket_id": "tk_tie_z",
+      "status": "new",
+      "handling_type": "example.custom",
+      "specialist": "example.specialist",
+      "priority": 1,
+      "alert_ids": [
+        "al_sample"
+      ],
+      "entities": [
+        {
+          "type": "ip",
+          "value": "203.0.113.10"
+        }
+      ],
+      "verdict": null,
+      "extensions": {
+        "example.context": {
+          "label": "synthetic"
+        }
+      },
+      "created_at": 1791849600000,
+      "updated_at": 1791849600000
+    },
+    {
+      "ticket_id": "tk_later",
+      "status": "new",
+      "handling_type": "example.custom",
+      "specialist": "example.specialist",
+      "priority": 1,
+      "alert_ids": [
+        "al_sample"
+      ],
+      "entities": [
+        {
+          "type": "ip",
+          "value": "203.0.113.10"
+        }
+      ],
+      "verdict": null,
+      "extensions": {
+        "example.context": {
+          "label": "synthetic"
+        }
+      },
+      "created_at": 1791849601000,
+      "updated_at": 1791849601000
+    },
+    {
+      "ticket_id": "tk_tie_a",
+      "status": "new",
+      "handling_type": "example.custom",
+      "specialist": "example.specialist",
+      "priority": 1,
+      "alert_ids": [
+        "al_sample",
+        "al_cloud"
+      ],
+      "entities": [
+        {
+          "type": "ip",
+          "value": "203.0.113.10"
+        }
+      ],
+      "verdict": null,
+      "extensions": {
+        "example.context": {
+          "label": "synthetic"
+        }
+      },
+      "created_at": 1791849600000,
+      "updated_at": 1791849600000
     }
   ],
   "alerts": [
@@ -202,7 +275,7 @@
         "criticality": 5,
         "owner": null,
         "zone": "dmz",
-        "shared": false,
+        "shared": true,
         "valid_from": null,
         "valid_to": null,
         "extensions": {
@@ -217,7 +290,7 @@
       "user_info": {
         "user": "sample-user",
         "dept": null,
-        "privileged": false,
+        "privileged": true,
         "extensions": {}
       },
       "count": 1,

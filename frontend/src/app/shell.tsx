@@ -1,4 +1,4 @@
-import { Outlet } from 'react-router';
+import { NavLink, Outlet } from 'react-router';
 import { Button } from '../components/ui/button';
 import { useTheme } from '../lib/theme-context';
 
@@ -12,6 +12,20 @@ export function Shell() {
           {theme === 'light' ? '다크 모드' : '라이트 모드'}
         </Button>
       </header>
+      <nav aria-label="주 메뉴" className="flex gap-4 border-b border-border px-6 py-3">
+        <NavLink
+          className={({ isActive }) => (isActive ? 'font-semibold underline' : 'underline')}
+          to="/review"
+        >
+          검토 대기함
+        </NavLink>
+        <NavLink
+          className={({ isActive }) => (isActive ? 'font-semibold underline' : 'underline')}
+          to="/tickets"
+        >
+          전체 티켓
+        </NavLink>
+      </nav>
       <main className="p-6">
         <Outlet />
       </main>

@@ -1,7 +1,9 @@
 import type { RouteObject } from 'react-router';
 import { Shell } from './shell';
+import { TicketsPage } from '../pages/tickets';
+import { ReviewPage } from '../pages/review';
 
-// F0 reserves URLs only; F1–F6 supply page content in subsequent issues.
+// F1 supplies list pages; later screens retain their reserved routes.
 export const routes: RouteObject[] = [
   {
     element: <Shell />,
@@ -18,6 +20,9 @@ export const routes: RouteObject[] = [
       '/hunts/:hunt_id',
       '/rules',
       '/rules/:proposal_id',
-    ].map((path) => ({ path, element: null })),
+    ].map((path) => ({
+      path,
+      element: path === '/review' ? <ReviewPage /> : path === '/tickets' ? <TicketsPage /> : null,
+    })),
   },
 ];

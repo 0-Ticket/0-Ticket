@@ -32,7 +32,7 @@
 |---|---|---|---|
 | `GET /api/tickets` | `status`, `handling_type`, `min_priority` | 목록: C6 Ticket | F1 |
 | `GET /api/tickets/{ticket_id}` | | 아래 "티켓 상세" | F2 |
-| `GET /api/alerts/{alert_id}` | | C5 AlertRecord | F2 |
+| `GET /api/alerts/{alert_id}` | | C5 AlertRecord | F1, F2 |
 | `GET /api/events/{event_id}` | | C13 EventRecord | F2, F5 |
 | `GET /api/raw/{raw_id}` | | C1 RawRecord | F2 |
 | `GET /api/incidents` | `status`, `created_by` | 목록: C10 Incident | F3 |
@@ -44,9 +44,20 @@
 | `GET /api/rules` | `status` | 목록: C18 RuleProposal | F5 |
 | `GET /api/rules/{proposal_id}` | | C18 RuleProposal | F5 |
 | `GET /api/normalize-failures` | `reason` | 목록: C12 NormalizeFailure | F6 |
-| `GET /api/metrics` | `from`, `to` (epoch 밀리초) | 아래 "지표" | F6 |
+| `GET /api/metrics` | `from`, `to` (epoch 밀리초) | 아래 "지표" | F1, F6 |
 
 검토 대기함(F1)은 `GET /api/tickets?status=awaiting_human`이다.
+
+`GET /api/tickets`는 필터 적용 후 다음 순서를 보장한다. 커서 페이지를 나누기 전에
+이 순서를 적용하며, 같은 데이터 집합을 순회할 때 페이지 사이에 중복·누락이 없어야 한다.
+
+1. `priority` 내림차순
+2. 같은 priority에서는 `created_at` 오름차순
+3. 두 값도 같으면 `ticket_id` 오름차순 (문자열 순서)
+
+화면은 응답 순서를 그대로 유지하고 `next_cursor`로 다음 페이지를 요청한다.
+새 sort 매개변수는 추가하지 않는다. 정렬 보장은 변경 중인 데이터의 스냅샷 보장을 뜻하지 않는다.
+
 
 ### 티켓 상세
 
@@ -117,7 +128,7 @@
 
 | 메서드 · 경로 | 요청 본문 | 응답 | 쓰는 화면 |
 |---|---|---|---|
-| `POST /api/tickets/{ticket_id}/reviews` | `reviewer`, `decision` (`tp`, `fp`), `reason` | C9 HumanReview | F1, F2 |
+| `POST /api/tickets/{ticket_id}/reviews` | `reviewer`, `decision` (`tp`, `fp`), `reason` | C9 HumanReview | F2 |
 | `POST /api/incidents/{incident_id}/reviews` | `reviewer`, `decision` (`approve`, `reject`), `reject_type`, `comment` | C15 L2Review | F3 |
 | `POST /api/rules/{proposal_id}/reviews` | `reviewer`, `decision` (`approve`, `reject`) | C18 RuleProposal | F5 |
 | `PATCH /api/cases/{case_id}` | `status`, `tasks`, `lessons` 중 바꿀 것만 | C16 Case | F4 |

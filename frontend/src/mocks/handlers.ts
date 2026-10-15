@@ -86,7 +86,16 @@ function validTasks(tasks: unknown): tasks is CaseTask[] {
 // or a persistent backend. The actual API must delegate validation to the core.
 export const handlers = [
   http.get(route('tickets'), ({ request }) =>
-    page(state.tickets, request, ['status', 'handling_type', 'min_priority']),
+    page(
+      [...state.tickets].sort(
+        (a, b) =>
+          b.priority - a.priority ||
+          a.created_at - b.created_at ||
+          (a.ticket_id < b.ticket_id ? -1 : a.ticket_id > b.ticket_id ? 1 : 0),
+      ),
+      request,
+      ['status', 'handling_type', 'min_priority'],
+    ),
   ),
   http.get(route('incidents'), ({ request }) =>
     page(state.incidents, request, ['status', 'created_by']),
