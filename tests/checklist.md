@@ -224,3 +224,17 @@ K55는 여전히 일부이며 코어 비즈니스 검증은 해당 박스에서 
   재진입 규칙, 검토 완료 시각·소요 시간, F1/F2 표시 기능은 추가하지 않았다.
 - Python 376개, 프론트 54개 테스트 통과. ruff format/check, 계약 TypeScript 검사,
   프론트 typecheck/lint/format:check/build 통과. 기존 공통 integer 검증 정책은 변경하지 않았다.
+
+### #12 승인 범위 재검토
+
+- #10 기준 `b4a2945`와 대조했다. 공통 validator·생성 스크립트·F1 화면·API 호출·mock
+  구현은 변경하지 않았고, K55 항목도 동일하다. K12는 실제 기록·유지 구현의 미완료 항목이다.
+- 전체 JSON fixture를 재귀 확인했다. 완전한 Ticket 12개 모두 필드를 포함하고
+  `validate_contract("Ticket", ...)`를 통과했다. ticket_id 참조 객체 9개에는 필드를 추가하지 않았다.
+  MSW는 해당 공유 fixture를 그대로 사용한다.
+- Schema의 required + integer/null, Python StrictInt/None, TS number/null을 확인했다.
+  생성 재현성 테스트와 생성기 --check가 현재 생성 파일과 일치함을 다시 확인했다.
+- 계약 샘플은 미진입 null → 진입 t1 → 종료 t1 세 단계다. 재진입/t2 갱신 규칙은 없고,
+  문서에는 현재 상태 전이에 재진입 경로가 없다는 범위 설명만 있다.
+- 전체 재검증: Python 376 tests, 프론트 54 tests, ruff format/check, 계약 TS typecheck,
+  프론트 typecheck/lint/format:check/build 모두 통과. 구현 수정 없이 검토 결과만 기록했다.
