@@ -1,6 +1,7 @@
+import { createTestQueryClient } from '../test/query-clients';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { http, HttpResponse } from 'msw';
 import { expect, it } from 'vitest';
@@ -11,7 +12,7 @@ import fixture from '../../../tests/fixtures/frontend/ticket-detail.json';
 import type { TicketDetail } from '../api/types';
 
 function mount(path = '/tickets/tk_sample', interval: number | false = false) {
-  const client = new QueryClient({
+  const client = createTestQueryClient({
     defaultOptions: {
       queries: { retry: false, refetchInterval: interval },
       mutations: { retry: false },
@@ -41,7 +42,8 @@ it('uses the detail envelope, orders steps, copies and expands only documented e
   try {
     const user = userEvent.setup();
     const { container } = mount();
-    await screen.findByRole('heading', { name: '티켓 tk_sample' });
+    await screen.findByText('티켓 tk_sample', { selector: 'h1' });
+    expect(screen.getByRole('heading', { name: '티켓 tk_sample' })).toBeVisible();
     expect(screen.getByText('example.attack')).toBeInTheDocument();
     expect(screen.getByText('sample-reviewer')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'in_sample' })).toHaveAttribute(
@@ -90,7 +92,8 @@ it('shows nulls and empty sections without inventing timestamps or incident link
   value.reviews = [];
   value.incident_ids = [];
   mount();
-  await screen.findByRole('heading', { name: '티켓 tk_sample' });
+  await screen.findByText('티켓 tk_sample', { selector: 'h1' });
+  expect(screen.getByRole('heading', { name: '티켓 tk_sample' })).toBeVisible();
   expect(screen.getByText('검토 대기 시작: 없음')).toBeInTheDocument();
   expect(screen.getAllByText('없음').length).toBeGreaterThan(0);
   expect(screen.queryByRole('button', { name: '동의' })).not.toBeInTheDocument();
@@ -100,7 +103,8 @@ it('shows nulls and empty sections without inventing timestamps or incident link
 it('polls server detail and handles route changes and query errors', async () => {
   const value = detail();
   const { client, router, unmount } = mount('/tickets/tk_sample', 50);
-  await screen.findByRole('heading', { name: '티켓 tk_sample' });
+  await screen.findByText('티켓 tk_sample', { selector: 'h1' });
+  expect(screen.getByRole('heading', { name: '티켓 tk_sample' })).toBeVisible();
   value.ticket.status = 'closed_fp';
   await screen.findByText('오탐 종결');
   await act(() => router.navigate('/tickets/missing'));
@@ -136,7 +140,8 @@ it('renders malicious raw, LLM, extension and registered strings literally with 
   );
   const user = userEvent.setup();
   const { container } = mount();
-  await screen.findByRole('heading', { name: '티켓 tk_sample' });
+  await screen.findByText('티켓 tk_sample', { selector: 'h1' });
+  expect(screen.getByRole('heading', { name: '티켓 tk_sample' })).toBeVisible();
   const section = within(screen.getByRole('region', { name: '판정 근거' }));
   await user.click(section.getByRole('button', { name: 'raw_sample_1 펼치기' }));
   const error = await screen.findByRole('alert');
@@ -176,7 +181,8 @@ it('retries an initial detail error and preserves the awaiting timestamp after r
   await screen.findByText('상세 실패');
   fail = false;
   await userEvent.click(screen.getByRole('button', { name: '다시 시도' }));
-  await screen.findByRole('heading', { name: '티켓 tk_sample' });
+  await screen.findByText('티켓 tk_sample', { selector: 'h1' });
+  expect(screen.getByRole('heading', { name: '티켓 tk_sample' })).toBeVisible();
   expect(screen.getByTitle(String(fixture.ticket.awaiting_human_at))).toBeInTheDocument();
   expect(screen.queryByText(/소요 시간|경과 시간/)).not.toBeInTheDocument();
 });

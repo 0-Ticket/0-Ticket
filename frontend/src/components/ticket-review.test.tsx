@@ -1,6 +1,7 @@
+import { createTestQueryClient } from '../test/query-clients';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { http, HttpResponse } from 'msw';
 import { expect, it } from 'vitest';
@@ -10,7 +11,7 @@ import { server } from '../mocks/server';
 import fixture from '../../../tests/fixtures/frontend/ticket-detail.json';
 
 function mount(path = '/tickets/tk_sample') {
-  const client = new QueryClient({
+  const client = createTestQueryClient({
     defaultOptions: { queries: { retry: false, staleTime: Infinity }, mutations: { retry: false } },
   });
   const router = createMemoryRouter(routes, { initialEntries: [path] });
@@ -41,7 +42,8 @@ it('blocks missing reviewer and reason and sends only the documented request fie
   );
   mount();
   const user = userEvent.setup();
-  await user.click(await screen.findByRole('button', { name: '검토 제출' }));
+  await screen.findByLabelText('검토자');
+  await user.click(screen.getByRole('button', { name: '검토 제출' }));
   expect(bodies).toEqual([]);
   await user.type(screen.getByLabelText('검토자'), 'reviewer-demo');
   await user.click(screen.getByLabelText('FP'));
