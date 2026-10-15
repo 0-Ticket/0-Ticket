@@ -1,0 +1,107 @@
+[
+  {
+    "ticket_id": "tk_sample",
+    "status": "triaging",
+    "handling_type": "web_attack",
+    "specialist": "none",
+    "priority": 20,
+    "alert_ids": [
+      "al_sample"
+    ],
+    "entities": [
+      {
+        "type": "ip",
+        "value": "203.0.113.10"
+      }
+    ],
+    "verdict": {
+      "verdict": "unknown",
+      "confidence": 0.5,
+      "summary": "Sample",
+      "evidence": [
+        {
+          "ref_type": "raw",
+          "ref_id": "raw_sample_1",
+          "note": "Synthetic evidence"
+        }
+      ],
+      "recommended_action": "Review",
+      "needs_human": true,
+      "human_reason": "Sample reason"
+    },
+    "extensions": {},
+    "created_at": 1791849600000,
+    "updated_at": 1791849601000,
+    "awaiting_human_at": null
+  },
+  {
+    "ticket_id": "tk_sample",
+    "status": "awaiting_human",
+    "handling_type": "web_attack",
+    "specialist": "none",
+    "priority": 20,
+    "alert_ids": [
+      "al_sample"
+    ],
+    "entities": [
+      {
+        "type": "ip",
+        "value": "203.0.113.10"
+      }
+    ],
+    "verdict": {
+      "verdict": "unknown",
+      "confidence": 0.5,
+      "summary": "Sample",
+      "evidence": [
+        {
+          "ref_type": "raw",
+          "ref_id": "raw_sample_1",
+          "note": "Synthetic evidence"
+        }
+      ],
+      "recommended_action": "Review",
+      "needs_human": true,
+      "human_reason": "Sample reason"
+    },
+    "extensions": {},
+    "created_at": 1791849600000,
+    "updated_at": 1791849602000,
+    "awaiting_human_at": 1791849602000
+  },
+  {
+    "ticket_id": "tk_sample",
+    "status": "closed_fp",
+    "handling_type": "web_attack",
+    "specialist": "none",
+    "priority": 20,
+    "alert_ids": [
+      "al_sample"
+    ],
+    "entities": [
+      {
+        "type": "ip",
+        "value": "203.0.113.10"
+      }
+    ],
+    "verdict": {
+      "verdict": "unknown",
+      "confidence": 0.5,
+      "summary": "Sample",
+      "evidence": [
+        {
+          "ref_type": "raw",
+          "ref_id": "raw_sample_1",
+          "note": "Synthetic evidence"
+        }
+      ],
+      "recommended_action": "Review",
+      "needs_human": true,
+      "human_reason": "Sample reason"
+    },
+    "extensions": {},
+    "created_at": 1791849600000,
+    "updated_at": 1791849603000,
+    "awaiting_human_at": 1791849602000
+  }
+]

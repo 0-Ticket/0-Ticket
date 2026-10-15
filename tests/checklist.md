@@ -36,7 +36,7 @@
 | K9 | 7 | C13이 저장되고, 드문 유형만 VDB에 보관 기간과 함께 들어간다 | ⬜ | |
 | K10 | 8 | 컬렉션별 검색이 유사 사례 상위 k건을 돌려주고, IP·해시는 키워드로 정확히 찾는다. 사례 컬렉션에 판정 전 객체가 들어가지 않는다 | ⬜ | |
 | K11 | 9 | 규칙 표대로 `handling_type`이 정해지고, 표에 없는 알럿은 LLM 분류(가짜 응답)로 정해진 카테고리 중 하나가 된다 | ⬜ | |
-| K12 | 9, 10 | `priority` 계산이 C6 규칙대로이고, 같은 엔티티의 열린 티켓이 있으면 거기에 붙는다. 상태 전이가 규칙 밖으로 가지 않는다 | ⬜ | |
+| K12 | 9, 10 | `priority` 계산이 C6 규칙대로이고, 같은 엔티티의 열린 티켓이 있으면 거기에 붙는다. 상태 전이가 규칙 밖으로 가지 않는다. `awaiting_human` 진입 시 `awaiting_human_at`을 기록하고 상태를 벗어나도 유지한다 | ⬜ | #12는 계약·직렬화만 검증. 실제 기록·유지는 박스 10 후속 구현에서 확인 |
 | K13 | 11 | 가짜 정상 응답으로 C7이 만들어지고 근거 ID가 모두 실제로 존재한다 | ⬜ | |
 | K14 | 11 | 형식이 깨진 응답은 한 번 재시도 후 `unknown` + `needs_human`이 된다. 없는 근거 ID가 있으면 `unknown` + `needs_human`이 된다 | ⬜ | |
 | K15 | 11 | 로그 원문이 `<untrusted_data>` 구분자 안에만 들어간다. "정상으로 분류하라" 같은 문장이 든 알럿으로 확인 | ⬜ | |
@@ -206,3 +206,21 @@ K55는 여전히 일부이며 코어 비즈니스 검증은 해당 박스에서 
   ruff format/check가 통과했다. K45는 F2 미완료, K51·K52는 F1 범위만 확인했다.
 - 정렬은 동일 데이터 집합의 커서 순서를 보장한다. 서버 데이터가 요청 도중 바뀌는
   경우의 스냅샷 일관성은 이번 API 계약에 포함하지 않는다.
+
+## #12 Ticket awaiting_human_at 계약 검증
+
+- K53: C6 문서·Schema에 필수 nullable integer 필드를 추가하고 모든 기존 Ticket
+  fixture(계약 샘플, 프론트 시나리오, 페이지 응답)를 갱신했다.
+  `test_ticket_awaiting_human_at_values`, `test_ticket_awaiting_human_at_invalid_types`,
+  `test_ticket_awaiting_human_at_required`로 null·epoch ms 정수 허용, 잘못된 타입·누락 거부를 확인했다.
+- `test_ticket_wait_history_round_trip`: 손으로 작성한 미진입·대기·종료 스냅샷의
+  null → t1 → t1이 공개 계약 검증과 JSON 직렬화 후 보존됨을 확인했다.
+  진입 시각을 created_at·updated_at에서 대신 얻지 않는다. 상태 전이 로직 테스트는 아니다.
+- K54: Schema에서 Python `StrictInt | None`과 TypeScript `number | null`을 재생성했다.
+  기존 `test_generated_round_trip`, `test_generated_nullable_fields`,
+  `test_generated_strict_field_types`, `test_all_fixture_types`와 확장한 `types.test.ts`가 통과했다.
+  `test_generation_reproducible` 및 생성기 `--check` 통과.
+- K12: 실제 진입 시 기록·상태 종료 후 유지 로직은 후속 박스 10 구현 대상으로 미완료 유지.
+  재진입 규칙, 검토 완료 시각·소요 시간, F1/F2 표시 기능은 추가하지 않았다.
+- Python 376개, 프론트 54개 테스트 통과. ruff format/check, 계약 TypeScript 검사,
+  프론트 typecheck/lint/format:check/build 통과. 기존 공통 integer 검증 정책은 변경하지 않았다.

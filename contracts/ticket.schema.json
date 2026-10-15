@@ -66,6 +66,13 @@
     },
     "updated_at": {
       "type": "integer"
+    },
+    "awaiting_human_at": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "description": "UTC epoch milliseconds when the ticket entered awaiting_human; null before entry. Preserve this timestamp after leaving awaiting_human. The current state machine has no re-entry path. Recording on entry and retaining on exit are box 10 responsibilities (K12); do not substitute created_at or updated_at."
     }
   },
   "required": [
@@ -79,7 +86,8 @@
     "verdict",
     "extensions",
     "created_at",
-    "updated_at"
+    "updated_at",
+    "awaiting_human_at"
   ],
   "additionalProperties": false,
   "description": "Core follow-up: enforce state transitions and calculate priority from severity and target asset criticality."

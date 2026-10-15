@@ -155,3 +155,42 @@ def test_wheel_contains_and_uses_schemas(tmp_path):
         ]
     )
     subprocess.run([sys.executable, "-I", "-c", code], cwd=tmp_path, check=True)
+
+
+@pytest.mark.parametrize("value", [None, 1791849602000])
+def test_ticket_awaiting_human_at_values(value):
+    ticket = fixture("ticket") | {"awaiting_human_at": value}
+    if value is None:
+        ticket["status"] = "triaging"
+    result = validate_contract("Ticket", ticket)
+    assert result.awaiting_human_at == value
+    assert result.model_dump(mode="json")["awaiting_human_at"] == value
+
+
+@pytest.mark.parametrize("value", ["1791849602000", True, 1.5, [], {}])
+def test_ticket_awaiting_human_at_invalid_types(value):
+    with pytest.raises(ContractValidationError) as caught:
+        validate_contract("Ticket", fixture("ticket") | {"awaiting_human_at": value})
+    assert caught.value.path == "/awaiting_human_at"
+
+
+def test_ticket_awaiting_human_at_required():
+    ticket = fixture("ticket")
+    del ticket["awaiting_human_at"]
+    with pytest.raises(ContractValidationError) as caught:
+        validate_contract("Ticket", ticket)
+    assert (caught.value.path, caught.value.rule) == ("/awaiting_human_at", "required")
+
+
+def test_ticket_wait_history_round_trip():
+    # Authored snapshots, not a state-transition implementation or its test.
+    history = json.loads((ROOT / "tests/fixtures/contracts/ticket_wait_history.json").read_text())
+    results = [validate_contract("Ticket", ticket) for ticket in history]
+    assert [result.status for result in results] == ["triaging", "awaiting_human", "closed_fp"]
+    assert [result.awaiting_human_at for result in results] == [None, 1791849602000, 1791849602000]
+    for ticket, result in zip(history, results, strict=True):
+        serialized = json.loads(result.model_dump_json())
+        assert serialized == ticket
+        assert validate_contract("Ticket", serialized).model_dump(mode="json") == ticket
+    assert results[1].awaiting_human_at != results[1].created_at
+    assert results[2].awaiting_human_at != results[2].updated_at

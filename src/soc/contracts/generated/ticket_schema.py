@@ -24,3 +24,4 @@ class Ticket(BaseModel):
     extensions: dict[constr(pattern=r"^[^.]+\..+$", strict=True), Any]
     created_at: StrictInt
     updated_at: StrictInt
+    awaiting_human_at: StrictInt | None
