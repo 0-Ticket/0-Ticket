@@ -254,8 +254,17 @@ L1이 처리하는 업무 단위.
 | extensions | dict | ✅ | 조직·플러그인 추가 필드. 외부 티켓 시스템 ID 등. 없으면 `{}` |
 | created_at | int | ✅ | |
 | updated_at | int | ✅ | |
+| awaiting_human_at | int | 선택 | `awaiting_human` 상태에 진입한 UTC epoch 밀리초. 아직 진입하지 않았다면 `null`. 상태를 벗어나도 진입 시각을 유지한다 |
 
 상태 전이: `new → triaging → (awaiting_human →) closed_benign | closed_fp | escalated`
+
+`awaiting_human_at`은 공통 규칙에 따라 필드 자체는 필수이고 값만 nullable이다.
+미진입 시 `null`, `awaiting_human` 진입 시 해당 시각 `t1`, 상태 종료 후에도 `t1`을 유지한다.
+현재 상태 전이에는 재진입 경로가 없으므로 재진입 규칙은 정의하지 않는다.
+`created_at`이나 `updated_at`을 대체 값으로 사용하지 않는다.
+
+#12는 필드 계약·검증·직렬화 보존을 정의한다. 실제 상태 전이 시각 기록과 유지 로직은
+박스 10의 후속 구현 및 K12 검증 대상이다. 검토 완료 시각이나 소요 시간 계산은 추가하지 않는다.
 
 ## C7 · Verdict
 

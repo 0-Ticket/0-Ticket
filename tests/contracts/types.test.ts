@@ -10,3 +10,12 @@ const wrong: HumanReview = { ...review, decision: 'custom' };
 const nullId: RawRecord = { ...raw, raw_id: null };
 const verdict: Ticket['verdict'] = null;
 void [raw, review, entity, missing, wrong, nullId, verdict];
+const waiting: Ticket['awaiting_human_at'] = 1791849602000;
+const notWaitingYet: Ticket['awaiting_human_at'] = null;
+// @ts-expect-error timestamp is not a string
+const wrongWaiting: Ticket['awaiting_human_at'] = '1791849602000';
+// @ts-expect-error timestamp is not a boolean
+const booleanWaiting: Ticket['awaiting_human_at'] = true;
+// @ts-expect-error nullable field does not allow undefined
+const omittedWaiting: Ticket['awaiting_human_at'] = undefined;
+void [waiting, notWaitingYet, wrongWaiting, booleanWaiting, omittedWaiting];

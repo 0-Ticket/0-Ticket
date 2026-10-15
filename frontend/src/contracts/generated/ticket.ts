@@ -17,6 +17,7 @@ export interface Ticket {
   };
   created_at: number;
   updated_at: number;
+  awaiting_human_at: number | null;
 }
 export interface Entity {
   type: string;

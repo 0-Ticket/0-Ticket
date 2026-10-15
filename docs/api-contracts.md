@@ -138,3 +138,13 @@
 - 코어 검증에 걸리면 `invalid_input`을 돌려준다. 예: 판정을 뒤집으면서 `reason`이 없음, 반려하면서 `reject_type`이 없음
 - 이미 처리된 대상(예: 검토가 끝난 티켓)에 다시 보내면 `conflict`를 돌려준다.
 - 룰 승인은 C18 `status`를 `approved`로 바꿀 뿐이다. SIEM 반영(`deployed`)은 화면 API가 하지 않는다.
+
+## C6 Ticket 필드 추가 (#12)
+
+`awaiting_human_at: int | null`은 Ticket 객체의 필수 필드로 전달된다.
+`GET /api/tickets`의 `items`, `GET /api/tickets/{ticket_id}`의 `ticket`,
+`GET /api/incidents/{incident_id}`의 `tickets`에 포함되는 Ticket이 영향 대상이다.
+필드 의미는 `docs/data-contracts.md`의 C6을 따른다.
+
+목록·상세의 응답 묶음 구조, 페이지 커서, 정렬, 지표 의미는 변경하지 않는다.
+새 API나 검토 완료 시각·소요 시간 지표는 추가하지 않는다.

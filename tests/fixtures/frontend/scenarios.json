@@ -32,7 +32,8 @@
       },
       "extensions": {},
       "created_at": 1791849600000,
-      "updated_at": 1791849600000
+      "updated_at": 1791849600000,
+      "awaiting_human_at": 1791849600000
     },
     {
       "ticket_id": "tk_cloud",
@@ -68,7 +69,8 @@
         "example.department": "demo"
       },
       "created_at": 1791849600000,
-      "updated_at": 1791849600000
+      "updated_at": 1791849600000,
+      "awaiting_human_at": 1791849600000
     },
     {
       "ticket_id": "tk_custom",
@@ -106,7 +108,8 @@
         }
       },
       "created_at": 1791849600000,
-      "updated_at": 1791849600000
+      "updated_at": 1791849600000,
+      "awaiting_human_at": 1791849600000
     },
     {
       "ticket_id": "tk_tie_z",
@@ -130,7 +133,8 @@
         }
       },
       "created_at": 1791849600000,
-      "updated_at": 1791849600000
+      "updated_at": 1791849600000,
+      "awaiting_human_at": null
     },
     {
       "ticket_id": "tk_later",
@@ -154,7 +158,8 @@
         }
       },
       "created_at": 1791849601000,
-      "updated_at": 1791849601000
+      "updated_at": 1791849601000,
+      "awaiting_human_at": null
     },
     {
       "ticket_id": "tk_tie_a",
@@ -179,7 +184,8 @@
         }
       },
       "created_at": 1791849600000,
-      "updated_at": 1791849600000
+      "updated_at": 1791849600000,
+      "awaiting_human_at": null
     }
   ],
   "alerts": [
