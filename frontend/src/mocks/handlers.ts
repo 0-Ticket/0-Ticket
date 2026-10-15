@@ -188,11 +188,13 @@ export const handlers = [
     return json({ ...metrics, from, to });
   }),
   http.post(route('tickets/:id/reviews'), async ({ request, params }) => {
+    // Finish asynchronous work before reading current state. Keep the checks and
+    // mutation below in one synchronous turn; existing error precedence is retained.
+    const input = await body(request, ['reviewer', 'decision', 'reason']);
     const ticket = state.tickets.find((item) => item.ticket_id === params.id);
     if (!ticket) return error('not_found');
     if (reviewed.has(`ticket:${params.id}`) || ticket.status !== 'awaiting_human')
       return error('conflict');
-    const input = await body(request, ['reviewer', 'decision', 'reason']);
     if (!input || !text(input.reviewer) || (input.decision !== 'tp' && input.decision !== 'fp'))
       return error('invalid_input');
     const overturned = input.decision !== ticket.verdict?.verdict;
@@ -216,10 +218,11 @@ export const handlers = [
     return json(review);
   }),
   http.post(route('incidents/:id/reviews'), async ({ request, params }) => {
+    // No await between the current-state check and recording this review.
+    const input = await body(request, ['reviewer', 'decision', 'reject_type', 'comment']);
     const incident = state.incidents.find((item) => item.incident_id === params.id);
     if (!incident) return error('not_found');
     if (reviewed.has(`incident:${params.id}`)) return error('conflict');
-    const input = await body(request, ['reviewer', 'decision', 'reject_type', 'comment']);
     if (
       !input ||
       !text(input.reviewer) ||
@@ -255,10 +258,11 @@ export const handlers = [
     return json(review);
   }),
   http.post(route('rules/:id/reviews'), async ({ request, params }) => {
+    // No await between checking draft status and applying the winning decision.
+    const input = await body(request, ['reviewer', 'decision']);
     const rule = state.rules.find((item) => item.proposal_id === params.id);
     if (!rule) return error('not_found');
     if (rule.status !== 'draft') return error('conflict');
-    const input = await body(request, ['reviewer', 'decision']);
     if (
       !input ||
       !text(input.reviewer) ||
