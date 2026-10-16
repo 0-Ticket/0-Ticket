@@ -282,6 +282,12 @@ K55는 여전히 일부이며 코어 비즈니스 검증은 해당 박스에서 
   기본 구현체를 조용히 가로채지 못한다.
 - entry point 로딩 실패는 건너뛰고 경고와 `load_errors` 기록으로 끝낸다. 깨진 패키지 하나가
   같은 그룹의 다른 플러그인을 막지 않는다.
+- 서로 다른 외부 패키지가 같은 이름을 주장하면 아무것도 싣기 전에 `DuplicatePluginError`로 멈춘다.
+  발견 순서가 구현체를 고르지 못한다(`test_external_duplicate_fails_in_any_order`). 그 이름을 레포가
+  이미 등록했다면 레포가 이기고 외부 선언은 `load_errors`에 남는다.
+- 그룹 이름은 `EXTENSION_POINT_GROUPS`로 생성 시점에 검증한다. `docs/extensibility.md`의 확장 지점
+  13개만 받고, `siems` 같은 오타는 즉시 `ValueError`다. 확장 지점(코어 구조)을 검증하는 것이지
+  구현체 이름을 박아 넣는 것이 아니며, 테스트가 문서 표와 상수를 대조한다.
 - K38(등록형 값)은 데이터 값의 레지스트리로 구현체 레지스트리와 다른 것이라 이번 범위에서 빼고
   ⬜로 둔다. 해당 값 검증은 후속 이슈에서 이 레지스트리 위에 올린다.
 - `tests/contracts/test_generation.py` 2건(`test_generation_reproducible`, `test_typescript_types`)은

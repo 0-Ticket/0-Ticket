@@ -6,9 +6,30 @@ imports or branches on a specific implementation.
 """
 
 import logging
-from importlib.metadata import entry_points
+from importlib.metadata import EntryPoint, entry_points
 
 ENTRY_POINT_PREFIX = "zero_ticket_soc"
+
+# The extension points of docs/extensibility.md, which are core structure, not
+# implementations: a new SIEM adapter or vector store needs no change here.
+# Extension points served by files instead of entry points are not listed.
+EXTENSION_POINT_GROUPS = frozenset(
+    {
+        "sources",
+        "raw_stores",
+        "siem",
+        "lookups",
+        "stores",
+        "vector_stores",
+        "embedders",
+        "llm_providers",
+        "specialists",
+        "mcp_servers",
+        "review_channels",
+        "case_systems",
+        "rule_targets",
+    }
+)
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +50,11 @@ class PluginRegistry:
     """
 
     def __init__(self, group: str):
+        if group not in EXTENSION_POINT_GROUPS:
+            defined = ", ".join(sorted(EXTENSION_POINT_GROUPS))
+            raise ValueError(
+                f"'{group}' is not an extension point of docs/extensibility.md. Defined: {defined}"
+            )
         self.group = group
         self.load_errors: dict[str, str] = {}
         self._implementations: dict[str, object] = {}
@@ -82,17 +108,44 @@ class PluginRegistry:
         # ponytail: no lock. Registries are built at startup, before worker threads.
         if self._discovered:
             return
-        self._discovered = True
+        declared: dict[str, list[EntryPoint]] = {}
         for entry_point in entry_points(group=f"{ENTRY_POINT_PREFIX}.{self.group}"):
-            if entry_point.name in self._implementations:
-                self._fail(entry_point.name, "name already registered in the repo")
+            declared.setdefault(entry_point.name, []).append(entry_point)
+        self._reject_external_duplicates(declared)
+        self._discovered = True
+        for name, points in sorted(declared.items()):
+            if name in self._implementations:
+                self._fail(name, "name already registered in the repo")
                 continue
             try:
-                self._implementations[entry_point.name] = entry_point.load()
+                self._implementations[name] = points[0].load()
             except Exception as error:  # Any import-time failure in third-party code.
-                self._fail(entry_point.name, type(error).__name__)
+                self._fail(name, type(error).__name__)
             else:
-                self._external.add(entry_point.name)
+                self._external.add(name)
+
+    def _reject_external_duplicates(self, declared: dict[str, list[EntryPoint]]) -> None:
+        """Two external packages claiming one name is not recoverable: fail, never pick one.
+
+        This runs before anything is loaded or recorded, so the failure and its
+        message are the same whatever order the packages were discovered in.
+        """
+        collisions = {
+            name: sorted(self._source(point) for point in points)
+            for name, points in declared.items()
+            if len(points) > 1 and name not in self._implementations
+        }
+        if collisions:
+            raise DuplicatePluginError(
+                "; ".join(
+                    f"{self._label(name)} is declared by {', '.join(sources)}"
+                    for name, sources in sorted(collisions.items())
+                )
+            )
+
+    @staticmethod
+    def _source(entry_point: EntryPoint) -> str:
+        return entry_point.dist.name if entry_point.dist else "an unknown package"
 
     def _fail(self, name: str, reason: str) -> None:
         self.load_errors[name] = reason
