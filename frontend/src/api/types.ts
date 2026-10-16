@@ -37,8 +37,12 @@ export type CaseDetail = { case: Case; proposal_ids: string[] };
 export type HuntDetail = { hunt: HuntFinding; steps: AgentStep[]; proposal_ids: string[] };
 export type TicketReviewInput = Pick<HumanReview, 'reviewer' | 'decision'> &
   Partial<Pick<HumanReview, 'reason'>>;
+// expected_review_round echoes the C10 review_round the screen received. It is a request
+// precondition, not a contract field; the server records the actual C15 round.
 export type IncidentReviewInput = Pick<L2Review, 'reviewer' | 'decision'> &
-  Partial<Pick<L2Review, 'reject_type' | 'comment'>>;
+  Partial<Pick<L2Review, 'reject_type' | 'comment'>> & {
+    expected_review_round: NonNullable<Incident['review_round']>;
+  };
 export type RuleReviewInput = {
   reviewer: NonNullable<RuleProposal['reviewer']>;
   decision: L2Review['decision'];

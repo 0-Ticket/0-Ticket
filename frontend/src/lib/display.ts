@@ -33,9 +33,13 @@ export const badges: Record<string, { label: string; tone: Tone }> = {
   missing_step: { label: '누락된 단계', tone: 'neutral' },
   wrong_conclusion: { label: '잘못된 결론', tone: 'neutral' },
 };
-// Derived display only: documented screen rule for box 21, never a status value.
-export const HUMAN_HANDLING_LABEL = '사람 직접 처리';
-export const HUMAN_HANDLING_TONE: Tone = 'purple';
+// C10 review_state (L2 review workflow), kept apart from the lifecycle `status` badges.
+export const reviewStateBadges: Record<string, { label: string; tone: Tone }> = {
+  analyzing: { label: 'L2 분석 중', tone: 'info' },
+  awaiting_review: { label: 'L2 검토 대기', tone: 'warning' },
+  approved: { label: 'L2 승인', tone: 'success' },
+  human_handling: { label: '사람 직접 처리', tone: 'purple' },
+};
 export const riskLabels: Record<string, string> = { low: '낮음', medium: '중간', high: '높음' };
 export const riskTones: Record<string, Tone> = {
   low: 'neutral',

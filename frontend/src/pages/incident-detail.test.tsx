@@ -104,11 +104,12 @@ it('shows the report in response order with evidence links and no execution cont
     expect(time).toHaveTextContent(new Date(Number(time.title)).toLocaleString());
 });
 
-it('marks manual grouping and two rejections without deciding review availability from it', async () => {
+it('marks manual grouping and human handling from review_state', async () => {
   mount('/incidents/in_manual');
   await heading('in_manual');
   expect(screen.getByText('사람이 직접 묶음')).toBeInTheDocument();
   expect(screen.getByText('사람 직접 처리')).toBeInTheDocument();
+  expect(screen.getByText('두 번 반려되어 사람이 직접 처리합니다.')).toBeInTheDocument();
   const reviews = region('L2 검토 기록');
   expect(reviews.getByText('reviewer-one')).toBeInTheDocument();
   expect(reviews.getByText('2회차')).toBeInTheDocument();
@@ -118,25 +119,64 @@ it('marks manual grouping and two rejections without deciding review availabilit
   expect(region('Agent Log').getByText('없음')).toBeInTheDocument();
   expect(screen.getByText('요약: 없음')).toBeInTheDocument();
   expect(screen.getByText('Case: 없음')).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: '검토 제출' })).toBeEnabled();
+  expect(screen.getByRole('button', { name: '검토 제출' })).toBeDisabled();
 });
 
 it.each([
-  ['in_sample', 'Case가 이미 만들어졌습니다.'],
-  ['in_benign', '종결된 Incident입니다.'],
-  ['in_escalated', '종결된 Incident입니다.'],
-])('disables the review form for %s', async (id, message) => {
+  ['in_sample', 'L2 승인', 'L2 검토에서 승인되었습니다.'],
+  ['in_escalated', 'L2 승인', 'L2 검토에서 승인되었습니다.'],
+  ['in_reanalysis', 'L2 분석 중', 'L2 분석 중입니다. 새 검토 기회가 열리면 검토할 수 있습니다.'],
+  ['in_benign', '사람 직접 처리', '두 번 반려되어 사람이 직접 처리합니다.'],
+])('disables the review form for %s from review_state', async (id, badge, message) => {
   mount(`/incidents/${id}`);
   await heading(id);
+  expect(screen.getByText(badge)).toBeInTheDocument();
   expect(screen.getByText(message)).toBeInTheDocument();
   expect(screen.getByRole('button', { name: '검토 제출' })).toBeDisabled();
-  expect(screen.queryByText('사람 직접 처리')).not.toBeInTheDocument();
   if (id === 'in_sample')
     expect(screen.getByRole('link', { name: 'cs_sample' })).toHaveAttribute(
       'href',
       '/cases/cs_sample',
     );
 });
+
+it('opens a second-round opportunity for an Incident that was rejected once', async () => {
+  mount('/incidents/in_second_round');
+  await heading('in_second_round');
+  expect(screen.getByText('L2 검토 대기')).toBeInTheDocument();
+  expect(region('L2 검토 기록').getByText('1회차')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: '검토 제출' })).toBeEnabled();
+});
+
+it.each([
+  ['analyzing', null, '검토 제출', false],
+  ['awaiting_review', 3, '검토 제출', true],
+] as const)(
+  'never infers availability or human handling from reject counts (%s)',
+  async (state, round, button, enabled) => {
+    const rejects = fixture.l2_reviews.filter((review) => review.incident_id === 'in_manual');
+    server.use(
+      http.get('*/api/incidents/in_manual', () =>
+        HttpResponse.json({
+          incident: { ...fixture.incidents[1], review_state: state, review_round: round },
+          tickets: [],
+          hunts: [],
+          artifact: { ...fixture.artifacts[0], incident_id: 'in_manual', generated_at: Date.now() },
+          steps: [],
+          reviews: rejects,
+          case_id: null,
+        }),
+      ),
+    );
+    mount('/incidents/in_manual');
+    await heading('in_manual');
+    expect(rejects.length).toBeGreaterThanOrEqual(2);
+    expect(screen.queryByText('사람 직접 처리')).not.toBeInTheDocument();
+    const submit = screen.getByRole('button', { name: button });
+    if (enabled) expect(submit).toBeEnabled();
+    else expect(submit).toBeDisabled();
+  },
+);
 
 it('shows not_found and retries the detail request', async () => {
   let fail = true;
@@ -165,5 +205,6 @@ it('shows not_found and retries the detail request', async () => {
   await userEvent.click(screen.getByRole('button', { name: '다시 시도' }));
   await heading('in_manual');
   expect(screen.queryByText('Incident 없음')).not.toBeInTheDocument();
-  expect(screen.queryByText('사람 직접 처리')).not.toBeInTheDocument();
+  // No reviews in this response, yet review_state alone marks human handling.
+  expect(screen.getByText('사람 직접 처리')).toBeInTheDocument();
 });

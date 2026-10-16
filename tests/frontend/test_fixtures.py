@@ -175,3 +175,29 @@ def test_incident_detail_fixture_contracts_and_references():
         for t in a["timeline"]
         for e in t["evidence"]
     )
+
+
+def test_incident_review_fixtures_follow_box21_flow():
+    # Synthetic mock states must tell a consistent box 21 story (#21); the screen never
+    # derives them, so this only checks the hand-written fixtures.
+    data = json.loads((FIXTURES / "scenarios.json").read_text())
+    extra = json.loads((FIXTURES / "incident-detail.json").read_text())
+    incidents = data["incidents"] + extra["incidents"]
+    reviews = data["l2_reviews"] + extra["l2_reviews"]
+    states = set()
+    for incident in incidents:
+        mine = [r for r in reviews if r["incident_id"] == incident["incident_id"]]
+        rounds = [r["round"] for r in mine]
+        rejects = [r for r in mine if r["decision"] == "reject"]
+        state = incident["review_state"]
+        states.add(state)
+        assert rounds == sorted(set(rounds))
+        if state == "awaiting_review":
+            assert incident["review_round"] > max(rounds, default=0)
+            assert len(rejects) < 2
+        if state == "approved":
+            assert not mine or mine[-1]["decision"] == "approve"
+        if state == "human_handling":
+            assert len(rejects) >= 2
+    assert states == {"analyzing", "awaiting_review", "approved", "human_handling"}
+    assert any(i["review_round"] == 2 for i in incidents)

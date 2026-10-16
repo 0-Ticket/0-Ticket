@@ -59,23 +59,34 @@ it('records exactly one concurrent Ticket review and preserves the winning decis
   expect(after.ticket.updated_at).toBe(winner.created_at);
 });
 
-it('records exactly one concurrent Incident review and advances its round only once', async () => {
-  const before = await api.incident('in_manual');
+it('records exactly one concurrent review for the same Incident review opportunity', async () => {
+  const before = await api.incident('in_second_round');
   const winner = await race([
-    () => api.reviewIncident('in_manual', { reviewer: 'demo-approve', decision: 'approve' }),
     () =>
-      api.reviewIncident('in_manual', {
+      api.reviewIncident('in_second_round', {
+        reviewer: 'demo-approve',
+        decision: 'approve',
+        expected_review_round: 2,
+      }),
+    () =>
+      api.reviewIncident('in_second_round', {
         reviewer: 'demo-reject',
         decision: 'reject',
         reject_type: 'missing_step',
         comment: 'Synthetic rejection',
+        expected_review_round: 2,
       }),
   ]);
-  const after = await api.incident('in_manual');
+  const after = await api.incident('in_second_round');
   expect(after.reviews).toEqual([...before.reviews, winner]);
-  expect(winner.round).toBe(Math.max(0, ...before.reviews.map((review) => review.round)) + 1);
-  // F0 stores the L2 decision; actual Incident lifecycle transitions belong to the core.
-  expect(after.incident).toEqual(before.incident);
+  // The round is the opportunity the server had open, not a count of past reviews.
+  expect(winner.round).toBe(before.incident.review_round);
+  // Only the review workflow moves; the lifecycle status belongs to the core lifecycle.
+  expect(after.incident).toEqual({
+    ...before.incident,
+    review_state: winner.decision === 'approve' ? 'approved' : 'human_handling',
+    review_round: null,
+  });
 });
 
 it('applies exactly one concurrent Rule review without overwriting its reviewer or status', async () => {

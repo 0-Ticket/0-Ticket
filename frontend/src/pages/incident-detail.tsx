@@ -5,6 +5,7 @@ import {
   Extensions,
   ObjectId,
   QueryError,
+  ReviewStateBadge,
   StatusNote,
   Timestamp,
 } from '../components/contract-display';
@@ -18,21 +19,13 @@ import { IncidentMembers } from '../components/incident-members';
 import { IncidentReport } from '../components/incident-report';
 import { IncidentReview } from '../components/incident-review';
 import { TicketList } from '../components/ticket-list';
-import {
-  HUMAN_HANDLING_LABEL,
-  HUMAN_HANDLING_TONE,
-  severityTones,
-  toneRails,
-} from '../lib/display';
+import { severityTones, toneRails } from '../lib/display';
 
 export function IncidentDetailPage() {
   const { incident_id = '' } = useParams();
   const query = useIncident(incident_id);
   const detail = query.data;
   const incident = detail?.incident;
-  // Documented display rule (box 21): two rejections are shown as human handling.
-  const humanHandling =
-    (detail?.reviews.filter((review) => review.decision === 'reject').length ?? 0) >= 2;
   return (
     <div>
       {query.isPending && <StatusNote busy>Incident 상세 불러오는 중…</StatusNote>}
@@ -56,9 +49,7 @@ export function IncidentDetailPage() {
               <Badge value={null} severity={incident.severity_id} />
               <Badge value={incident.status} />
               <Badge value={incident.created_by} />
-              {humanHandling && (
-                <ToneBadge tone={HUMAN_HANDLING_TONE}>{HUMAN_HANDLING_LABEL}</ToneBadge>
-              )}
+              <ReviewStateBadge value={incident.review_state} />
             </div>
             <h1 className="text-xl font-semibold tracking-tight break-all">
               Incident {incident.incident_id}
@@ -169,7 +160,6 @@ export function IncidentDetailPage() {
               <IncidentReview
                 key={incident.incident_id}
                 incident={incident}
-                caseId={detail.case_id}
                 refreshFailed={query.isError}
               />
             </aside>

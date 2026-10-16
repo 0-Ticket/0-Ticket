@@ -8,22 +8,44 @@ import { Choice, FormMessage, ReviewPanel } from './review-form';
 
 const REJECT_TYPES = ['wrong_grouping', 'missing_step', 'wrong_conclusion'] as const;
 
-// Only clearly finished states disable the form; the API decides everything else.
-function closedMessage(incident: Incident, caseId: string | null) {
-  if (caseId !== null) return 'Case가 이미 만들어졌습니다.';
-  if (incident.status === 'closed_benign' || incident.status === 'escalated_to_case')
-    return '종결된 Incident입니다.';
-  return null;
-}
+// C10 review_state is the only signal for an open review opportunity (#21). Review counts,
+// C15 rounds and report timestamps are never used to infer it.
+const CLOSED_MESSAGES: Record<Exclude<Incident['review_state'], 'awaiting_review'>, string> = {
+  analyzing: 'L2 분석 중입니다. 새 검토 기회가 열리면 검토할 수 있습니다.',
+  approved: 'L2 검토에서 승인되었습니다.',
+  human_handling: '두 번 반려되어 사람이 직접 처리합니다.',
+};
 
 export function IncidentReview({
   incident,
-  caseId,
   refreshFailed = false,
 }: {
   incident: Incident;
-  caseId: string | null;
   refreshFailed?: boolean;
+}) {
+  const round = incident.review_state === 'awaiting_review' ? incident.review_round : null;
+  // Remember the last opportunity the server opened. A new one remounts the form so the
+  // previous answer, message and mutation never carry over; a closed state keeps them.
+  const [opened, setOpened] = useState(round);
+  if (round !== null && round !== opened) setOpened(round);
+  return (
+    <IncidentReviewForm
+      key={opened ?? 'none'}
+      incident={incident}
+      round={round}
+      refreshFailed={refreshFailed}
+    />
+  );
+}
+
+function IncidentReviewForm({
+  incident,
+  round,
+  refreshFailed,
+}: {
+  incident: Incident;
+  round: number | null;
+  refreshFailed: boolean;
 }) {
   const [reviewer, setReviewer] = useState('');
   const [decision, setDecision] = useState<L2Review['decision'] | ''>('');
@@ -32,12 +54,15 @@ export function IncidentReview({
   const [validation, setValidation] = useState('');
   const locked = useRef(false);
   const mutation = useIncidentReview(incident.incident_id);
-  const closed = closedMessage(incident, caseId);
+  const closed =
+    incident.review_state === 'awaiting_review' ? null : CLOSED_MESSAGES[incident.review_state];
   const reject = decision === 'reject';
-  const unavailable = closed !== null || mutation.isPending || mutation.isSuccess || refreshFailed;
+  // This form instance belongs to one opportunity (keyed above): once answered it stays
+  // locked, and only a new server-opened round remounts a fresh form.
+  const unavailable = round === null || mutation.isPending || mutation.isSuccess || refreshFailed;
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (locked.current || unavailable) return;
+    if (locked.current || unavailable || round === null) return;
     if (!reviewer.trim() || !decision || (reject && (!rejectType || !comment.trim()))) {
       setValidation('검토자, 결정을 입력하세요. 반려하면 반려 유형과 코멘트가 필요합니다.');
       return;
@@ -45,12 +70,14 @@ export function IncidentReview({
     setValidation('');
     locked.current = true;
     try {
-      // `round` is assigned by the core and never sent.
+      // The received review_round is echoed unchanged as a precondition; the core assigns
+      // and records the actual C15 round.
       await mutation.mutateAsync({
         reviewer: reviewer.trim(),
         decision,
         reject_type: reject && rejectType ? rejectType : null,
         comment: comment.trim() || null,
+        expected_review_round: round,
       });
     } catch {
       /* Mutation error is displayed below; never resubmit automatically. */

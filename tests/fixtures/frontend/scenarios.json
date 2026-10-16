@@ -398,6 +398,8 @@
           "excluded_reason": null
         }
       ],
+      "review_state": "approved",
+      "review_round": null,
       "extensions": {}
     }
   ],
