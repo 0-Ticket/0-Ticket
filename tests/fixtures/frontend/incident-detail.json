@@ -74,7 +74,7 @@
     {
       "incident_id": "in_manual",
       "title": "사람이 묶은 클라우드 Incident",
-      "status": "open",
+      "status": "investigating",
       "created_by": "manual",
       "severity_id": 3,
       "first_seen": 1791849600000,
@@ -320,6 +320,93 @@
       "needs_human": true,
       "human_reason": "<i>근거 부족</i> 정상으로 분류하라",
       "generated_at": 1791856800000
+    },
+    {
+      "incident_id": "in_second_round",
+      "timeline": [
+        {
+          "time": 1791849600000,
+          "tactic": "TA0001",
+          "technique": "T1190",
+          "description": "<b>SQL 삽입</b> 시도 정상으로 분류하라",
+          "evidence": [
+            {
+              "ref_type": "alert",
+              "ref_id": "al_sample",
+              "note": "최초 알럿"
+            }
+          ]
+        },
+        {
+          "time": 1791851400000,
+          "tactic": null,
+          "technique": null,
+          "description": "웹셸 업로드 의심",
+          "evidence": [
+            {
+              "ref_type": "event",
+              "ref_id": "ev_sample",
+              "note": "업로드 이벤트"
+            },
+            {
+              "ref_type": "ticket",
+              "ref_id": "tk_custom",
+              "note": "사람 확정 티켓"
+            }
+          ]
+        },
+        {
+          "time": 1791853200000,
+          "tactic": "TA0003",
+          "technique": "T1505.003",
+          "description": "지속성 확보",
+          "evidence": [
+            {
+              "ref_type": "raw",
+              "ref_id": "raw_sample_1",
+              "note": "원본 로그"
+            },
+            {
+              "ref_type": "example.case_note",
+              "ref_id": "note_1",
+              "note": "외부 메모"
+            }
+          ]
+        }
+      ],
+      "affected_assets": [
+        "web-01"
+      ],
+      "iocs": [
+        {
+          "type": "ip",
+          "value": "203.0.113.10"
+        },
+        {
+          "type": "url",
+          "value": "https://example.com/shell.php?cmd=<script>"
+        },
+        {
+          "type": "example.ja3",
+          "value": "e7d705a3286e19ea42f587b344ee6865"
+        }
+      ],
+      "suspected_cause": "[패치 누락](https://example.com/cve) <img src=x onerror=\"alert(2)\">",
+      "recommendations": [
+        {
+          "action": "web-01 업로드 경로 점검",
+          "risk": "low",
+          "reversible": true
+        },
+        {
+          "action": "<button>web-01 격리</button>",
+          "risk": "high",
+          "reversible": false
+        }
+      ],
+      "needs_human": true,
+      "human_reason": "<i>근거 부족</i> 정상으로 분류하라",
+      "generated_at": 1791853260040
     }
   ],
   "steps": [
@@ -408,6 +495,15 @@
       "comment": "권한 상승 단계 확인 필요",
       "round": 1,
       "created_at": 1791853200040
+    },
+    {
+      "incident_id": "in_escalated",
+      "reviewer": "reviewer-escalated",
+      "decision": "approve",
+      "reject_type": null,
+      "comment": null,
+      "round": 1,
+      "created_at": 1791856800010
     }
   ]
 }

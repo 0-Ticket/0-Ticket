@@ -202,7 +202,9 @@ it('closes the form from the refetched review_state and reopens it only for a ne
     await waitFor(() => expect(submit()).toBeEnabled());
     expect(screen.queryByText('검토가 저장되었습니다.')).not.toBeInTheDocument();
     expect(screen.getByLabelText('검토자')).toHaveValue('');
-    await fillReject();
+    // A short approval keeps this test light; the reject path is covered above.
+    await user.type(screen.getByLabelText('검토자'), 'r');
+    await user.click(screen.getByLabelText('승인'));
     await user.click(submit());
     await waitFor(() => expect(bodies).toMatchObject([{ expected_review_round: 2 }]));
   } finally {

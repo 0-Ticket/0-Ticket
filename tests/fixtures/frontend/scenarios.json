@@ -363,7 +363,7 @@
     {
       "incident_id": "in_sample",
       "title": "Sample",
-      "status": "open",
+      "status": "escalated_to_case",
       "created_by": "correlation",
       "severity_id": 4,
       "first_seen": 1791849600000,

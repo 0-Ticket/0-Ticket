@@ -200,6 +200,68 @@ describe('documented API contracts', () => {
     ).rejects.toMatchObject({ code: 'conflict' });
   });
 
+  it('applies the documented L2 error precedence', async () => {
+    const post = (id: string, body: Record<string, unknown>) =>
+      request(`incidents/${id}/reviews`, { method: 'POST', body });
+    // 1. not_found wins over every body problem.
+    await expect(post('in_missing', { decision: 'maybe' })).rejects.toMatchObject({
+      code: 'not_found',
+    });
+    // 2. A closed review workflow is a conflict even when the body is malformed.
+    await expect(post('in_manual', { decision: 'maybe' })).rejects.toMatchObject({
+      code: 'conflict',
+    });
+    await expect(
+      post('in_reanalysis', { reviewer: 'demo', decision: 'approve' }),
+    ).rejects.toMatchObject({ code: 'conflict' });
+    // 3. On an open opportunity, body errors come before the round check.
+    await expect(
+      post('in_second_round', { reviewer: 'demo', decision: 'reject', expected_review_round: 1 }),
+    ).rejects.toMatchObject({ code: 'invalid_input' });
+    await expect(
+      post('in_second_round', { reviewer: 'demo', decision: 'approve' }),
+    ).rejects.toMatchObject({ code: 'invalid_input' });
+    // 4. A well-formed body for another round is a conflict.
+    await expect(
+      post('in_second_round', { reviewer: 'demo', decision: 'approve', expected_review_round: 1 }),
+    ).rejects.toMatchObject({ code: 'conflict' });
+    expect((await api.incident('in_second_round')).incident.review_round).toBe(2);
+  });
+
+  it('rejects a stale tab that still holds an answered round', async () => {
+    // Tabs A and B both loaded round 1.
+    const seen = (await api.incident('in_web_campaign')).incident.review_round!;
+    const a = await api.reviewIncident('in_web_campaign', {
+      reviewer: 'tab-a',
+      decision: 'reject',
+      reject_type: 'missing_step',
+      comment: 'Synthetic rejection',
+      expected_review_round: seen,
+    });
+    expect(a.round).toBe(1);
+    const before = await api.incident('in_web_campaign');
+    await expect(
+      api.reviewIncident('in_web_campaign', {
+        reviewer: 'tab-b',
+        decision: 'approve',
+        expected_review_round: seen,
+      }),
+    ).rejects.toMatchObject({ code: 'conflict' });
+    expect(await api.incident('in_web_campaign')).toEqual(before);
+    // After reanalysis opens a later round, an old round is still refused (fixture round 2).
+    await expect(
+      api.reviewIncident('in_second_round', {
+        reviewer: 'tab-b',
+        decision: 'approve',
+        expected_review_round: 1,
+      }),
+    ).rejects.toMatchObject({ code: 'conflict' });
+    expect((await api.incident('in_second_round')).incident).toMatchObject({
+      review_state: 'awaiting_review',
+      review_round: 2,
+    });
+  });
+
   it('moves a first rejection to analyzing and a second rejection to human handling', async () => {
     const reject = (id: string, round: number) =>
       api.reviewIncident(id, {
