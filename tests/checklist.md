@@ -65,13 +65,13 @@
 
 | ID | 확인할 것 | 상태 | 테스트 |
 |---|---|---|---|
-| K31 | 확장 지점마다 가짜 구현체를 등록하고 설정만 바꿔 교체할 수 있다 | ⬜ | |
-| K32 | 외부 패키지의 entry point로 등록한 플러그인을 코어 수정 없이 불러온다 | ⬜ | |
+| K31 | 확장 지점마다 가짜 구현체를 등록하고 설정만 바꿔 교체할 수 있다 | 🟡 일부 | `test_fake_implementation_replaces_default`, `test_get_returns_registered_implementation`; 실제 확장 지점의 인터페이스·기본 구현체와 설정 연결은 후속 |
+| K32 | 외부 패키지의 entry point로 등록한 플러그인을 코어 수정 없이 불러온다 | ✅ 통과 | `test_entry_point_plugin_loads_without_core_import`, `test_broken_entry_point_is_skipped` |
 | K33 | 조직 설정 파일(`ZT_CONFIG`)이 기본 설정을 덮어쓰고, 비밀 값은 환경변수에서만 읽는다 | ⬜ | |
 | K34 | `extensions` 필드의 값이 정규화부터 저장·조회까지 그대로 보존된다 | ⬜ | |
 | K35 | LLM 제공자와 모델을 설정만으로 바꿔도 같은 테스트(가짜 응답)가 통과한다 | ⬜ | |
 | K36 | 조직 폴더의 규칙·프롬프트 파일이 같은 이름의 기본 파일보다 우선한다 | ⬜ | |
-| K37 | 코어 코드에 특정 구현체 이름으로 분기하는 곳이 없다 | ⬜ | |
+| K37 | 코어 코드에 특정 구현체 이름으로 분기하는 곳이 없다 | 🟡 일부 | `test_new_registry_has_no_builtins`, `test_entry_point_plugin_loads_without_core_import`; 레지스트리까지만 확인, 파이프라인 코어는 해당 박스에서 |
 | K38 | 플러그인이 등록형 값(소스 종류, 처리 유형, 전문 에이전트, IOC 종류 등)을 새로 등록하면 계약 검증을 통과한다 | ⬜ | |
 | K39 | 조직이 프롬프트 파일을 덮어써도 로그 원문 구분자가 유지되고, 플러그인이 대응 동작을 승인 없이 실행할 수 없다 | ⬜ | |
 
@@ -330,3 +330,25 @@ K55는 여전히 일부이며 코어 비즈니스 검증은 해당 박스에서 
   (load average 8 미만)에서는 대기 없이 5회 모두 통과했다. 1초 대기를 넘겨 실패한 경우는
   F1·F2 테스트도 함께 실패하던 고부하(회당 20~30초)에서만 나와서, 대기를 추가하지 않았다.
   전역 testTimeout, 워커 수, `pnpm test` 명령은 바꾸지 않았다.
+
+## #19 플러그인 레지스트리 검증 결과
+
+- `src/soc/plugins.py` 하나로 확장 지점당 레지스트리 하나(`PluginRegistry(<그룹>)`)를 만든다.
+  `get(name)`이 설정값으로 구현체를 고르는 경계다. 설정 파일을 읽는 일(D-015, 설정 로더)은 범위 밖이다.
+- 중복 등록은 같은 객체면 무시, 다른 객체면 `DuplicatePluginError`다. entry point가 레포에
+  이미 있는 이름을 주장하면 그 플러그인을 건너뛰고 `load_errors`에 기록한다. 발견이 먼저
+  일어나도 레포 등록이 이긴다(`test_repo_registration_wins_after_discovery`). 외부 패키지가
+  기본 구현체를 조용히 가로채지 못한다.
+- entry point 로딩 실패는 건너뛰고 경고와 `load_errors` 기록으로 끝낸다. 깨진 패키지 하나가
+  같은 그룹의 다른 플러그인을 막지 않는다.
+- 서로 다른 외부 패키지가 같은 이름을 주장하면 아무것도 싣기 전에 `DuplicatePluginError`로 멈춘다.
+  발견 순서가 구현체를 고르지 못한다(`test_external_duplicate_fails_in_any_order`). 그 이름을 레포가
+  이미 등록했다면 레포가 이기고 외부 선언은 `load_errors`에 남는다.
+- 그룹 이름은 `EXTENSION_POINT_GROUPS`로 생성 시점에 검증한다. `docs/extensibility.md`의 확장 지점
+  13개만 받고, `siems` 같은 오타는 즉시 `ValueError`다. 확장 지점(코어 구조)을 검증하는 것이지
+  구현체 이름을 박아 넣는 것이 아니며, 테스트가 문서 표와 상수를 대조한다.
+- K38(등록형 값)은 데이터 값의 레지스트리로 구현체 레지스트리와 다른 것이라 이번 범위에서 빼고
+  ⬜로 둔다. 해당 값 검증은 후속 이슈에서 이 레지스트리 위에 올린다.
+- `tests/contracts/test_generation.py` 2건(`test_generation_reproducible`, `test_typescript_types`)은
+  Windows 로컬에서만 실패한다. 생성 파일의 CRLF 체크아웃과 `subprocess`의 `pnpm`(`pnpm.cmd`) 실행 때문이며,
+  `origin/review`를 그대로 받은 작업 트리에서도 같은 2건이 실패한다. 이번 변경과 무관하다.
