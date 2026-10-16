@@ -315,3 +315,24 @@ F1/F2의 시각 표시·대기 시간 계산, 검토 완료 시각·소요 시�
   브라우저 mock은 이 파일의 전문 결과와 조사 단계를 사용하고 기존 F1 티켓 집합은 유지한다.
   Python은 공개 계약 검증 함수로 샘플을 검증하며, Vitest는 상세·입력 검증·오류·재조회와
   F1 연계를 확인한다. F3 Incident 화면은 기존 예약 경로로 연결된다.
+
+### F3 Incident 목록·상세와 L2 검토 (#17)
+
+- `/incidents`는 `GET /api/incidents`의 응답 순서를 그대로 쓰고 `next_cursor`로 "더 보기"를
+  한다. `/incidents/:incident_id`는 기존 Incident 상세 응답만 쓴다. 관련 티켓은 F1 목록
+  컴포넌트와 기존 알럿 조회로 Lookup을 보여 준다. 헌팅 결과·Case는 예약 경로
+  `/hunts/:hunt_id`, `/cases/:case_id`로 링크한다.
+- 묶음 항목은 `excluded`로만 나눠 포함·제외 항목을 표시한다. 묶음 기준은 계산하지 않는다.
+  C11 `timeline`은 계약상 시간순이므로 응답 순서 그대로 표시한다. 근거 `ticket`은
+  티켓 화면으로 링크하고, 모르는 `ref_type`에는 경로를 만들지 않는다. IOC URL은
+  복사만 할 수 있다. 권고에는 "권고 · 실행하지 않음"을 붙이고 실행 버튼을 두지 않는다.
+- 응답 C15에서 `decision=reject`가 2건 이상이면 "사람 직접 처리"를 표시한다. 문서의 표시
+  규칙을 위한 파생 표시이며 상태 값이나 검토 가능 여부를 정하지 않는다.
+- 검토 폼은 `case_id`가 있거나 `closed_benign`·`escalated_to_case`일 때만 비활성화한다.
+  별도의 검토 가능 상태를 정의하지 않고, 최종 판단은 API의 `conflict`에 맡긴다.
+  요청은 `reviewer`, `decision`, `reject_type`, `comment`만 보낸다. 반려 유형·코멘트 필수는
+  화면 편의 검증이다. `round`, Incident 상태, Case 생성 여부는 계산하거나 보내지 않는다.
+  성공·conflict 후 상세, Incident 목록, 지표 Query만 다시 조회한다. POST는 자동 재시도하지 않는다.
+- mock은 기존처럼 L2Review를 기록하고 `round`를 정한다. 상태 전이와 Case 생성은
+  흉내 내지 않는다(박스 21·22 후속). `tests/fixtures/frontend/incident-detail.json`의
+  Incident·헌팅·보고서·조사 단계·검토 기록을 기존 시나리오에 더해 쓴다.

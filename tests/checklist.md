@@ -87,13 +87,13 @@
 | K43 | F2 | 판정·확신도·요약 옆에 근거가 있고, 근거를 누르면 해당 알럿·이벤트·원문이 보인다. 권고 조치에 실행 버튼이 없다 | ✅ 통과 | `ticket-detail.test.tsx`: 판정·근거 펼치기·복사, 권고 표시 |
 | K44 | F2 | Agent Log가 `step` 순서로 보이고, 전문 에이전트 결과가 판정 옆에 보인다 | ✅ 통과 | `ticket-detail.test.tsx`: 전문 결과·AgentStep 순서·발췌 |
 | K45 | F2 | 판정을 뒤집을 때 이유가 없으면 보내지 않고, API가 `invalid_input`을 주면 그 내용을 보여 준다 | ✅ 통과 | `ticket-review.test.tsx`: 이유 필수·invalid_input·중복 제출·재조회 |
-| K46 | F3 | Incident의 묶음 항목(티켓·헌팅 결과)마다 출처(`source`)와 묶인 이유(`rule`, `matched_entity`)가 보이고, 뺀 항목과 이유가 따로 보이며, 공용 자산이 묶는 기준으로 표시되지 않는다 | ⬜ | |
-| K47 | F3 | 보고서 타임라인이 시간순이고 모든 항목에 근거 링크가 있다. 반려에는 유형과 코멘트가 필수이고, 두 번 반려되면 "사람 직접 처리"로 표시된다 | ⬜ | |
+| K46 | F3 | Incident의 묶음 항목(티켓·헌팅 결과)마다 출처(`source`)와 묶인 이유(`rule`, `matched_entity`)가 보이고, 뺀 항목과 이유가 따로 보이며, 공용 자산이 묶는 기준으로 표시되지 않는다 | 🟡 일부 | `incident-detail.test.tsx`: F3 표시 부분만 통과. 공용 자산 제외 등 실제 묶음 기준은 박스 17 구현에서 확인 |
+| K47 | F3 | 보고서 타임라인이 시간순이고 모든 항목에 근거 링크가 있다. 반려에는 유형과 코멘트가 필수이고, 두 번 반려되면 "사람 직접 처리"로 표시된다 | ✅ 통과 | `incident-detail.test.tsx`: 응답 순서 유지·근거 링크·2회 반려 표시; `incident-review.test.tsx`: 반려 필수 입력. 실제 재반려 처리(박스 21)는 후속 |
 | K48 | F4 | Case 작업의 상태·담당자·마감과 교훈을 수정할 수 있다 | ⬜ | |
 | K49 | F5 | 룰 제안에 문법 검사 결과와 백테스트가 보이고, 승인해도 화면이 SIEM 반영을 하지 않는다 | ⬜ | |
 | K50 | F6 | 지표 대시보드가 뒤집은 비율, 반려 유형 통계, 정규화 실패 수를 보여 준다 | ⬜ | |
-| K51 | 전체 | HTML·스크립트 조각이 든 로그 원문, LLM 출력, `extensions` 값이 텍스트로만 표시된다 | 🟡 일부 | F1: `tickets.test.tsx`; F2: `ticket-detail.test.tsx`; 다른 화면은 후속 검증 |
-| K52 | 전체 | 플러그인이 등록한 새 등록형 값과 새 `extensions` 키가 화면 수정 없이 보인다 | 🟡 일부 | F1: `tickets.test.tsx`; F2: `ticket-detail.test.tsx`; 다른 화면은 후속 검증 |
+| K51 | 전체 | HTML·스크립트 조각이 든 로그 원문, LLM 출력, `extensions` 값이 텍스트로만 표시된다 | 🟡 일부 | F1: `tickets.test.tsx`; F2: `ticket-detail.test.tsx`; F3: `incidents.test.tsx`, `incident-detail.test.tsx`; 다른 화면은 후속 검증 |
+| K52 | 전체 | 플러그인이 등록한 새 등록형 값과 새 `extensions` 키가 화면 수정 없이 보인다 | 🟡 일부 | F1: `tickets.test.tsx`; F2: `ticket-detail.test.tsx`; F3: `incidents.test.tsx`, `incident-detail.test.tsx`; 다른 화면은 후속 검증 |
 
 ## 계약 Schema
 
@@ -271,3 +271,33 @@ K55는 여전히 일부이며 코어 비즈니스 검증은 해당 박스에서 
   테스트를 제외하거나 린트 규칙을 끄지 않았다.
 - Chrome에서 라이트·다크 모드의 판정·근거·전문 결과 배치를 확인했다.
   새 라이브러리, 계약·생성 코드 변경 없음. 실제 백엔드 연결과 F3 화면은 후속 범위다.
+
+## #17 F3 구현 검증
+
+- K46 (일부): `GET /api/incidents/{incident_id}`의 `incident.members`를 `excluded`로만 나눠
+  포함·제외 항목을 표시한다. 항목마다 `source` 배지, `rule`, `matched_entity`(null이면 "없음"),
+  `excluded_reason`, 티켓·헌팅 링크를 확인했다. 공용 자산을 묶는 기준으로 쓰지 않는 것은
+  Correlation(박스 17)의 계산 규칙이라 F3에서 완료 처리하지 않는다.
+- K47: C11 `timeline`은 계약이 보장하는 응답 순서 그대로 표시하고 다시 정렬하지 않는다.
+  fixture와 Python 테스트에서 시간순 응답을 확인했다. 근거는 alert·event·raw를 기존
+  조회 API로 펼치고 `ticket`은 `/tickets/:id`로 링크한다. 모르는 등록형 `ref_type`은
+  복사 가능한 텍스트로만 두고 조회 경로를 만들지 않는다. 반려는 `reject_type`과
+  `comment`가 없으면 보내지 않는다. 응답 C15에서 `decision=reject`가 2건 이상이면
+  "사람 직접 처리" 표시만 붙인다. 상태 값을 만들지 않고 검토 폼 가능 여부에도 쓰지 않는다.
+  실제 재반려 처리(박스 21)는 후속 범위다.
+- 검토 폼은 `case_id`가 있거나 `closed_benign`·`escalated_to_case`일 때만 비활성화한다.
+  그 밖의 판단은 API에 맡긴다. 요청은 `reviewer`, `decision`, `reject_type`, `comment`만
+  보내고 `round`는 보내지 않는다. 응답의 `round`만 표시한다. 중복 제출 방지, 네 API 오류,
+  POST 자동 재시도 없음, 성공·conflict 후 상세·목록·지표 재조회, 저장 후 재조회 실패
+  구분을 확인했다. mock은 L2Review와 round만 기록하며 Incident 상태 전이와 Case 생성은
+  하지 않는다(박스 21·22 후속).
+- K51·K52: 제목·요약·제외 사유·타임라인·추정 원인·권고·IOC URL·검토 코멘트·발췌·
+  `extensions`의 HTML·마크다운·URL 문자열이 plain text로 남고, 새 Entity·Ioc·Evidence
+  등록형 값과 새 `extensions` 키가 원래 문자열로 보이는지 확인했다. 권고에는 실행 버튼이 없다.
+- `tests/fixtures/frontend/incident-detail.json`을 추가하고 `validate_contract()`와 참조 ID를
+  검증했다(`test_incident_detail_fixture_contracts_and_references`).
+- Node 24.21.0·pnpm 11.9.0에서 typecheck/lint/format:check/build 통과, 기본 `pnpm test`
+  5회 연속 통과(전체 92개). Python 테스트와 ruff format/check 통과.
+  장비 부하(load average 50 이상)에서는 F1·F2·F3 테스트 일부가 5초 제한을 넘기는 것을
+  관찰했다. 부하가 내려간 뒤에는 통과했다. 테스트 제한 시간과 워커 수는 바꾸지 않았고,
+  F3 검증 테스트는 짧은 테스트로 나눴다.
