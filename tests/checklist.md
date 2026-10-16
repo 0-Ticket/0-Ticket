@@ -277,11 +277,13 @@ K55는 여전히 일부이며 코어 비즈니스 검증은 해당 박스에서 
 - `src/soc/plugins.py` 하나로 확장 지점당 레지스트리 하나(`PluginRegistry(<그룹>)`)를 만든다.
   `get(name)`이 설정값으로 구현체를 고르는 경계다. 설정 파일을 읽는 일(D-015, 설정 로더)은 범위 밖이다.
 - 중복 등록은 같은 객체면 무시, 다른 객체면 `DuplicatePluginError`다. entry point가 레포에
-  이미 있는 이름을 주장하면 그 플러그인을 건너뛰고 `load_errors`에 기록한다. 외부 패키지가
+  이미 있는 이름을 주장하면 그 플러그인을 건너뛰고 `load_errors`에 기록한다. 발견이 먼저
+  일어나도 레포 등록이 이긴다(`test_repo_registration_wins_after_discovery`). 외부 패키지가
   기본 구현체를 조용히 가로채지 못한다.
 - entry point 로딩 실패는 건너뛰고 경고와 `load_errors` 기록으로 끝낸다. 깨진 패키지 하나가
   같은 그룹의 다른 플러그인을 막지 않는다.
 - K38(등록형 값)은 데이터 값의 레지스트리로 구현체 레지스트리와 다른 것이라 이번 범위에서 빼고
   ⬜로 둔다. 해당 값 검증은 후속 이슈에서 이 레지스트리 위에 올린다.
-- `tests/contracts/test_generation.py` 3건은 로컬에 `tools/contracts`의 node 패키지가 없어
-  실패한다. 이번 변경 전에도 같은 3건이 실패한다.
+- `tests/contracts/test_generation.py` 2건(`test_generation_reproducible`, `test_typescript_types`)은
+  Windows 로컬에서만 실패한다. 생성 파일의 CRLF 체크아웃과 `subprocess`의 `pnpm`(`pnpm.cmd`) 실행 때문이며,
+  `origin/review`를 그대로 받은 작업 트리에서도 같은 2건이 실패한다. 이번 변경과 무관하다.

@@ -32,12 +32,22 @@ class PluginRegistry:
         self.group = group
         self.load_errors: dict[str, str] = {}
         self._implementations: dict[str, object] = {}
+        self._external: set[str] = set()
         self._discovered = False
 
     def register(self, name: str, implementation: object) -> None:
-        """Register an in-repo implementation. Re-registering the same object is a no-op."""
+        """Register an in-repo implementation. Re-registering the same object is a no-op.
+
+        An in-repo name always beats an external plugin, whichever was seen first,
+        so discovery order cannot change which implementation a name resolves to.
+        """
         existing = self._implementations.get(name)
         if existing is implementation:
+            return
+        if name in self._external:
+            self._external.discard(name)
+            self._implementations[name] = implementation
+            self._fail(name, "name already registered in the repo")
             return
         if existing is not None:
             raise DuplicatePluginError(f"{self._label(name)} is already registered")
@@ -81,6 +91,8 @@ class PluginRegistry:
                 self._implementations[entry_point.name] = entry_point.load()
             except Exception as error:  # Any import-time failure in third-party code.
                 self._fail(entry_point.name, type(error).__name__)
+            else:
+                self._external.add(entry_point.name)
 
     def _fail(self, name: str, reason: str) -> None:
         self.load_errors[name] = reason

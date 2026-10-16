@@ -109,3 +109,13 @@ def test_entry_point_does_not_shadow_registered_implementation(installed_plugin)
     registry.register("acme_siem", FakeAdapter)
     assert registry.get("acme_siem") is FakeAdapter
     assert "acme_siem" in registry.load_errors
+
+
+def test_repo_registration_wins_after_discovery(installed_plugin):
+    installed_plugin(WORKING)
+    registry = PluginRegistry("siem")
+    assert registry.get("acme_siem").name == "acme_siem"
+    # Same collision, opposite order: the in-repo implementation still wins.
+    registry.register("acme_siem", FakeAdapter)
+    assert registry.get("acme_siem") is FakeAdapter
+    assert "acme_siem" in registry.load_errors
