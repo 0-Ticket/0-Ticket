@@ -106,6 +106,13 @@ export function CaseTasks({
                   disabled={unavailable}
                   onChange={(event) => void change(index, event.target.value as CaseTask['status'])}
                 >
+                  {/* A value outside the contract enum is shown as received but cannot be
+                      chosen; the screen never normalizes it to a known status. */}
+                  {!TASK_STATUSES.includes(task.status) && (
+                    <option value={task.status} disabled>
+                      {task.status}
+                    </option>
+                  )}
                   {TASK_STATUSES.map((value) => (
                     <option key={value} value={value}>
                       {badges[value].label}

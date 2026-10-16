@@ -51,11 +51,11 @@ export const data = {
     ...detail.steps,
     ...incidentDetail.steps,
   ],
-  incidents: [...scenarios.incidents, ...incidentDetail.incidents],
+  incidents: [...scenarios.incidents, ...incidentDetail.incidents, ...caseDetail.incidents],
   hunts: [...scenarios.hunts, ...incidentDetail.hunts],
   artifacts: [...scenarios.artifacts, ...incidentDetail.artifacts, ...caseDetail.artifacts],
   cases: [...scenarios.cases, ...caseDetail.cases],
   rules: [...scenarios.rules, ...caseDetail.rules],
-  l2_reviews: [...scenarios.l2_reviews, ...incidentDetail.l2_reviews],
+  l2_reviews: [...scenarios.l2_reviews, ...incidentDetail.l2_reviews, ...caseDetail.l2_reviews],
 } as unknown as MockData;
 export const metrics: Metrics = responses.metrics;

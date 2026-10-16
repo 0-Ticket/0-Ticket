@@ -54,7 +54,10 @@ describe('documented API contracts', () => {
     expect(
       (await api.incidents({ status: 'escalated_to_case', created_by: 'manual' })).items,
     ).toEqual([]);
-    expect((await api.cases({ status: 'closed' })).items).toEqual([]);
+    // F4 fixtures cover every Case status, so the status filter is checked against the data.
+    expect((await api.cases({ status: 'closed' })).items).toEqual(
+      data.cases.filter((item) => item.status === 'closed'),
+    );
     expect((await api.rules({ status: 'deployed' })).items).toEqual([]);
     expect((await api.normalizeFailures({ reason: 'unknown_scenario' })).items).toEqual([]);
   });

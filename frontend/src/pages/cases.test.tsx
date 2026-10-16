@@ -44,6 +44,10 @@ it('keeps the API order and shows status, Incident link, owners, task counts and
   expect(web.getByText('작업 3건')).toBeInTheDocument();
   expect(web.getByText('할 일 1 · 진행 중 1 · 완료 1')).toBeInTheDocument();
   expect(web.getByText('종결: 없음')).toBeInTheDocument();
+  const closed = within(links[2].closest('article')!);
+  expect(closed.getByText('종결', { selector: '[data-tone]' })).toBeInTheDocument();
+  expect(closed.getByText('할 일 0 · 진행 중 0 · 완료 2')).toBeInTheDocument();
+  expect(closed.queryByText('종결: 없음')).not.toBeInTheDocument();
   const sample = within(links[0].closest('article')!);
   expect(sample.getByText('열림')).toBeInTheDocument();
   expect(sample.getByText('할 일 1 · 진행 중 0 · 완료 0')).toBeInTheDocument();

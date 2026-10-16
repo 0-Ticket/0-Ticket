@@ -8,7 +8,6 @@ import { expect, it } from 'vitest';
 import { routes } from '../app/router';
 import { ThemeProvider } from '../lib/theme';
 import { server } from '../mocks/server';
-import { data } from '../mocks/data';
 import fixture from '../../../tests/fixtures/frontend/case-detail.json';
 
 const CASE = fixture.cases[0];
@@ -44,8 +43,9 @@ it('shows the Case, its Incident link, lessons, extensions and rule proposals as
   expect(created).toHaveAttribute('title', String(CASE.created_at));
   const incident = screen.getAllByRole('link', { name: 'in_escalated' });
   expect(incident[0]).toHaveAttribute('href', '/incidents/in_escalated');
-  expect(region('교훈').getByText(CASE.lessons)).toBeInTheDocument();
-  expect(screen.getByText(CASE.extensions['example.external_case'])).toBeInTheDocument();
+  // Lessons are written on close; an open Case shows null as "없음".
+  expect(region('교훈').getByText('없음')).toBeInTheDocument();
+  expect(screen.getByText(CASE.extensions['example.external_case']!)).toBeInTheDocument();
   expect(screen.getByText('{"hours":4}')).toBeInTheDocument();
   expect(region('룰 제안').getByRole('link', { name: 'rp_case_web' })).toHaveAttribute(
     'href',
@@ -78,25 +78,22 @@ it('shows the related Incident report: timeline, evidence, IOCs and recommendati
   expect(router.state.location.pathname).toBe('/incidents/in_escalated');
 });
 
-it('shows "없음" for a null artifact and null lessons', async () => {
-  server.use(
-    http.get('*/api/incidents/:id', () =>
-      HttpResponse.json({
-        incident: data.incidents[0],
-        tickets: [],
-        hunts: [],
-        artifact: null,
-        steps: [],
-        reviews: [],
-        case_id: 'cs_sample',
-      }),
-    ),
+it('shows a closed Case with its closed time, lessons as text and a null report as "없음"', async () => {
+  const closed = fixture.cases[1];
+  const { container } = mount('/cases/cs_contained');
+  await heading('cs_contained');
+  expect(screen.getByText('종결')).toBeInTheDocument();
+  expect(screen.getByText(new Date(closed.closed_at!).toLocaleString())).toHaveAttribute(
+    'title',
+    String(closed.closed_at),
   );
-  mount('/cases/cs_sample');
-  await heading('cs_sample');
-  expect(region('교훈').getByText('없음')).toBeInTheDocument();
+  expect(region('교훈').getByText(closed.lessons!)).toBeInTheDocument();
   expect(region('룰 제안').getByText('없음')).toBeInTheDocument();
-  expect((await screen.findByRole('region', { name: '보고서' })).textContent).toContain('없음');
+  expect(screen.getByText('확장 필드 (0)')).toBeInTheDocument();
+  // in_contained has no C11; the mock answers artifact null.
+  const report = within(await screen.findByRole('region', { name: '보고서' }));
+  expect(report.getByText('없음')).toBeInTheDocument();
+  expect(container.querySelector('script, img, iframe, b, i, a[href^="https:"]')).toBeNull();
 });
 
 it('keeps an Incident failure apart from the Case and retries only the Incident', async () => {

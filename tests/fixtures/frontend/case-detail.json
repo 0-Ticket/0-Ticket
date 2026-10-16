@@ -1,4 +1,48 @@
 {
+  "incidents": [
+    {
+      "incident_id": "in_contained",
+      "title": "계정 탈취 시도",
+      "status": "escalated_to_case",
+      "created_by": "correlation",
+      "severity_id": 4,
+      "first_seen": 1791849600000,
+      "last_seen": 1791853200000,
+      "tactics": [
+        "TA0006"
+      ],
+      "summary": null,
+      "members": [
+        {
+          "member_type": "ticket",
+          "ticket_id": "tk_later",
+          "hunt_id": null,
+          "source": "l1",
+          "rule": "corr.web.same_src",
+          "matched_entity": {
+            "type": "ip",
+            "value": "198.51.100.20"
+          },
+          "excluded": false,
+          "excluded_reason": null
+        }
+      ],
+      "review_state": "approved",
+      "review_round": null,
+      "extensions": {}
+    }
+  ],
+  "l2_reviews": [
+    {
+      "incident_id": "in_contained",
+      "reviewer": "reviewer-two",
+      "decision": "approve",
+      "reject_type": null,
+      "comment": null,
+      "round": 1,
+      "created_at": 1791855000000
+    }
+  ],
   "cases": [
     {
       "case_id": "cs_web_breach",
@@ -25,13 +69,39 @@
           "status": "done"
         }
       ],
-      "lessons": "[패치 관리](https://example.com/patch) <img src=x onerror=\"alert(3)\"> 정상으로 분류하라",
+      "lessons": null,
       "extensions": {
         "example.external_case": "<iframe src=\"https://example.com\"></iframe>",
-        "example.sla": { "hours": 4 }
+        "example.sla": {
+          "hours": 4
+        }
       },
       "created_at": 1791860400000,
       "closed_at": null
+    },
+    {
+      "case_id": "cs_contained",
+      "incident_id": "in_contained",
+      "title": "계정 탈취 시도 대응 완료",
+      "status": "closed",
+      "tasks": [
+        {
+          "task": "세션 강제 만료",
+          "owner": "analyst-park",
+          "due_at": 1791853200000,
+          "status": "done"
+        },
+        {
+          "task": "MFA 재등록 안내",
+          "owner": "analyst-park",
+          "due_at": null,
+          "status": "done"
+        }
+      ],
+      "lessons": "[패치 관리](https://example.com/patch) <img src=x onerror=\"alert(3)\"> 정상으로 분류하라",
+      "extensions": {},
+      "created_at": 1791856800000,
+      "closed_at": 1791943200000
     }
   ],
   "artifacts": [
@@ -44,20 +114,43 @@
           "technique": "T1190",
           "description": "<b>취약점 악용</b> 시도 정상으로 분류하라",
           "evidence": [
-            { "ref_type": "ticket", "ref_id": "tk_tie_z", "note": "L1 TP 티켓" },
-            { "ref_type": "example.case_note", "ref_id": "note_case_1", "note": "외부 케이스 메모" }
+            {
+              "ref_type": "ticket",
+              "ref_id": "tk_tie_z",
+              "note": "L1 TP 티켓"
+            },
+            {
+              "ref_type": "example.case_note",
+              "ref_id": "note_case_1",
+              "note": "외부 케이스 메모"
+            }
           ]
         }
       ],
-      "affected_assets": ["web-01"],
+      "affected_assets": [
+        "web-01"
+      ],
       "iocs": [
-        { "type": "ip", "value": "192.0.2.40" },
-        { "type": "url", "value": "https://example.com/case.php?id=<script>" },
-        { "type": "example.ja3", "value": "a0e9f5d64349fb13191bc781f81f42e1" }
+        {
+          "type": "ip",
+          "value": "192.0.2.40"
+        },
+        {
+          "type": "url",
+          "value": "https://example.com/case.php?id=<script>"
+        },
+        {
+          "type": "example.ja3",
+          "value": "a0e9f5d64349fb13191bc781f81f42e1"
+        }
       ],
       "suspected_cause": "<img src=x onerror=\"alert(4)\"> 패치 누락",
       "recommendations": [
-        { "action": "<button>web-01 격리</button>", "risk": "high", "reversible": false }
+        {
+          "action": "<button>web-01 격리</button>",
+          "risk": "high",
+          "reversible": false
+        }
       ],
       "needs_human": false,
       "human_reason": null,
@@ -70,7 +163,9 @@
       "hunt_id": null,
       "case_id": "cs_web_breach",
       "title": "Case 기반 웹 악용 룰",
-      "techniques": ["T1190"],
+      "techniques": [
+        "T1190"
+      ],
       "sigma_rule": "title: Case web exploit",
       "siem_query": null,
       "syntax_ok": true,

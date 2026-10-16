@@ -114,20 +114,71 @@ it('locks every task while a change is pending and never resubmits', async () =>
   expect(select(1)).toBeEnabled();
 });
 
-it('shows invalid_input from the API', async () => {
-  capture([], () =>
-    HttpResponse.json(
-      { error: { code: 'invalid_input', message: 'task status rejected' } },
-      { status: 400 },
-    ),
+it.each([
+  ['invalid_input', 400, '입력 오류'],
+  ['conflict', 409, '충돌: 최신 Case를 다시 불러왔습니다.'],
+  ['not_found', 404, 'Case를 찾을 수 없습니다.'],
+  ['internal', 500, '서버 오류'],
+])('shows %s from the API distinctly and sends once', async (code, status, prefix) => {
+  const bodies: unknown[] = [];
+  capture(bodies, () =>
+    HttpResponse.json({ error: { code, message: `${code} message` } }, { status }),
   );
   mount();
   const user = userEvent.setup();
   await screen.findByLabelText('작업 1 상태');
   await user.selectOptions(select(1), 'todo');
   const alert = await screen.findByRole('alert');
-  expect(alert).toHaveTextContent('입력 오류');
-  expect(alert).toHaveTextContent('task status rejected');
+  expect(alert).toHaveTextContent(prefix);
+  expect(alert).toHaveTextContent(`${code} message`);
+  expect(screen.queryByText('작업 상태가 저장되었습니다.')).not.toBeInTheDocument();
+  expect(bodies).toHaveLength(1);
+});
+
+it('keeps tasks locked until the refetch after a save settles', async () => {
+  const bodies: unknown[] = [];
+  capture(bodies);
+  server.use(
+    http.get('*/api/cases/:id', async () => {
+      if (bodies.length) await delay(200);
+      return undefined;
+    }),
+  );
+  mount();
+  const user = userEvent.setup();
+  await screen.findByLabelText('작업 1 상태');
+  await user.selectOptions(select(2), 'doing');
+  await waitFor(() => expect(bodies).toHaveLength(1));
+  // The PATCH has answered but the Case is still being refetched: no stale resend.
+  expect(select(1)).toBeDisabled();
+  await user.selectOptions(select(1), 'todo').catch(() => undefined);
+  await screen.findByText('작업 상태가 저장되었습니다.');
+  await waitFor(() => expect(select(1)).toBeEnabled());
+  expect(bodies).toHaveLength(1);
+  expect(badge(rows()[1])).toHaveTextContent('진행 중');
+});
+
+it('shows a task status outside the contract enum as received and resends it unchanged', async () => {
+  const unknown = {
+    ...CASE,
+    tasks: CASE.tasks.map((task, i) => (i === 0 ? { ...task, status: 'example.blocked' } : task)),
+  };
+  server.use(
+    http.get('*/api/cases/:id', () => HttpResponse.json({ case: unknown, proposal_ids: [] })),
+  );
+  const bodies: unknown[] = [];
+  capture(bodies, () => HttpResponse.json(unknown));
+  mount();
+  const user = userEvent.setup();
+  await screen.findByLabelText('작업 1 상태');
+  expect(badge(rows()[0])).toHaveTextContent('example.blocked');
+  expect(select(1)).toHaveValue('example.blocked');
+  expect(within(select(1)).getByRole('option', { name: 'example.blocked' })).toBeDisabled();
+  await user.selectOptions(select(2), 'doing');
+  await screen.findByText('작업 상태가 저장되었습니다.');
+  expect(bodies).toEqual([
+    { tasks: unknown.tasks.map((task, i) => (i === 1 ? { ...task, status: 'doing' } : task)) },
+  ]);
 });
 
 it('refetches the Case after a conflict', async () => {
