@@ -89,11 +89,11 @@
 | K45 | F2 | 판정을 뒤집을 때 이유가 없으면 보내지 않고, API가 `invalid_input`을 주면 그 내용을 보여 준다 | ✅ 통과 | `ticket-review.test.tsx`: 이유 필수·invalid_input·중복 제출·재조회 |
 | K46 | F3 | Incident의 묶음 항목(티켓·헌팅 결과)마다 출처(`source`)와 묶인 이유(`rule`, `matched_entity`)가 보이고, 뺀 항목과 이유가 따로 보이며, 공용 자산이 묶는 기준으로 표시되지 않는다 | 🟡 일부 | `incident-detail.test.tsx`: F3 표시 부분만 통과. 공용 자산 제외 등 실제 묶음 기준은 박스 17 구현에서 확인 |
 | K47 | F3 | 보고서 타임라인이 시간순이고 모든 항목에 근거 링크가 있다. 반려에는 유형과 코멘트가 필수이고, 두 번 반려되면 "사람 직접 처리"로 표시된다 | ✅ 통과 | `incident-detail.test.tsx`: 응답 순서 유지·근거 링크·2회 반려 표시; `incident-review.test.tsx`: 반려 필수 입력. #21부터 "사람 직접 처리"는 `review_state`=`human_handling`으로만 표시. 실제 재반려 처리(박스 21)는 후속 |
-| K48 | F4 | Case 작업의 상태·담당자·마감과 교훈을 수정할 수 있다 | ⬜ | |
+| K48 | F4 | Case 작업의 상태·담당자·마감과 교훈을 수정할 수 있다 | 🟡 일부 | #27: 작업 상태 변경만 `case-tasks.test.tsx`(전체 `tasks` PATCH·재조회·중복 제출·오류 구분). 담당자·마감·교훈 수정은 후속 API/계약 이슈 필요 |
 | K49 | F5 | 룰 제안에 문법 검사 결과와 백테스트가 보이고, 승인해도 화면이 SIEM 반영을 하지 않는다 | ⬜ | |
 | K50 | F6 | 지표 대시보드가 뒤집은 비율, 반려 유형 통계, 정규화 실패 수를 보여 준다 | ⬜ | |
-| K51 | 전체 | HTML·스크립트 조각이 든 로그 원문, LLM 출력, `extensions` 값이 텍스트로만 표시된다 | 🟡 일부 | F1: `tickets.test.tsx`; F2: `ticket-detail.test.tsx`; F3: `incidents.test.tsx`, `incident-detail.test.tsx`; 다른 화면은 후속 검증 |
-| K52 | 전체 | 플러그인이 등록한 새 등록형 값과 새 `extensions` 키가 화면 수정 없이 보인다 | 🟡 일부 | F1: `tickets.test.tsx`; F2: `ticket-detail.test.tsx`; F3: `incidents.test.tsx`, `incident-detail.test.tsx`; 다른 화면은 후속 검증 |
+| K51 | 전체 | HTML·스크립트 조각이 든 로그 원문, LLM 출력, `extensions` 값이 텍스트로만 표시된다 | 🟡 일부 | F1: `tickets.test.tsx`; F2: `ticket-detail.test.tsx`; F3: `incidents.test.tsx`, `incident-detail.test.tsx`; F4: `cases.test.tsx`, `case-detail.test.tsx`, `case-tasks.test.tsx`; 다른 화면은 후속 검증 |
+| K52 | 전체 | 플러그인이 등록한 새 등록형 값과 새 `extensions` 키가 화면 수정 없이 보인다 | 🟡 일부 | F1: `tickets.test.tsx`; F2: `ticket-detail.test.tsx`; F3: `incidents.test.tsx`, `incident-detail.test.tsx`; F4: `cases.test.tsx`, `case-detail.test.tsx`, `case-tasks.test.tsx`; 다른 화면은 후속 검증 |
 
 ## 계약 Schema
 

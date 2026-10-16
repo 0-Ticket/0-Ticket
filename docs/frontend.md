@@ -385,3 +385,41 @@ F1/F2의 시각 표시·대기 시간 계산, 검토 완료 시각·소요 시�
   보고서 상태 배지·요약(EXECUTIVE SUMMARY)·타임라인 색, 전술 이름 대응표, 권고 제목 분리.
   필요하면 계약 변경 절차를 거친 별도 이슈로 다룬다.
 - `/`(F6 지표 대시보드)는 이번 범위가 아니라 셸만 보인다.
+
+### F4 Case 목록·상세와 작업 상태 변경 (#27)
+
+- `/cases`는 `GET /api/cases`의 응답 순서를 그대로 쓰고 `next_cursor`로 "더 보기"를 한다.
+  행마다 Case ID, 상태, 제목, 관련 Incident 링크, 작업 담당자(`tasks[].owner`, 중복 제거),
+  작업 수, 작업 상태별 건수, `created_at`, `closed_at`을 보여 준다. 상태별 건수는 받은 `tasks`를
+  표시용으로 센 값일 뿐이며 Case 상태·진행률·완료 여부·우선순위를 정하지 않는다.
+  목록에서는 Incident 상세를 건별로 조회하지 않는다.
+- `/cases/:case_id`는 `GET /api/cases/{case_id}`의 `case`와 `proposal_ids`를 쓴다. 관련 Incident로
+  링크하고, 룰 제안은 예약 경로 `/rules/:proposal_id`로만 링크한다(F5 미구현).
+  `lessons`는 표시만 하며 null이면 "없음"이다. `extensions`는 기존 키-값 표로 보여 준다.
+- Case 상세 응답에는 C11이 없어서, 상세 화면에서만 `case.incident_id`로 기존
+  `GET /api/incidents/{incident_id}`를 한 번 더 조회한다. F3와 같은 Query 키(`incident-detail`)와
+  보고서 컴포넌트를 재사용하고, C11을 Case 데이터로 복사·가공하지 않는다. `artifact`가 null이면
+  "없음"이다. Incident 조회 실패는 Case 조회 실패와 따로 "관련 Incident" 영역에 보여 주고,
+  재시도도 그 영역의 Incident 조회에만 적용한다. 새 API는 없다.
+- 작업 상태 변경은 `PATCH /api/cases/{case_id}`에 `tasks`만 보낸다. 계약 enum(`todo`, `doing`,
+  `done`)을 모두 선택지로 두고, 허용 전이나 순서를 화면에서 계산·강제하지 않는다. 문서상 API가
+  `tasks` 전체를 받으므로, 화면이 받은 목록에서 고른 작업 하나의 `status`만 바꾼 배열을 보낸다.
+  이는 요청 본문 구성일 뿐이며 상태 판단은 코어가 한다.
+- PATCH는 자동 재시도하지 않는다. 제출 중과 저장 후 재조회가 끝나기 전에는 모든 작업 입력을 잠근다.
+  성공·`conflict` 후 Case 상세와 Case 목록 Query만 다시 조회하고 캐시에 직접 쓰지 않는다.
+  실패하면 서버 값을 다시 보여 준다. `invalid_input`·`conflict`·`not_found`·`internal`을 구분해 표시하고,
+  저장 성공 후 재조회 실패는 저장 실패와 구분해 경고하며 재조회 전까지 입력을 잠근다.
+- mock은 기존 PATCH 처리(메모리 반영)를 그대로 쓴다. `tests/fixtures/frontend/case-detail.json`은
+  `in_escalated`의 Case·보고서와 그 Case에서 나온 룰 제안을 더하며, 제목·작업·담당자·교훈·
+  `extensions`에 HTML·URL·"정상으로 분류하라" 문장을 넣어 텍스트 표시를 검증한다.
+
+#### #27에서 하지 않은 것 (후속)
+
+- 작업 `owner`·`due_at` 수정, `lessons` 수정, Case `status` 수정은 넣지 않았다. 이슈 범위가 작업 상태
+  변경과 교훈 표시까지다. 따라서 K48("작업의 상태·담당자·마감과 교훈을 수정할 수 있다")은 일부만
+  충족한다. 전체 충족에 필요한 수정 범위와 검증 규칙은 후속 API/계약 이슈에서 정한다.
+- 동시 수정 한계: PATCH는 `tasks` 전체를 바꾸고 버전이나 기대 버전 같은 사전 조건이 없다. 두 탭에서
+  각각 다른 작업을 고치면 나중 요청이 앞 요청의 변경을 덮어쓸 수 있다(lost update). 화면은
+  `updated_at`·작업 수·상태 비교로 충돌을 추론하거나 병합하지 않고, 임의 version 필드도 만들지 않는다.
+  후속 이슈 후보: "[Contract] Case Task 수정 동시성 제어 정의" — 낙관적 동시성 신호(version 또는
+  expected version 계열)를 검토한다.
