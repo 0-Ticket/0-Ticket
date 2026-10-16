@@ -57,6 +57,24 @@
         "$ref": "incident_member.schema.json"
       }
     },
+    "review_state": {
+      "type": "string",
+      "enum": [
+        "analyzing",
+        "awaiting_review",
+        "approved",
+        "human_handling"
+      ],
+      "description": "L2 review workflow state, separate from the Incident lifecycle status. Set by the core (box 21)."
+    },
+    "review_round": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1,
+      "description": "Round of the currently open L2 review opportunity. Integer only while awaiting_review, otherwise null. Assigned by the core; increases monotonically per Incident."
+    },
     "extensions": {
       "type": "object",
       "additionalProperties": true,
@@ -76,8 +94,38 @@
     "tactics",
     "summary",
     "members",
+    "review_state",
+    "review_round",
     "extensions"
   ],
   "additionalProperties": false,
-  "description": "Core follow-up: only Correlation creates incidents, computes member severity and grouping provenance."
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "review_state": {
+            "const": "awaiting_review"
+          }
+        },
+        "required": [
+          "review_state"
+        ]
+      },
+      "then": {
+        "properties": {
+          "review_round": {
+            "type": "integer"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "review_round": {
+            "type": "null"
+          }
+        }
+      }
+    }
+  ],
+  "description": "Core follow-up: only Correlation creates incidents, computes member severity and grouping provenance. Review state transitions and round assignment are core follow-ups (box 21)."
 }
