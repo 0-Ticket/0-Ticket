@@ -330,3 +330,23 @@ K55는 여전히 일부이며 코어 비즈니스 검증은 해당 박스에서 
   (load average 8 미만)에서는 대기 없이 5회 모두 통과했다. 1초 대기를 넘겨 실패한 경우는
   F1·F2 테스트도 함께 실패하던 고부하(회당 20~30초)에서만 나와서, 대기를 추가하지 않았다.
   전역 testTimeout, 워커 수, `pnpm test` 명령은 바꾸지 않았다.
+
+## #20 F0~F3 UI 개선 검증
+
+- 기능·API·계약·Query·mock·검증 로직은 그대로다. 바뀐 것은 스타일·배치·공통 표시 부품뿐이다.
+  `src/api/`, `src/mocks/`, `src/contracts/`, `contracts/`, `tests/fixtures/`는 수정하지 않았다.
+- 기존 테스트는 고치거나 지우지 않았다. 기존 화면 문구, 접근성 이름(`{id} 복사`, `다크 모드`, region 이름),
+  `data-testid`, `<article>` 구조, 값 표시 횟수를 그대로 유지했다.
+- 추가: `src/app/layout.test.tsx` — 주 메뉴 현재 위치, `/review`·`/tickets` 목적 문구,
+  상세 화면의 목록 경로 링크, 배지 tone(모르는 값은 원래 문자열·neutral). 구현 전 5건 실패를 확인했다.
+- K51·K52 관련: 신뢰할 수 없는 문자열은 계속 텍스트 노드로만 표시한다. 발췌·로그는 고정폭 블록에
+  plain text로만 두고 수준·URL을 해석하지 않는다. `dangerouslySetInnerHTML`·`innerHTML`·외부 링크 없음.
+  권고에는 "권고 · 실행하지 않음"만 있고 실행 버튼이 없다.
+- 브라우저(mock) 확인: 다섯 화면을 라이트·다크로 보고, 375px 폭에서 가로 넘침이 없음을 확인했다.
+  콘솔 오류 없음.
+- 명령: `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm build` 통과. `pnpm test` 103개
+  3회 연속 통과(load average 24~27). `uvx ruff format --check .`, `uvx ruff check .`,
+  `uv run pytest`(378개) 통과.
+- 환경 메모: 로컬 Homebrew `node@24`가 라이브러리 누락(simdjson)으로 실행되지 않아 Node 22.22.3으로
+  확인했다. CI의 Node 24에서 다시 확인이 필요하다. 고부하(load average 20 이상)에서는 기존 코드에서도
+  1초 기본 대기를 넘는 간헐 실패가 관찰됐다.
