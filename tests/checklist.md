@@ -48,7 +48,7 @@
 | K21 | 17, 18 | 사람이 확정한 TP 티켓과 L3 이상 징후(C17)도 Correlation을 거쳐 Incident에 묶이고, Correlation을 거치지 않고 생기는 Incident는 없다. 헌팅 결과만 묶인 Incident에도 `severity_id`가 정해진다 | ⬜ | |
 | K22 | 19, 20 | Incident로 C11이 만들어진다. 타임라인이 시간순이고 모든 항목에 근거가 있으며, 뺀 티켓에는 이유가 있다. 예산을 넘으면 멈춘다 | ⬜ | |
 | K23 | 20 | C11에서 사람이 읽는 보고서가 만들어진다 | ⬜ | |
-| K24 | 21 | 반려에는 유형과 코멘트가 필수이고, 두 번 반려되면 사람 처리로 넘어간다 | ⬜ | |
+| K24 | 21 | 반려에는 유형과 코멘트가 필수이고, 두 번 반려되면 사람 처리로 넘어간다 | 🟡 일부 | #21: 계약(C10 `review_state`·`review_round`)과 mock·F3에서 첫 반려 → `analyzing`, 두 번째 반려 → `human_handling`, 같은 기회 중복·다른 회차 제출 `conflict` 확인. 코어 전이·회차 부여는 박스 21 구현에서 확인 |
 | K25 | 22 | 승인된 Incident로 C16이 만들어지고, 작업 상태가 바뀌며, 종결 시 VDB에 들어간다 | ⬜ | |
 | K26 | 23 | 최근 Case 샘플과 ATT&CK 기법으로 가설을 세우고, 기준선 쿼리로 S4 샘플의 드문 패턴을 찾아 심각도와 함께 C17을 남긴다. 이상 징후는 Correlation으로 넘긴다. 원본 이벤트를 대량으로 LLM에 넣지 않는다 | ⬜ | |
 | K27 | 24 | 헌팅 결과와 Case에서 C18이 만들어지고(`hunt_id` 또는 `case_id`), Sigma 룰이 문법 검사와 쿼리 변환을 통과하며 백테스트 결과가 붙는다. 승인 전에는 SIEM에 반영되지 않는다 | ⬜ | |
@@ -88,7 +88,7 @@
 | K44 | F2 | Agent Log가 `step` 순서로 보이고, 전문 에이전트 결과가 판정 옆에 보인다 | ✅ 통과 | `ticket-detail.test.tsx`: 전문 결과·AgentStep 순서·발췌 |
 | K45 | F2 | 판정을 뒤집을 때 이유가 없으면 보내지 않고, API가 `invalid_input`을 주면 그 내용을 보여 준다 | ✅ 통과 | `ticket-review.test.tsx`: 이유 필수·invalid_input·중복 제출·재조회 |
 | K46 | F3 | Incident의 묶음 항목(티켓·헌팅 결과)마다 출처(`source`)와 묶인 이유(`rule`, `matched_entity`)가 보이고, 뺀 항목과 이유가 따로 보이며, 공용 자산이 묶는 기준으로 표시되지 않는다 | 🟡 일부 | `incident-detail.test.tsx`: F3 표시 부분만 통과. 공용 자산 제외 등 실제 묶음 기준은 박스 17 구현에서 확인 |
-| K47 | F3 | 보고서 타임라인이 시간순이고 모든 항목에 근거 링크가 있다. 반려에는 유형과 코멘트가 필수이고, 두 번 반려되면 "사람 직접 처리"로 표시된다 | ✅ 통과 | `incident-detail.test.tsx`: 응답 순서 유지·근거 링크·2회 반려 표시; `incident-review.test.tsx`: 반려 필수 입력. 실제 재반려 처리(박스 21)는 후속 |
+| K47 | F3 | 보고서 타임라인이 시간순이고 모든 항목에 근거 링크가 있다. 반려에는 유형과 코멘트가 필수이고, 두 번 반려되면 "사람 직접 처리"로 표시된다 | ✅ 통과 | `incident-detail.test.tsx`: 응답 순서 유지·근거 링크·2회 반려 표시; `incident-review.test.tsx`: 반려 필수 입력. #21부터 "사람 직접 처리"는 `review_state`=`human_handling`으로만 표시. 실제 재반려 처리(박스 21)는 후속 |
 | K48 | F4 | Case 작업의 상태·담당자·마감과 교훈을 수정할 수 있다 | ⬜ | |
 | K49 | F5 | 룰 제안에 문법 검사 결과와 백테스트가 보이고, 승인해도 화면이 SIEM 반영을 하지 않는다 | ⬜ | |
 | K50 | F6 | 지표 대시보드가 뒤집은 비율, 반려 유형 통계, 정규화 실패 수를 보여 준다 | ⬜ | |
@@ -390,3 +390,40 @@ K55는 여전히 일부이며 코어 비즈니스 검증은 해당 박스에서 
   `node-version-file: frontend/.nvmrc`로 설치한다. 로컬 `/opt/homebrew/opt/node@24`는 예전 `node` 24.7.0을
   가리키는 링크인데, simdjson 4.6.4 업그레이드로 `libsimdjson.26.dylib`가 없어져 실행되지 않는다.
   로컬 Homebrew 문제이며 프로젝트 코드와 무관하다. 로컬 확인은 Node 22.22.3이고, PR CI의 Node 24 통과가 필수 조건이다.
+
+## #21 L2 재검토 가능 상태 신호
+
+- 계약 변경: C10 Incident에 `review_state`(`analyzing`, `awaiting_review`, `approved`, `human_handling`)와
+  `review_round: int | null`을 필수 필드로 추가했다. `status` enum과 전이는 그대로다. C15 `round`는 구조를
+  바꾸지 않고 "그 검토가 처리한 기회의 회차를 코어가 기록"으로 설명만 고쳤다. 요청 본문에
+  `expected_review_round`(사전 조건, 저장하지 않음)를 추가했다. 역할 구분 표는 `docs/data-contracts.md` C15와
+  `docs/api-contracts.md` "L2 검토 기회 (#21)"에 있다.
+- `review_state`는 C10 `status`처럼 닫힌 enum이다. 등록형 값이 아니므로 플러그인 값 `example.custom`은
+  거부된다(`test_incident_review_state_is_closed_enum_like_status`, 짝 검사의 `example.custom` 케이스).
+- Schema 짝 검사(`test_incident_review_state_round_pairing`, `conditions.json` 4건,
+  `test_incident_review_signal_errors`): `awaiting_review`+1 이상 유효, `awaiting_review`+null·0 무효,
+  `analyzing`·`approved`·`human_handling`+정수 무효, 오류 path/rule이 `/review_round`·`type|minimum`,
+  `/review_state`·`enum`이고 입력값을 담지 않는다. 생성 Pydantic 모델의 `review_round` 0·모르는 상태 거부.
+- fixture: `in_sample`·`in_escalated` approved, `in_web_campaign` 1회차 대기, `in_reanalysis` 1회 반려 후 재분석,
+  `in_second_round` 1회 반려 후 2회차 대기, `in_manual`·`in_benign` 2회 반려 후 human_handling.
+  `test_incident_review_fixtures_follow_box21_flow`가 상태와 C15 이력의 일관성을 확인한다(화면은 계산하지 않음).
+- mock: 세션 `reviewed` Set을 Incident 검토 판단에서 뺐다(티켓 검토는 그대로). `review_state`가
+  `awaiting_review`가 아니면 conflict, `expected_review_round` 누락·정수 아님은 invalid_input, 회차가 다르면 conflict.
+  성공하면 `round`에 열린 회차를 기록하고 approve → approved, 첫 반려 → analyzing, 두 번째 반려 → human_handling,
+  `review_round` null. `status`·Case는 바꾸지 않는다. 같은 기회에 동시 요청은 하나만 성공한다
+  (`review-concurrency.test.ts`). 회차가 다른 경우의 검사를 지운 변형에서 `api-contracts.test.ts`가 실패했다.
+- 화면: 폼은 `review_state`가 `awaiting_review`일 때만 열리고, 받은 `review_round`를 `expected_review_round`로
+  그대로 보낸다. 폼은 열린 기회마다 새로 마운트된다. 답한 기회에서는 계속 잠기고 제출 중(재조회 대기 포함)에는
+  다시 보내지 않는다. 같은 화면에서 재조회로 새 회차가 열리면 빈 폼으로 다시 열린다. 이 다시 마운트를
+  없앤 변형에서 `incident-review.test.tsx`가 실패했다. 반려 2건이 있어도 `review_state`가 아니면
+  "사람 직접 처리"를 표시하지 않고, 검토가 없어도 `human_handling`이면 표시한다(`incident-detail.test.tsx`).
+  목록·상세에 `review_state` 배지를 `status` 배지와 나란히 둔다.
+- 명령: `uvx ruff format --check .`, `uvx ruff check .`, `uv run pytest`(416개),
+  `generate_contracts.py --check`, `pnpm --dir tools/contracts typecheck`, `pnpm typecheck`, `pnpm lint`,
+  `pnpm format:check`, `pnpm build` 통과. `pnpm test` 116개: 6회 중 5회 통과, 한 번은 load average 35
+  급등 중에 2건 실패했고 그 뒤 3회 연속 통과했다. `incidents.test.tsx` 단독 실행에서도 첫 목록 조회 대기
+  초과가 한 번 있었고 다시 실행하자 통과했다(기존에 기록된 고부하 간헐 실패).
+- 환경 메모: 로컬 Node 24가 실행되지 않아(#20 메모와 같음) Node 22.22.3으로 확인했다. CI Node 24 확인 필요.
+- 범위 밖: 실제 코어(박스 21)의 상태 전이·회차 부여, 박스 19의 새 C11 → 기회 열기, 박스 22 Case 생성,
+  `human_handling` 이후 처리.
+

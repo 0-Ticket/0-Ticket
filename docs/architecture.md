@@ -321,6 +321,7 @@ block-beta
 - **하는 일**: Artifact를 보고 실제 사고인지 판단한다. True면 Case로, False면 코멘트와 함께 L2로 돌려보낸다.
 - **입력 → 출력**: Incident Artifact → C15 L2Review. 승인이면 Case 생성, 반려면 L2 재분석
 - **핵심**: 반려 사유를 유형(잘못 묶인 티켓, 빠진 단계, 틀린 결론)으로 받아 통계를 낸다. 두 번 반려되면 사람이 직접 처리한다.
+  - 검토 기회는 C10 `review_state`·`review_round`로 알린다(#21). `status`(Incident 생명주기)와 따로 관리한다. 새 C11이 준비되면 기회를 열고 회차를 부여하며(첫 회차 1, 단조 증가), 같은 기회의 두 번째 제출과 `expected_review_round`가 다른 제출은 거부한다. 첫 반려는 `analyzing`(L2 재분석), 두 번째 반려는 `human_handling`, 승인은 `approved`로 바꾼다. `human_handling` 뒤에는 새 기회를 열지 않고, 이후 Case 전환·종결은 박스 22와 `status`가 맡는다.
 - **완료 조건**: 승인 또는 반려(유형과 코멘트)를 C15로 남기고, 반려 유형 통계를 내며, 두 번 반려되면 사람 처리로 넘긴다.
 
 ### 22 · Case
@@ -367,3 +368,4 @@ block-beta
 - v1 · 2026-10-10 · 최초 작성
 - v1 · 2026-10-13 · 박스 변경 없이 "사용자 접점"(웹 화면, 화면용 API) 절과 화면 트랙 추가
 - v1 · 2026-10-13 · 아키텍처 원본 수정 반영: 사람 확정 TP와 L3 이상 징후도 Correlation을 거쳐 Incident가 됨, Case가 L3 가설과 룰 제안의 재료가 됨, Event는 이벤트 저장소에 둠
+- v1 · 2026-10-16 · 박스 변경 없이 21의 검토 기회 신호(C10 `review_state`·`review_round`) 규칙 추가 (#21)
