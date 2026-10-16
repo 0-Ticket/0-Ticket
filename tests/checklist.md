@@ -405,8 +405,10 @@ K55는 여전히 일부이며 코어 비즈니스 검증은 해당 박스에서 
   `analyzing`·`approved`·`human_handling`+정수 무효, 오류 path/rule이 `/review_round`·`type|minimum`,
   `/review_state`·`enum`이고 입력값을 담지 않는다. 생성 Pydantic 모델의 `review_round` 0·모르는 상태 거부.
 - fixture: `in_sample`·`in_escalated` approved, `in_web_campaign` 1회차 대기, `in_reanalysis` 1회 반려 후 재분석,
-  `in_second_round` 1회 반려 후 2회차 대기, `in_manual`·`in_benign` 2회 반려 후 human_handling.
-  `test_incident_review_fixtures_follow_box21_flow`가 상태와 C15 이력의 일관성을 확인한다(화면은 계산하지 않음).
+  `in_second_round` 1회 반려 후 2회차 대기(새 C11 있음), `in_manual`·`in_benign` 2회 반려 후 human_handling.
+  `test_incident_review_fixtures_follow_box21_flow`가 시나리오별 (상태, 회차, 반려 수)와 C15 이력·C11·Case·`status`의
+  일관성을 확인한다(회차 연속, 승인은 마지막 검토, 검토 이력이 있으면 `open` 아님, Case는 approved에만,
+  awaiting·analyzing은 `investigating`). 화면은 이 값을 계산하지 않고 받은 그대로 쓴다.
 - mock: 세션 `reviewed` Set을 Incident 검토 판단에서 뺐다(티켓 검토는 그대로). `review_state`가
   `awaiting_review`가 아니면 conflict, `expected_review_round` 누락·정수 아님은 invalid_input, 회차가 다르면 conflict.
   성공하면 `round`에 열린 회차를 기록하고 approve → approved, 첫 반려 → analyzing, 두 번째 반려 → human_handling,
@@ -418,11 +420,31 @@ K55는 여전히 일부이며 코어 비즈니스 검증은 해당 박스에서 
   없앤 변형에서 `incident-review.test.tsx`가 실패했다. 반려 2건이 있어도 `review_state`가 아니면
   "사람 직접 처리"를 표시하지 않고, 검토가 없어도 `human_handling`이면 표시한다(`incident-detail.test.tsx`).
   목록·상세에 `review_state` 배지를 `status` 배지와 나란히 둔다.
+- 최종 검토(#21 3단계)에서 고친 것:
+  (1) fixture 모순: `in_escalated` approved인데 승인 C15가 없음 → 1회차 승인 추가. `in_second_round`가
+  검토 대기인데 C11이 없음 → C11 추가. `in_manual`(검토 2건)·`in_sample`(승인·Case 있음)의 `status`가 `open`
+  → 각각 `investigating`, `escalated_to_case`. 이를 잡지 못하던 fixture 검사를 강화했다.
+  (2) 오류 우선순위 테스트 추가(`applies the documented L2 error precedence`): not_found > 닫힌 기회 conflict
+  (본문이 잘못돼도) > invalid_input > 회차 불일치 conflict. 회차 검사를 본문 검증 앞으로 옮긴 변형에서 실패 확인.
+  우선순위의 의도를 `docs/api-contracts.md`에 적었다.
+  (3) stale tab 테스트 추가(`rejects a stale tab that still holds an answered round`): A가 1회차를 반려한 뒤
+  B의 `expected_review_round=1` 제출은 conflict이고 상태가 바뀌지 않는다. 2회차가 열린 Incident에 1을 보내도 conflict.
+  (4) `docs/frontend.md`의 #17 기록(종결·Case로 비활성, 세션당 1회 mock)에 "#21에서 대체됨" 표시.
+- 동시성: mock의 유일한 `await`는 본문 파싱이고, 상태 확인부터 C15 기록·상태 변경까지는 한 동기 구간이다.
+  `review-concurrency.test.ts`의 `race`는 두 요청의 본문 파싱이 모두 도착할 때까지 막았다가 동시에 풀어 주므로
+  요청 순서에 의존하지 않는다. 진 요청은 `review_state` 조건으로 conflict를 받는다.
+- 브라우저(mock, dev 서버): F3 목록·상세에서 `status` 배지와 `review_state` 배지가 나란히 보이고,
+  `in_manual`·`in_reanalysis`·`in_sample`은 폼 비활성과 이유 문구, `in_second_round`는 활성. 375px iframe에서
+  목록·상세 가로 넘침 없음, 검토 영역은 sticky 없이 본문 아래(#20 구조 그대로). 콘솔 오류 없음.
 - 명령: `uvx ruff format --check .`, `uvx ruff check .`, `uv run pytest`(416개),
-  `generate_contracts.py --check`, `pnpm --dir tools/contracts typecheck`, `pnpm typecheck`, `pnpm lint`,
-  `pnpm format:check`, `pnpm build` 통과. `pnpm test` 116개: 6회 중 5회 통과, 한 번은 load average 35
-  급등 중에 2건 실패했고 그 뒤 3회 연속 통과했다. `incidents.test.tsx` 단독 실행에서도 첫 목록 조회 대기
-  초과가 한 번 있었고 다시 실행하자 통과했다(기존에 기록된 고부하 간헐 실패).
+  `generate_contracts.py --check`(exit 0, 생성 파일 차이 없음), `pnpm --dir tools/contracts typecheck`,
+  `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm build` 통과. 기본 `pnpm test`(118개, timeout·worker·명령 변경 없음):
+  최종 5회 연속 통과(load average 22~28).
+- 간헐 실패 구분: load average 33~38에서 기본 `pnpm test`의 1~6건이 실패했다. #21과 무관한 F1·F2 테스트
+  (티켓 목록·상세, 신뢰할 수 없는 문자열 표시)도 함께 실패했고, 실패는 모두 기본 1초 `findBy`/`waitFor` 대기 또는 5초 테스트
+  제한 초과였다. 잘못된 값 단언 실패나 conflict/기록 건수 불일치(race의 신호)는 없었다. F3·API 파일만 20회 돌렸을 때
+  19회 통과했다. 나머지 1회(load average 약 18~20)는 실패 메시지를 기록하지 못해 원인을 단정하지 않는다. 폼을 두 번 채우던 재오픈 테스트의 두 번째 제출을 짧은 승인으로
+  줄였다(검증 내용 같음, 대기 시간 설정 변경 없음).
 - 환경 메모: 로컬 Node 24가 실행되지 않아(#20 메모와 같음) Node 22.22.3으로 확인했다. CI Node 24 확인 필요.
 - 범위 밖: 실제 코어(박스 21)의 상태 전이·회차 부여, 박스 19의 새 C11 → 기회 열기, 박스 22 Case 생성,
   `human_handling` 이후 처리.
