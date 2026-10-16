@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { expect, it } from 'vitest';
 import { routes } from './router';
-import { Providers } from './providers';
+import { TestProviders as Providers } from '../test/providers';
 
 it.each([
   '/',

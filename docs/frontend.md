@@ -286,3 +286,32 @@ UTC epoch ms 필드다. 아직 진입하지 않았다면 null이며, 대기 상�
 #12에서는 계약과 생성 타입만 추가한다. F1은 현재 대기 건수만 표시하는 기존 동작을 유지하며,
 F1/F2의 시각 표시·대기 시간 계산, 검토 완료 시각·소요 시간 계산은 구현하지 않는다.
 향후 표시를 구현할 때 시각은 공통 지역 시간·원본 epoch ms 툴팁 규칙을 따른다.
+
+### F2 티켓 상세와 L1 검토 (#15)
+
+- `/tickets/:ticket_id`는 기존 `GET /api/tickets/{ticket_id}` 응답을 사용한다.
+  C6은 `ticket`, C7은 `ticket.verdict`, C5·C4는 `alerts`와 그 안의 Lookup,
+  C14는 `findings`, C8은 `steps`, 기존 C9는 `reviews`에서 받는다.
+  Incident 링크는 응답의 `incident_ids`만 사용한다. 별도 판정·전문 결과·조사 단계·검토
+  조회 API나 계약 필드를 추가하지 않는다.
+- 근거의 `alert`, `event`, `raw`만 문서의 기존 조회 API로 펼친다. 알 수 없는
+  `ref_type`은 문자열·ID·설명을 보존하고 조회 경로를 추측하지 않는다. ID는 복사할 수 있다.
+  로그 URL은 자동 링크로 바꾸지 않는다. 전문 결과·원문·발췌·확장 값은 plain text다.
+- Agent Log는 `subject_id`별 `step` 오름차순으로 표시하고, 발췌문은 접어 둔다.
+  `awaiting_human_at`은 null이면 “없음”, 값이 있으면 지역 시간과 epoch ms 툴팁을 제공한다.
+  다른 시각으로 보완하거나 경과·검토 소요 시간을 계산하지 않는다.
+- 검토자 이름은 검토 폼에서 입력한다. 동의 버튼은 기존 TP/FP를 선택하며, 요청은
+  `reviewer`, `decision` (`tp` 또는 `fp`), `reason`만 보낸다. 다른 판정 선택 시 이유를
+  요구하는 것은 화면 편의 검증이다. unknown 또는 판정 없음은 TP/FP 선택과 이유가 필요하다.
+  `overturned`는 계산·전송하지 않고 응답 C9의 값만 표시한다.
+- 검토 성공 후 현재 상세, 두 F1 목록의 `tickets` Query, 관련 `metrics` Query만
+  invalidate/refetch한다. 클라이언트에서 Ticket 상태를 계산하거나 캐시에 직접 쓰지 않는다.
+  POST 자동 재시도와 중복 제출을 막고, conflict이면 같은 Query들을 재조회한다.
+  검토 성공 후 GET 실패는 저장 실패와 구분하고 GET 재시도만 제공한다.
+- 기존 MSW가 검토 기록과 Ticket 상태를 갱신한다. 지표의 현재 대기 건수만 mock의
+  현재 티켓 상태에서 얻도록 변경했다. 나머지 기간별 합성 지표는 기존 고정값이다.
+  검토 후에도 `awaiting_human_at`은 보존한다. 실제 코어 상태 전이 구현은 후속 박스 범위다.
+- `tests/fixtures/frontend/ticket-detail.json`은 기존 공유 객체를 바탕으로 만든 상세 응답이다.
+  브라우저 mock은 이 파일의 전문 결과와 조사 단계를 사용하고 기존 F1 티켓 집합은 유지한다.
+  Python은 공개 계약 검증 함수로 샘플을 검증하며, Vitest는 상세·입력 검증·오류·재조회와
+  F1 연계를 확인한다. F3 Incident 화면은 기존 예약 경로로 연결된다.

@@ -175,3 +175,22 @@ it('orders every cursor page by priority DESC, created_at ASC, ticket_id ASC', a
   expect(ids).toEqual(['tk_sample', 'tk_cloud', 'tk_custom', 'tk_tie_a', 'tk_tie_z', 'tk_later']);
   expect(new Set(ids).size).toBe(data.tickets.length);
 });
+
+it('keeps detail review history and waiting timestamp consistent with refreshed list and metrics', async () => {
+  const before = await api.ticket('tk_sample');
+  const metricBefore = await api.metrics({ from: 0, to: Date.now() });
+  const review = await api.reviewTicket('tk_sample', {
+    reviewer: 'f2-reviewer',
+    decision: 'fp',
+    reason: 'Synthetic review',
+  });
+  const after = await api.ticket('tk_sample');
+  const waiting = await api.tickets({ status: 'awaiting_human' });
+  const all = await api.tickets();
+  const metricAfter = await api.metrics({ from: 0, to: Date.now() });
+  expect(after.reviews).toEqual([...before.reviews, review]);
+  expect(after.ticket.awaiting_human_at).toBe(before.ticket.awaiting_human_at);
+  expect(waiting.items.some((ticket) => ticket.ticket_id === 'tk_sample')).toBe(false);
+  expect(all.items.find((ticket) => ticket.ticket_id === 'tk_sample')).toEqual(after.ticket);
+  expect(metricAfter.tickets_awaiting_human).toBe(metricBefore.tickets_awaiting_human - 1);
+});

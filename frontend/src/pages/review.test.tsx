@@ -3,7 +3,7 @@ import { createMemoryRouter, RouterProvider } from 'react-router';
 import { http, HttpResponse } from 'msw';
 import { expect, it } from 'vitest';
 import userEvent from '@testing-library/user-event';
-import { Providers } from '../app/providers';
+import { TestProviders as Providers } from '../test/providers';
 import { routes } from '../app/router';
 import { server } from '../mocks/server';
 import { metrics } from '../mocks/data';
@@ -26,7 +26,10 @@ it('uses the current metrics count and requests only awaiting_human tickets with
       <RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/review'] })} />
     </Providers>,
   );
-  expect(await screen.findByText('검토 대기 42건')).toBeInTheDocument();
+  // First MSW -> Query -> render of this page exceeded the 1s default under heavy CPU load.
+  expect(
+    await screen.findByText('검토 대기 42건', undefined, { timeout: 3000 }),
+  ).toBeInTheDocument();
   expect(requests).toHaveLength(1);
   expect(requests[0].searchParams.get('status')).toBe('awaiting_human');
   expect(requests[0].searchParams.has('cursor')).toBe(false);
@@ -39,7 +42,8 @@ it('shows only awaiting_human tickets with the shared mock', async () => {
       <RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/review'] })} />
     </Providers>,
   );
-  expect(await screen.findAllByRole('link', { name: /^tk_/ })).toHaveLength(3);
+  // First MSW -> Query -> render of this page exceeded the 1s default under heavy CPU load.
+  expect(await screen.findAllByRole('link', { name: /^tk_/ }, { timeout: 3000 })).toHaveLength(3);
   expect(screen.queryByRole('link', { name: 'tk_tie_a' })).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: /동의|뒤집기/ })).not.toBeInTheDocument();
 });

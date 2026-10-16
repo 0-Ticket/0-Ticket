@@ -1,9 +1,10 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { createTestQueryClient } from '../test/query-clients';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { http, HttpResponse } from 'msw';
-import { expect, it } from 'vitest';
+import { expect, it, vi } from 'vitest';
 import { routes } from '../app/router';
 import { ThemeProvider } from '../lib/theme';
 import { server } from '../mocks/server';
@@ -11,7 +12,7 @@ import { data } from '../mocks/data';
 import untrusted from '../../../tests/fixtures/frontend/untrusted-text.json';
 
 function mount(path = '/tickets', interval = false as number | false) {
-  const client = new QueryClient({
+  const client = createTestQueryClient({
     defaultOptions: { queries: { retry: false, refetchInterval: interval, staleTime: 1000 } },
   });
   const view = render(
@@ -36,7 +37,9 @@ it('renders server order, shared lookup cache, safe values and detail links with
     }),
   );
   mount();
-  const links = await screen.findAllByRole('link', { name: /^tk_/ });
+  // First MSW -> Query -> render of this page exceeded the 1s default under heavy CPU load.
+  await screen.findByText('tk_custom', { selector: 'a' }, { timeout: 3000 });
+  const links = screen.getAllByRole('link', { name: /^tk_/ });
   expect(links.map((link) => link.textContent)).toEqual(['tk_custom', 'tk_sample']);
   expect(links[0]).toHaveAttribute('href', '/tickets/tk_custom');
   expect(await screen.findAllByText('web-01')).toHaveLength(2);
@@ -66,37 +69,46 @@ it('renders attacker and LLM strings as plain text, including nested extensions'
 });
 
 it('loads more only on demand and polls every loaded page using fresh cursors without duplicates', async () => {
-  let version = 0;
-  const cursors: string[] = [];
-  server.use(
-    http.get('*/api/tickets', ({ request }) => {
-      const cursor = new URL(request.url).searchParams.get('cursor') ?? 'first';
-      cursors.push(`${version}:${cursor}`);
-      if (cursor === 'first')
-        return HttpResponse.json({
-          items: [data.tickets[version ? 2 : 0]],
-          next_cursor: version ? 'fresh' : 'next',
-        });
-      return HttpResponse.json({ items: [data.tickets[version ? 0 : 1]], next_cursor: null });
-    }),
-  );
-  const { client, unmount } = mount('/tickets', 100);
-  await screen.findByRole('link', { name: 'tk_sample' });
-  expect(cursors.some((cursor) => cursor.endsWith(':next'))).toBe(false);
-  await userEvent.click(screen.getByRole('button', { name: '더 보기' }));
-  await screen.findByRole('link', { name: 'tk_cloud' });
-  version = 1;
-  await waitFor(() =>
-    expect(screen.queryByRole('link', { name: 'tk_cloud' })).not.toBeInTheDocument(),
-  );
-  expect(screen.getAllByRole('link', { name: /^tk_/ }).map((link) => link.textContent)).toEqual([
-    'tk_custom',
-    'tk_sample',
-  ]);
-  expect(cursors).toContain('1:fresh');
-  expect(cursors).not.toContain('1:next');
-  unmount();
-  client.clear();
+  // Control interval ticks, while HTTP and Testing Library timeout timers stay real.
+  vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+  try {
+    let version = 0;
+    const cursors: string[] = [];
+    server.use(
+      http.get('*/api/tickets', ({ request }) => {
+        const cursor = new URL(request.url).searchParams.get('cursor') ?? 'first';
+        cursors.push(`${version}:${cursor}`);
+        if (cursor === 'first')
+          return HttpResponse.json({
+            items: [data.tickets[version ? 2 : 0]],
+            next_cursor: version ? 'fresh' : 'next',
+          });
+        return HttpResponse.json({ items: [data.tickets[version ? 0 : 1]], next_cursor: null });
+      }),
+    );
+    const { client, unmount } = mount('/tickets', 100);
+    await screen.findByRole('link', { name: 'tk_sample' });
+    expect(cursors.some((cursor) => cursor.endsWith(':next'))).toBe(false);
+    await userEvent.click(screen.getByRole('button', { name: '더 보기' }));
+    await screen.findByRole('link', { name: 'tk_cloud' });
+    version = 1;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100);
+    });
+    await waitFor(() =>
+      expect(screen.queryByRole('link', { name: 'tk_cloud' })).not.toBeInTheDocument(),
+    );
+    expect(screen.getAllByRole('link', { name: /^tk_/ }).map((link) => link.textContent)).toEqual([
+      'tk_custom',
+      'tk_sample',
+    ]);
+    expect(cursors).toContain('1:fresh');
+    expect(cursors).not.toContain('1:next');
+    unmount();
+    client.clear();
+  } finally {
+    vi.useRealTimers();
+  }
 });
 
 it('distinguishes list loading, errors, retry and empty results', async () => {
@@ -146,7 +158,7 @@ it('shows all statuses and nullable verdicts, multiple alerts, shared assets and
   await user.click(screen.getByRole('button', { name: '라이트 모드' }));
   expect(document.documentElement).not.toHaveClass('dark');
   await user.click(screen.getByRole('link', { name: 'tk_tie_a' }));
-  expect(screen.getByRole('main')).toBeEmptyDOMElement();
+  expect(await screen.findByRole('heading', { name: '티켓 tk_tie_a' })).toBeInTheDocument();
 });
 
 it('keeps loaded rows when the next page fails and retries the same cursor', async () => {
@@ -188,65 +200,80 @@ it('makes evidence IDs copyable while keeping untrusted references as text', asy
 });
 
 it('refreshes three loaded pages atomically, retries failed polling, and removes obsolete pages when results shrink', async () => {
-  let version = 0;
-  let fail = false;
-  const requests: string[] = [];
-  server.use(
-    http.get('*/api/tickets', ({ request }) => {
-      const cursor = new URL(request.url).searchParams.get('cursor') ?? 'first';
-      requests.push(`${version}:${cursor}`);
-      if (version === 2) return HttpResponse.json({ items: [data.tickets[3]], next_cursor: null });
-      const page =
-        cursor === 'first'
-          ? 0
-          : cursor === `${version}-second`
-            ? 1
-            : cursor === `${version}-third`
-              ? 2
-              : -1;
-      if (page < 0)
-        return HttpResponse.json(
-          { error: { code: 'invalid_input', message: 'stale cursor' } },
-          { status: 400 },
-        );
-      if (fail && page === 2)
-        return HttpResponse.json(
-          { error: { code: 'internal', message: '폴링 실패' } },
-          { status: 500 },
-        );
-      const order = version === 0 ? [0, 1, 2] : [2, 0, 4];
-      return HttpResponse.json({
-        items: [data.tickets[order[page]]],
-        next_cursor: page === 2 ? null : `${version}-${page === 0 ? 'second' : 'third'}`,
+  // A real 100ms poll can disable '더 보기' between the enabled check and the click.
+  // Control interval ticks, while HTTP and Testing Library timeout timers stay real.
+  vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+  try {
+    let version = 0;
+    let fail = false;
+    const requests: string[] = [];
+    server.use(
+      http.get('*/api/tickets', ({ request }) => {
+        const cursor = new URL(request.url).searchParams.get('cursor') ?? 'first';
+        requests.push(`${version}:${cursor}`);
+        if (version === 2)
+          return HttpResponse.json({ items: [data.tickets[3]], next_cursor: null });
+        const page =
+          cursor === 'first'
+            ? 0
+            : cursor === `${version}-second`
+              ? 1
+              : cursor === `${version}-third`
+                ? 2
+                : -1;
+        if (page < 0)
+          return HttpResponse.json(
+            { error: { code: 'invalid_input', message: 'stale cursor' } },
+            { status: 400 },
+          );
+        if (fail && page === 2)
+          return HttpResponse.json(
+            { error: { code: 'internal', message: '폴링 실패' } },
+            { status: 500 },
+          );
+        const order = version === 0 ? [0, 1, 2] : [2, 0, 4];
+        return HttpResponse.json({
+          items: [data.tickets[order[page]]],
+          next_cursor: page === 2 ? null : `${version}-${page === 0 ? 'second' : 'third'}`,
+        });
+      }),
+    );
+    const { client, unmount } = mount('/tickets', 100);
+    const poll = () =>
+      act(async () => {
+        await vi.advanceTimersByTimeAsync(100);
       });
-    }),
-  );
-  const { client, unmount } = mount('/tickets', 100);
-  const ids = () => screen.getAllByRole('link', { name: /^tk_/ }).map((link) => link.textContent);
-  await screen.findByRole('link', { name: 'tk_sample' });
-  for (const id of ['tk_cloud', 'tk_custom']) {
-    await waitFor(() => expect(screen.getByRole('button', { name: '더 보기' })).toBeEnabled());
-    await userEvent.click(screen.getByRole('button', { name: '더 보기' }));
-    await screen.findByRole('link', { name: id });
+    const ids = () => screen.getAllByRole('link', { name: /^tk_/ }).map((link) => link.textContent);
+    await screen.findByRole('link', { name: 'tk_sample' });
+    for (const id of ['tk_cloud', 'tk_custom']) {
+      await waitFor(() => expect(screen.getByRole('button', { name: '더 보기' })).toBeEnabled());
+      await userEvent.click(screen.getByRole('button', { name: '더 보기' }));
+      await screen.findByRole('link', { name: id });
+    }
+    fail = true;
+    version = 1;
+    await poll();
+    await screen.findByText('폴링 실패');
+    expect(ids()).toEqual(['tk_sample', 'tk_cloud', 'tk_custom']);
+    // A failed refresh must not combine the new first pages with stale trailing pages.
+    fail = false;
+    await poll();
+    await waitFor(() => expect(ids()).toEqual(['tk_custom', 'tk_sample', 'tk_later']));
+    expect(requests).toEqual(expect.arrayContaining(['1:first', '1:1-second', '1:1-third']));
+    expect(requests).not.toContain('1:0-second');
+    version = 2;
+    await poll();
+    await waitFor(() => expect(ids()).toEqual(['tk_tie_z']));
+    expect(
+      requests
+        .filter((request) => request.startsWith('2:'))
+        .every((request) => request === '2:first'),
+    ).toBe(true);
+    unmount();
+    client.clear();
+  } finally {
+    vi.useRealTimers();
   }
-  fail = true;
-  version = 1;
-  await screen.findByText('폴링 실패');
-  expect(ids()).toEqual(['tk_sample', 'tk_cloud', 'tk_custom']);
-  // A failed refresh must not combine the new first pages with stale trailing pages.
-  fail = false;
-  await waitFor(() => expect(ids()).toEqual(['tk_custom', 'tk_sample', 'tk_later']));
-  expect(requests).toEqual(expect.arrayContaining(['1:first', '1:1-second', '1:1-third']));
-  expect(requests).not.toContain('1:0-second');
-  version = 2;
-  await waitFor(() => expect(ids()).toEqual(['tk_tie_z']));
-  expect(
-    requests
-      .filter((request) => request.startsWith('2:'))
-      .every((request) => request === '2:first'),
-  ).toBe(true);
-  unmount();
-  client.clear();
 });
 
 it.each(['/review', '/tickets'])('uses only the approved GET APIs at %s', async (path) => {

@@ -194,7 +194,13 @@ export const handlers = [
       from > to
     )
       return error('invalid_input');
-    return json({ ...metrics, from, to });
+    return json({
+      ...metrics,
+      from,
+      to,
+      tickets_awaiting_human: state.tickets.filter((ticket) => ticket.status === 'awaiting_human')
+        .length,
+    });
   }),
   http.post(route('tickets/:id/reviews'), async ({ request, params }) => {
     // Finish asynchronous work before reading current state. Keep the checks and
