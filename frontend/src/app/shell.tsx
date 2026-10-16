@@ -25,6 +25,12 @@ export function Shell() {
         >
           전체 티켓
         </NavLink>
+        <NavLink
+          className={({ isActive }) => (isActive ? 'font-semibold underline' : 'underline')}
+          to="/incidents"
+        >
+          Incident
+        </NavLink>
       </nav>
       <main className="p-6">
         <Outlet />
