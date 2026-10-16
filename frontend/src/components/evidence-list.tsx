@@ -79,7 +79,15 @@ function EvidenceItem({ evidence }: { evidence: Evidence }) {
     <li className="space-y-2 rounded border border-border p-3">
       <div className="flex flex-wrap items-center gap-2">
         <span>{registeredLabel(evidence.ref_type)}</span>
-        <ObjectId value={evidence.ref_id} />
+        <ObjectId
+          value={evidence.ref_id}
+          href={
+            // Tickets have a documented screen; other unknown types stay as copyable text.
+            evidence.ref_type === 'ticket'
+              ? `/tickets/${encodeURIComponent(evidence.ref_id)}`
+              : undefined
+          }
+        />
         {known && (
           <Button
             variant="outline"
