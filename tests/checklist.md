@@ -352,3 +352,41 @@ K55는 여전히 일부이며 코어 비즈니스 검증은 해당 박스에서 
 - `tests/contracts/test_generation.py` 2건(`test_generation_reproducible`, `test_typescript_types`)은
   Windows 로컬에서만 실패한다. 생성 파일의 CRLF 체크아웃과 `subprocess`의 `pnpm`(`pnpm.cmd`) 실행 때문이며,
   `origin/review`를 그대로 받은 작업 트리에서도 같은 2건이 실패한다. 이번 변경과 무관하다.
+
+## #20 F0~F3 UI 개선 검증
+
+- 기능·API·계약·Query·mock·검증 로직은 그대로다. 바뀐 것은 스타일·배치·공통 표시 부품뿐이다.
+  `src/api/`, `src/mocks/`, `src/contracts/`, `contracts/`, `tests/fixtures/`는 수정하지 않았다.
+- 기존 테스트는 고치거나 지우지 않았다. 기존 화면 문구, 접근성 이름(`{id} 복사`, `다크 모드`, region 이름),
+  `data-testid`, `<article>` 구조, 값 표시 횟수를 그대로 유지했다.
+- 추가: `src/app/layout.test.tsx` — 주 메뉴 현재 위치, `/review`·`/tickets` 목적 문구,
+  상세 화면의 목록 경로 링크, 배지 tone(모르는 값은 원래 문자열·neutral). 구현 전 5건 실패를 확인했다.
+- K51·K52 관련: 신뢰할 수 없는 문자열은 계속 텍스트 노드로만 표시한다. 발췌·로그는 고정폭 블록에
+  plain text로만 두고 수준·URL을 해석하지 않는다. `dangerouslySetInnerHTML`·`innerHTML`·외부 링크 없음.
+  권고에는 "권고 · 실행하지 않음"만 있고 실행 버튼이 없다.
+- 브라우저(mock) 확인: 다섯 화면을 라이트·다크로 보고, 375px 폭에서 가로 넘침이 없음을 확인했다.
+  콘솔 오류 없음.
+- 명령: `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm build` 통과. `pnpm test` 103개
+  3회 연속 통과(load average 24~27). `uvx ruff format --check .`, `uvx ruff check .`,
+  `uv run pytest`(378개) 통과.
+- 환경 메모: 로컬 Homebrew `node@24`가 라이브러리 누락(simdjson)으로 실행되지 않아 Node 22.22.3으로
+  확인했다. CI의 Node 24에서 다시 확인이 필요하다. 고부하(load average 20 이상)에서는 기존 코드에서도
+  1초 기본 대기를 넘는 간헐 실패가 관찰됐다.
+
+### #20 최종 검토
+
+- 범위: `origin/review` 대비 `contracts/`, `src/`, `frontend/src/{api,mocks,contracts}`, 라우터·providers,
+  `package.json`·잠금 파일·`.nvmrc`, `tests/fixtures/` 변경 없음. L1·L2 검토 폼의 상태·검증·제출 코드는
+  `return` 이전까지 바이트 단위로 같다. `display.ts`의 라벨 22개, 위험·심각도 라벨, 등록형 라벨,
+  `localTime`, "사람 직접 처리" 판단(반려 2건 이상, 표시 전용)이 같다. tone은 표시 색일 뿐이다.
+- 발견·수정: (1) lg 이상에서 sticky 검토 영역이 화면보다 높으면 제출 버튼이 가려질 수 있었다
+  (1100×600에서 ticket 상세 570px > 552px). 최대 높이와 자체 스크롤을 줘서 제출 버튼에 닿게 했다.
+  (2) Lookup 자산 소제목이 h2 다음 h4로 건너뛰었다. h3로 바꾸고 `layout.test.tsx`에 heading 단계
+  검사 3건을 추가했다(수정 전 `/review`에서 실패 확인).
+- 375px: 다섯 화면 모두 가로 넘침 없음, 주 메뉴는 가로 스크롤, 검토 영역은 sticky 없이 본문 아래에 놓인다.
+- 명령: `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm build` 통과. `pnpm test` 106개
+  3회 연속 통과(load average 4~11). `uvx ruff format --check .`, `uvx ruff check .`, `uv run pytest` 378개 통과.
+- Node 24: 프로젝트 고정값은 `.nvmrc` 24, `engines` `>=24 <25`이며 CI는 `setup-node`의
+  `node-version-file: frontend/.nvmrc`로 설치한다. 로컬 `/opt/homebrew/opt/node@24`는 예전 `node` 24.7.0을
+  가리키는 링크인데, simdjson 4.6.4 업그레이드로 `libsimdjson.26.dylib`가 없어져 실행되지 않는다.
+  로컬 Homebrew 문제이며 프로젝트 코드와 무관하다. 로컬 확인은 Node 22.22.3이고, PR CI의 Node 24 통과가 필수 조건이다.

@@ -352,3 +352,27 @@ F1/F2의 시각 표시·대기 시간 계산, 검토 완료 시각·소요 시�
   회차는 흉내 내지 않는다. 기존 검토 기록이 있다는 이유만으로 막지는 않는다.
 - 새 검토 기회 신호는 후속 이슈 #21 "[Contract] Incident L2 재검토 가능 상태 신호 정의"에서
   계약 변경 절차로 정한다. 정해지면 화면과 mock은 그 신호만으로 폼과 `conflict`를 판단한다.
+
+### F0~F3 화면 스타일 정리 (#20)
+
+- 제공된 UI 디자인(Figma Make 시안)의 시각 언어만 가져왔다. 시안의 코드·가짜 데이터는 쓰지 않았고,
+  API·계약·Query·mock·검토 검증·상태 판단은 바꾸지 않았다. 새 패키지는 없다.
+- 색은 `src/styles.css`의 CSS 변수(라이트 `:root`, 다크 `.dark`)를 Tailwind 테마 색으로 연결해 쓴다.
+  의미 색은 `critical`·`warning`·`success`·`info`·`purple`과 각각의 `-soft` 배경이다.
+- 값 → 라벨·색(tone) 대응은 계속 `src/lib/display.ts` 한 곳에 둔다(`badges`, `severityTones`,
+  `riskTones`, `toneRails`). 배지는 항상 글자를 넣고 `data-tone`으로 색을 표시한다.
+  모르는 값은 원래 문자열을 `neutral` 색으로 보여 준다.
+- 공통 부품: `components/ui/`의 `Button`(ghost·icon 크기 추가), `ToneBadge`, `Card`·`Section`(제목이 있는
+  region), `Input`·`Textarea`·`NativeSelect`·`FieldLabel`; `components/`의 `Icon`(인라인 SVG, 장식용
+  `aria-hidden`), `PageHeader`, `Breadcrumbs`, `ReviewPanel`·`Choice`·`FormMessage`.
+- 셸: 왼쪽 사이드바(좁은 화면에서는 위쪽 가로 메뉴)와 테마 전환. 상세 화면은 `위치` 경로 링크
+  (`티켓 목록`, `Incident 목록`)와 본문 + 오른쪽 고정 검토 폼 2열이다.
+- `/review`는 대기 건수 카드, 강조 테두리, 검토 사유 강조로 할 일을 먼저 보이게 하고,
+  `/tickets`는 같은 목록을 전체 조회용으로 보여 준다. 표시 필드·순서·조회는 같다.
+- 디자인에는 있으나 계약·API에 없어 넣지 않은 것: P1/P2 등급과 우선순위 색, 퍼센트 확신도,
+  경과·대기 시간, 우선순위별·Incident 개요 건수, 상단 환경·시계·근무조, 분석가 계정,
+  검색·필터·정렬·페이지 번호·전체 건수, 내보내기·Incident 연결 버튼, 결정 기본 선택,
+  L1 승인/반려, 시안의 반려 유형, `details` 키 해석, 로그 수준 색 구분, 멤버 "MATCH REASON",
+  보고서 상태 배지·요약(EXECUTIVE SUMMARY)·타임라인 색, 전술 이름 대응표, 권고 제목 분리.
+  필요하면 계약 변경 절차를 거친 별도 이슈로 다룬다.
+- `/`(F6 지표 대시보드)는 이번 범위가 아니라 셸만 보인다.

@@ -3,16 +3,19 @@ import type { Evidence } from '../contracts';
 import { useEvidence } from '../api/ticket-queries';
 import { ObjectId, QueryError, Timestamp, Extensions } from './contract-display';
 import { Button } from './ui/button';
+import { ToneBadge } from './ui/badge';
 import { registeredLabel } from '../lib/display';
 
 // Recursive plain text fields, with timestamps and extensions retaining their meaning.
 export function ContractFields({ value }: { value: Record<string, unknown> }) {
   return (
-    <dl className="grid gap-2 text-sm sm:grid-cols-[minmax(8rem,auto)_1fr]">
+    <dl className="grid min-w-0 gap-x-4 gap-y-1.5 text-sm sm:grid-cols-[minmax(8rem,auto)_minmax(0,1fr)]">
       {Object.entries(value).map(([key, item]) => (
         <div key={key} className="contents">
-          <dt className="font-medium break-all">{key}</dt>
-          <dd className="min-w-0 whitespace-pre-wrap break-words">
+          <dt className="font-mono text-xs font-medium break-all text-muted-foreground sm:pt-0.5">
+            {key}
+          </dt>
+          <dd className="min-w-0 whitespace-pre-wrap [overflow-wrap:anywhere]">
             {item === null ? (
               key === 'src_asset' || key === 'dst_asset' ? (
                 '자산 정보 없음'
@@ -71,63 +74,81 @@ export function ContractFields({ value }: { value: Record<string, unknown> }) {
     </dl>
   );
 }
-function EvidenceItem({ evidence }: { evidence: Evidence }) {
+function EvidenceItem({ evidence, index }: { evidence: Evidence; index: number }) {
   const [open, setOpen] = useState(false);
   const known = ['alert', 'event', 'raw'].includes(evidence.ref_type);
   const query = useEvidence(evidence.ref_type, evidence.ref_id, open);
   return (
-    <li className="space-y-2 rounded border border-border p-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <span>{registeredLabel(evidence.ref_type)}</span>
-        <ObjectId
-          value={evidence.ref_id}
-          href={
-            // Tickets have a documented screen; other unknown types stay as copyable text.
-            evidence.ref_type === 'ticket'
-              ? `/tickets/${encodeURIComponent(evidence.ref_id)}`
-              : undefined
-          }
-        />
-        {known && (
-          <Button
-            variant="outline"
-            aria-expanded={open}
-            aria-label={`${evidence.ref_id} ${open ? '접기' : '펼치기'}`}
-            onClick={() => setOpen(!open)}
-          >
-            {open ? '접기' : '펼치기'}
-          </Button>
+    <li className="flex min-w-0 gap-2.5 rounded-md border border-border bg-card p-2.5">
+      <span
+        aria-hidden="true"
+        className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full border border-border-strong text-[10px] text-faint-foreground"
+      >
+        {index + 1}
+      </span>
+      <div className="min-w-0 flex-1 space-y-1.5">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <ToneBadge>{registeredLabel(evidence.ref_type)}</ToneBadge>
+          <ObjectId
+            value={evidence.ref_id}
+            href={
+              // Tickets have a documented screen; other unknown types stay as copyable text.
+              evidence.ref_type === 'ticket'
+                ? `/tickets/${encodeURIComponent(evidence.ref_id)}`
+                : undefined
+            }
+          />
+          {known && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="ml-auto h-7"
+              aria-expanded={open}
+              aria-label={`${evidence.ref_id} ${open ? '접기' : '펼치기'}`}
+              onClick={() => setOpen(!open)}
+            >
+              {open ? '접기' : '펼치기'}
+            </Button>
+          )}
+        </div>
+        <p className="text-sm whitespace-pre-wrap break-words text-muted-foreground">
+          {evidence.note}
+        </p>
+        {open && (
+          <div className="min-w-0 rounded-md border border-border bg-muted p-3">
+            {query.isPending && (
+              <p role="status" className="text-sm text-muted-foreground">
+                근거 불러오는 중…
+              </p>
+            )}
+            {query.error && (
+              <QueryError
+                error={query.error}
+                busy={query.isFetching}
+                retry={() => void query.refetch()}
+              />
+            )}
+            {query.data && <ContractFields value={{ ...query.data }} />}
+          </div>
         )}
       </div>
-      <p className="whitespace-pre-wrap break-words">{evidence.note}</p>
-      {open && (
-        <div>
-          {query.isPending && <p role="status">근거 불러오는 중…</p>}
-          {query.error && (
-            <QueryError
-              error={query.error}
-              busy={query.isFetching}
-              retry={() => void query.refetch()}
-            />
-          )}
-          {query.data && <ContractFields value={{ ...query.data }} />}
-        </div>
-      )}
     </li>
   );
 }
 export function EvidenceList({ evidence, label }: { evidence: Evidence[]; label: string }) {
   return (
-    <section aria-label={label}>
-      <h3 className="mb-2 font-semibold">{label}</h3>
+    <section aria-label={label} className="min-w-0">
+      <h3 className="mb-2 text-xs font-bold tracking-wider text-muted-foreground uppercase">
+        {label}
+      </h3>
       {evidence.length ? (
         <ul className="space-y-2">
           {evidence.map((item, i) => (
-            <EvidenceItem key={`${item.ref_type}:${item.ref_id}:${i}`} evidence={item} />
+            <EvidenceItem key={`${item.ref_type}:${item.ref_id}:${i}`} evidence={item} index={i} />
           ))}
         </ul>
       ) : (
-        <p>없음</p>
+        <p className="text-sm text-muted-foreground">없음</p>
       )}
     </section>
   );

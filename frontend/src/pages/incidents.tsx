@@ -1,18 +1,24 @@
 import { useIncidents } from '../api/incident-queries';
-import { QueryError } from '../components/contract-display';
+import { QueryError, StatusNote } from '../components/contract-display';
 import { IncidentList } from '../components/incident-list';
+import { PageHeader } from '../components/page-header';
 import { Button } from '../components/ui/button';
 
 export function IncidentsPage() {
   const query = useIncidents();
   const incidents = query.data?.pages.flatMap((page) => page.items) ?? [];
   return (
-    <div className="mx-auto max-w-6xl">
-      <h1 className="mb-2 text-2xl font-semibold">Incident 목록</h1>
-      <p className="mb-6 text-sm">
-        Correlation이 묶은 Incident입니다. Incident ID를 선택하면 상세와 L2 검토로 이동합니다.
-      </p>
-      {query.isPending && <p role="status">Incident 불러오는 중…</p>}
+    <div>
+      <PageHeader
+        eyebrow="CORRELATION"
+        title="Incident 목록"
+        description={
+          <p>
+            Correlation이 묶은 Incident입니다. Incident ID를 선택하면 상세와 L2 검토로 이동합니다.
+          </p>
+        }
+      />
+      {query.isPending && <StatusNote busy>Incident 불러오는 중…</StatusNote>}
       {query.error && (
         <QueryError
           error={query.error}
@@ -22,11 +28,11 @@ export function IncidentsPage() {
       )}
       {query.data && (
         <>
-          {!incidents.length && <p>Incident가 없습니다.</p>}
+          {!incidents.length && <StatusNote>Incident가 없습니다.</StatusNote>}
           <IncidentList incidents={incidents} />
           {query.hasNextPage && (
             <Button
-              className="mt-4"
+              className="mt-4 w-full"
               variant="outline"
               disabled={query.isFetching}
               onClick={() => void query.fetchNextPage()}
@@ -36,11 +42,7 @@ export function IncidentsPage() {
           )}
         </>
       )}
-      {query.isFetching && !query.isPending && (
-        <p role="status" className="mt-2 text-sm">
-          목록 갱신 중…
-        </p>
-      )}
+      {query.isFetching && !query.isPending && <StatusNote busy>목록 갱신 중…</StatusNote>}
     </div>
   );
 }
