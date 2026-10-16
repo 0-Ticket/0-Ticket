@@ -1,5 +1,6 @@
 import scenarios from '../../../tests/fixtures/frontend/scenarios.json';
 import detail from '../../../tests/fixtures/frontend/ticket-detail.json';
+import incidentDetail from '../../../tests/fixtures/frontend/incident-detail.json';
 import responses from '../../../tests/fixtures/frontend/api-responses.json';
 import type {
   AgentStep,
@@ -47,6 +48,11 @@ export const data = {
   steps: [
     ...scenarios.steps.filter((item) => item.subject_id !== detail.ticket.ticket_id),
     ...detail.steps,
+    ...incidentDetail.steps,
   ],
+  incidents: [...scenarios.incidents, ...incidentDetail.incidents],
+  hunts: [...scenarios.hunts, ...incidentDetail.hunts],
+  artifacts: [...scenarios.artifacts, ...incidentDetail.artifacts],
+  l2_reviews: [...scenarios.l2_reviews, ...incidentDetail.l2_reviews],
 } as unknown as MockData;
 export const metrics: Metrics = responses.metrics;

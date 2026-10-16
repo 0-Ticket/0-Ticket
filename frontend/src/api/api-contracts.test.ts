@@ -6,7 +6,7 @@ import { request } from './client';
 describe('documented API contracts', () => {
   it('rejects non-string enum values instead of coercing them into contract outputs', async () => {
     await expect(
-      request('incidents/in_sample/reviews', {
+      request('incidents/in_web_campaign/reviews', {
         method: 'POST',
         body: {
           reviewer: 'demo',
@@ -50,7 +50,9 @@ describe('documented API contracts', () => {
   it('preserves unknown registered values and extensions, and handles empty filtered lists', async () => {
     expect((await api.ticket('tk_custom')).ticket).toEqual(data.tickets[2]);
     expect((await api.hunts({ is_anomaly: false })).items).toEqual([]);
-    expect((await api.incidents({ created_by: 'manual' })).items).toEqual([]);
+    expect(
+      (await api.incidents({ status: 'escalated_to_case', created_by: 'manual' })).items,
+    ).toEqual([]);
     expect((await api.cases({ status: 'closed' })).items).toEqual([]);
     expect((await api.rules({ status: 'deployed' })).items).toEqual([]);
     expect((await api.normalizeFailures({ reason: 'unknown_scenario' })).items).toEqual([]);
@@ -61,9 +63,9 @@ describe('documented API contracts', () => {
       ticket: data.tickets[0],
       alerts: [data.alerts[0]],
       findings: data.findings,
-      steps: data.steps,
+      steps: data.steps.filter((step) => step.subject_id === 'tk_sample'),
       reviews: data.reviews,
-      incident_ids: ['in_sample'],
+      incident_ids: ['in_sample', 'in_web_campaign'],
     });
     expect(await api.alert('al_sample')).toEqual(data.alerts[0]);
     expect(await api.event('ev_sample')).toEqual(data.events[0]);
@@ -72,10 +74,10 @@ describe('documented API contracts', () => {
     expect(await api.incident('in_sample')).toEqual({
       incident: data.incidents[0],
       tickets: [data.tickets[0]],
-      hunts: data.hunts,
+      hunts: [data.hunts[0]],
       artifact: data.artifacts[0],
       steps: [],
-      reviews: data.l2_reviews,
+      reviews: data.l2_reviews.filter((review) => review.incident_id === 'in_sample'),
       case_id: 'cs_sample',
     });
     expect((await api.cases()).items).toEqual(data.cases);
@@ -108,13 +110,13 @@ describe('documented API contracts', () => {
       api.reviewTicket('tk_sample', { reviewer: 'demo', decision: 'tp' }),
     ).rejects.toMatchObject({ code: 'conflict' });
     expect(
-      await api.reviewIncident('in_sample', {
+      await api.reviewIncident('in_manual', {
         reviewer: 'demo',
         decision: 'reject',
         reject_type: 'missing_step',
         comment: 'Synthetic review',
       }),
-    ).toMatchObject({ decision: 'reject', round: 2 });
+    ).toMatchObject({ decision: 'reject', round: 3 });
     expect(
       await api.reviewRule('rp_sample', { reviewer: 'demo', decision: 'approve' }),
     ).toMatchObject({ status: 'approved' });
@@ -128,16 +130,29 @@ describe('documented API contracts', () => {
       api.reviewRule('rp_sample', { reviewer: 'demo', decision: 'approve' }),
     ).rejects.toMatchObject({ code: 'conflict' });
     await expect(
-      api.reviewIncident('in_sample', { reviewer: 'demo', decision: 'approve' }),
+      api.reviewIncident('in_manual', { reviewer: 'demo', decision: 'approve' }),
     ).rejects.toMatchObject({ code: 'conflict' });
   });
+
+  it.each(['in_sample', 'in_benign', 'in_escalated'])(
+    'returns conflict for %s, which has a Case or a terminal status, without recording a review',
+    async (id) => {
+      const before = await api.incident(id);
+      for (const body of [
+        { reviewer: 'demo', decision: 'approve' as const },
+        { reviewer: 'demo', decision: 'reject' as const },
+      ])
+        await expect(api.reviewIncident(id, body)).rejects.toMatchObject({ code: 'conflict' });
+      expect(await api.incident(id)).toEqual(before);
+    },
+  );
 
   it('rejects incomplete reviews, unknown objects and invalid case patches', async () => {
     await expect(
       api.reviewTicket('tk_sample', { reviewer: 'demo', decision: 'fp' }),
     ).rejects.toMatchObject({ code: 'invalid_input' });
     await expect(
-      api.reviewIncident('in_sample', { reviewer: 'demo', decision: 'reject' }),
+      api.reviewIncident('in_web_campaign', { reviewer: 'demo', decision: 'reject' }),
     ).rejects.toMatchObject({ code: 'invalid_input' });
     await expect(api.ticket('tk_missing')).rejects.toMatchObject({ code: 'not_found' });
     await expect(api.updateCase('cs_sample', { status: 'invalid' as never })).rejects.toMatchObject(
@@ -153,7 +168,7 @@ describe('documented API contracts', () => {
       }),
     ).rejects.toMatchObject({ code: 'invalid_input' });
     await expect(
-      request('incidents/in_sample/reviews', {
+      request('incidents/in_web_campaign/reviews', {
         method: 'POST',
         body: { reviewer: 'demo', decision: 'approve', round: 99 },
       }),

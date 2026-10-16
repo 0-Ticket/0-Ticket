@@ -315,3 +315,40 @@ F1/F2의 시각 표시·대기 시간 계산, 검토 완료 시각·소요 시�
   브라우저 mock은 이 파일의 전문 결과와 조사 단계를 사용하고 기존 F1 티켓 집합은 유지한다.
   Python은 공개 계약 검증 함수로 샘플을 검증하며, Vitest는 상세·입력 검증·오류·재조회와
   F1 연계를 확인한다. F3 Incident 화면은 기존 예약 경로로 연결된다.
+
+### F3 Incident 목록·상세와 L2 검토 (#17)
+
+- `/incidents`는 `GET /api/incidents`의 응답 순서를 그대로 쓰고 `next_cursor`로 "더 보기"를
+  한다. `/incidents/:incident_id`는 기존 Incident 상세 응답만 쓴다. 관련 티켓은 F1 목록
+  컴포넌트와 기존 알럿 조회로 Lookup을 보여 준다. 헌팅 결과·Case는 예약 경로
+  `/hunts/:hunt_id`, `/cases/:case_id`로 링크한다.
+- 묶음 항목은 `excluded`로만 나눠 포함·제외 항목을 표시한다. 묶음 기준은 계산하지 않는다.
+  C11 `timeline`은 계약상 시간순이므로 응답 순서 그대로 표시한다. 근거 `ticket`은
+  티켓 화면으로 링크하고, 모르는 `ref_type`에는 경로를 만들지 않는다. IOC URL은
+  복사만 할 수 있다. 권고에는 "권고 · 실행하지 않음"을 붙이고 실행 버튼을 두지 않는다.
+- 응답 C15에서 `decision=reject`가 2건 이상이면 "사람 직접 처리"를 표시한다. 문서의 표시
+  규칙을 위한 파생 표시이며 상태 값이나 검토 가능 여부를 정하지 않는다.
+- 검토 폼은 `case_id`가 있거나 `closed_benign`·`escalated_to_case`일 때만 비활성화한다.
+  별도의 검토 가능 상태를 정의하지 않고, 최종 판단은 API의 `conflict`에 맡긴다.
+  요청은 `reviewer`, `decision`, `reject_type`, `comment`만 보낸다. 반려 유형·코멘트 필수는
+  화면 편의 검증이다. `round`, Incident 상태, Case 생성 여부는 계산하거나 보내지 않는다.
+  성공·conflict 후 상세, Incident 목록, 지표 Query만 다시 조회한다. POST는 자동 재시도하지 않는다.
+- mock은 기존처럼 L2Review를 기록하고 `round`를 정한다. 상태 전이와 Case 생성은
+  흉내 내지 않는다(박스 21·22 후속). Case가 있거나 `closed_benign`·`escalated_to_case`인
+  Incident의 검토 요청에는 `conflict`를 준다. `tests/fixtures/frontend/incident-detail.json`의
+  Incident·헌팅·보고서·조사 단계·검토 기록을 기존 시나리오에 더해 쓴다.
+
+#### L2 재검토 동작과 한계 (#17)
+
+- 정책: 같은 Incident에 C15가 여러 건 생길 수 있다(`round`, 박스 21). 반려되면 L2가 다시
+  분석하고, 코어가 새 검토 기회를 열면 다시 검토한다. `round`는 코어가 정한다.
+- 현재 계약·API에는 "새 검토 기회가 열렸다"를 알려 주는 신호가 없다. C10 상태에 검토 대기가
+  없고, C11에는 회차가 없으며, C15는 검토한 보고서를 참조하지 않는다. 그래서 화면과 mock은
+  검토 건수, `round`, `generated_at`·`created_at` 비교로 새 회차를 추론하지 않는다.
+- 화면: `case_id`나 종결 상태에서만 폼을 비활성화한다. 같은 화면에서 검토가 성공하면 폼을
+  다시 열지 않는다. 다른 화면에 갔다 오거나 새로고침하면 다시 열리고, 그때 가능 여부는
+  API가 `conflict`로 판단한다. 같은 기회의 중복 제출은 화면의 제출 잠금과 API `conflict`로 막는다.
+- mock: 위 종결 조건 외에는 "세션마다 Incident당 검토 1회"로 단순화했다. 재분석과 다음
+  회차는 흉내 내지 않는다. 기존 검토 기록이 있다는 이유만으로 막지는 않는다.
+- 새 검토 기회 신호는 후속 이슈 #21 "[Contract] Incident L2 재검토 가능 상태 신호 정의"에서
+  계약 변경 절차로 정한다. 정해지면 화면과 mock은 그 신호만으로 폼과 `conflict`를 판단한다.

@@ -133,3 +133,45 @@ def test_ticket_detail_fixture_contracts_and_references():
     assert set(detail["ticket"]["alert_ids"]) == {a["alert_id"] for a in detail["alerts"]}
     assert set(detail["incident_ids"]) <= {i["incident_id"] for i in data["incidents"]}
     assert all(s["subject_id"] == detail["ticket"]["ticket_id"] for s in detail["steps"])
+
+
+def test_incident_detail_fixture_contracts_and_references():
+    extra = json.loads((FIXTURES / "incident-detail.json").read_text())
+    assert set(extra) <= CONTRACTS.keys()
+    for collection, items in extra.items():
+        for item in items:
+            validate_contract(CONTRACTS[collection], item)
+    data = json.loads((FIXTURES / "scenarios.json").read_text())
+    ids = {
+        kind: {row[field] for row in data[key] + extra.get(key, [])}
+        for kind, key, field in [
+            ("alert", "alerts", "alert_id"),
+            ("event", "events", "event_id"),
+            ("raw", "raw", "raw_id"),
+            ("ticket", "tickets", "ticket_id"),
+            ("hunt", "hunts", "hunt_id"),
+            ("incident", "incidents", "incident_id"),
+        ]
+    }
+    for incident in extra["incidents"]:
+        for member in incident["members"]:
+            assert member[f"{member['member_type']}_id"] in ids[member["member_type"]]
+    for key in ("artifacts", "steps", "l2_reviews"):
+        for item in extra[key]:
+            assert item.get("incident_id", item.get("subject_id")) in ids["incident"]
+    for hunt in extra["hunts"]:
+        assert hunt["incident_id"] in ids["incident"]
+    for artifact in extra["artifacts"]:
+        times = [entry["time"] for entry in artifact["timeline"]]
+        assert times == sorted(times)
+        for entry in artifact["timeline"]:
+            for evidence in entry["evidence"]:
+                # Plugin-registered types have no documented lookup; keep them as text.
+                if evidence["ref_type"] in ids:
+                    assert evidence["ref_id"] in ids[evidence["ref_type"]]
+    assert any(
+        e["ref_type"] not in ids
+        for a in extra["artifacts"]
+        for t in a["timeline"]
+        for e in t["evidence"]
+    )

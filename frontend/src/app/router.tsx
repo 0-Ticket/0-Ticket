@@ -3,8 +3,11 @@ import { Shell } from './shell';
 import { TicketsPage } from '../pages/tickets';
 import { ReviewPage } from '../pages/review';
 
-// F1/F2 supply ticket pages; later screens retain their reserved routes.
 import { TicketDetailPage } from '../pages/ticket-detail';
+import { IncidentsPage } from '../pages/incidents';
+import { IncidentDetailPage } from '../pages/incident-detail';
+
+// F1~F3 supply ticket and incident pages; later screens retain their reserved routes.
 export const routes: RouteObject[] = [
   {
     element: <Shell />,
@@ -30,6 +33,10 @@ export const routes: RouteObject[] = [
           <TicketsPage />
         ) : path === '/tickets/:ticket_id' ? (
           <TicketDetailPage />
+        ) : path === '/incidents' ? (
+          <IncidentsPage />
+        ) : path === '/incidents/:incident_id' ? (
+          <IncidentDetailPage />
         ) : null,
     })),
   },

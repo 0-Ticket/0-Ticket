@@ -237,7 +237,16 @@ export const handlers = [
     const input = await body(request, ['reviewer', 'decision', 'reject_type', 'comment']);
     const incident = state.incidents.find((item) => item.incident_id === params.id);
     if (!incident) return error('not_found');
-    if (reviewed.has(`incident:${params.id}`)) return error('conflict');
+    // Only the documented terminal conditions are checked. Whether the core has opened a
+    // new review round has no API signal yet, so the mock does not infer it from review
+    // counts, rounds or report timestamps. One review per Incident per mock session.
+    if (
+      state.cases.some((item) => item.incident_id === incident.incident_id) ||
+      incident.status === 'closed_benign' ||
+      incident.status === 'escalated_to_case' ||
+      reviewed.has(`incident:${params.id}`)
+    )
+      return error('conflict');
     if (
       !input ||
       !text(input.reviewer) ||
