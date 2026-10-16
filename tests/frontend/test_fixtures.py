@@ -185,7 +185,8 @@ def test_incident_review_fixtures_follow_box21_flow():
     incidents = data["incidents"] + extra["incidents"]
     reviews = data["l2_reviews"] + extra["l2_reviews"]
     artifacts = {a["incident_id"] for a in data["artifacts"] + extra["artifacts"]}
-    cases = {c["incident_id"] for c in data["cases"]}
+    case_extra = json.loads((FIXTURES / "case-detail.json").read_text())
+    cases = {c["incident_id"] for c in data["cases"] + case_extra["cases"]}
     scenario = {}
     for incident in incidents:
         incident_id, state = incident["incident_id"], incident["review_state"]
@@ -222,3 +223,45 @@ def test_incident_review_fixtures_follow_box21_flow():
     assert scenario["in_benign"] == ("human_handling", None, 2)
     assert scenario["in_sample"] == ("approved", None, 0)
     assert scenario["in_escalated"] == ("approved", None, 0)
+
+
+def test_case_detail_fixture_contracts_and_references():
+    extra = json.loads((FIXTURES / "case-detail.json").read_text())
+    assert set(extra) <= CONTRACTS.keys()
+    for collection, items in extra.items():
+        for item in items:
+            validate_contract(CONTRACTS[collection], item)
+    data = json.loads((FIXTURES / "scenarios.json").read_text())
+    incident_extra = json.loads((FIXTURES / "incident-detail.json").read_text())
+    incidents = data["incidents"] + incident_extra["incidents"]
+    ids = {
+        kind: {row[field] for row in data[key] + incident_extra.get(key, [])}
+        for kind, key, field in [
+            ("alert", "alerts", "alert_id"),
+            ("event", "events", "event_id"),
+            ("raw", "raw", "raw_id"),
+            ("ticket", "tickets", "ticket_id"),
+        ]
+    }
+    incident_ids = {i["incident_id"] for i in incidents}
+    cases = data["cases"] + extra["cases"]
+    # One Case per Incident; the mock links an Incident to its Case by incident_id.
+    assert len({c["incident_id"] for c in cases}) == len(cases)
+    assert len({c["case_id"] for c in cases}) == len(cases)
+    for case in extra["cases"]:
+        assert case["incident_id"] in incident_ids
+        assert {t["status"] for t in case["tasks"]} == {"todo", "doing", "done"}
+        assert any(t["due_at"] is None for t in case["tasks"])
+    existing_artifacts = {a["incident_id"] for a in data["artifacts"] + incident_extra["artifacts"]}
+    for artifact in extra["artifacts"]:
+        assert artifact["incident_id"] in {c["incident_id"] for c in extra["cases"]}
+        assert artifact["incident_id"] not in existing_artifacts
+        times = [entry["time"] for entry in artifact["timeline"]]
+        assert times == sorted(times)
+        for entry in artifact["timeline"]:
+            for evidence in entry["evidence"]:
+                if evidence["ref_type"] in ids:
+                    assert evidence["ref_id"] in ids[evidence["ref_type"]]
+    case_ids = {c["case_id"] for c in cases}
+    for rule in extra["rules"]:
+        assert rule["case_id"] in case_ids
