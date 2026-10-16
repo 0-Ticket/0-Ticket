@@ -50,7 +50,7 @@ describe('documented API contracts', () => {
   it('preserves unknown registered values and extensions, and handles empty filtered lists', async () => {
     expect((await api.ticket('tk_custom')).ticket).toEqual(data.tickets[2]);
     expect((await api.hunts({ is_anomaly: false })).items).toEqual([]);
-    expect((await api.incidents({ created_by: 'manual' })).items).toEqual([]);
+    expect((await api.incidents({ status: 'escalated_to_case' })).items).toEqual([]);
     expect((await api.cases({ status: 'closed' })).items).toEqual([]);
     expect((await api.rules({ status: 'deployed' })).items).toEqual([]);
     expect((await api.normalizeFailures({ reason: 'unknown_scenario' })).items).toEqual([]);
@@ -61,9 +61,9 @@ describe('documented API contracts', () => {
       ticket: data.tickets[0],
       alerts: [data.alerts[0]],
       findings: data.findings,
-      steps: data.steps,
+      steps: data.steps.filter((step) => step.subject_id === 'tk_sample'),
       reviews: data.reviews,
-      incident_ids: ['in_sample'],
+      incident_ids: ['in_sample', 'in_web_campaign'],
     });
     expect(await api.alert('al_sample')).toEqual(data.alerts[0]);
     expect(await api.event('ev_sample')).toEqual(data.events[0]);
@@ -72,10 +72,10 @@ describe('documented API contracts', () => {
     expect(await api.incident('in_sample')).toEqual({
       incident: data.incidents[0],
       tickets: [data.tickets[0]],
-      hunts: data.hunts,
+      hunts: [data.hunts[0]],
       artifact: data.artifacts[0],
       steps: [],
-      reviews: data.l2_reviews,
+      reviews: data.l2_reviews.filter((review) => review.incident_id === 'in_sample'),
       case_id: 'cs_sample',
     });
     expect((await api.cases()).items).toEqual(data.cases);
