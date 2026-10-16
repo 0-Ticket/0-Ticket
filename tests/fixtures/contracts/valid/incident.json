@@ -23,5 +23,7 @@
       "excluded_reason": null
     }
   ],
+  "review_state": "awaiting_review",
+  "review_round": 1,
   "extensions": {}
 }

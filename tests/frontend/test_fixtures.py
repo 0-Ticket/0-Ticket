@@ -175,3 +175,50 @@ def test_incident_detail_fixture_contracts_and_references():
         for t in a["timeline"]
         for e in t["evidence"]
     )
+
+
+def test_incident_review_fixtures_follow_box21_flow():
+    # Synthetic mock states must tell a consistent box 21 story (#21); the screen never
+    # derives them, so this only checks the hand-written fixtures.
+    data = json.loads((FIXTURES / "scenarios.json").read_text())
+    extra = json.loads((FIXTURES / "incident-detail.json").read_text())
+    incidents = data["incidents"] + extra["incidents"]
+    reviews = data["l2_reviews"] + extra["l2_reviews"]
+    artifacts = {a["incident_id"] for a in data["artifacts"] + extra["artifacts"]}
+    cases = {c["incident_id"] for c in data["cases"]}
+    scenario = {}
+    for incident in incidents:
+        incident_id, state = incident["incident_id"], incident["review_state"]
+        mine = sorted(
+            (r for r in reviews if r["incident_id"] == incident_id), key=lambda r: r["round"]
+        )
+        rounds = [r["round"] for r in mine]
+        rejects = sum(r["decision"] == "reject" for r in mine)
+        assert rounds == list(range(1, len(rounds) + 1)), incident_id
+        # Only rejections continue the loop; an approval is always the last review.
+        assert all(r["decision"] == "reject" for r in mine[:-1]), incident_id
+        if mine:
+            # L2 review happens after investigation starts, never on a fresh Incident.
+            assert incident["status"] != "open", incident_id
+        if incident_id in cases:
+            assert state == "approved", incident_id
+        if state == "awaiting_review":
+            assert incident["review_round"] == len(rounds) + 1, incident_id
+            assert rejects < 2 and incident_id in artifacts, incident_id
+            assert incident["status"] == "investigating", incident_id
+        elif state == "analyzing":
+            assert rejects < 2 and (not mine or mine[-1]["decision"] == "reject"), incident_id
+            assert incident["status"] == "investigating", incident_id
+        elif state == "approved":
+            assert mine and mine[-1]["decision"] == "approve", incident_id
+        else:
+            assert state == "human_handling"
+            assert rejects == 2 and mine[-1]["decision"] == "reject", incident_id
+        scenario[incident_id] = (state, incident["review_round"], rejects)
+    assert scenario["in_web_campaign"] == ("awaiting_review", 1, 0)
+    assert scenario["in_reanalysis"] == ("analyzing", None, 1)
+    assert scenario["in_second_round"] == ("awaiting_review", 2, 1)
+    assert scenario["in_manual"] == ("human_handling", None, 2)
+    assert scenario["in_benign"] == ("human_handling", None, 2)
+    assert scenario["in_sample"] == ("approved", None, 0)
+    assert scenario["in_escalated"] == ("approved", None, 0)

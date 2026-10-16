@@ -329,7 +329,35 @@ L1의 판정 결과. LLM 출력이 이 형식을 통과하지 못하면 판정�
 | tactics | list[str] | ✅ | ATT&CK 전술 ID. 예: `TA0001` |
 | summary | str | 선택 | L2가 채운다 |
 | members | list[IncidentMember] | ✅ | 아래 IncidentMember |
+| review_state | enum | ✅ | L2 검토 흐름 상태. `analyzing`, `awaiting_review`, `approved`, `human_handling`. 아래 "L2 검토 흐름" |
+| review_round | int | 선택 | 지금 열려 있는 L2 검토 기회의 회차. 1부터. `review_state`가 `awaiting_review`일 때만 값이 있고, 나머지 상태에서는 `null` |
 | extensions | dict | ✅ | 조직·플러그인 추가 필드. 없으면 `{}` |
+
+**L2 검토 흐름 (#21)**
+
+`status`와 `review_state`는 서로 다른 값이다. `status`는 Incident 생명주기(열림 → 조사 → 종결·Case 전환)이고,
+`review_state`는 그 안에서 L2 분석 → 사람 검토가 몇 번 오가는지를 나타낸다. 한쪽 값으로 다른 쪽을 대신하지 않는다.
+
+| review_state | review_round | 뜻 |
+|---|---|---|
+| `analyzing` | `null` | 아직 검토 기회가 열리지 않았다. L2가 분석하거나 반려 후 재분석하는 중 |
+| `awaiting_review` | 1 이상 | 지금 검토 기회가 열려 있다. 사람이 승인하거나 반려할 수 있다 |
+| `approved` | `null` | L2 검토에서 승인했다. Case 생성은 박스 22가 한다 |
+| `human_handling` | `null` | 두 번 반려되어 L2 자동 재검토를 끝냈다. 사람이 직접 처리한다 |
+
+```
+analyzing ──새 C11 검토 대상 준비──▶ awaiting_review (round n)
+awaiting_review ──approve──▶ approved
+awaiting_review ──reject (첫 번째 반려)──▶ analyzing ──재분석 후 새 검토 대상 준비──▶ awaiting_review (다음 round)
+awaiting_review ──reject (두 번째 반려)──▶ human_handling
+```
+
+- 상태를 바꾸고 회차를 부여하는 것은 코어(박스 21)다. 화면과 검토 채널은 계산하지 않는다.
+- 첫 검토 기회는 round 1이다. 새 기회가 열릴 때마다 코어가 다음 회차를 부여하며, 같은 Incident에서 회차는 단조 증가한다.
+- 검토 기회 하나에는 검토(C15)가 하나만 남는다. 처리된 기회에는 다시 제출할 수 없다.
+- `human_handling`은 L2 자동 검토 흐름의 끝일 뿐, Incident 생명주기의 끝이 아니다. 그 뒤 Case로 넘길지 종결할지는 `status`와 박스 22가 정한다. 이 상태에서는 새 L2 검토 기회를 열지 않는다.
+- 반려 후 `analyzing`으로 돌아가 재분석하는 동안 `status`는 `investigating`을 유지한다. 이 흐름은 `status` 값이나 전이를 바꾸지 않는다.
+- 화면은 검토 건수, C15 `round`, C11 `generated_at`, 그 밖의 시각으로 새 검토 기회를 추론하지 않는다. `review_state`와 `review_round`만 본다.
 
 **IncidentMember**
 
@@ -415,8 +443,18 @@ L2의 분석 결과물. 사람이 읽는 보고서는 이 객체로부터 만든
 | decision | enum | ✅ | `approve`, `reject` |
 | reject_type | enum | 선택 | `wrong_grouping`, `missing_step`, `wrong_conclusion`. `reject`면 필수 |
 | comment | str | 선택 | `reject`면 필수 |
-| round | int | ✅ | 같은 Incident의 몇 번째 검토인지. 1부터 |
+| round | int | ✅ | 이 검토가 처리한 검토 기회의 회차. 1부터. 코어가 그 기회의 C10 `review_round`를 기록한다. 요청 값이 아니다 |
 | created_at | int | ✅ | |
+
+검토와 관련된 값은 다섯 가지이고 서로 다르다.
+
+| 값 | 위치 | 뜻 | 누가 정하나 |
+|---|---|---|---|
+| `status` | C10 | Incident 생명주기 | 코어(박스 18, 22) |
+| `review_state` | C10 | L2 검토 흐름 상태 | 코어(박스 21) |
+| `review_round` | C10 | 지금 열려 있는 검토 기회의 회차 | 코어(박스 21) |
+| `expected_review_round` | 검토 요청 본문 | 요청이 답하는 검토 기회. 그 기회가 아직 열려 있는지 확인하는 사전 조건이며 계약 객체에 저장하지 않는다(`docs/api-contracts.md`) | 화면이 받은 `review_round`를 그대로 보냄 |
+| `round` | C15 | 이 검토가 실제로 처리한 회차 | 코어(박스 21)가 기록 |
 
 ## C16 · Case
 
@@ -569,6 +607,7 @@ CI와 테스트가 재생성 결과를 검증한다. 생성 폴더는 생성기�
 - 고정 enum, 명시된 숫자 범위·목록 최소 길이·문자열 최대 길이·ID 접두어를 검사한다.
 - `extensions`는 추가 값을 허용하되 키는 `<조직 또는 플러그인>.<필드>` 형식이다.
 - `if`/`then`: 뒤집기 사유, 반려 유형·코멘트, 멤버 종류별 ID, 제외 사유,
+  C10의 `review_state`와 `review_round` 짝(`awaiting_review`일 때만 1 이상 정수),
   `needs_human` 사유, AgentStep의 작업 종류별 필드·주체 ID, 알럿 별칭 표 조건,
   C17의 `is_anomaly`가 `false`일 때 `severity_id`가 0인 조건.
 - `anyOf`: C3·C5의 출발지·목적지·호스트 중 하나, C18의 헌팅·Case 근거 중 하나.
@@ -587,5 +626,5 @@ TypeScript는 런타임 검증기가 아니며, Pydantic도 루트 조건을 대
 중복 집계(6), 컬렉션별 원본 종결 여부(8), 우선순위·상태 전이(9·10),
 근거 ID 실재 여부·등록형 값의 등록 여부·LLM 실패 처리(관련 박스),
 조사 단계 순번(12), 뒤집기 여부 계산(16), 실제 묶음·심각도 계산(17·18),
-타임라인 정렬(19), 검토 회차·재반려 처리(21), 승인 후 Case 생성(22),
+타임라인 정렬(19), 검토 흐름 상태 전이·회차 부여·같은 기회 중복 제출 거부(21), 승인 후 Case 생성(22),
 룰 검사·백테스트·배포 승인(24)이 해당한다.

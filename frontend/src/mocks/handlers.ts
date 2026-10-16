@@ -233,24 +233,25 @@ export const handlers = [
     return json(review);
   }),
   http.post(route('incidents/:id/reviews'), async ({ request, params }) => {
-    // No await between the current-state check and recording this review.
-    const input = await body(request, ['reviewer', 'decision', 'reject_type', 'comment']);
+    // No await between the current-state check and recording this review, so exactly one
+    // request wins each review opportunity.
+    const input = await body(request, [
+      'reviewer',
+      'decision',
+      'reject_type',
+      'comment',
+      'expected_review_round',
+    ]);
     const incident = state.incidents.find((item) => item.incident_id === params.id);
     if (!incident) return error('not_found');
-    // Only the documented terminal conditions are checked. Whether the core has opened a
-    // new review round has no API signal yet, so the mock does not infer it from review
-    // counts, rounds or report timestamps. One review per Incident per mock session.
-    if (
-      state.cases.some((item) => item.incident_id === incident.incident_id) ||
-      incident.status === 'closed_benign' ||
-      incident.status === 'escalated_to_case' ||
-      reviewed.has(`incident:${params.id}`)
-    )
+    // C10 review_state/review_round are the only source of review availability (#21).
+    if (incident.review_state !== 'awaiting_review' || incident.review_round === null)
       return error('conflict');
     if (
       !input ||
       !text(input.reviewer) ||
-      (input.decision !== 'approve' && input.decision !== 'reject')
+      (input.decision !== 'approve' && input.decision !== 'reject') ||
+      !Number.isSafeInteger(input.expected_review_round)
     )
       return error('invalid_input');
     const rejectType = input.reject_type;
@@ -262,23 +263,27 @@ export const handlers = [
     if (input.comment != null && typeof input.comment !== 'string') return error('invalid_input');
     if (input.decision === 'reject' && (!rejectType || !text(input.comment)))
       return error('invalid_input');
+    // A stale screen answering an earlier or later opportunity must not be recorded.
+    if (input.expected_review_round !== incident.review_round) return error('conflict');
     const review: L2Review = {
       incident_id: incident.incident_id,
       reviewer: input.reviewer,
       decision: input.decision,
       reject_type: (rejectType ?? null) as L2Review['reject_type'],
       comment: typeof input.comment === 'string' ? input.comment : null,
-      round:
-        Math.max(
-          0,
-          ...state.l2_reviews
-            .filter((item) => item.incident_id === params.id)
-            .map((item) => item.round),
-        ) + 1,
+      round: incident.review_round,
       created_at: Date.now(),
     };
     state.l2_reviews.push(review);
-    reviewed.add(`incident:${params.id}`);
+    // Box 21 flow: approve ends the loop, the first rejection returns to L2 analysis and the
+    // second hands the Incident to a person. Lifecycle status and Case creation are not
+    // changed here (box 22); the mock never reanalyzes, so new rounds come from fixtures.
+    const rejects = state.l2_reviews.filter(
+      (item) => item.incident_id === incident.incident_id && item.decision === 'reject',
+    ).length;
+    incident.review_state =
+      input.decision === 'approve' ? 'approved' : rejects >= 2 ? 'human_handling' : 'analyzing';
+    incident.review_round = null;
     return json(review);
   }),
   http.post(route('rules/:id/reviews'), async ({ request, params }) => {

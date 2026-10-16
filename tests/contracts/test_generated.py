@@ -80,6 +80,8 @@ def test_generated_strict_field_types(name):
         ("agent_step", "step", 0),
         ("l2_review", "round", 0),
         ("ticket", "status", "custom"),
+        ("incident", "review_round", 0),
+        ("incident", "review_state", "custom"),
     ],
 )
 def test_generated_field_constraints(name, field, bad):

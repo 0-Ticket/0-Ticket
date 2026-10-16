@@ -23,4 +23,6 @@ class Incident(BaseModel):
     tactics: list[StrictStr]
     summary: StrictStr | None
     members: list[incident_member_schema.IncidentMember]
+    review_state: Literal["analyzing", "awaiting_review", "approved", "human_handling"]
+    review_round: conint(ge=1, strict=True) | None
     extensions: dict[constr(pattern=r"^[^.]+\..+$", strict=True), Any]

@@ -1,6 +1,12 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
-import { badges, localTime, severityLabels, severityTones } from '../lib/display';
+import {
+  badges,
+  localTime,
+  reviewStateBadges,
+  severityLabels,
+  severityTones,
+} from '../lib/display';
 import { cn } from '../lib/utils';
 import { Icon } from './icon';
 import { Button } from './ui/button';
@@ -13,6 +19,11 @@ export function Badge({ value, severity }: { value: string | null; severity?: nu
       {severity === undefined ? (style?.label ?? value ?? '없음') : severityLabels[severity]}
     </ToneBadge>
   );
+}
+// C10 review_state badge. Shown as received; the screen never derives it.
+export function ReviewStateBadge({ value }: { value: string }) {
+  const style = Object.hasOwn(reviewStateBadges, value) ? reviewStateBadges[value] : undefined;
+  return <ToneBadge tone={style?.tone}>{style?.label ?? value}</ToneBadge>;
 }
 export function Timestamp({ value }: { value: number }) {
   return (

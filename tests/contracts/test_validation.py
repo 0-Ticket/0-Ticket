@@ -82,6 +82,22 @@ def test_missing_field_path():
     assert (caught.value.path, caught.value.rule) == ("/payload", "required")
 
 
+@pytest.mark.parametrize(
+    "changes,path,rule",
+    [
+        ({"review_state": "awaiting_review", "review_round": None}, "/review_round", "type"),
+        ({"review_state": "analyzing", "review_round": 1}, "/review_round", "type"),
+        ({"review_round": 0}, "/review_round", "minimum"),
+        ({"review_state": "UNTRUSTED_VALUE"}, "/review_state", "enum"),
+    ],
+)
+def test_incident_review_signal_errors(changes, path, rule):
+    with pytest.raises(ContractValidationError) as caught:
+        validate_contract("Incident", fixture("incident") | changes)
+    assert (caught.value.path, caught.value.rule) == (path, rule)
+    assert "UNTRUSTED_VALUE" not in repr(vars(caught.value))
+
+
 def test_nested_reference_conditions():
     value = fixture("incident")
     value["members"][0]["excluded"] = True

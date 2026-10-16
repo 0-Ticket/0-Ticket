@@ -129,12 +129,13 @@
 | 메서드 · 경로 | 요청 본문 | 응답 | 쓰는 화면 |
 |---|---|---|---|
 | `POST /api/tickets/{ticket_id}/reviews` | `reviewer`, `decision` (`tp`, `fp`), `reason` | C9 HumanReview | F2 |
-| `POST /api/incidents/{incident_id}/reviews` | `reviewer`, `decision` (`approve`, `reject`), `reject_type`, `comment` | C15 L2Review | F3 |
+| `POST /api/incidents/{incident_id}/reviews` | `reviewer`, `decision` (`approve`, `reject`), `reject_type`, `comment`, `expected_review_round` | C15 L2Review | F3 |
 | `POST /api/rules/{proposal_id}/reviews` | `reviewer`, `decision` (`approve`, `reject`) | C18 RuleProposal | F5 |
 | `PATCH /api/cases/{case_id}` | `status`, `tasks`, `lessons` 중 바꿀 것만 | C16 Case | F4 |
 
 - 요청 본문의 선택 값은 보내지 않아도 된다. 계약 객체의 필드명을 그대로 쓴다.
 - `overturned`(C9)와 `round`(C15)는 보내지 않는다. 코어가 정한다.
+- `expected_review_round`는 L2 검토 요청에서 필수다. 아래 "L2 검토 기회 (#21)" 참고.
 - 코어 검증에 걸리면 `invalid_input`을 돌려준다. 예: 판정을 뒤집으면서 `reason`이 없음, 반려하면서 `reject_type`이 없음
 - 이미 처리된 대상(예: 검토가 끝난 티켓)에 다시 보내면 `conflict`를 돌려준다.
 - 룰 승인은 C18 `status`를 `approved`로 바꿀 뿐이다. SIEM 반영(`deployed`)은 화면 API가 하지 않는다.
@@ -148,3 +149,32 @@
 
 목록·상세의 응답 묶음 구조, 페이지 커서, 정렬, 지표 의미는 변경하지 않는다.
 새 API나 검토 완료 시각·소요 시간 지표는 추가하지 않는다.
+
+## L2 검토 기회 (#21)
+
+C10 Incident에 `review_state`, `review_round`가 필수 필드로 추가됐다(의미는 `docs/data-contracts.md` C10 "L2 검토 흐름").
+`GET /api/incidents`의 `items`와 `GET /api/incidents/{incident_id}`의 `incident`가 영향 대상이다.
+응답 묶음 구조, 페이지 커서, 지표 의미는 바꾸지 않는다.
+
+| 값 | 위치 | 역할 |
+|---|---|---|
+| `status` | C10 | Incident 생명주기. 검토 가능 여부를 판단하는 데 쓰지 않는다 |
+| `review_state` | C10 | L2 검토 흐름. `awaiting_review`일 때만 검토를 받는다 |
+| `review_round` | C10 | 지금 열려 있는 검토 기회 |
+| `expected_review_round` | 요청 본문 | 요청이 답하는 기회. 사전 조건(낙관적 동시성) 값이며 저장하지 않는다 |
+| `round` | C15 응답 | 코어가 기록한 실제 검토 회차 |
+
+`POST /api/incidents/{incident_id}/reviews` 처리 순서:
+
+1. Incident가 없으면 `not_found`
+2. `review_state`가 `awaiting_review`가 아니면 `conflict` (승인됨, 재분석 중, 사람 직접 처리)
+3. 본문 검증에 걸리면 `invalid_input`. `expected_review_round` 누락·정수 아님 포함
+4. `expected_review_round`가 지금 C10 `review_round`와 다르면 `conflict` (예: 다른 탭이 이미 답했고 새 기회가 열림)
+5. 통과하면 코어가 C15를 기록하고 `round`에 그 기회의 회차를 넣는다. 같은 기회에는 한 건만 기록되며, 동시에 온 요청 중 하나만 성공한다
+
+이 순서는 의도한 것이다. 검토 기회가 닫혀 있으면 본문이 잘못돼도 `conflict`다. 그래야 화면이 다시 조회해 최신 상태를 보여 준다.
+기회가 열려 있으면 본문 오류(`invalid_input`)를 회차 불일치(`conflict`)보다 먼저 알린다. 기존 C9 티켓 검토의 "이미 처리됨 → `conflict`, 그다음 본문 검증" 순서와 같다.
+
+- 화면은 GET에서 받은 `review_round`를 계산 없이 `expected_review_round`로 보낸다. 클라이언트가 회차를 정하는 값이 아니다.
+- 성공 후 `review_state`는 승인이면 `approved`, 첫 번째 반려면 `analyzing`, 두 번째 반려면 `human_handling`이 되고 `review_round`는 `null`이 된다. `status`는 바뀌지 않는다.
+- 검토 채널 플러그인(`review_channels`)도 같은 규칙을 따른다.

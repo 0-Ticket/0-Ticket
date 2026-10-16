@@ -11,6 +11,8 @@ export interface Incident {
   tactics: string[];
   summary: string | null;
   members: IncidentMember[];
+  review_state: 'analyzing' | 'awaiting_review' | 'approved' | 'human_handling';
+  review_round: number | null;
   extensions: {
     [k: string]: unknown;
   };

@@ -8,6 +8,7 @@ import { expect, it } from 'vitest';
 import { routes } from '../app/router';
 import { ThemeProvider } from '../lib/theme';
 import { server } from '../mocks/server';
+import { api } from '../api/endpoints';
 import fixture from '../../../tests/fixtures/frontend/incident-detail.json';
 
 const PATH = '/incidents/in_web_campaign';
@@ -80,7 +81,7 @@ it.each([
   expect(screen.getByRole('alert')).toHaveTextContent('반려 유형과 코멘트');
 });
 
-it('sends a rejection with reject_type and comment but never round', async () => {
+it('sends a rejection echoing the received review_round but never round', async () => {
   const bodies: unknown[] = [];
   capture(bodies);
   mount();
@@ -93,6 +94,7 @@ it('sends a rejection with reject_type and comment but never round', async () =>
         decision: 'reject',
         reject_type: 'missing_step',
         comment: '조사 단계 보완',
+        expected_review_round: 1,
       },
     ]),
   );
@@ -113,7 +115,13 @@ it('approves without reject_type or comment', async () => {
   await user.click(submit());
   await waitFor(() =>
     expect(bodies).toEqual([
-      { reviewer: 'reviewer-demo', decision: 'approve', reject_type: null, comment: null },
+      {
+        reviewer: 'reviewer-demo',
+        decision: 'approve',
+        reject_type: null,
+        comment: null,
+        expected_review_round: 1,
+      },
     ]),
   );
   expect(bodies[0]).not.toHaveProperty('round');
@@ -125,65 +133,128 @@ it('submits once and refetches detail, list and metrics, showing the round chose
   const listener = ({ request }: { request: Request }) => {
     const path = new URL(request.url).pathname;
     if (path === '/api/incidents') listGets++;
-    if (request.method === 'POST' && path === '/api/incidents/in_manual/reviews') posts++;
+    if (request.method === 'POST' && path === '/api/incidents/in_second_round/reviews') posts++;
   };
   server.events.on('request:start', listener);
   try {
     const { client, router } = mount('/incidents');
     client.setQueryData(METRICS, {});
     const user = userEvent.setup({ delay: null });
-    await user.click(await screen.findByRole('link', { name: 'in_manual' }));
-    await screen.findByRole('heading', { name: 'Incident in_manual' });
+    await user.click(await screen.findByRole('link', { name: 'in_second_round' }));
+    await screen.findByRole('heading', { name: 'Incident in_second_round' });
+    expect(screen.getByText('L2 검토 대기')).toBeInTheDocument();
     await fillReject();
     await user.dblClick(submit());
     await screen.findByText('검토가 저장되었습니다.');
     const reviews = within(screen.getByRole('region', { name: 'L2 검토 기록' }));
     expect(await reviews.findByText('reviewer-demo')).toBeInTheDocument();
-    // The mock already holds rounds 1 and 2; the screen only shows the stored value.
-    expect(reviews.getByText('3회차')).toBeInTheDocument();
-    expect(reviews.getAllByText(/회차$/)).toHaveLength(3);
-    // No client-side status or Case change: still the server's status.
-    expect(screen.getByText('열림')).toBeInTheDocument();
+    // Round 2 was the opportunity the server opened; the screen only shows stored values.
+    expect(reviews.getByText('2회차')).toBeInTheDocument();
+    expect(reviews.getAllByText(/회차$/)).toHaveLength(2);
+    // The second rejection moves only the review workflow; lifecycle status stays.
+    expect(await screen.findByText('사람 직접 처리')).toBeInTheDocument();
+    expect(screen.getByText('조사 중')).toBeInTheDocument();
     expect(screen.getByText('Case: 없음')).toBeInTheDocument();
     expect(submit()).toBeDisabled();
     expect(posts).toBe(1);
     expect(client.getQueryState(METRICS)?.isInvalidated).toBe(true);
     const before = listGets;
     await act(() => router.navigate('/incidents'));
-    await screen.findByRole('link', { name: 'in_manual' });
+    await screen.findByRole('link', { name: 'in_second_round' });
     await waitFor(() => expect(listGets).toBeGreaterThan(before));
   } finally {
     server.events.removeListener('request:start', listener);
   }
 });
 
-it('keeps the form closed after success on this page; a remount reopens it and the API decides', async () => {
+it('closes the form from the refetched review_state and reopens it only for a new opportunity', async () => {
   let posts = 0;
   const listener = ({ request }: { request: Request }) => {
     if (request.method === 'POST') posts++;
   };
   server.events.on('request:start', listener);
   try {
-    const { router } = mount();
+    const { client } = mount();
     const user = await fillReject();
     await user.click(submit());
     await screen.findByText('검토가 저장되었습니다.');
+    expect(await screen.findByText(/L2 분석 중입니다/)).toBeInTheDocument();
     expect(submit()).toBeDisabled();
-    // No server signal for a new review round exists, so nothing reopens the form here.
-    await act(() => router.navigate('/incidents'));
-    await act(() => router.navigate(PATH));
-    await screen.findByRole('heading', { name: 'Incident in_web_campaign' });
-    expect(submit()).toBeEnabled();
+    expect(posts).toBe(1);
+    // On the same mounted page, Box 19 finishing the reanalysis is represented by the server opening round 2.
+    const [first] = (await api.incident('in_web_campaign')).reviews;
+    server.use(
+      http.get('*/api/incidents/in_web_campaign', () =>
+        HttpResponse.json({
+          incident: { ...fixture.incidents[0], review_state: 'awaiting_review', review_round: 2 },
+          tickets: [],
+          hunts: [],
+          artifact: null,
+          steps: [],
+          reviews: [first],
+          case_id: null,
+        }),
+      ),
+    );
+    const bodies: unknown[] = [];
+    capture(bodies);
+    await act(() => client.invalidateQueries({ queryKey: ['incident-detail', 'in_web_campaign'] }));
+    await waitFor(() => expect(submit()).toBeEnabled());
     expect(screen.queryByText('검토가 저장되었습니다.')).not.toBeInTheDocument();
-    await fillReject();
+    expect(screen.getByLabelText('검토자')).toHaveValue('');
+    // A short approval keeps this test light; the reject path is covered above.
+    await user.type(screen.getByLabelText('검토자'), 'r');
+    await user.click(screen.getByLabelText('승인'));
     await user.click(submit());
-    expect(await screen.findByRole('alert')).toHaveTextContent('Already reviewed');
-    expect(posts).toBe(2);
-    const reviews = within(screen.getByRole('region', { name: 'L2 검토 기록' }));
-    expect(reviews.getAllByText(/회차$/)).toHaveLength(1);
+    await waitFor(() => expect(bodies).toMatchObject([{ expected_review_round: 2 }]));
   } finally {
     server.events.removeListener('request:start', listener);
   }
+});
+
+it('follows the server state on remount instead of a session flag', async () => {
+  const { router } = mount();
+  const user = await fillReject();
+  await user.click(submit());
+  expect(await screen.findByText(/L2 분석 중입니다/)).toBeInTheDocument();
+  await act(() => router.navigate('/incidents'));
+  await act(() => router.navigate(PATH));
+  await screen.findByRole('heading', { name: 'Incident in_web_campaign' });
+  expect(screen.getByText('L2 분석 중')).toBeInTheDocument();
+  expect(submit()).toBeDisabled();
+});
+
+it('keeps the answered opportunity locked until the refetch returns', async () => {
+  let release = () => {};
+  let saved = false,
+    posts = 0;
+  const gate = new Promise<void>((resolve) => (release = resolve));
+  server.use(
+    http.get('*/api/incidents/in_web_campaign', async () => {
+      if (saved) await gate;
+      return undefined;
+    }),
+    http.post('*/api/incidents/:id/reviews', () => {
+      posts++;
+      saved = true;
+      return HttpResponse.json(reviewResponse);
+    }),
+  );
+  mount();
+  const user = await fillReject();
+  await user.click(submit());
+  // POST succeeded but the refetch is still waiting: the form stays locked.
+  await waitFor(() => expect(saved).toBe(true));
+  expect(screen.getByRole('button', { name: '저장 중…' })).toBeDisabled();
+  await user.click(screen.getByRole('button', { name: '저장 중…' }));
+  expect(posts).toBe(1);
+  release();
+  await screen.findByText('검토가 저장되었습니다.');
+  // The refetched detail still shows round 1 open (POST was stubbed), yet that answered
+  // opportunity is not offered again.
+  expect(screen.getByText('L2 검토 대기')).toBeInTheDocument();
+  expect(submit()).toBeDisabled();
+  expect(posts).toBe(1);
 });
 
 it.each([

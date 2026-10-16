@@ -78,5 +78,5 @@
       }
     }
   ],
-  "description": "Core follow-up: compute review round and route repeated rejection to a human."
+  "description": "round records the C10 review_round of the opportunity this review handled; the core assigns it and routes the second rejection to human_handling."
 }
