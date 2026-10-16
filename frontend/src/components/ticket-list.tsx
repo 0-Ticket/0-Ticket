@@ -60,15 +60,15 @@ function AlertLookup({ id }: { id: string }) {
         <>
           <div className="grid min-w-0 gap-3 sm:grid-cols-3">
             <div className="min-w-0">
-              <h4 className={subheading}>출발지 자산</h4>
+              <h3 className={subheading}>출발지 자산</h3>
               <Asset value={query.data.src_asset} />
             </div>
             <div className="min-w-0">
-              <h4 className={subheading}>목적지 자산</h4>
+              <h3 className={subheading}>목적지 자산</h3>
               <Asset value={query.data.dst_asset} />
             </div>
             <div className="min-w-0">
-              <h4 className={subheading}>계정</h4>
+              <h3 className={subheading}>계정</h3>
               {query.data.user_info ? (
                 <div className="min-w-0 space-y-1">
                   <p className="flex min-w-0 items-center gap-1.5 font-medium">

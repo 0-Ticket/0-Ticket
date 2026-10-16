@@ -350,3 +350,21 @@ K55는 여전히 일부이며 코어 비즈니스 검증은 해당 박스에서 
 - 환경 메모: 로컬 Homebrew `node@24`가 라이브러리 누락(simdjson)으로 실행되지 않아 Node 22.22.3으로
   확인했다. CI의 Node 24에서 다시 확인이 필요하다. 고부하(load average 20 이상)에서는 기존 코드에서도
   1초 기본 대기를 넘는 간헐 실패가 관찰됐다.
+
+### #20 최종 검토
+
+- 범위: `origin/review` 대비 `contracts/`, `src/`, `frontend/src/{api,mocks,contracts}`, 라우터·providers,
+  `package.json`·잠금 파일·`.nvmrc`, `tests/fixtures/` 변경 없음. L1·L2 검토 폼의 상태·검증·제출 코드는
+  `return` 이전까지 바이트 단위로 같다. `display.ts`의 라벨 22개, 위험·심각도 라벨, 등록형 라벨,
+  `localTime`, "사람 직접 처리" 판단(반려 2건 이상, 표시 전용)이 같다. tone은 표시 색일 뿐이다.
+- 발견·수정: (1) lg 이상에서 sticky 검토 영역이 화면보다 높으면 제출 버튼이 가려질 수 있었다
+  (1100×600에서 ticket 상세 570px > 552px). 최대 높이와 자체 스크롤을 줘서 제출 버튼에 닿게 했다.
+  (2) Lookup 자산 소제목이 h2 다음 h4로 건너뛰었다. h3로 바꾸고 `layout.test.tsx`에 heading 단계
+  검사 3건을 추가했다(수정 전 `/review`에서 실패 확인).
+- 375px: 다섯 화면 모두 가로 넘침 없음, 주 메뉴는 가로 스크롤, 검토 영역은 sticky 없이 본문 아래에 놓인다.
+- 명령: `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm build` 통과. `pnpm test` 106개
+  3회 연속 통과(load average 4~11). `uvx ruff format --check .`, `uvx ruff check .`, `uv run pytest` 378개 통과.
+- Node 24: 프로젝트 고정값은 `.nvmrc` 24, `engines` `>=24 <25`이며 CI는 `setup-node`의
+  `node-version-file: frontend/.nvmrc`로 설치한다. 로컬 `/opt/homebrew/opt/node@24`는 예전 `node` 24.7.0을
+  가리키는 링크인데, simdjson 4.6.4 업그레이드로 `libsimdjson.26.dylib`가 없어져 실행되지 않는다.
+  로컬 Homebrew 문제이며 프로젝트 코드와 무관하다. 로컬 확인은 Node 22.22.3이고, PR CI의 Node 24 통과가 필수 조건이다.

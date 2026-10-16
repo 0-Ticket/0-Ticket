@@ -44,6 +44,22 @@ it.each([
   expect(crumbs.getByRole('link', { name: label })).toHaveAttribute('href', href);
 });
 
+it.each([
+  ['/review', 'web-01'],
+  ['/tickets/tk_sample', '티켓 tk_sample'],
+  ['/incidents/in_web_campaign', 'Incident in_web_campaign'],
+])('never skips a heading level at %s', async (path, ready) => {
+  const { container } = mount(path);
+  await screen.findAllByText(ready, undefined, { timeout: 3000 });
+  const levels = [...container.querySelectorAll('h1, h2, h3, h4, h5, h6')].map((heading) =>
+    Number(heading.tagName[1]),
+  );
+  expect(levels[0]).toBe(1);
+  levels.forEach((level, index) => {
+    if (index) expect(level - levels[index - 1]).toBeLessThanOrEqual(1);
+  });
+});
+
 it('gives badges one tone per documented value and keeps unknown values as raw text', () => {
   render(
     <>

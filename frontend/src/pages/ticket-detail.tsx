@@ -213,7 +213,7 @@ export function TicketDetailPage() {
                 ))}
               </Section>
             </div>
-            <aside className="min-w-0 space-y-4 lg:sticky lg:top-6">
+            <aside className="min-w-0 space-y-4 lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto">
               <TicketReview key={ticket.ticket_id} ticket={ticket} refreshFailed={query.isError} />
               <Section label="연결된 Incident">
                 {detail.incident_ids.length ? (
