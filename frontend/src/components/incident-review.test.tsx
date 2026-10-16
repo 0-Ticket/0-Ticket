@@ -11,6 +11,8 @@ import { server } from '../mocks/server';
 import fixture from '../../../tests/fixtures/frontend/incident-detail.json';
 
 const PATH = '/incidents/in_web_campaign';
+const METRICS = ['metrics', 'current-waiting'];
+const LIST = ['incidents', {}];
 function mount(path = PATH) {
   const client = createTestQueryClient({
     defaultOptions: { queries: { retry: false, staleTime: Infinity }, mutations: { retry: false } },
@@ -117,14 +119,18 @@ it('approves without reject_type or comment', async () => {
   expect(bodies[0]).not.toHaveProperty('round');
 });
 
-it('submits once and refetches detail and list, showing the round chosen by the API', async () => {
-  let listGets = 0;
+it('submits once and refetches detail, list and metrics, showing the round chosen by the API', async () => {
+  let listGets = 0,
+    posts = 0;
   const listener = ({ request }: { request: Request }) => {
-    if (new URL(request.url).pathname === '/api/incidents') listGets++;
+    const path = new URL(request.url).pathname;
+    if (path === '/api/incidents') listGets++;
+    if (request.method === 'POST' && path === '/api/incidents/in_manual/reviews') posts++;
   };
   server.events.on('request:start', listener);
   try {
-    const { router } = mount('/incidents');
+    const { client, router } = mount('/incidents');
+    client.setQueryData(METRICS, {});
     const user = userEvent.setup({ delay: null });
     await user.click(await screen.findByRole('link', { name: 'in_manual' }));
     await screen.findByRole('heading', { name: 'Incident in_manual' });
@@ -140,6 +146,8 @@ it('submits once and refetches detail and list, showing the round chosen by the 
     expect(screen.getByText('열림')).toBeInTheDocument();
     expect(screen.getByText('Case: 없음')).toBeInTheDocument();
     expect(submit()).toBeDisabled();
+    expect(posts).toBe(1);
+    expect(client.getQueryState(METRICS)?.isInvalidated).toBe(true);
     const before = listGets;
     await act(() => router.navigate('/incidents'));
     await screen.findByRole('link', { name: 'in_manual' });
@@ -172,12 +180,19 @@ it.each([
   };
   server.events.on('request:start', listener);
   try {
-    mount();
+    const { client } = mount();
+    client.setQueryData(METRICS, {});
+    client.setQueryData(LIST, { pages: [], pageParams: [] });
     const user = await fillReject();
     await user.click(submit());
     expect(await screen.findByRole('alert')).toHaveTextContent(`${code} <b>message</b>`);
-    if (code === 'conflict') await waitFor(() => expect(gets).toBeGreaterThan(1));
+    const conflict = code === 'conflict';
+    if (conflict) await waitFor(() => expect(gets).toBeGreaterThan(1));
     else expect(submit()).toBeEnabled();
+    // Only a conflict refreshes server state; other errors leave the queries untouched.
+    expect(client.getQueryState(METRICS)?.isInvalidated).toBe(conflict);
+    expect(client.getQueryState(LIST)?.isInvalidated).toBe(conflict);
+    if (!conflict) expect(gets).toBe(1);
     expect(posts).toBe(1);
     expect(document.querySelector('b')).toBeNull();
   } finally {

@@ -301,3 +301,16 @@ K55는 여전히 일부이며 코어 비즈니스 검증은 해당 박스에서 
   장비 부하(load average 50 이상)에서는 F1·F2·F3 테스트 일부가 5초 제한을 넘기는 것을
   관찰했다. 부하가 내려간 뒤에는 통과했다. 테스트 제한 시간과 워커 수는 바꾸지 않았고,
   F3 검증 테스트는 짧은 테스트로 나눴다.
+
+### #17 최종 재검토
+
+- 책임 경계: `handlers.ts`, `ticket-list.tsx`, `agent-log.tsx`는 변경하지 않았다. mock은
+  L2Review·round 기록과 기존 conflict 처리만 하며 Incident 상태 전이·Case 생성을 하지 않는다.
+  화면은 묶음·severity·status·round·Case 생성 여부를 계산하지 않는다.
+- 보강: 이중 클릭 시 POST가 정확히 1회인지, 성공·conflict 후 metrics·Incident 목록 Query가
+  invalidate되고 다른 오류에서는 재조회하지 않는지 단언을 추가했다. metrics 재조회를
+  지운 변형에서 두 테스트가 실패하는 것을 확인했다. 결정 라디오를 `fieldset`/`legend`로 묶었다.
+- untrusted 문자열 경로에 HTML 주입·마크다운 렌더링·자동 링크가 없다. 링크는 고정 내부 경로와
+  `encodeURIComponent`한 ID뿐이다.
+- Node 24.21.0에서 기본 `pnpm test` 10회 연속 통과(92개, load average 5~19, 회당 약 10초).
+  앞선 간헐 실패는 load average 28~55의 CPU 경합에서만 관찰됐다.

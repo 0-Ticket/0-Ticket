@@ -78,7 +78,8 @@ export function IncidentReview({
               onChange={(e) => setReviewer(e.target.value)}
             />
           </label>
-          <div className="flex flex-wrap items-center gap-4">
+          <fieldset className="flex flex-wrap items-center gap-4">
+            <legend className="mb-1 w-full">결정</legend>
             {(['approve', 'reject'] as const).map((value) => (
               <label key={value} className="flex items-center gap-2">
                 <input
@@ -91,7 +92,7 @@ export function IncidentReview({
                 {badges[value].label}
               </label>
             ))}
-          </div>
+          </fieldset>
           {reject && (
             <label className="block">
               반려 유형 (필수)
