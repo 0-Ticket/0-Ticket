@@ -42,7 +42,7 @@ function countCaseGets() {
 function capture(bodies: unknown[], respond?: () => Response | Promise<Response>) {
   server.use(
     http.patch('*/api/cases/:id', async ({ request }) => {
-      bodies.push(await request.json());
+      bodies.push(await request.clone().json());
       return respond ? respond() : undefined;
     }),
   );
@@ -64,9 +64,11 @@ it('shows each task with its owner, due time, status and null due as "없음"', 
   ).toHaveAttribute('title', String(CASE.tasks[0].due_at));
   // Every contract status is offered; the screen does not enforce a transition order.
   for (const index of [1, 2, 3])
-    expect(within(select(index)).getAllByRole('option').map((o) => o.getAttribute('value'))).toEqual(
-      ['todo', 'doing', 'done'],
-    );
+    expect(
+      within(select(index))
+        .getAllByRole('option')
+        .map((o) => o.getAttribute('value')),
+    ).toEqual(['todo', 'doing', 'done']);
 });
 
 it('patches the full tasks list with only the chosen status changed, then refetches', async () => {
@@ -93,7 +95,10 @@ it('locks every task while a change is pending and never resubmits', async () =>
   const bodies: unknown[] = [];
   capture(bodies, async () => {
     await delay(150);
-    return HttpResponse.json({ error: { code: 'internal', message: '저장 실패' } }, { status: 500 });
+    return HttpResponse.json(
+      { error: { code: 'internal', message: '저장 실패' } },
+      { status: 500 },
+    );
   });
   mount();
   const user = userEvent.setup();

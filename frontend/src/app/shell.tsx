@@ -8,6 +8,7 @@ const menu: { to: string; label: string; icon: IconName }[] = [
   { to: '/review', label: '검토 대기함', icon: 'inbox' },
   { to: '/tickets', label: '전체 티켓', icon: 'ticket' },
   { to: '/incidents', label: 'Incident', icon: 'incident' },
+  { to: '/cases', label: 'Case', icon: 'case' },
 ];
 
 export function Shell() {

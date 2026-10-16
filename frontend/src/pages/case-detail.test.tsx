@@ -19,13 +19,16 @@ function mount(path = '/cases/cs_web_breach') {
     defaultOptions: { queries: { retry: false, refetchInterval: false } },
   });
   const router = createMemoryRouter(routes, { initialEntries: [path] });
-  return { ...render(
-    <QueryClientProvider client={client}>
-      <ThemeProvider>
-        <RouterProvider router={router} />
-      </ThemeProvider>
-    </QueryClientProvider>,
-  ), router };
+  return {
+    ...render(
+      <QueryClientProvider client={client}>
+        <ThemeProvider>
+          <RouterProvider router={router} />
+        </ThemeProvider>
+      </QueryClientProvider>,
+    ),
+    router,
+  };
 }
 const heading = (id: string) => screen.findByRole('heading', { name: `Case ${id}` });
 const region = (name: string) => within(screen.getByRole('region', { name }));

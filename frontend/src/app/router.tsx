@@ -6,8 +6,10 @@ import { ReviewPage } from '../pages/review';
 import { TicketDetailPage } from '../pages/ticket-detail';
 import { IncidentsPage } from '../pages/incidents';
 import { IncidentDetailPage } from '../pages/incident-detail';
+import { CasesPage } from '../pages/cases';
+import { CaseDetailPage } from '../pages/case-detail';
 
-// F1~F3 supply ticket and incident pages; later screens retain their reserved routes.
+// F1~F4 supply ticket, incident and case pages; later screens retain their reserved routes.
 export const routes: RouteObject[] = [
   {
     element: <Shell />,
@@ -37,6 +39,10 @@ export const routes: RouteObject[] = [
           <IncidentsPage />
         ) : path === '/incidents/:incident_id' ? (
           <IncidentDetailPage />
+        ) : path === '/cases' ? (
+          <CasesPage />
+        ) : path === '/cases/:case_id' ? (
+          <CaseDetailPage />
         ) : null,
     })),
   },

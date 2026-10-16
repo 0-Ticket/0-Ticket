@@ -20,6 +20,7 @@ it('marks the active menu item in the main navigation', () => {
     '검토 대기함',
     '전체 티켓',
     'Incident',
+    'Case',
   ]);
   expect(nav.getByRole('link', { name: '전체 티켓' })).toHaveAttribute('aria-current', 'page');
   expect(nav.getByRole('link', { name: '검토 대기함' })).not.toHaveAttribute('aria-current');
@@ -37,6 +38,7 @@ it.each([
 it.each([
   ['/tickets/tk_sample', '티켓 tk_sample', '티켓 목록', '/tickets'],
   ['/incidents/in_web_campaign', 'Incident in_web_campaign', 'Incident 목록', '/incidents'],
+  ['/cases/cs_web_breach', 'Case cs_web_breach', 'Case 목록', '/cases'],
 ])('links %s back to its list from the breadcrumb', async (path, heading, label, href) => {
   mount(path);
   await screen.findByRole('heading', { name: heading }, { timeout: 3000 });
@@ -48,6 +50,7 @@ it.each([
   ['/review', 'web-01'],
   ['/tickets/tk_sample', '티켓 tk_sample'],
   ['/incidents/in_web_campaign', 'Incident in_web_campaign'],
+  ['/cases/cs_web_breach', '타임라인'],
 ])('never skips a heading level at %s', async (path, ready) => {
   const { container } = mount(path);
   await screen.findAllByText(ready, undefined, { timeout: 3000 });
