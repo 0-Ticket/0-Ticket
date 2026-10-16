@@ -5,14 +5,16 @@ import { cn } from '../../lib/utils';
 
 // Local shadcn/ui button primitive; additional components are added with their screens.
 const variants = cva(
-  'inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50',
+  'inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {
-        default: 'bg-primary text-primary-foreground hover:bg-primary/90',
-        outline: 'border border-input bg-background hover:bg-accent hover:text-accent-foreground',
+        default: 'bg-primary text-primary-foreground shadow-sm hover:bg-primary/90',
+        outline:
+          'border border-input bg-card text-foreground shadow-xs hover:bg-muted hover:border-faint-foreground',
+        ghost: 'text-muted-foreground hover:bg-muted hover:text-foreground',
       },
-      size: { default: 'h-9 px-4 py-2', sm: 'h-8 px-3' },
+      size: { default: 'h-9 px-4 py-2', sm: 'h-8 px-3 text-xs', icon: 'size-7 p-0' },
     },
     defaultVariants: { variant: 'default', size: 'default' },
   },

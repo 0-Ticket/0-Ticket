@@ -1,54 +1,47 @@
-export const badges: Record<string, { label: string; color: string }> = {
-  new: { label: '신규', color: 'bg-accent' },
-  triaging: {
-    label: '분석 중',
-    color: 'bg-blue-100 text-blue-950 dark:bg-blue-950 dark:text-blue-100',
-  },
-  awaiting_human: {
-    label: '검토 대기',
-    color: 'bg-amber-100 text-amber-950 dark:bg-amber-950 dark:text-amber-100',
-  },
-  closed_benign: { label: '정상 종결', color: 'bg-accent' },
-  closed_fp: { label: '오탐 종결', color: 'bg-accent' },
-  escalated: {
-    label: '상위 분석',
-    color: 'bg-red-100 text-red-950 dark:bg-red-950 dark:text-red-100',
-  },
-  tp: { label: 'TP', color: 'bg-red-100 text-red-950 dark:bg-red-950 dark:text-red-100' },
-  fp: { label: 'FP', color: 'bg-accent' },
-  unknown: { label: '불명', color: 'bg-accent' },
-  open: { label: '열림', color: 'bg-accent' },
-  investigating: {
-    label: '조사 중',
-    color: 'bg-blue-100 text-blue-950 dark:bg-blue-950 dark:text-blue-100',
-  },
-  escalated_to_case: {
-    label: 'Case 전환',
-    color: 'bg-red-100 text-red-950 dark:bg-red-950 dark:text-red-100',
-  },
-  correlation: { label: '규칙 묶음', color: 'bg-accent' },
-  manual: {
-    label: '사람이 직접 묶음',
-    color: 'bg-amber-100 text-amber-950 dark:bg-amber-950 dark:text-amber-100',
-  },
-  l1: { label: 'L1 판정', color: 'bg-accent' },
-  human_l1: {
-    label: '사람 확정',
-    color: 'bg-amber-100 text-amber-950 dark:bg-amber-950 dark:text-amber-100',
-  },
-  l3: { label: 'L3', color: 'bg-blue-100 text-blue-950 dark:bg-blue-950 dark:text-blue-100' },
-  approve: { label: '승인', color: 'bg-accent' },
-  reject: {
-    label: '반려',
-    color: 'bg-red-100 text-red-950 dark:bg-red-950 dark:text-red-100',
-  },
-  wrong_grouping: { label: '잘못된 묶음', color: 'bg-accent' },
-  missing_step: { label: '누락된 단계', color: 'bg-accent' },
-  wrong_conclusion: { label: '잘못된 결론', color: 'bg-accent' },
+// Display tones; badge text is always shown so color is never the only signal.
+export type Tone = 'neutral' | 'critical' | 'warning' | 'success' | 'info' | 'purple';
+// Left accent rail for cards, keyed by the same tones as badges.
+export const toneRails: Record<Tone, string> = {
+  neutral: 'border-l-border-strong',
+  info: 'border-l-info',
+  warning: 'border-l-warning',
+  critical: 'border-l-critical',
+  success: 'border-l-success',
+  purple: 'border-l-purple',
+};
+export const badges: Record<string, { label: string; tone: Tone }> = {
+  new: { label: '신규', tone: 'neutral' },
+  triaging: { label: '분석 중', tone: 'info' },
+  awaiting_human: { label: '검토 대기', tone: 'warning' },
+  closed_benign: { label: '정상 종결', tone: 'success' },
+  closed_fp: { label: '오탐 종결', tone: 'neutral' },
+  escalated: { label: '상위 분석', tone: 'critical' },
+  tp: { label: 'TP', tone: 'critical' },
+  fp: { label: 'FP', tone: 'neutral' },
+  unknown: { label: '불명', tone: 'neutral' },
+  open: { label: '열림', tone: 'neutral' },
+  investigating: { label: '조사 중', tone: 'info' },
+  escalated_to_case: { label: 'Case 전환', tone: 'critical' },
+  correlation: { label: '규칙 묶음', tone: 'neutral' },
+  manual: { label: '사람이 직접 묶음', tone: 'purple' },
+  l1: { label: 'L1 판정', tone: 'neutral' },
+  human_l1: { label: '사람 확정', tone: 'purple' },
+  l3: { label: 'L3', tone: 'info' },
+  approve: { label: '승인', tone: 'success' },
+  reject: { label: '반려', tone: 'critical' },
+  wrong_grouping: { label: '잘못된 묶음', tone: 'neutral' },
+  missing_step: { label: '누락된 단계', tone: 'neutral' },
+  wrong_conclusion: { label: '잘못된 결론', tone: 'neutral' },
 };
 // Derived display only: documented screen rule for box 21, never a status value.
 export const HUMAN_HANDLING_LABEL = '사람 직접 처리';
+export const HUMAN_HANDLING_TONE: Tone = 'purple';
 export const riskLabels: Record<string, string> = { low: '낮음', medium: '중간', high: '높음' };
+export const riskTones: Record<string, Tone> = {
+  low: 'neutral',
+  medium: 'warning',
+  high: 'critical',
+};
 export const severityLabels = [
   'Unknown',
   'Informational',
@@ -57,6 +50,16 @@ export const severityLabels = [
   'High',
   'Critical',
   'Fatal',
+];
+// Indexed by severity_id (0 ~ 6), alongside severityLabels.
+export const severityTones: Tone[] = [
+  'neutral',
+  'neutral',
+  'info',
+  'info',
+  'warning',
+  'critical',
+  'critical',
 ];
 const registered: Record<string, string> = {
   web_attack: '웹 공격',
