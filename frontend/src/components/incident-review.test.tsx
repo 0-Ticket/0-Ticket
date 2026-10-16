@@ -157,6 +157,35 @@ it('submits once and refetches detail, list and metrics, showing the round chose
   }
 });
 
+it('keeps the form closed after success on this page; a remount reopens it and the API decides', async () => {
+  let posts = 0;
+  const listener = ({ request }: { request: Request }) => {
+    if (request.method === 'POST') posts++;
+  };
+  server.events.on('request:start', listener);
+  try {
+    const { router } = mount();
+    const user = await fillReject();
+    await user.click(submit());
+    await screen.findByText('검토가 저장되었습니다.');
+    expect(submit()).toBeDisabled();
+    // No server signal for a new review round exists, so nothing reopens the form here.
+    await act(() => router.navigate('/incidents'));
+    await act(() => router.navigate(PATH));
+    await screen.findByRole('heading', { name: 'Incident in_web_campaign' });
+    expect(submit()).toBeEnabled();
+    expect(screen.queryByText('검토가 저장되었습니다.')).not.toBeInTheDocument();
+    await fillReject();
+    await user.click(submit());
+    expect(await screen.findByRole('alert')).toHaveTextContent('Already reviewed');
+    expect(posts).toBe(2);
+    const reviews = within(screen.getByRole('region', { name: 'L2 검토 기록' }));
+    expect(reviews.getAllByText(/회차$/)).toHaveLength(1);
+  } finally {
+    server.events.removeListener('request:start', listener);
+  }
+});
+
 it.each([
   ['invalid_input', 400],
   ['not_found', 404],

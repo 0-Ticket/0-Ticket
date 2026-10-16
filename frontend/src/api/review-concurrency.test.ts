@@ -60,18 +60,18 @@ it('records exactly one concurrent Ticket review and preserves the winning decis
 });
 
 it('records exactly one concurrent Incident review and advances its round only once', async () => {
-  const before = await api.incident('in_sample');
+  const before = await api.incident('in_manual');
   const winner = await race([
-    () => api.reviewIncident('in_sample', { reviewer: 'demo-approve', decision: 'approve' }),
+    () => api.reviewIncident('in_manual', { reviewer: 'demo-approve', decision: 'approve' }),
     () =>
-      api.reviewIncident('in_sample', {
+      api.reviewIncident('in_manual', {
         reviewer: 'demo-reject',
         decision: 'reject',
         reject_type: 'missing_step',
         comment: 'Synthetic rejection',
       }),
   ]);
-  const after = await api.incident('in_sample');
+  const after = await api.incident('in_manual');
   expect(after.reviews).toEqual([...before.reviews, winner]);
   expect(winner.round).toBe(Math.max(0, ...before.reviews.map((review) => review.round)) + 1);
   // F0 stores the L2 decision; actual Incident lifecycle transitions belong to the core.

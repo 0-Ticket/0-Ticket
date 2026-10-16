@@ -314,3 +314,19 @@ K55는 여전히 일부이며 코어 비즈니스 검증은 해당 박스에서 
   `encodeURIComponent`한 ID뿐이다.
 - Node 24.21.0에서 기본 `pnpm test` 10회 연속 통과(92개, load average 5~19, 회당 약 10초).
   앞선 간헐 실패는 load average 28~55의 CPU 경합에서만 관찰됐다.
+
+### #17 PR #18 리뷰 대응: L2 재검토
+
+- 계약·API에 새 검토 기회 신호가 없음을 확인했다. 검토 건수·round·시각 비교로 추론하지 않는다.
+- mock: Case가 있거나 `closed_benign`·`escalated_to_case`이면 `conflict`이고 기록하지 않는다
+  (`api-contracts.test.ts`의 `returns conflict for ...` 3건). 이 규칙을 지운 변형에서 실패를 확인했다.
+  그 밖에는 세션마다 Incident당 1회다. 기존 F0 API·동시성 테스트는 Case가 있는 `in_sample` 대신
+  열린 Incident(`in_manual`, `in_web_campaign`)를 대상으로 바꿨다. 지운 테스트는 없다.
+- 화면: `in_escalated`(Case 없음) 비활성화, 성공 후 같은 화면 비활성 → 다시 마운트하면 열림 →
+  같은 기회에 다시 보내면 `conflict` 표시와 기록 1건 유지를 확인했다(`incident-review.test.tsx`).
+- 후속: #21 "[Contract] Incident L2 재검토 가능 상태 신호 정의". K24·K47의 실제 재검토 흐름은 박스 21에서 확인한다.
+
+- 안정성: `incidents.test.tsx` 첫 목록 조회에 3초 대기를 넣을지 재현으로 비교했다. 정상 부하
+  (load average 8 미만)에서는 대기 없이 5회 모두 통과했다. 1초 대기를 넘겨 실패한 경우는
+  F1·F2 테스트도 함께 실패하던 고부하(회당 20~30초)에서만 나와서, 대기를 추가하지 않았다.
+  전역 testTimeout, 워커 수, `pnpm test` 명령은 바꾸지 않았다.

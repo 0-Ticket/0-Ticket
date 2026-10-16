@@ -124,6 +124,7 @@ it('marks manual grouping and two rejections without deciding review availabilit
 it.each([
   ['in_sample', 'Case가 이미 만들어졌습니다.'],
   ['in_benign', '종결된 Incident입니다.'],
+  ['in_escalated', '종결된 Incident입니다.'],
 ])('disables the review form for %s', async (id, message) => {
   mount(`/incidents/${id}`);
   await heading(id);

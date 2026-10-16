@@ -104,6 +104,30 @@
         }
       ],
       "extensions": {}
+    },
+    {
+      "incident_id": "in_escalated",
+      "title": "Case 전환 상태 Incident",
+      "status": "escalated_to_case",
+      "created_by": "correlation",
+      "severity_id": 3,
+      "first_seen": 1791849600000,
+      "last_seen": 1791849600000,
+      "tactics": [],
+      "summary": null,
+      "members": [
+        {
+          "member_type": "ticket",
+          "ticket_id": "tk_tie_z",
+          "hunt_id": null,
+          "source": "l1",
+          "rule": "corr.web.same_src",
+          "matched_entity": { "type": "ip", "value": "192.0.2.40" },
+          "excluded": false,
+          "excluded_reason": null
+        }
+      ],
+      "extensions": {}
     }
   ],
   "hunts": [

@@ -334,5 +334,21 @@ F1/F2의 시각 표시·대기 시간 계산, 검토 완료 시각·소요 시�
   화면 편의 검증이다. `round`, Incident 상태, Case 생성 여부는 계산하거나 보내지 않는다.
   성공·conflict 후 상세, Incident 목록, 지표 Query만 다시 조회한다. POST는 자동 재시도하지 않는다.
 - mock은 기존처럼 L2Review를 기록하고 `round`를 정한다. 상태 전이와 Case 생성은
-  흉내 내지 않는다(박스 21·22 후속). `tests/fixtures/frontend/incident-detail.json`의
+  흉내 내지 않는다(박스 21·22 후속). Case가 있거나 `closed_benign`·`escalated_to_case`인
+  Incident의 검토 요청에는 `conflict`를 준다. `tests/fixtures/frontend/incident-detail.json`의
   Incident·헌팅·보고서·조사 단계·검토 기록을 기존 시나리오에 더해 쓴다.
+
+#### L2 재검토 동작과 한계 (#17)
+
+- 정책: 같은 Incident에 C15가 여러 건 생길 수 있다(`round`, 박스 21). 반려되면 L2가 다시
+  분석하고, 코어가 새 검토 기회를 열면 다시 검토한다. `round`는 코어가 정한다.
+- 현재 계약·API에는 "새 검토 기회가 열렸다"를 알려 주는 신호가 없다. C10 상태에 검토 대기가
+  없고, C11에는 회차가 없으며, C15는 검토한 보고서를 참조하지 않는다. 그래서 화면과 mock은
+  검토 건수, `round`, `generated_at`·`created_at` 비교로 새 회차를 추론하지 않는다.
+- 화면: `case_id`나 종결 상태에서만 폼을 비활성화한다. 같은 화면에서 검토가 성공하면 폼을
+  다시 열지 않는다. 다른 화면에 갔다 오거나 새로고침하면 다시 열리고, 그때 가능 여부는
+  API가 `conflict`로 판단한다. 같은 기회의 중복 제출은 화면의 제출 잠금과 API `conflict`로 막는다.
+- mock: 위 종결 조건 외에는 "세션마다 Incident당 검토 1회"로 단순화했다. 재분석과 다음
+  회차는 흉내 내지 않는다. 기존 검토 기록이 있다는 이유만으로 막지는 않는다.
+- 새 검토 기회 신호는 후속 이슈 #21 "[Contract] Incident L2 재검토 가능 상태 신호 정의"에서
+  계약 변경 절차로 정한다. 정해지면 화면과 mock은 그 신호만으로 폼과 `conflict`를 판단한다.
