@@ -2,6 +2,8 @@ import { useRef, useState, type FormEvent } from 'react';
 import type { Ticket, HumanReview } from '../contracts';
 import { useTicketReview } from '../api/ticket-queries';
 import { Button } from './ui/button';
+import { FieldLabel, Input, Textarea } from './ui/input';
+import { Choice, FormMessage, ReviewPanel } from './review-form';
 
 export function TicketReview({
   ticket,
@@ -42,57 +44,78 @@ export function TicketReview({
     }
   }
   return (
-    <section aria-label="L1 검토" className="space-y-3 rounded border border-border p-4">
-      <h2 className="text-lg font-semibold">L1 검토</h2>
-      {mutation.isSuccess && <p role="status">검토가 저장되었습니다.</p>}
-      {refreshFailed && <p>최신 상세를 조회하지 못했습니다. 상세 조회를 다시 시도하세요.</p>}
-      {ticket.status !== 'awaiting_human' && <p>현재 검토 대기 상태가 아닙니다.</p>}
-      {mutation.error && (
-        <p role="alert" className="whitespace-pre-wrap break-words">
-          {mutation.error.message}
-        </p>
+    <ReviewPanel
+      label="L1 검토"
+      level="L1"
+      description="에이전트 판정에 동의하거나 TP·FP를 직접 선택합니다."
+    >
+      {mutation.isSuccess && (
+        <FormMessage tone="success" role="status">
+          검토가 저장되었습니다.
+        </FormMessage>
       )}
-      {validation && <p role="alert">{validation}</p>}
+      {refreshFailed && (
+        <FormMessage tone="warning">
+          최신 상세를 조회하지 못했습니다. 상세 조회를 다시 시도하세요.
+        </FormMessage>
+      )}
+      {ticket.status !== 'awaiting_human' && (
+        <FormMessage tone="neutral">현재 검토 대기 상태가 아닙니다.</FormMessage>
+      )}
+      {mutation.error && (
+        <FormMessage tone="critical" role="alert">
+          {mutation.error.message}
+        </FormMessage>
+      )}
+      {validation && (
+        <FormMessage tone="critical" role="alert">
+          {validation}
+        </FormMessage>
+      )}
       <form onSubmit={(event) => void submit(event)}>
-        <fieldset disabled={unavailable} className="space-y-3">
-          <label className="block">
+        <fieldset disabled={unavailable} className="min-w-0 space-y-4">
+          <FieldLabel>
             검토자
-            <input
-              className="mt-1 block w-full rounded border border-input bg-background p-2"
-              value={reviewer}
-              onChange={(e) => setReviewer(e.target.value)}
-            />
-          </label>
-          <div className="flex flex-wrap items-center gap-4">
+            <Input value={reviewer} onChange={(e) => setReviewer(e.target.value)} />
+          </FieldLabel>
+          <div className="space-y-1.5">
+            <p className="text-xs font-semibold text-muted-foreground">판정</p>
+            <div className="grid grid-cols-2 gap-2">
+              {(['tp', 'fp'] as const).map((value) => (
+                <Choice key={value}>
+                  <input
+                    type="radio"
+                    name="decision"
+                    value={value}
+                    checked={decision === value}
+                    onChange={() => setDecision(value)}
+                    className="accent-[var(--primary)]"
+                  />
+                  {value.toUpperCase()}
+                </Choice>
+              ))}
+            </div>
             {(original === 'tp' || original === 'fp') && (
-              <Button type="button" variant="outline" onClick={() => setDecision(original)}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() => setDecision(original)}
+              >
                 동의
               </Button>
             )}
-            {(['tp', 'fp'] as const).map((value) => (
-              <label key={value} className="flex items-center gap-2">
-                <input
-                  type="radio"
-                  name="decision"
-                  value={value}
-                  checked={decision === value}
-                  onChange={() => setDecision(value)}
-                />
-                {value.toUpperCase()}
-              </label>
-            ))}
           </div>
-          <label className="block">
+          <FieldLabel>
             검토 이유{reasonRequired ? ' (필수)' : ' (선택)'}
-            <textarea
-              className="mt-1 block w-full rounded border border-input bg-background p-2"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-            />
-          </label>
-          <Button type="submit">{mutation.isPending ? '저장 중…' : '검토 제출'}</Button>
+            <Textarea value={reason} onChange={(e) => setReason(e.target.value)} />
+          </FieldLabel>
+          <Button type="submit" className="w-full">
+            {mutation.isPending ? '저장 중…' : '검토 제출'}
+          </Button>
         </fieldset>
       </form>
-    </section>
+    </ReviewPanel>
   );
 }
