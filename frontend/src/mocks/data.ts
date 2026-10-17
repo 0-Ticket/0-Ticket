@@ -1,6 +1,7 @@
 import scenarios from '../../../tests/fixtures/frontend/scenarios.json';
 import detail from '../../../tests/fixtures/frontend/ticket-detail.json';
 import incidentDetail from '../../../tests/fixtures/frontend/incident-detail.json';
+import caseDetail from '../../../tests/fixtures/frontend/case-detail.json';
 import responses from '../../../tests/fixtures/frontend/api-responses.json';
 import type {
   AgentStep,
@@ -50,9 +51,11 @@ export const data = {
     ...detail.steps,
     ...incidentDetail.steps,
   ],
-  incidents: [...scenarios.incidents, ...incidentDetail.incidents],
+  incidents: [...scenarios.incidents, ...incidentDetail.incidents, ...caseDetail.incidents],
   hunts: [...scenarios.hunts, ...incidentDetail.hunts],
-  artifacts: [...scenarios.artifacts, ...incidentDetail.artifacts],
-  l2_reviews: [...scenarios.l2_reviews, ...incidentDetail.l2_reviews],
+  artifacts: [...scenarios.artifacts, ...incidentDetail.artifacts, ...caseDetail.artifacts],
+  cases: [...scenarios.cases, ...caseDetail.cases],
+  rules: [...scenarios.rules, ...caseDetail.rules],
+  l2_reviews: [...scenarios.l2_reviews, ...incidentDetail.l2_reviews, ...caseDetail.l2_reviews],
 } as unknown as MockData;
 export const metrics: Metrics = responses.metrics;

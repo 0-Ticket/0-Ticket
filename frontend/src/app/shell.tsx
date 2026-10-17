@@ -1,4 +1,5 @@
-import { NavLink, Outlet } from 'react-router';
+import { useEffect, useRef } from 'react';
+import { NavLink, Outlet, useLocation } from 'react-router';
 import { Icon, type IconName } from '../components/icon';
 import { Button } from '../components/ui/button';
 import { useTheme } from '../lib/theme-context';
@@ -8,10 +9,26 @@ const menu: { to: string; label: string; icon: IconName }[] = [
   { to: '/review', label: '검토 대기함', icon: 'inbox' },
   { to: '/tickets', label: '전체 티켓', icon: 'ticket' },
   { to: '/incidents', label: 'Incident', icon: 'incident' },
+  { to: '/cases', label: 'Case', icon: 'case' },
 ];
+
+// On narrow screens the menu is a horizontal strip that can overflow. Bring a link fully into
+// the strip by moving only its horizontal scroll, never the page. A no-op in the vertical sidebar.
+function reveal(nav: HTMLElement | null, link: Element | null | undefined) {
+  if (!nav || !link) return;
+  const outer = nav.getBoundingClientRect();
+  const inner = link.getBoundingClientRect();
+  if (inner.left < outer.left) nav.scrollLeft -= outer.left - inner.left + 10;
+  else if (inner.right > outer.right) nav.scrollLeft += inner.right - outer.right + 10;
+}
 
 export function Shell() {
   const { theme, toggle } = useTheme();
+  const nav = useRef<HTMLElement>(null);
+  const { pathname } = useLocation();
+  useEffect(() => {
+    reveal(nav.current, nav.current?.querySelector('[aria-current="page"]'));
+  }, [pathname]);
   return (
     <div className="min-h-screen bg-background font-sans text-sm text-foreground md:grid md:grid-cols-[224px_minmax(0,1fr)]">
       <aside className="relative z-10 flex flex-col bg-sidebar text-sidebar-foreground md:sticky md:top-0 md:h-screen">
@@ -25,6 +42,7 @@ export function Shell() {
           </span>
         </div>
         <nav
+          ref={nav}
           aria-label="주 메뉴"
           className="flex gap-1 overflow-x-auto px-2.5 py-2 md:flex-1 md:flex-col md:py-4"
         >
@@ -38,6 +56,7 @@ export function Shell() {
             <NavLink
               key={item.to}
               to={item.to}
+              onFocus={(event) => reveal(nav.current, event.currentTarget)}
               className={({ isActive }) =>
                 cn(
                   'flex h-9 shrink-0 items-center gap-2.5 rounded-md px-2.5 font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',

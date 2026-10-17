@@ -32,6 +32,12 @@ export const badges: Record<string, { label: string; tone: Tone }> = {
   wrong_grouping: { label: '잘못된 묶음', tone: 'neutral' },
   missing_step: { label: '누락된 단계', tone: 'neutral' },
   wrong_conclusion: { label: '잘못된 결론', tone: 'neutral' },
+  // C16 Case status (`open` shared above) and CaseTask status.
+  responding: { label: '대응 중', tone: 'warning' },
+  closed: { label: '종결', tone: 'success' },
+  todo: { label: '할 일', tone: 'neutral' },
+  doing: { label: '진행 중', tone: 'info' },
+  done: { label: '완료', tone: 'success' },
 };
 // C10 review_state (L2 review workflow), kept apart from the lifecycle `status` badges.
 export const reviewStateBadges: Record<string, { label: string; tone: Tone }> = {

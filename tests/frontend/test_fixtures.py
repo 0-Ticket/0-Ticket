@@ -182,10 +182,13 @@ def test_incident_review_fixtures_follow_box21_flow():
     # derives them, so this only checks the hand-written fixtures.
     data = json.loads((FIXTURES / "scenarios.json").read_text())
     extra = json.loads((FIXTURES / "incident-detail.json").read_text())
-    incidents = data["incidents"] + extra["incidents"]
-    reviews = data["l2_reviews"] + extra["l2_reviews"]
-    artifacts = {a["incident_id"] for a in data["artifacts"] + extra["artifacts"]}
-    cases = {c["incident_id"] for c in data["cases"]}
+    case_extra = json.loads((FIXTURES / "case-detail.json").read_text())
+    incidents = data["incidents"] + extra["incidents"] + case_extra["incidents"]
+    reviews = data["l2_reviews"] + extra["l2_reviews"] + case_extra["l2_reviews"]
+    artifacts = {
+        a["incident_id"] for a in data["artifacts"] + extra["artifacts"] + case_extra["artifacts"]
+    }
+    cases = {c["incident_id"] for c in data["cases"] + case_extra["cases"]}
     scenario = {}
     for incident in incidents:
         incident_id, state = incident["incident_id"], incident["review_state"]
@@ -222,3 +225,56 @@ def test_incident_review_fixtures_follow_box21_flow():
     assert scenario["in_benign"] == ("human_handling", None, 2)
     assert scenario["in_sample"] == ("approved", None, 0)
     assert scenario["in_escalated"] == ("approved", None, 0)
+    assert scenario["in_contained"] == ("approved", None, 0)
+
+
+def test_case_detail_fixture_contracts_and_references():
+    extra = json.loads((FIXTURES / "case-detail.json").read_text())
+    assert set(extra) <= CONTRACTS.keys()
+    for collection, items in extra.items():
+        for item in items:
+            validate_contract(CONTRACTS[collection], item)
+    data = json.loads((FIXTURES / "scenarios.json").read_text())
+    incident_extra = json.loads((FIXTURES / "incident-detail.json").read_text())
+    incidents = data["incidents"] + incident_extra["incidents"] + extra["incidents"]
+    ids = {
+        kind: {row[field] for row in data[key] + incident_extra.get(key, [])}
+        for kind, key, field in [
+            ("alert", "alerts", "alert_id"),
+            ("event", "events", "event_id"),
+            ("raw", "raw", "raw_id"),
+            ("ticket", "tickets", "ticket_id"),
+        ]
+    }
+    incident_ids = {i["incident_id"] for i in incidents}
+    cases = data["cases"] + extra["cases"]
+    # One Case per Incident; the mock links an Incident to its Case by incident_id.
+    assert len({c["incident_id"] for c in cases}) == len(cases)
+    assert len({c["case_id"] for c in cases}) == len(cases)
+    for incident in extra["incidents"]:
+        for member in incident["members"]:
+            assert member["ticket_id"] in ids["ticket"]
+    for case in cases:
+        assert case["incident_id"] in incident_ids
+        # closed_at is set exactly when the Case is closed; lessons are written on close.
+        assert (case["status"] == "closed") == (case["closed_at"] is not None), case["case_id"]
+        if case["status"] != "closed":
+            assert case["lessons"] is None, case["case_id"]
+    statuses = {c["status"] for c in extra["cases"]}
+    assert {"responding", "closed"} <= statuses
+    tasks = [t for c in extra["cases"] for t in c["tasks"]]
+    assert {t["status"] for t in tasks} == {"todo", "doing", "done"}
+    assert any(t["due_at"] is None for t in tasks)
+    existing_artifacts = {a["incident_id"] for a in data["artifacts"] + incident_extra["artifacts"]}
+    for artifact in extra["artifacts"]:
+        assert artifact["incident_id"] in {c["incident_id"] for c in extra["cases"]}
+        assert artifact["incident_id"] not in existing_artifacts
+        times = [entry["time"] for entry in artifact["timeline"]]
+        assert times == sorted(times)
+        for entry in artifact["timeline"]:
+            for evidence in entry["evidence"]:
+                if evidence["ref_type"] in ids:
+                    assert evidence["ref_id"] in ids[evidence["ref_type"]]
+    case_ids = {c["case_id"] for c in cases}
+    for rule in extra["rules"]:
+        assert rule["case_id"] in case_ids
