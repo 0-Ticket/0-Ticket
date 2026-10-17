@@ -90,10 +90,10 @@
 | K46 | F3 | Incident의 묶음 항목(티켓·헌팅 결과)마다 출처(`source`)와 묶인 이유(`rule`, `matched_entity`)가 보이고, 뺀 항목과 이유가 따로 보이며, 공용 자산이 묶는 기준으로 표시되지 않는다 | 🟡 일부 | `incident-detail.test.tsx`: F3 표시 부분만 통과. 공용 자산 제외 등 실제 묶음 기준은 박스 17 구현에서 확인 |
 | K47 | F3 | 보고서 타임라인이 시간순이고 모든 항목에 근거 링크가 있다. 반려에는 유형과 코멘트가 필수이고, 두 번 반려되면 "사람 직접 처리"로 표시된다 | ✅ 통과 | `incident-detail.test.tsx`: 응답 순서 유지·근거 링크·2회 반려 표시; `incident-review.test.tsx`: 반려 필수 입력. #21부터 "사람 직접 처리"는 `review_state`=`human_handling`으로만 표시. 실제 재반려 처리(박스 21)는 후속 |
 | K48 | F4 | Case 작업의 상태·담당자·마감과 교훈을 수정할 수 있다 | 🟡 일부 | #27: 작업 상태 변경만 `case-tasks.test.tsx`(전체 `tasks` PATCH·재조회·중복 제출·오류 구분). 담당자·마감·교훈 수정은 후속 API/계약 이슈 필요 |
-| K49 | F5 | 룰 제안에 문법 검사 결과와 백테스트가 보이고, 승인해도 화면이 SIEM 반영을 하지 않는다 | ⬜ | |
+| K49 | F5 | 룰 제안에 문법 검사 결과와 백테스트가 보이고, 승인해도 화면이 SIEM 반영을 하지 않는다 | ✅ 통과 | #29 화면 범위: `rules.test.tsx`, `rule-detail.test.tsx`(문법 결과·백테스트 그대로·null, 배포·실행 버튼 없음), `rule-review.test.tsx`(요청 본문은 `reviewer`·`decision`뿐, 서버 상태 표시). 실제 룰 검사·백테스트·배포 승인(박스 24, K27)은 후속 |
 | K50 | F6 | 지표 대시보드가 뒤집은 비율, 반려 유형 통계, 정규화 실패 수를 보여 준다 | ⬜ | |
-| K51 | 전체 | HTML·스크립트 조각이 든 로그 원문, LLM 출력, `extensions` 값이 텍스트로만 표시된다 | 🟡 일부 | F1: `tickets.test.tsx`; F2: `ticket-detail.test.tsx`; F3: `incidents.test.tsx`, `incident-detail.test.tsx`; F4: `cases.test.tsx`, `case-detail.test.tsx`, `case-tasks.test.tsx`; 다른 화면은 후속 검증 |
-| K52 | 전체 | 플러그인이 등록한 새 등록형 값과 새 `extensions` 키가 화면 수정 없이 보인다 | 🟡 일부 | F1: `tickets.test.tsx`; F2: `ticket-detail.test.tsx`; F3: `incidents.test.tsx`, `incident-detail.test.tsx`; F4: `cases.test.tsx`, `case-detail.test.tsx`, `case-tasks.test.tsx`; 다른 화면은 후속 검증 |
+| K51 | 전체 | HTML·스크립트 조각이 든 로그 원문, LLM 출력, `extensions` 값이 텍스트로만 표시된다 | 🟡 일부 | F1: `tickets.test.tsx`; F2: `ticket-detail.test.tsx`; F3: `incidents.test.tsx`, `incident-detail.test.tsx`; F4: `cases.test.tsx`, `case-detail.test.tsx`, `case-tasks.test.tsx`; F5: `hunts.test.tsx`, `hunt-detail.test.tsx`, `rules.test.tsx`, `rule-detail.test.tsx`(C17·C18에는 `extensions`가 없음); 다른 화면은 후속 검증 |
+| K52 | 전체 | 플러그인이 등록한 새 등록형 값과 새 `extensions` 키가 화면 수정 없이 보인다 | 🟡 일부 | F1: `tickets.test.tsx`; F2: `ticket-detail.test.tsx`; F3: `incidents.test.tsx`, `incident-detail.test.tsx`; F4: `cases.test.tsx`, `case-detail.test.tsx`, `case-tasks.test.tsx`; F5: `hunts.test.tsx`, `hunt-detail.test.tsx`, `rules.test.tsx`, `rule-detail.test.tsx`(C17·C18에는 `extensions`가 없음); 다른 화면은 후속 검증 |
 
 ## 계약 Schema
 
@@ -449,3 +449,20 @@ K55는 여전히 일부이며 코어 비즈니스 검증은 해당 박스에서 
 - 범위 밖: 실제 코어(박스 21)의 상태 전이·회차 부여, 박스 19의 새 C11 → 기회 열기, 박스 22 Case 생성,
   `human_handling` 이후 처리.
 
+
+## #29 F5 구현 검증
+
+- 범위: `/hunts`, `/hunts/:hunt_id`, `/rules`, `/rules/:proposal_id`와 룰 승인/반려. 기준 브랜치 `test`(`origin/test`와 같은 커밋에서 시작).
+- K49는 화면 범위에서만 통과로 표시했다. K27(박스 24 룰 검사·백테스트·배포 승인)과 K30(S4 헌팅 → 룰 제안 흐름)은
+  실제 박스 동작이라 화면을 만들었다는 이유로 표시하지 않았다.
+- 현재 계약에 없는 이슈 요구(C17 `extensions`·Entity·상태, C18 요약·위험도, 룰 검토 사유·기록 목록)는 구현하지 않았고
+  `docs/frontend.md` "#29에서 하지 않은 것"에 적었다. 완료로 표시하지 않는다.
+- fixture: `tests/fixtures/frontend/hunt-rule-detail.json`, `test_hunt_rule_fixture_contracts_and_references`.
+- 기존 테스트 기대값 갱신(동작 변경 아님): 메뉴 항목 2개 추가(`layout.test.tsx`), 새 fixture로 `is_anomaly=false`·
+  `deployed` 필터 결과가 비지 않게 됨(`api-contracts.test.ts`, 데이터 기준 비교로 바꿈).
+- 명령: `uvx ruff format --check .`, `uvx ruff check .`, `uv run pytest`(418개), `pnpm typecheck`, `pnpm lint`,
+  `pnpm format:check`, `pnpm build` 통과. `pnpm test`는 load average 약 50(8코어)에서 기본 실행 시 매번 다른 F1~F4·F5
+  테스트 1~15건이 1초 `findBy` 대기·5초 제한 초과로 실패했다. 같은 시점 `vitest run --maxWorkers=2`는 174개 모두 통과했다.
+  값 단언 실패는 없었다. 설정·timeout은 바꾸지 않았다.
+- 환경 메모: 로컬 Node 24가 실행되지 않아(라이브러리 누락) Node 22.22.3으로 확인했다. CI Node 24 확인 필요.
+- 브라우저 확인(라이트·다크, 375px 가로 넘침)은 3단계에서 한다.

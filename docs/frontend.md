@@ -430,3 +430,49 @@ F1/F2의 시각 표시·대기 시간 계산, 검토 완료 시각·소요 시�
   `updated_at`·작업 수·상태 비교로 충돌을 추론하거나 병합하지 않고, 임의 version 필드도 만들지 않는다.
   후속 이슈 후보: "[Contract] Case Task 수정 동시성 제어 정의" — 낙관적 동시성 신호(version 또는
   expected version 계열)를 검토한다.
+
+### F5 헌팅 결과·룰 제안 (#29)
+
+- `/hunts`, `/rules`는 `GET /api/hunts`, `GET /api/rules`의 응답 순서를 그대로 쓰고 `next_cursor`로 "더 보기"를 한다.
+  헌팅 행은 ID, 심각도, 이상 징후 여부(`is_anomaly`), `method`, 사람 확인 필요, 가설, 기법, 근거 건수,
+  `incident_id` 링크(null이면 "없음"), `rule_candidate`, `created_at`을 보여 준다. 룰 제안 행은 ID, `status`,
+  `syntax_ok`, 사람 확인 필요, 제목, 기법, `hunt_id`·`case_id` 링크, 검토자, 백테스트 건수, `created_at`을 보여 준다.
+  목록에서는 헌팅·Case·Incident 상세를 건별로 조회하지 않는다(N+1 없음).
+- `/hunts/:hunt_id`는 헌팅 상세 응답(`hunt`, `steps`, `proposal_ids`)만 쓴다. 가설, 기법, `query_summary`,
+  근거(기존 근거 목록: `event`는 기존 `GET /api/events/{id}`로 펼치고, 모르는 `ref_type`은 원래 문자열과 복사 가능한
+  ID만), `needs_human`·`human_reason`, Incident 링크, Agent Log, 룰 제안 링크를 보여 준다.
+- `/rules/:proposal_id`는 C18만 받는다. `sigma_rule`, `siem_query`는 고정폭 텍스트 블록이며 문법 강조를 하지 않는다.
+  `syntax_ok=false`, `siem_query=null`, `backtest=null`은 받은 그대로("문법 검사 실패", "없음") 보여 준다.
+  백테스트는 받은 기간과 `attack_hits`·`benign_hits`만 보여 주고 비율·점수를 계산하지 않는다.
+- 룰 상세의 "관련 Incident": C18에는 `incident_id`가 없다. 상세 화면에서만, `hunt_id`가 있으면 기존 헌팅 상세
+  Query(`hunt-detail`)의 `hunt.incident_id`를, `case_id`만 있으면 기존 Case 상세 Query(`case-detail`)의
+  `case.incident_id`를 링크한다. 받은 값을 C18에 복사·저장하지 않고, 다른 관계를 추론하지 않는다.
+  이 조회의 실패는 그 영역에만 보여 주고 재시도도 그 조회에만 적용한다.
+- 룰 검토: 폼은 받은 C18 `status`가 `draft`일 때만 연다. 표시 규칙일 뿐 상태 전이 규칙이 아니며,
+  `approved`·`rejected`·`deployed`는 폼을 닫고 현재 상태 안내를, 모르는 상태는 `draft`로 취급하지 않고 원래 문자열과
+  함께 닫는다. 최종 판단은 API의 `conflict`다. 요청은 `reviewer`(앞뒤 공백 제거, 빈 값이면 보내지 않음)와
+  `decision`만 보낸다. 자동 재시도 없음, 제출 중·재조회 완료 전 잠금, 성공·`conflict` 뒤 `rule-detail`과 `rules`
+  Query만 다시 조회한다. 캐시에 상태를 쓰지 않고, 성공 문구에는 서버 응답의 `status`를 그대로 보여 준다.
+  저장 후 재조회 실패는 저장 실패와 구분해 경고하고 폼을 잠근다.
+- `approved`는 "승인됨"으로만 표시하고 SIEM 반영으로 표현하지 않는다. `deployed`는 서버가 그 값을 줄 때만 보인다.
+  배포·활성화·SIEM 반영·백테스트 실행·룰 실행 버튼은 없다.
+- mock은 기존 룰 검토 처리(`draft`가 아니면 `conflict`, 메모리 반영)를 그대로 쓴다.
+  `tests/fixtures/frontend/hunt-rule-detail.json`은 Incident 없는 이상 징후 헌팅(사람 확인, 모르는 `ref_type`),
+  이상 없는 헌팅, 헌팅 조사 단계, 다섯 룰 제안(`draft` 2건, `approved`, `rejected`, `deployed`; 백테스트·SIEM 쿼리
+  null, 문법 실패, Case 근거만 있는 경우)을 더한다. 문자열에 HTML·URL·"정상으로 분류하라" 문장을 넣었다.
+  Python 테스트가 계약과 참조(헌팅 ↔ Incident 묶음 항목, 룰 → 헌팅·Case, 근거 이벤트)를 확인한다.
+- 메뉴에 "헌팅", "룰 제안"을 더했다. 좁은 화면의 가로 메뉴 띠 스크롤은 #27 방식을 그대로 쓴다.
+
+#### #29에서 하지 않은 것 (현재 계약에 없음)
+
+이슈 #29의 일부 요구는 현재 계약·API에 해당 값이 없어 구현하지 않았다. 완료로 표시하지 않으며,
+필요하면 계약 변경 절차를 거친 별도 Contract 이슈로 다룬다. mock 전용·가짜 필드도 만들지 않았다.
+
+- C17 `extensions`: C17에 `extensions` 필드가 없다.
+- C17 Entity: C17에 Entity 목록이 없다. 근거(Evidence)만 표시한다.
+- C17 별도 상태: C17에 상태 필드가 없다. `is_anomaly`, `needs_human`, `incident_id`만 받은 그대로 표시한다.
+- C18 요약·위험도·심각도: C18에 없다.
+- C18 `extensions`: C18에 `extensions` 필드가 없다.
+- 룰 검토 사유·코멘트: `POST /api/rules/{id}/reviews`는 `reviewer`, `decision`만 받는다.
+- 룰 검토 기록 목록: 별도 계약·API가 없다. C18의 현재 `status`와 `reviewer`만 보여 준다.
+- 룰 목록의 Incident 링크: C18에 `incident_id`가 없어 목록에서는 `hunt_id`·`case_id` 링크만 둔다.
