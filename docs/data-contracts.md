@@ -2,7 +2,19 @@
 
 박스끼리 주고받는 데이터의 필드명, 타입, 필수 여부를 고정한다. 박스를 따로 만들어도 서로 맞물리게 하기 위한 문서다.
 
-> **상태: 초안.** 박스 1~24가 주고받는 객체를 모두 정의했다. 공통 기반(구현 순서 0단계) PR에서 사람이 검토해 "확정"으로 바꾼다. 확정 후에는 아래 "바꾸는 절차"를 거쳐야만 바꿀 수 있다.
+> **상태: 초안.** v1 아키텍처의 박스가 주고받는 객체를 정의했다. 공통 기반(구현 순서 0단계) PR에서 사람이 검토해 "확정"으로 바꾼다. 확정 후에는 아래 "바꾸는 절차"를 거쳐야만 바꿀 수 있다.
+
+> **v2 불일치 (아키텍처 v2, #33).** 아래 필드는 v1 흐름 기준이라 v2(`docs/architecture.md`)와 맞지 않는다. 후속 계약 변경 이슈에서 "바꾸는 절차"로 고친다. 그전까지 필드와 enum을 말없이 바꾸지 않는다. 해당 박스를 구현할 때 먼저 계약 변경을 제안한다.
+>
+> - C6 Ticket: `handling_type`·`specialist`는 폐기된 Analyst Agent(9)의 라우팅 결과. 보류, L2 승격 상태와 생성 경로(25 직접, 11 승격, 23 헌팅)가 없다
+> - C9 HumanReview, C6 `awaiting_human`·`awaiting_human_at`, C7 `needs_human`: v2에서 L1은 완전 자동이고 사람은 L1 결과를 조회만 한다(27). 판정 뒤집기가 없다
+> - C10 Incident: `created_by`의 `correlation`, IncidentMember `source`(`l1`, `human_l1`, `l3`), `member_type`의 `hunt`, `rule`은 폐기된 Correlation(17) 기준
+> - C10 `review_state`·`review_round`, C15 반려: v2 도식에 없음, 유지 여부 TBD (`docs/architecture.md` 박스 21)
+> - C17 HuntFinding: v2에서 헌팅 결과는 Ticket(C6)으로 L2에 들어간다
+> - C18 RuleProposal: `hunt_id`·`case_id` 대신 Incident·Artifact에서 나온다. 별도 승인 `status` 대신 21의 승인에 포함된다
+> - C19 VectorDoc: 기본 컬렉션 중 `closed_incidents`, `assets`, `alerts_summary`, `events_rare`와 `source_kind`의 `incident`, `asset`, `alert`, `event`는 v2에서 VDB에 넣지 않는다
+> - C5 AlertRecord, C13 EventRecord: v2에서 Alert(6)·Event(7)는 정규화 전 SIEM 출력(C2)을 저장한다. 지금은 정규화 후 객체가 저장 행으로 정의되어 있다
+> - 없는 계약: 26 증거 요청 큐 항목, 25 분기 결과, L1 승격·보류 기록(27이 조회)
 
 ## 공통 규칙
 
@@ -71,19 +83,19 @@ Schema로 옮길 때 지킬 것:
 | C12 | NormalizeFailure | 4 → 사람 확인 |
 | C13 | EventRecord | 4, 5 → 7, 23 |
 | C4 | AssetInfo, UserInfo | 5 (룩업 표) |
-| C5 | AlertRecord | 5, 6 → 8, 9, 11 |
-| C6 | Ticket | 9, 10 → 11, 16, 17 |
-| C7 | Verdict | 11 → 10, 16 |
-| C8 | AgentStep | 9, 11, 13, 14, 19, 23, 24 → 12 |
-| C9 | HumanReview | 16 → 10, 17 (`tp`면 Correlation으로) |
-| C10 | Incident | 17, 18 → 19 |
+| C5 | AlertRecord | 5, 6 → 25, 11, 23, 27 |
+| C6 | Ticket | 25, 11, 23, 10 → 26, 11, 25(L2 입구), 18, 19, 27 |
+| C7 | Verdict | 11 → 10, 27 |
+| C8 | AgentStep | 11, 13, 14, 19, 23, 24 → 12 |
+| C9 | HumanReview | (v1 객체. v2에서 제거 예정. 위 "v2 불일치") |
+| C10 | Incident | 25, 18, 19 → 19 |
 | C11 | IncidentArtifact | 19 → 20, 21 |
-| C14 | SpecialistFinding | 13, 14 → 11 |
-| C15 | L2Review | 21 → 19, 22 |
-| C16 | Case | 22 → 8, 23, 24 |
-| C17 | HuntFinding | 23 → 17, 24 |
-| C18 | RuleProposal | 24 → 3 (사람 승인 후) |
-| C19 | VectorDoc | 5, 6, 7, 10, 18, 22 → 8 |
+| C14 | SpecialistFinding | 13, 14 → 11, 19 |
+| C15 | L2Review | 21 → 22 |
+| C16 | Case | 22 → 8, 23 |
+| C17 | HuntFinding | 23 (v2에서 헌팅 결과는 C6으로 L2에 들어감. 위 "v2 불일치") |
+| C18 | RuleProposal | 24 → 20, 21, 3 (사람 승인 후) |
+| C19 | VectorDoc | 10, 22 → 8 |
 
 ---
 
@@ -208,7 +220,7 @@ Lookup 표의 한 행이자, 알럿에 붙는 정보.
 | criticality | int | ✅ | 1(낮음) ~ 5(높음) |
 | owner | str | 선택 | 담당자 |
 | zone | str | 선택 | `dmz`, `internal` 등 |
-| shared | bool | ✅ | 프록시·DNS·도메인 컨트롤러 같은 공용 자산이면 `true`. Correlation에서 묶는 기준으로 쓰지 않는다 |
+| shared | bool | ✅ | 프록시·DNS·도메인 컨트롤러 같은 공용 자산이면 `true`. 엔티티 분기(25)에서 공용 엔티티로 빼는 기준이다 |
 | valid_from | int | 선택 | 이 대응이 유효한 시작 시각 |
 | valid_to | int | 선택 | 끝 시각. `null`이면 현재까지 |
 | extensions | dict | ✅ | CMDB 등에서 가져온 추가 속성. 없으면 `{}` |
@@ -249,7 +261,7 @@ L1이 처리하는 업무 단위.
 | specialist | 등록형 | ✅ | 전문 에이전트 이름. 기본 `none`, `web`, `cloud` |
 | priority | int | ✅ | `severity_id × 대상 자산 criticality`. 대상 자산은 `dst_asset`, 없으면 `src_asset`, 둘 다 없으면 criticality 1로 계산 |
 | alert_ids | list[str] | ✅ | 하나 이상 |
-| entities | list[Entity] | ✅ | 공통 객체 Entity. Correlation이 이 값을 본다 |
+| entities | list[Entity] | ✅ | 공통 객체 Entity. 엔티티 분기(25)가 이 값을 본다 |
 | verdict | Verdict | 선택 | 판정 전에는 `null` |
 | extensions | dict | ✅ | 조직·플러그인 추가 필드. 외부 티켓 시스템 ID 등. 없으면 `{}` |
 | created_at | int | ✅ | |
@@ -289,7 +301,7 @@ L1의 판정 결과. LLM 출력이 이 형식을 통과하지 못하면 판정�
 | subject_type | enum | ✅ | `ticket`, `incident`, `hunt`. 이 단계가 속한 작업 |
 | subject_id | str | ✅ | 해당 객체 ID (`tk_`, `in_`, `ht_`) |
 | step | int | ✅ | 같은 작업 안에서 1부터 증가 |
-| agent | str | ✅ | 예: `analyst`, `l1`, `web`, `cloud`, `l2`, `l3` |
+| agent | str | ✅ | 예: `l1`, `web`, `cloud`, `l2`, `l3` |
 | action | enum | ✅ | `llm_call`, `tool_call`, `decision` |
 | tool | str | 선택 | `tool_call`일 때 도구 이름 |
 | prompt_version | str | 선택 | `llm_call`일 때 프롬프트 파일 버전 |
@@ -302,7 +314,7 @@ L1의 판정 결과. LLM 출력이 이 형식을 통과하지 못하면 판정�
 
 ## C9 · HumanReview
 
-사람의 L1 검토 결과.
+사람의 L1 판정 검토 결과(v1). v2에서는 L1 판정을 사람이 뒤집지 않으므로 제거 예정이다(위 "v2 불일치").
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
@@ -315,7 +327,7 @@ L1의 판정 결과. LLM 출력이 이 형식을 통과하지 못하면 판정�
 
 ## C10 · Incident
 
-한 캠페인으로 묶인 티켓·헌팅 결과 묶음. 모든 Incident는 Correlation(17)이 만든다.
+같은 엔티티로 엮인 Ticket 묶음. v2에서는 엔티티 분기(25)의 결과로 만들어지거나 갱신된다(박스 18). 묶음 관련 필드는 v1 Correlation 기준이다(위 "v2 불일치").
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
@@ -495,7 +507,7 @@ L3 헌팅 한 번의 결과.
 | evidence | list[Evidence] | ✅ | 찾은 근거. `ref_type`은 주로 `event`. 없으면 `[]` |
 | is_anomaly | bool | ✅ | 이상 징후로 판단했으면 `true` |
 | severity_id | int | ✅ | 0~6 (C3와 같은 척도). L3가 이상 징후의 심각도를 정한다. `is_anomaly`가 `false`면 0(Unknown) |
-| incident_id | str | 선택 | Correlation이 Incident로 묶었으면 그 ID |
+| incident_id | str | 선택 | Incident로 묶였으면 그 ID (v1 Correlation 기준) |
 | rule_candidate | bool | ✅ | 반복 가능한 패턴이라 룰 제안으로 넘길지 |
 | needs_human | bool | ✅ | 사람 확인이 필요하면 `true`. LLM 출력 실패 처리는 `docs/llm-policy.md` 4항 |
 | human_reason | str | 선택 | `needs_human`이 `true`일 때 이유 |
@@ -623,8 +635,8 @@ TypeScript는 런타임 검증기가 아니며, Pydantic도 루트 조건을 대
 
 후속 박스에서 구현할 비즈니스 검증은 K55의 미완료 부분으로 남긴다.
 원문 해시 대조(2), 별칭 적용·변환 실패 처리(4), 시점별 자산 매칭(5),
-중복 집계(6), 컬렉션별 원본 종결 여부(8), 우선순위·상태 전이(9·10),
+중복 집계(6), 컬렉션별 원본 종결 여부(8), 우선순위·상태 전이(10),
 근거 ID 실재 여부·등록형 값의 등록 여부·LLM 실패 처리(관련 박스),
-조사 단계 순번(12), 뒤집기 여부 계산(16), 실제 묶음·심각도 계산(17·18),
+조사 단계 순번(12), 뒤집기 여부 계산(v1 16), 실제 묶음·심각도 계산(25·18),
 타임라인 정렬(19), 검토 흐름 상태 전이·회차 부여·같은 기회 중복 제출 거부(21), 승인 후 Case 생성(22),
 룰 검사·백테스트·배포 승인(24)이 해당한다.
