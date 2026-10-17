@@ -2,6 +2,8 @@
 
 박스마다 완료 조건을 확인하는 목록이다. 박스를 구현한 PR에서 해당 항목을 확인하고 표시한다.
 
+- K 표는 아키텍처 v2 기준이다. 맨 아래 "#5 계약 구현 검증 결과" 이후 절은 v1 아키텍처 때의 PR 검증 기록이라 고치지 않는다. 그 안의 박스 번호(9, 16, 17 등)는 v1 번호다.
+
 - 기준 시나리오는 `docs/product-spec.md`의 S1~S5다.
 - 각 항목은 가능하면 자동 테스트로 만든다. "테스트" 열에 테스트 이름을 적는다.
 - 항목 ID는 `K`로 시작한다. 결정 대장의 `D-xxx`와 구분하기 위해서다.
@@ -13,53 +15,56 @@
 
 | 파일 (예정) | 내용 |
 |---|---|
-| `alerts_web.jsonl` | S2 흐름: 같은 출발지 `203.0.113.10`의 스캔 → SQL 인젝션 → 웹셸 업로드 시도 알럿. 서로 다른 필드명을 쓰는 시나리오 2종 이상 |
-| `alerts_cloud.jsonl` | S3 흐름: 감사 로깅 중지, 비정상 역할 전환 알럿 |
-| `alerts_noise.jsonl` | 관계없는 출발지의 알럿 몇 건 (묶이면 안 되는 것) |
-| `events.jsonl` | 웹 접근, 인증, 클라우드 API 이벤트. S4용 드문 패턴 포함 |
+| `alerts_web.jsonl` | S2 흐름: 같은 출발지 `203.0.113.10`의 스캔 → SQL 인젝션 → 웹셸 업로드 시도 알럿. 서로 다른 필드명을 쓰는 시나리오 2종 이상. 공격 대상 시나리오와 그 외 시나리오를 모두 포함 |
+| `alerts_cloud.jsonl` | S3 흐름 (보류): 감사 로깅 중지, 비정상 역할 전환 알럿 |
+| `alerts_noise.jsonl` | 관계없는 출발지의 알럿 몇 건 (묶이면 안 되는 것), 같은 룰·엔티티 중복 알럿 |
+| `events.jsonl` | 웹 접근, 인증 이벤트. S4용 드문 패턴 포함 |
 | `assets.csv` | 호스트 5~6대. `web-01` 중요도 5, 프록시 1대 `shared=true` |
 | `closed_tickets.jsonl` | 유사 사례 검색용 종결 티켓 몇 건 |
 | `llm_responses/` | 가짜 LLM 응답: 정상, 형식 오류, 없는 근거 ID |
 
 ## 박스별 확인
 
+v2 박스 기준이다(`docs/architecture.md`). 폐기한 박스(9, 16, 17)의 항목 K11, K19, K20, K21은 ID를 다시 쓰지 않는다.
+
 | ID | 박스 | 확인할 것 | 상태 | 테스트 |
 |---|---|---|---|---|
-| K1 | 1 | 웹·클라우드 커넥터가 같은 인터페이스로 C1을 내보내고, 새 커넥터를 기존 코드 수정 없이 추가할 수 있다 | ⬜ | |
+| K1 | 1 | 웹 커넥터가 C1을 내보내고, 새 커넥터(Cloud 포함)를 기존 코드 수정 없이 추가할 수 있다 | ⬜ | |
 | K2 | 2 | `raw_id`로 원문을 조회하고 해시가 일치한다 | ⬜ | |
-| K3 | 3 | SIEM 어댑터가 알럿·이벤트를 `kind`가 붙은 C2로 넘기고, `direct` 어댑터로 SIEM 없이도 같은 흐름이 된다. 재생 도구로 샘플을 같은 입구에 넣을 수 있다 | ⬜ | |
+| K3 | 3 | Wazuh 어댑터가 알럿·이벤트를 `kind`가 붙은 C2로 넘기고, `direct` 어댑터로 SIEM 없이도 같은 흐름이 된다. 재생 도구로 샘플을 같은 입구에 넣을 수 있다 | ⬜ | |
 | K4 | 4 | 필드명이 다른 시나리오의 알럿이 같은 C3 필드로 정규화되고, 시간·심각도가 변환표대로 바뀐다 | ⬜ | |
 | K5 | 4 | 별칭 표에 없는 필드는 `unmapped`에 남고, 실패는 C12로 간다. 이벤트는 C13으로 바뀐다 | ⬜ | |
-| K6 | 4 | C3를 OCSF 원형 JSON(D-017 버전)으로 내보내고 스키마 검증을 통과한다 | ⬜ | |
-| K7 | 5 | `web-01`에 중요도 5가 붙고, 프록시는 `shared=true`, 모르는 IP는 `null`이다. 유효 기간이 지난 대응은 쓰지 않는다 | ⬜ | |
-| K8 | 6 | 같은 룰·같은 엔티티 알럿이 정해진 시간 안에 다시 오면 새 행 대신 `count`가 오른다 | ⬜ | |
-| K9 | 7 | C13이 저장되고, 드문 유형만 VDB에 보관 기간과 함께 들어간다 | ⬜ | |
-| K10 | 8 | 컬렉션별 검색이 유사 사례 상위 k건을 돌려주고, IP·해시는 키워드로 정확히 찾는다. 사례 컬렉션에 판정 전 객체가 들어가지 않는다 | ⬜ | |
-| K11 | 9 | 규칙 표대로 `handling_type`이 정해지고, 표에 없는 알럿은 LLM 분류(가짜 응답)로 정해진 카테고리 중 하나가 된다 | ⬜ | |
-| K12 | 9, 10 | `priority` 계산이 C6 규칙대로이고, 같은 엔티티의 열린 티켓이 있으면 거기에 붙는다. 상태 전이가 규칙 밖으로 가지 않는다. `awaiting_human` 진입 시 `awaiting_human_at`을 기록하고 상태를 벗어나도 유지한다 | ⬜ | #12는 계약·직렬화만 검증. 실제 기록·유지는 박스 10 후속 구현에서 확인 |
+| K6 | 4 | C3를 OCSF 1.9.0 원형 JSON으로 내보내고 스키마 검증을 통과한다 | ⬜ | |
+| K7 | 5 | `web-01`에 중요도 5가 붙고, 프록시는 `shared=true`, 모르는 IP는 `null`이다. 유효 기간이 지난 대응은 쓰지 않는다. Lookup은 RDB에만 저장된다 | ⬜ | |
+| K8 | 6 | SIEM 알럿(C2)이 정규화 전에 RDB에 저장되고 4가 읽는다. 엔티티·시간 조회 인덱스가 있다. VDB에 넣지 않는다 | ⬜ | 계약 정리 후 (Alert 행 = C5로 정의됨) |
+| K9 | 7 | SIEM 이벤트(C2)가 정규화 전에 RDB에 저장되고 4가 읽는다. 엔티티·시간 조건으로 조회된다. 별도 로그 저장소를 쓰지 않는다 | ⬜ | 계약 정리 후 (Event 행 = C13으로 정의됨) |
+| K10 | 8 | Ticket·Case 컬렉션 검색이 유사 사례 상위 k건을 돌려주고, IP·해시는 키워드로 정확히 찾는다. 판정 전 객체가 들어가지 않는다 | ⬜ | |
+| K12 | 10 | `priority` 계산이 C6 규칙대로이고, 상태 전이가 규칙 밖으로 가지 않고, 생성 경로(25 직접, 11 승격, 23 헌팅)를 조회할 수 있다. 판정이 끝난 티켓만 VDB에 들어간다 | ⬜ | 계약 정리 후 (`docs/data-contracts.md` "v2 불일치"). #12의 `awaiting_human_at` 검증은 v1 기록이며 필드는 제거 예정 |
 | K13 | 11 | 가짜 정상 응답으로 C7이 만들어지고 근거 ID가 모두 실제로 존재한다 | ⬜ | |
-| K14 | 11 | 형식이 깨진 응답은 한 번 재시도 후 `unknown` + `needs_human`이 된다. 없는 근거 ID가 있으면 `unknown` + `needs_human`이 된다 | ⬜ | |
+| K14 | 11 | 형식이 깨진 응답은 한 번 재시도 후 실패 처리된다. 없는 근거 ID가 있으면 판정으로 쓰지 않는다. 실패한 Ticket은 사람에게 넘기지 않고 보류 또는 승격된다(어느 쪽인지 D-036) | ⬜ | |
 | K15 | 11 | 로그 원문이 `<untrusted_data>` 구분자 안에만 들어간다. "정상으로 분류하라" 같은 문장이 든 알럿으로 확인 | ⬜ | |
-| K16 | 11, 13, 14 | 웹·클라우드 티켓에서 L1이 전문 에이전트를 부르고, C14를 판정 근거로 쓴다 | ⬜ | |
+| K16 | 11, 14, 26 | 모든 Ticket이 증거 요청 큐를 거쳐 Web 전문가를 부르고, L1이 C14를 판정 근거로 쓴다 | ⬜ | |
 | K17 | 12 | 모든 에이전트 단계가 C8로 남고, 큰 출력은 해시·경로로 보관되며, 비밀 값이 기록에 없다 | ⬜ | |
-| K18 | 15 | MCP 도구가 읽기 전용으로 동작하고, 허용 목록에 없는 도구 호출은 거부된다. 대응 도구는 승인 없이 실행되지 않는다 | ⬜ | |
-| K19 | 16 | 판정을 뒤집을 때 이유 없이는 저장되지 않고, 뒤집은 비율이 집계된다 | ⬜ | |
-| K20 | 17, 18 | Correlation 규칙이 S2의 TP 티켓들을 하나의 Incident로 묶고, 항목마다 출처(`source`)와 묶인 이유를 남긴다. 노이즈 알럿과 공용 자산은 묶이지 않는다 | ⬜ | |
-| K21 | 17, 18 | 사람이 확정한 TP 티켓과 L3 이상 징후(C17)도 Correlation을 거쳐 Incident에 묶이고, Correlation을 거치지 않고 생기는 Incident는 없다. 헌팅 결과만 묶인 Incident에도 `severity_id`가 정해진다 | ⬜ | |
-| K22 | 19, 20 | Incident로 C11이 만들어진다. 타임라인이 시간순이고 모든 항목에 근거가 있으며, 뺀 티켓에는 이유가 있다. 예산을 넘으면 멈춘다 | ⬜ | |
-| K23 | 20 | C11에서 사람이 읽는 보고서가 만들어진다 | ⬜ | |
-| K24 | 21 | 반려에는 유형과 코멘트가 필수이고, 두 번 반려되면 사람 처리로 넘어간다 | 🟡 일부 | #21: 계약(C10 `review_state`·`review_round`)과 mock·F3에서 첫 반려 → `analyzing`, 두 번째 반려 → `human_handling`, 같은 기회 중복·다른 회차 제출 `conflict` 확인. 코어 전이·회차 부여는 박스 21 구현에서 확인 |
-| K25 | 22 | 승인된 Incident로 C16이 만들어지고, 작업 상태가 바뀌며, 종결 시 VDB에 들어간다 | ⬜ | |
-| K26 | 23 | 최근 Case 샘플과 ATT&CK 기법으로 가설을 세우고, 기준선 쿼리로 S4 샘플의 드문 패턴을 찾아 심각도와 함께 C17을 남긴다. 이상 징후는 Correlation으로 넘긴다. 원본 이벤트를 대량으로 LLM에 넣지 않는다 | ⬜ | |
-| K27 | 24 | 헌팅 결과와 Case에서 C18이 만들어지고(`hunt_id` 또는 `case_id`), Sigma 룰이 문법 검사와 쿼리 변환을 통과하며 백테스트 결과가 붙는다. 승인 전에는 SIEM에 반영되지 않는다 | ⬜ | |
+| K18 | 15 | MCP 도구(SIEM MCP 포함)가 읽기 전용으로 동작하고, 허용 목록에 없는 도구 호출은 거부된다. 대응 도구는 승인 없이 실행되지 않는다 | ⬜ | |
+| K56 | 25 | 0단계: 중복 알럿은 `count`만 오르고, 공용 엔티티는 빠진다. Incident에 있는 엔티티 → 기존 Incident 추가 + L2 재실행, 공격 대상 시나리오 → Ticket, 그 외 → L1 엔티티 조회로 간다. 분기 이유가 남는다 | ⬜ | |
+| K57 | 25, 18 | L2 입구: 열린 Incident가 없으면 새 Incident가 생기고 SIEM MCP 과거 조회 결과가 붙는다. 있으면 기존 Incident에 추가된다. 노이즈 알럿과 공용 자산은 묶이지 않는다 | ⬜ | |
+| K58 | 11 | 엔티티 정보 조회로 승격(Ticket 생성) 또는 보류(L3 데이터 풀)가 된다. 오탐은 확신도가 높으면 종결, 낮으면 보류된다. 이상 행위는 종결 또는 L2 승격이 된다. 어떤 결과도 사람 확인을 기다리지 않는다 | ⬜ | 임계값·갈림 조건은 D-036 확정 후 |
+| K60 | 27 | 사람이 L1 결과(승격·보류된 Alert, Ticket 판정)를 Alert·Ticket 단위로 조회할 수 있다. L1 결과를 바꾸는 API가 없다 | ⬜ | 승격·보류 기록 계약 정리 후 |
+| K59 | 26 | 증거 요청이 도메인별 전문가에게 전달되고 결과가 요청한 Ticket·Incident에 연결된다. 실패 처리는 D-034 확정 후 정한다 | ⬜ | D-034 확정 후 |
+| K22 | 19, 20 | Incident 생성·갱신마다 L2가 실행되어 C11이 만들어진다. 타임라인이 시간순이고 모든 항목에 근거가 있다. 기존 엔티티 추가 정보가 Incident에 반영되고, 재실행 한도와 예산을 넘으면 멈춘다 | ⬜ | |
+| K23 | 20 | C11에서 사람이 읽는 보고서(대응 방안, 탐지 룰 제안 포함)가 만들어진다 | ⬜ | |
+| K27 | 24 | Incident Artifact에서 C18이 만들어지고, 룰이 문법 검사와 쿼리 변환을 통과하며 백테스트 결과가 붙는다. 21 승인 전에는 SIEM에 반영되지 않는다 | ⬜ | 계약 정리 후 |
+| K24 | 21 | 승인·확정이 C15로 남고 Case 생성으로 넘어간다. 반려 흐름(#21)은 v2 도식에 없음, 유지 여부 TBD | 🟡 일부 | #21(v1 반려 흐름): 계약과 mock·F3에서 반려 → `analyzing`, 두 번째 반려 → `human_handling` 확인. v2 처리는 후속 |
+| K25 | 22 | 확정된 Incident로 C16이 만들어지고, 작업 상태가 바뀌며, VDB에 들어간다 | ⬜ | |
+| K26 | 23 | 운영자 시나리오, Case, L1 보류 건으로 가설을 세우고, Event·Alert·SIEM MCP로 검증해 기각 또는 위협 존재를 남긴다. 위협 존재는 헌팅 결과 Ticket으로 L2 입구에 들어간다. 원본 이벤트를 대량으로 LLM에 넣지 않는다 | ⬜ | |
 
 ## 전체 흐름
 
 | ID | 확인할 것 | 상태 | 테스트 |
 |---|---|---|---|
-| K28 | S1·S2 샘플을 넣으면 수집부터 L2 보고서까지 한 번에 흐른다 (사람 검토는 가짜 입력) | ⬜ | |
-| K29 | S3 샘플이 Cloud Agent를 거쳐 판정된다 | ⬜ | |
-| K30 | S4 샘플이 헌팅부터 룰 제안까지 흐른다 | ⬜ | |
+| K28 | S1·S2 샘플을 넣으면 수집부터 L2 Incident Artifact까지 한 번에 흐른다 (사람 승인은 가짜 입력) | ⬜ | |
+| K29 | S3 샘플이 Cloud 전문가를 거쳐 판정된다 (보류) | ⬜ | |
+| K30 | S4 샘플이 헌팅부터 헌팅 결과 Ticket, L2 Incident까지 흐른다 | ⬜ | |
 
 ## 확장성
 
@@ -83,15 +88,15 @@
 |---|---|---|---|---|
 | K40 | F0 | 계약 타입이 `frontend/src/contracts/` 한 곳에 있고 필드명·열거형이 `docs/data-contracts.md`와 같다. mock이 `docs/api-contracts.md`의 경로와 응답 모양을 따른다 | ✅ 통과 | `test_frontend_fixture_contracts`, `test_frontend_fixture_references`, `api-contracts.test.ts`, `api-errors.test.ts`, 타입·ESLint 검사 |
 | K41 | F0 | 환경변수 하나로 mock과 실제 API를 바꿀 수 있고, 화면 코드는 어느 쪽인지 모른다 | ✅ 통과 | `mock-mode.test.ts`, `api-errors.test.ts`의 MSW 없는 동일 client 검사 |
-| K42 | F1 | 검토 대기함에 `awaiting_human` 티켓만 나오고, 목록이 `priority` 내림차순 → `created_at` 오름차순 → `ticket_id` 오름차순이며 자산 정보(없으면 "자산 정보 없음")가 보인다 | ✅ 통과 | `api-contracts.test.ts`, `tickets.test.tsx`, `review.test.tsx` |
+| K42 | F1 | (v1 기준. F1은 읽기 전용 L1 결과 조회로 바뀔 예정, 후속 이슈) 검토 대기함에 `awaiting_human` 티켓만 나오고, 목록이 `priority` 내림차순 → `created_at` 오름차순 → `ticket_id` 오름차순이며 자산 정보(없으면 "자산 정보 없음")가 보인다 | ✅ 통과 | `api-contracts.test.ts`, `tickets.test.tsx`, `review.test.tsx` |
 | K43 | F2 | 판정·확신도·요약 옆에 근거가 있고, 근거를 누르면 해당 알럿·이벤트·원문이 보인다. 권고 조치에 실행 버튼이 없다 | ✅ 통과 | `ticket-detail.test.tsx`: 판정·근거 펼치기·복사, 권고 표시 |
 | K44 | F2 | Agent Log가 `step` 순서로 보이고, 전문 에이전트 결과가 판정 옆에 보인다 | ✅ 통과 | `ticket-detail.test.tsx`: 전문 결과·AgentStep 순서·발췌 |
-| K45 | F2 | 판정을 뒤집을 때 이유가 없으면 보내지 않고, API가 `invalid_input`을 주면 그 내용을 보여 준다 | ✅ 통과 | `ticket-review.test.tsx`: 이유 필수·invalid_input·중복 제출·재조회 |
-| K46 | F3 | Incident의 묶음 항목(티켓·헌팅 결과)마다 출처(`source`)와 묶인 이유(`rule`, `matched_entity`)가 보이고, 뺀 항목과 이유가 따로 보이며, 공용 자산이 묶는 기준으로 표시되지 않는다 | 🟡 일부 | `incident-detail.test.tsx`: F3 표시 부분만 통과. 공용 자산 제외 등 실제 묶음 기준은 박스 17 구현에서 확인 |
+| K45 | F2 | (v1 기준. 판정 뒤집기는 제거 예정, 후속 이슈) 판정을 뒤집을 때 이유가 없으면 보내지 않고, API가 `invalid_input`을 주면 그 내용을 보여 준다 | ✅ 통과 | `ticket-review.test.tsx`: 이유 필수·invalid_input·중복 제출·재조회 |
+| K46 | F3 | Incident의 묶음 항목(티켓·헌팅 결과)마다 출처(`source`)와 묶인 이유(`rule`, `matched_entity`)가 보이고, 뺀 항목과 이유가 따로 보이며, 공용 자산이 묶는 기준으로 표시되지 않는다 | 🟡 일부 | `incident-detail.test.tsx`: F3 표시 부분만 통과. 공용 자산 제외 등 실제 묶음 기준은 박스 25 구현에서 확인 (F3 묶음 표시는 v1 기준, 후속 이슈) |
 | K47 | F3 | 보고서 타임라인이 시간순이고 모든 항목에 근거 링크가 있다. 반려에는 유형과 코멘트가 필수이고, 두 번 반려되면 "사람 직접 처리"로 표시된다 | ✅ 통과 | `incident-detail.test.tsx`: 응답 순서 유지·근거 링크·2회 반려 표시; `incident-review.test.tsx`: 반려 필수 입력. #21부터 "사람 직접 처리"는 `review_state`=`human_handling`으로만 표시. 실제 재반려 처리(박스 21)는 후속 |
 | K48 | F4 | Case 작업의 상태·담당자·마감과 교훈을 수정할 수 있다 | 🟡 일부 | #27: 작업 상태 변경만 `case-tasks.test.tsx`(전체 `tasks` PATCH·재조회·중복 제출·오류 구분). 담당자·마감·교훈 수정은 후속 API/계약 이슈 필요 |
 | K49 | F5 | 룰 제안에 문법 검사 결과와 백테스트가 보이고, 승인해도 화면이 SIEM 반영을 하지 않는다 | ✅ 통과 | #29 화면 범위: `rules.test.tsx`, `rule-detail.test.tsx`(문법 결과·백테스트 그대로·null, 배포·실행 버튼 없음), `rule-review.test.tsx`(요청 본문은 `reviewer`·`decision`뿐, 서버 상태 표시). 실제 룰 검사·백테스트·배포 승인(박스 24, K27)은 후속 |
-| K50 | F6 | 지표 대시보드가 뒤집은 비율, 반려 유형 통계, 정규화 실패 수를 보여 준다 | ✅ 통과 | #31 화면 범위: `dashboard.test.tsx`(L1 검토·뒤집음 원본 값 나란히 표시, 비율 계산 없음, `l2_rejects_by_type`·`incident_members_by_source`·`normalize_failures_by_reason` 원본 값, 집계 기간 표시). 지표 집계 자체(박스 4·16·21)는 해당 박스에서 확인 |
+| K50 | F6 | 지표 대시보드가 뒤집은 비율, 반려 유형 통계, 정규화 실패 수를 보여 준다 | ✅ 통과 | #31 화면 범위: `dashboard.test.tsx`(L1 검토·뒤집음 원본 값 나란히 표시, 비율 계산 없음, `l2_rejects_by_type`·`incident_members_by_source`·`normalize_failures_by_reason` 원본 값, 집계 기간 표시). 지표 집계 자체(박스 4·21, v1 16)는 해당 박스에서 확인 |
 | K51 | 전체 | HTML·스크립트 조각이 든 로그 원문, LLM 출력, `extensions` 값이 텍스트로만 표시된다 | 🟡 일부 | F1: `tickets.test.tsx`; F2: `ticket-detail.test.tsx`; F3: `incidents.test.tsx`, `incident-detail.test.tsx`; F4: `cases.test.tsx`, `case-detail.test.tsx`, `case-tasks.test.tsx`; F5: `hunts.test.tsx`, `hunt-detail.test.tsx`, `rules.test.tsx`, `rule-detail.test.tsx`(C17·C18에는 `extensions`가 없음), F6: `dashboard.test.tsx`(C10·C16·C17·C18에 든 제목·가설, 새 상태·등록형 값; 대시보드는 `extensions`를 보여 주지 않음); 다른 화면은 후속 검증 |
 | K52 | 전체 | 플러그인이 등록한 새 등록형 값과 새 `extensions` 키가 화면 수정 없이 보인다 | 🟡 일부 | F1: `tickets.test.tsx`; F2: `ticket-detail.test.tsx`; F3: `incidents.test.tsx`, `incident-detail.test.tsx`; F4: `cases.test.tsx`, `case-detail.test.tsx`, `case-tasks.test.tsx`; F5: `hunts.test.tsx`, `hunt-detail.test.tsx`, `rules.test.tsx`, `rule-detail.test.tsx`(C17·C18에는 `extensions`가 없음), F6: `dashboard.test.tsx`(C10·C16·C17·C18에 든 제목·가설, 새 상태·등록형 값; 대시보드는 `extensions`를 보여 주지 않음); 다른 화면은 후속 검증 |
 
