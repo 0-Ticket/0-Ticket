@@ -278,3 +278,69 @@ def test_case_detail_fixture_contracts_and_references():
     case_ids = {c["case_id"] for c in cases}
     for rule in extra["rules"]:
         assert rule["case_id"] in case_ids
+
+
+def test_hunt_rule_fixture_contracts_and_references():
+    extra = json.loads((FIXTURES / "hunt-rule-detail.json").read_text())
+    assert set(extra) <= CONTRACTS.keys()
+    for collection, items in extra.items():
+        for item in items:
+            validate_contract(CONTRACTS[collection], item)
+    data = json.loads((FIXTURES / "scenarios.json").read_text())
+    incident_extra = json.loads((FIXTURES / "incident-detail.json").read_text())
+    case_extra = json.loads((FIXTURES / "case-detail.json").read_text())
+    hunts = data["hunts"] + incident_extra["hunts"] + extra["hunts"]
+    hunt_ids = [h["hunt_id"] for h in hunts]
+    assert len(set(hunt_ids)) == len(hunt_ids)
+    incidents = data["incidents"] + incident_extra["incidents"] + case_extra["incidents"]
+    members = {
+        (i["incident_id"], m["hunt_id"]) for i in incidents for m in i["members"] if m["hunt_id"]
+    }
+    events = {e["event_id"] for e in data["events"]}
+    for hunt in extra["hunts"]:
+        # A hunt links to an Incident only when Correlation grouped it (member_type hunt).
+        if hunt["incident_id"] is not None:
+            assert (hunt["incident_id"], hunt["hunt_id"]) in members
+        if not hunt["is_anomaly"]:
+            assert hunt["incident_id"] is None
+        for evidence in hunt["evidence"]:
+            if evidence["ref_type"] == "event":
+                assert evidence["ref_id"] in events
+    # Unknown registered ref_type is kept to check the screen shows it as the original string.
+    assert any(
+        e["ref_type"] not in {"alert", "event", "raw", "ticket"}
+        for h in extra["hunts"]
+        for e in h["evidence"]
+    )
+    steps = extra["steps"]
+    assert {s["subject_type"] for s in steps} == {"hunt"}
+    assert {s["subject_id"] for s in steps} <= set(hunt_ids)
+    for step in steps:
+        hunt = next(h for h in hunts if h["hunt_id"] == step["subject_id"])
+        assert step["created_at"] <= hunt["created_at"]
+    keys = [(s["subject_id"], s["step"]) for s in steps]
+    assert len(set(keys)) == len(keys)
+    rules = data["rules"] + case_extra["rules"] + extra["rules"]
+    proposal_ids = [r["proposal_id"] for r in rules]
+    assert len(set(proposal_ids)) == len(proposal_ids)
+    hunt_by_id = {h["hunt_id"]: h for h in hunts}
+    case_by_id = {c["case_id"]: c for c in data["cases"] + case_extra["cases"]}
+    for rule in extra["rules"]:
+        assert rule["hunt_id"] is None or rule["hunt_id"] in hunt_by_id
+        assert rule["case_id"] is None or rule["case_id"] in case_by_id
+        # A proposal comes from a hunt marked as a rule candidate, after that hunt or Case.
+        if rule["hunt_id"]:
+            basis = hunt_by_id[rule["hunt_id"]]
+            assert basis["rule_candidate"], rule["proposal_id"]
+            assert basis["created_at"] < rule["created_at"]
+        if rule["case_id"]:
+            assert case_by_id[rule["case_id"]]["created_at"] < rule["created_at"]
+        if rule["backtest"]:
+            window = rule["backtest"]
+            assert window["window_start_at"] < window["window_end_at"] <= rule["created_at"]
+        # The mock records a reviewer only when a draft is reviewed.
+        assert (rule["status"] == "draft") == (rule["reviewer"] is None), rule["proposal_id"]
+    assert {r["status"] for r in extra["rules"]} == {"draft", "approved", "rejected", "deployed"}
+    assert any(r["backtest"] is None for r in extra["rules"])
+    assert any(not r["syntax_ok"] for r in extra["rules"])
+    assert any(r["hunt_id"] is None and r["case_id"] for r in extra["rules"])

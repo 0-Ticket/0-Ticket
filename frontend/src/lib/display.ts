@@ -38,6 +38,14 @@ export const badges: Record<string, { label: string; tone: Tone }> = {
   todo: { label: '할 일', tone: 'neutral' },
   doing: { label: '진행 중', tone: 'info' },
   done: { label: '완료', tone: 'success' },
+  // C17 method.
+  baseline: { label: '통계 기준선', tone: 'neutral' },
+  hypothesis: { label: '가설 기반', tone: 'neutral' },
+  // C18 status, shown as received. `approved` means reviewed, not applied to the SIEM.
+  draft: { label: '초안', tone: 'warning' },
+  approved: { label: '승인됨', tone: 'success' },
+  rejected: { label: '반려됨', tone: 'neutral' },
+  deployed: { label: '배포됨', tone: 'info' },
 };
 // C10 review_state (L2 review workflow), kept apart from the lifecycle `status` badges.
 export const reviewStateBadges: Record<string, { label: string; tone: Tone }> = {

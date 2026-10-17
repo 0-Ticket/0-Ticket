@@ -8,8 +8,12 @@ import { IncidentsPage } from '../pages/incidents';
 import { IncidentDetailPage } from '../pages/incident-detail';
 import { CasesPage } from '../pages/cases';
 import { CaseDetailPage } from '../pages/case-detail';
+import { HuntsPage } from '../pages/hunts';
+import { HuntDetailPage } from '../pages/hunt-detail';
+import { RulesPage } from '../pages/rules';
+import { RuleDetailPage } from '../pages/rule-detail';
 
-// F1~F4 supply ticket, incident and case pages; later screens retain their reserved routes.
+// F1~F5 supply ticket, incident, case, hunt and rule pages; F6 keeps its reserved route.
 export const routes: RouteObject[] = [
   {
     element: <Shell />,
@@ -43,6 +47,14 @@ export const routes: RouteObject[] = [
           <CasesPage />
         ) : path === '/cases/:case_id' ? (
           <CaseDetailPage />
+        ) : path === '/hunts' ? (
+          <HuntsPage />
+        ) : path === '/hunts/:hunt_id' ? (
+          <HuntDetailPage />
+        ) : path === '/rules' ? (
+          <RulesPage />
+        ) : path === '/rules/:proposal_id' ? (
+          <RuleDetailPage />
         ) : null,
     })),
   },

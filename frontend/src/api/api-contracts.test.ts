@@ -50,7 +50,10 @@ describe('documented API contracts', () => {
 
   it('preserves unknown registered values and extensions, and handles empty filtered lists', async () => {
     expect((await api.ticket('tk_custom')).ticket).toEqual(data.tickets[2]);
-    expect((await api.hunts({ is_anomaly: false })).items).toEqual([]);
+    // F5 fixtures include a non-anomaly hunt, so the filter is checked against the data.
+    const quiet = data.hunts.filter((item) => !item.is_anomaly);
+    expect(quiet.length).toBeGreaterThan(0);
+    expect((await api.hunts({ is_anomaly: false })).items).toEqual(quiet);
     expect(
       (await api.incidents({ status: 'escalated_to_case', created_by: 'manual' })).items,
     ).toEqual([]);
@@ -58,7 +61,10 @@ describe('documented API contracts', () => {
     expect((await api.cases({ status: 'closed' })).items).toEqual(
       data.cases.filter((item) => item.status === 'closed'),
     );
-    expect((await api.rules({ status: 'deployed' })).items).toEqual([]);
+    // F5 fixtures include a deployed proposal (fixture state, not set by the screen).
+    expect((await api.rules({ status: 'deployed' })).items).toEqual(
+      data.rules.filter((item) => item.status === 'deployed'),
+    );
     expect((await api.normalizeFailures({ reason: 'unknown_scenario' })).items).toEqual([]);
   });
 
@@ -86,7 +92,9 @@ describe('documented API contracts', () => {
     });
     expect((await api.cases()).items).toEqual(data.cases);
     expect(await api.case('cs_sample')).toEqual({ case: data.cases[0], proposal_ids: [] });
-    expect((await api.hunts({ is_anomaly: true })).items).toEqual(data.hunts);
+    expect((await api.hunts({ is_anomaly: true })).items).toEqual(
+      data.hunts.filter((item) => item.is_anomaly),
+    );
     expect(await api.hunt('ht_sample')).toEqual({
       hunt: data.hunts[0],
       steps: [],

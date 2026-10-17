@@ -227,7 +227,7 @@
       "is_anomaly": true,
       "severity_id": 4,
       "incident_id": "in_web_campaign",
-      "rule_candidate": false,
+      "rule_candidate": true,
       "needs_human": false,
       "human_reason": null,
       "created_at": 1791851400000

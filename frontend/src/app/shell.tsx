@@ -10,6 +10,8 @@ const menu: { to: string; label: string; icon: IconName }[] = [
   { to: '/tickets', label: '전체 티켓', icon: 'ticket' },
   { to: '/incidents', label: 'Incident', icon: 'incident' },
   { to: '/cases', label: 'Case', icon: 'case' },
+  { to: '/hunts', label: '헌팅', icon: 'hunt' },
+  { to: '/rules', label: '룰 제안', icon: 'rule' },
 ];
 
 // On narrow screens the menu is a horizontal strip that can overflow. Bring a link fully into

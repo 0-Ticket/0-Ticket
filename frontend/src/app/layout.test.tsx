@@ -21,6 +21,8 @@ it('marks the active menu item in the main navigation', () => {
     '전체 티켓',
     'Incident',
     'Case',
+    '헌팅',
+    '룰 제안',
   ]);
   expect(nav.getByRole('link', { name: '전체 티켓' })).toHaveAttribute('aria-current', 'page');
   expect(nav.getByRole('link', { name: '검토 대기함' })).not.toHaveAttribute('aria-current');
