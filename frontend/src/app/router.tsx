@@ -2,7 +2,7 @@ import type { RouteObject } from 'react-router';
 import { Shell } from './shell';
 import { TicketsPage } from '../pages/tickets';
 import { ReviewPage } from '../pages/review';
-
+import { DashboardPage } from '../pages/dashboard';
 import { TicketDetailPage } from '../pages/ticket-detail';
 import { IncidentsPage } from '../pages/incidents';
 import { IncidentDetailPage } from '../pages/incident-detail';
@@ -13,7 +13,7 @@ import { HuntDetailPage } from '../pages/hunt-detail';
 import { RulesPage } from '../pages/rules';
 import { RuleDetailPage } from '../pages/rule-detail';
 
-// F1~F5 supply ticket, incident, case, hunt and rule pages; F6 keeps its reserved route.
+// F1~F5 supply ticket, incident, case, hunt and rule pages; F6 is the dashboard at `/`.
 export const routes: RouteObject[] = [
   {
     element: <Shell />,
@@ -33,7 +33,9 @@ export const routes: RouteObject[] = [
     ].map((path) => ({
       path,
       element:
-        path === '/review' ? (
+        path === '/' ? (
+          <DashboardPage />
+        ) : path === '/review' ? (
           <ReviewPage />
         ) : path === '/tickets' ? (
           <TicketsPage />

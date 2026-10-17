@@ -17,6 +17,7 @@ it('marks the active menu item in the main navigation', () => {
   mount('/tickets/tk_sample');
   const nav = within(screen.getByRole('navigation', { name: '주 메뉴' }));
   expect(nav.getAllByRole('link').map((link) => link.textContent)).toEqual([
+    '대시보드',
     '검토 대기함',
     '전체 티켓',
     'Incident',
@@ -26,6 +27,7 @@ it('marks the active menu item in the main navigation', () => {
   ]);
   expect(nav.getByRole('link', { name: '전체 티켓' })).toHaveAttribute('aria-current', 'page');
   expect(nav.getByRole('link', { name: '검토 대기함' })).not.toHaveAttribute('aria-current');
+  expect(nav.getByRole('link', { name: '대시보드' })).not.toHaveAttribute('aria-current');
 });
 
 afterEach(() => {
@@ -82,6 +84,7 @@ it.each([
 });
 
 it.each([
+  ['/', '검토 지표'],
   ['/review', 'web-01'],
   ['/tickets/tk_sample', '티켓 tk_sample'],
   ['/incidents/in_web_campaign', 'Incident in_web_campaign'],
