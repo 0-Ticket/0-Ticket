@@ -444,10 +444,11 @@ F1/F2의 시각 표시·대기 시간 계산, 검토 완료 시각·소요 시�
 - `/rules/:proposal_id`는 C18만 받는다. `sigma_rule`, `siem_query`는 고정폭 텍스트 블록이며 문법 강조를 하지 않는다.
   `syntax_ok=false`, `siem_query=null`, `backtest=null`은 받은 그대로("문법 검사 실패", "없음") 보여 준다.
   백테스트는 받은 기간과 `attack_hits`·`benign_hits`만 보여 주고 비율·점수를 계산하지 않는다.
-- 룰 상세의 "관련 Incident": C18에는 `incident_id`가 없다. 상세 화면에서만, `hunt_id`가 있으면 기존 헌팅 상세
-  Query(`hunt-detail`)의 `hunt.incident_id`를, `case_id`만 있으면 기존 Case 상세 Query(`case-detail`)의
-  `case.incident_id`를 링크한다. 받은 값을 C18에 복사·저장하지 않고, 다른 관계를 추론하지 않는다.
-  이 조회의 실패는 그 영역에만 보여 주고 재시도도 그 조회에만 적용한다.
+- 룰 상세의 "관련 Incident": C18에는 `incident_id`가 없다. 상세 화면에서만 C18이 가진 참조를 각각 따라간다.
+  `hunt_id`가 있으면 기존 헌팅 상세 Query(`hunt-detail`)의 `hunt.incident_id`를, `case_id`가 있으면 기존 Case 상세
+  Query(`case-detail`)의 `case.incident_id`를 링크한다. 계약상 둘 다 있을 수 있으며(`anyOf`), 그때는 두 근거를
+  모두 출처와 함께 보여 주고 어느 쪽도 우선하지 않는다. 받은 값을 C18에 복사·저장하지 않고, 다른 관계를 추론하지
+  않는다. 이 조회의 실패는 그 근거 줄에만 보여 주고 재시도도 그 조회에만 적용한다(룰 상세는 다시 조회하지 않음).
 - 룰 검토: 폼은 받은 C18 `status`가 `draft`일 때만 연다. 표시 규칙일 뿐 상태 전이 규칙이 아니며,
   `approved`·`rejected`·`deployed`는 폼을 닫고 현재 상태 안내를, 모르는 상태는 `draft`로 취급하지 않고 원래 문자열과
   함께 닫는다. 최종 판단은 API의 `conflict`다. 요청은 `reviewer`(앞뒤 공백 제거, 빈 값이면 보내지 않음)와

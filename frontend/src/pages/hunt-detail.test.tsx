@@ -3,10 +3,17 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryRouter, RouterProvider } from 'react-router';
-import { expect, it } from 'vitest';
+import { http, HttpResponse } from 'msw';
+import { afterEach, expect, it } from 'vitest';
 import { routes } from '../app/router';
 import { ThemeProvider } from '../lib/theme';
+import { server } from '../mocks/server';
 import fixture from '../../../tests/fixtures/frontend/hunt-rule-detail.json';
+
+// Request listeners are per test; remove them even when a test fails early.
+afterEach(() => {
+  server.events.removeAllListeners();
+});
 
 const CLOUD = fixture.hunts[0];
 
@@ -95,4 +102,28 @@ it('shows "없음" for a hunt without evidence, techniques, steps or proposals',
 it('shows a hunt lookup failure', async () => {
   mount('/hunts/ht_missing');
   expect(await screen.findByRole('alert')).toHaveTextContent('Object not found');
+});
+
+it('looks up an event only when expanded, never for unknown ref_type, and keeps failures local', async () => {
+  const paths: string[] = [];
+  server.events.on('request:start', ({ request }) => {
+    paths.push(new URL(request.url).pathname);
+  });
+  server.use(
+    http.get('*/api/events/:id', () =>
+      HttpResponse.json({ error: { code: 'internal', message: '이벤트 실패' } }, { status: 500 }),
+    ),
+  );
+  const user = userEvent.setup();
+  mount('/hunts/ht_cloud_login');
+  await heading('ht_cloud_login');
+  expect(paths.filter((path) => /\/api\/(events|alerts|raw)\//.test(path))).toEqual([]);
+  await user.click(screen.getByRole('button', { name: 'ev_sample 펼치기' }));
+  expect(await region('근거').findByRole('alert')).toHaveTextContent('이벤트 실패');
+  // The hunt itself stays visible; only the documented event route was called.
+  expect(screen.getByRole('heading', { name: '헌팅 ht_cloud_login' })).toBeInTheDocument();
+  expect(paths.filter((path) => /\/api\/(events|alerts|raw)\//.test(path))).toEqual([
+    '/api/events/ev_sample',
+  ]);
+  expect(paths.some((path) => path.includes('flow_cloud_77'))).toBe(false);
 });

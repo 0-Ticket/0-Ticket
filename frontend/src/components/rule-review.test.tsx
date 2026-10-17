@@ -4,11 +4,16 @@ import userEvent from '@testing-library/user-event';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { delay, http, HttpResponse } from 'msw';
-import { expect, it } from 'vitest';
+import { afterEach, expect, it } from 'vitest';
 import { routes } from '../app/router';
 import { ThemeProvider } from '../lib/theme';
 import { server } from '../mocks/server';
 import fixture from '../../../tests/fixtures/frontend/hunt-rule-detail.json';
+
+// Request listeners are per test; remove them even when a test fails early.
+afterEach(() => {
+  server.events.removeAllListeners();
+});
 
 const WEB = fixture.rules[0];
 const LIST = ['rules', {}];
@@ -134,7 +139,6 @@ it('refetches the rule and list after a conflict', async () => {
   expect(alert).toHaveTextContent('Already reviewed');
   await waitFor(() => expect(calls.get).toBeGreaterThan(before));
   expect(client.getQueryState(LIST)?.isInvalidated).toBe(true);
-  server.events.removeAllListeners();
 });
 
 it('separates a saved review from a failed refetch and keeps the form locked', async () => {

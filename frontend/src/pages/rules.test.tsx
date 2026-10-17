@@ -4,11 +4,16 @@ import userEvent from '@testing-library/user-event';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { http, HttpResponse } from 'msw';
-import { expect, it } from 'vitest';
+import { afterEach, expect, it } from 'vitest';
 import { routes } from '../app/router';
 import { ThemeProvider } from '../lib/theme';
 import { server } from '../mocks/server';
 import fixture from '../../../tests/fixtures/frontend/hunt-rule-detail.json';
+
+// Request listeners are per test; remove them even when a test fails early.
+afterEach(() => {
+  server.events.removeAllListeners();
+});
 
 const [WEB, CLOUD, APPROVED, REJECTED, DEPLOYED] = fixture.rules;
 
@@ -82,7 +87,6 @@ it('does not look up hunt, case or incident details from the list', async () => 
   mount();
   await screen.findAllByTestId('rule-row');
   expect(paths.filter((path) => /\/api\/(hunts|cases|incidents)\//.test(path))).toEqual([]);
-  server.events.removeAllListeners();
 });
 
 it('shows an unknown status as the original string', async () => {

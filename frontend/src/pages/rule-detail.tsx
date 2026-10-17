@@ -1,5 +1,4 @@
 import { useParams } from 'react-router';
-import type { ReactNode } from 'react';
 import { useCase } from '../api/case-queries';
 import { useHunt } from '../api/hunt-queries';
 import { useRule } from '../api/rule-queries';
@@ -17,17 +16,17 @@ import { cn } from '../lib/utils';
 const code =
   'max-h-96 overflow-auto rounded-md border border-[#26323d] bg-[#0a0f14] p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap text-[#c1cbd6] [overflow-wrap:anywhere]';
 
-function RelatedIncidentFrame({
+function IncidentSource({
   source,
   query,
   incidentId,
 }: {
-  source: ReactNode;
+  source: string;
   query: { isPending: boolean; isFetching: boolean; error: Error | null; refetch: () => unknown };
   incidentId: string | null | undefined;
 }) {
   return (
-    <Section label="관련 Incident" description="근거 객체에 기록된 Incident">
+    <div className="min-w-0 space-y-1">
       <p className="text-xs text-muted-foreground">{source}</p>
       {incidentId !== undefined && (
         <p className="text-sm">
@@ -42,16 +41,17 @@ function RelatedIncidentFrame({
           retry={() => void query.refetch()}
         />
       )}
-    </Section>
+    </div>
   );
 }
 
-// C18 has no incident_id. Follow its own reference through the existing detail Query (same
-// key as F4/F5) and show only the incident_id that API returns; nothing is copied into C18.
+// C18 has no incident_id. Each reference C18 carries is followed through the existing detail
+// Query (same key as F4/F5), and only the incident_id that API returns is shown. Nothing is
+// copied into C18, and neither reference takes priority: both are shown when both exist.
 function IncidentFromHunt({ id }: { id: string }) {
   const query = useHunt(id);
   return (
-    <RelatedIncidentFrame
+    <IncidentSource
       source={`근거 헌팅 ${id}에 기록된 incident_id`}
       query={query}
       incidentId={query.data?.hunt.incident_id}
@@ -61,7 +61,7 @@ function IncidentFromHunt({ id }: { id: string }) {
 function IncidentFromCase({ id }: { id: string }) {
   const query = useCase(id);
   return (
-    <RelatedIncidentFrame
+    <IncidentSource
       source={`근거 Case ${id}에 기록된 incident_id`}
       query={query}
       incidentId={query.data?.case.incident_id}
@@ -69,9 +69,12 @@ function IncidentFromCase({ id }: { id: string }) {
   );
 }
 function RelatedIncident({ rule }: { rule: RuleProposal }) {
-  if (rule.hunt_id !== null) return <IncidentFromHunt id={rule.hunt_id} />;
-  if (rule.case_id !== null) return <IncidentFromCase id={rule.case_id} />;
-  return null;
+  return (
+    <Section label="관련 Incident" description="근거 객체에 기록된 Incident">
+      {rule.hunt_id !== null && <IncidentFromHunt id={rule.hunt_id} />}
+      {rule.case_id !== null && <IncidentFromCase id={rule.case_id} />}
+    </Section>
+  );
 }
 
 export function RuleDetailPage() {

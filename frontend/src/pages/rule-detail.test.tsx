@@ -4,11 +4,16 @@ import userEvent from '@testing-library/user-event';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { http, HttpResponse } from 'msw';
-import { expect, it } from 'vitest';
+import { afterEach, expect, it } from 'vitest';
 import { routes } from '../app/router';
 import { ThemeProvider } from '../lib/theme';
 import { server } from '../mocks/server';
 import fixture from '../../../tests/fixtures/frontend/hunt-rule-detail.json';
+
+// Request listeners are per test; remove them even when a test fails early.
+afterEach(() => {
+  server.events.removeAllListeners();
+});
 
 const [WEB, CLOUD] = fixture.rules;
 
@@ -107,7 +112,6 @@ it('links the Incident of the basis Case when only case_id is present', async ()
   );
   expect(paths.some((path) => path.endsWith('/cases/cs_web_breach'))).toBe(true);
   expect(paths.some((path) => /\/api\/hunts\//.test(path))).toBe(false);
-  server.events.removeAllListeners();
 });
 
 it('keeps a basis lookup failure inside the related Incident area and retries only it', async () => {
@@ -138,11 +142,25 @@ it('keeps a basis lookup failure inside the related Incident area and retries on
   await related.findByRole('link', { name: 'in_web_campaign' });
   expect(calls.rule).toBe(before);
   expect(calls.hunt).toBeGreaterThanOrEqual(2);
-  server.events.removeAllListeners();
 });
 
 it('shows a rule lookup failure', async () => {
   mount('/rules/rp_missing');
   expect(await screen.findByRole('alert')).toHaveTextContent('Object not found');
   expect(screen.queryByRole('region', { name: '관련 Incident' })).not.toBeInTheDocument();
+});
+
+it('follows both references without priority when hunt_id and case_id are both present', async () => {
+  server.use(
+    http.get('*/api/rules/:id', () =>
+      HttpResponse.json({ ...WEB, proposal_id: 'rp_both', case_id: 'cs_web_breach' }),
+    ),
+  );
+  mount('/rules/rp_both');
+  await heading('rp_both');
+  const related = within(screen.getByRole('region', { name: '관련 Incident' }));
+  expect(related.getByText('근거 헌팅 ht_web에 기록된 incident_id')).toBeInTheDocument();
+  expect(related.getByText('근거 Case cs_web_breach에 기록된 incident_id')).toBeInTheDocument();
+  expect(await related.findByRole('link', { name: 'in_web_campaign' })).toBeInTheDocument();
+  expect(await related.findByRole('link', { name: 'in_escalated' })).toBeInTheDocument();
 });

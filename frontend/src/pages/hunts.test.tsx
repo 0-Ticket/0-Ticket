@@ -4,12 +4,17 @@ import userEvent from '@testing-library/user-event';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { http, HttpResponse } from 'msw';
-import { expect, it } from 'vitest';
+import { afterEach, expect, it } from 'vitest';
 import { routes } from '../app/router';
 import { ThemeProvider } from '../lib/theme';
 import { server } from '../mocks/server';
 import fixture from '../../../tests/fixtures/frontend/hunt-rule-detail.json';
 import incidentFixture from '../../../tests/fixtures/frontend/incident-detail.json';
+
+// Request listeners are per test; remove them even when a test fails early.
+afterEach(() => {
+  server.events.removeAllListeners();
+});
 
 const CLOUD = fixture.hunts[0];
 const QUIET = fixture.hunts[1];
@@ -108,4 +113,14 @@ it('shows an empty list', async () => {
   server.use(http.get('*/api/hunts', () => HttpResponse.json({ items: [], next_cursor: null })));
   mount();
   expect(await screen.findByText('헌팅 결과가 없습니다.')).toBeInTheDocument();
+});
+
+it('does not look up hunt, event or incident details for each row', async () => {
+  const paths: string[] = [];
+  server.events.on('request:start', ({ request }) => {
+    paths.push(new URL(request.url).pathname);
+  });
+  mount();
+  await screen.findAllByTestId('hunt-row');
+  expect(paths.filter((path) => /\/api\/(hunts|events|incidents)\//.test(path))).toEqual([]);
 });

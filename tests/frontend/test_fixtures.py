@@ -313,16 +313,31 @@ def test_hunt_rule_fixture_contracts_and_references():
         for e in h["evidence"]
     )
     steps = extra["steps"]
+    assert {s["subject_type"] for s in steps} == {"hunt"}
     assert {s["subject_id"] for s in steps} <= set(hunt_ids)
+    for step in steps:
+        hunt = next(h for h in hunts if h["hunt_id"] == step["subject_id"])
+        assert step["created_at"] <= hunt["created_at"]
     keys = [(s["subject_id"], s["step"]) for s in steps]
     assert len(set(keys)) == len(keys)
     rules = data["rules"] + case_extra["rules"] + extra["rules"]
     proposal_ids = [r["proposal_id"] for r in rules]
     assert len(set(proposal_ids)) == len(proposal_ids)
-    case_ids = {c["case_id"] for c in data["cases"] + case_extra["cases"]}
+    hunt_by_id = {h["hunt_id"]: h for h in hunts}
+    case_by_id = {c["case_id"]: c for c in data["cases"] + case_extra["cases"]}
     for rule in extra["rules"]:
-        assert rule["hunt_id"] is None or rule["hunt_id"] in hunt_ids
-        assert rule["case_id"] is None or rule["case_id"] in case_ids
+        assert rule["hunt_id"] is None or rule["hunt_id"] in hunt_by_id
+        assert rule["case_id"] is None or rule["case_id"] in case_by_id
+        # A proposal comes from a hunt marked as a rule candidate, after that hunt or Case.
+        if rule["hunt_id"]:
+            basis = hunt_by_id[rule["hunt_id"]]
+            assert basis["rule_candidate"], rule["proposal_id"]
+            assert basis["created_at"] < rule["created_at"]
+        if rule["case_id"]:
+            assert case_by_id[rule["case_id"]]["created_at"] < rule["created_at"]
+        if rule["backtest"]:
+            window = rule["backtest"]
+            assert window["window_start_at"] < window["window_end_at"] <= rule["created_at"]
         # The mock records a reviewer only when a draft is reviewed.
         assert (rule["status"] == "draft") == (rule["reviewer"] is None), rule["proposal_id"]
     assert {r["status"] for r in extra["rules"]} == {"draft", "approved", "rejected", "deployed"}

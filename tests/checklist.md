@@ -460,9 +460,29 @@ K55는 여전히 일부이며 코어 비즈니스 검증은 해당 박스에서 
 - fixture: `tests/fixtures/frontend/hunt-rule-detail.json`, `test_hunt_rule_fixture_contracts_and_references`.
 - 기존 테스트 기대값 갱신(동작 변경 아님): 메뉴 항목 2개 추가(`layout.test.tsx`), 새 fixture로 `is_anomaly=false`·
   `deployed` 필터 결과가 비지 않게 됨(`api-contracts.test.ts`, 데이터 기준 비교로 바꿈).
+- 3단계에서 고친 것:
+  (1) fixture 모순: `ht_web`이 `rule_candidate=false`인데 룰 제안 2건의 근거였다 → `true`로 고치고, 룰 제안의 근거 헌팅은
+  `rule_candidate`이며 근거보다 늦게 만들어지고 백테스트 기간이 제안 전이라는 검사를 Python 테스트에 더했다
+  (되돌린 변형에서 `rp_web_shell`로 실패 확인). 조사 단계는 `subject_type=hunt`이고 헌팅 결과 이전 시각인지도 확인한다.
+  (2) 룰 상세의 관련 Incident가 `hunt_id`가 있으면 `case_id`를 무시했다. 계약상 둘 다 있을 수 있으므로(`anyOf`) 임의
+  우선순위를 없애고, 있는 참조를 각각 따라가 한 영역에 출처와 함께 보여 준다(`rule-detail.test.tsx` 두 참조 테스트).
+  (3) 테스트 추가: 헌팅 목록이 행마다 헌팅·이벤트·Incident 상세를 조회하지 않음(`hunts.test.tsx`), 근거 이벤트는 펼칠 때만
+  문서 경로로 조회하고 모르는 `ref_type`은 조회하지 않으며 조회 실패가 헌팅 화면 전체를 막지 않음(`hunt-detail.test.tsx`).
+  (4) F5 테스트 파일의 요청 기록 리스너 정리를 테스트 끝 줄에서 `afterEach`로 옮겼다. 테스트가 중간에 실패해도 다음
+  테스트로 새지 않는다. 공용 setup·Vitest 설정·명령·timeout·worker 수는 바꾸지 않았다.
+- 기본 `pnpm test` 반복(설정 변경 없음): 부하가 낮아진 뒤(1분 load average 9 이하에서 시작) 3회 연속 통과(177개, 24~28초).
+  그 전 측정: load 5~26에서 2회 통과, load 26~40에서 1회 F3 `incidents.test.tsx` 1건 실패(1초 `findBy` 대기 중 목록이
+  아직 로딩 중). 다른 실행과 겹친 1회는 load 80에서 3건 실패. 고부하(약 50) 구현 단계에서는 매번 다른 1~15건이 실패했다.
+  실패는 모두 1초 대기나 5초 제한 초과였고, 값 단언 실패·요청 건수 불일치·테스트 사이 상태 누수는 없었다. 실패한 테스트는
+  F5와 무관한 F1~F4 파일에도 고르게 퍼졌다. 그래서 race·cleanup 문제가 아니라 장비 부하로 판단한다. F5 테스트 5개 파일이
+  더해져 suite가 무거워진 것은 사실이며, #21 기록과 같은 기존 부하 민감성이다.
+- 브라우저(mock dev 서버, 같은 출처 iframe 375px·1280px × 라이트·다크, 28조합): `/hunts`, `/hunts/ht_cloud_login`(Incident 없음),
+  `/hunts/ht_web`(Incident 있음), `/rules`, `/rules/rp_web_shell`(draft), `/rules/rp_web_approved`, `/rules/rp_case_deployed`.
+  모든 조합에서 페이지 가로 넘침 없음, 화면 폭을 넘는 요소 없음, 테마 배경 적용(라이트 `rgb(243,245,247)`, 다크 `rgb(12,17,23)`),
+  좁은 메뉴에서 "헌팅"·"룰 제안" 현재 링크가 메뉴 띠 안에 보임, `h1` 하나와 섹션 `h2`, 이름 없는 입력 없음(검토자·승인·반려
+  label), script·img·iframe·b·i·외부 링크 요소 없음. `sigma_rule`·`siem_query`·발췌 `pre`는 `pre-wrap` + 내부 스크롤로
+  화면 안에 머문다. draft에만 "검토 제출"이 있고 approved·deployed에는 버튼이 없다. 콘솔 오류 없음.
 - 명령: `uvx ruff format --check .`, `uvx ruff check .`, `uv run pytest`(418개), `pnpm typecheck`, `pnpm lint`,
-  `pnpm format:check`, `pnpm build` 통과. `pnpm test`는 load average 약 50(8코어)에서 기본 실행 시 매번 다른 F1~F4·F5
-  테스트 1~15건이 1초 `findBy` 대기·5초 제한 초과로 실패했다. 같은 시점 `vitest run --maxWorkers=2`는 174개 모두 통과했다.
-  값 단언 실패는 없었다. 설정·timeout은 바꾸지 않았다.
-- 환경 메모: 로컬 Node 24가 실행되지 않아(라이브러리 누락) Node 22.22.3으로 확인했다. CI Node 24 확인 필요.
-- 브라우저 확인(라이트·다크, 375px 가로 넘침)은 3단계에서 한다.
+  `pnpm format:check`, 기본 `pnpm test`(177개, 3회 연속), `pnpm build` 통과.
+- 환경 메모: 로컬 Homebrew Node 24가 라이브러리 누락(`libsimdjson`)으로 실행되지 않아 Node 22.22.3으로 확인했다.
+  프로젝트 설정은 바꾸지 않았다. CI Node 24 통과가 머지 조건이다.
