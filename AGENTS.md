@@ -14,24 +14,27 @@
 
 자세한 내용은 `docs/architecture.md`. 박스 번호가 코드·이슈·결정 대장의 ID다.
 
-- **수집·정규화 (파이프라인)**: Event Source(1) → Raw Log(2) → SIEM(3, Wazuh) → Alert(6)·Event(7) RDB 저장(정규화 전) → OCSF 정규화(4, 자체 구현, 1.9.0) → Lookup(5) → 엔티티 분기(25: 중복 제거 → 엔티티 추출 → 공용 엔티티 제거 → Incident 존재 여부)
+- **수집·정규화 (파이프라인)**: Event Source(1) → Raw Log(2) → 외부 SIEM → SIEM 커넥터(3) → Alert(6)·Event(7) 원본 RDB 저장(불변) → OCSF 정규화(4, 자체 구현, 1.9.0) → Lookup(5) → 엔티티 분기(25: 중복 제거 → 엔티티 추출 → 공용 엔티티 제거 → Incident 존재 여부)
   - Incident에 존재 → 기존 Incident에 추가하고 L2 재실행
-  - 없음 + 공격 대상 시나리오 → Ticket(10) 바로 생성
+  - 없음 + 공격 대상 시나리오 → 시나리오 티켓(10) 바로 생성
   - 없음 + 그 외 → L1 Agent 엔티티 정보 조회
-- **L1 (11)**: 정규화부터 L1 판정까지 완전 자동이다. 엔티티 조회 → 승격(Ticket) 또는 보류(L3 데이터 풀). 모든 Ticket은 증거 요청 큐(26) → 전문가 Agent(14 Web, 13 Cloud 보류) + MCP(15) → L1 판정: 확신도 높음 → 종결, 낮음 → 보류. 이상 행위는 종결 또는 L2 승격. 판정 못 한 건도 사람에게 넘기지 않는다. 임계값과 갈림 조건은 미정(D-036).
+- **L1 (11)**: 정규화부터 L1 판정까지 완전 자동이다. 엔티티 조회 → 확신도 ≥ 임계값(설정, 초기 0.8)이면 L1 승격 티켓, 미만이면 보류. 시나리오·L1 승격 티켓은 증거 요청 큐(26, PostgreSQL) → 전문가 Agent(14 Web, 13 Cloud 보류) + MCP(15) → L1 판정: 오탐·이상 → 종결, 이상 행위·이상 → L2 승격, 미만·LLM 실패·큐 실패 → 보류(D-036). 보류는 모두 L3 데이터 풀로 간다. 사람에게 넘기지 않는다.
 - **L1 결과 조회 (27)**: 사람은 어떤 Alert가 승격·보류됐는지, 판정이 어떤지 읽기만 한다. 판정 뒤집기 기능은 없다.
-- **L2 (19)**: L2 Ticket → 엔티티 분기(25) → 새 Incident(+SIEM MCP 과거 조회) 또는 기존 Incident 추가(18). Incident 생성·갱신마다 L2 실행: 타임라인 + ATT&CK → 증거 요청 → 영향 범위·원인 → Incident Artifact(20) + 탐지 룰 제안(24) + 대응 방안 → Human 승인·확정(21) → Case(22).
-- **L3 (23)**: 운영자 위협 시나리오 + Case + L1 보류 건 → 가설 → 검증(Event·Alert RDB, SIEM MCP) → 기각 또는 헌팅 결과 Ticket → L2로 투입. L3는 룰을 제안하지 않는다.
+- **L2 (19)**: L2 Ticket → 엔티티 분기(25) → 새 Incident(+SIEM MCP 과거 조회) 또는 기존 Incident 추가(18). L2: 타임라인 + ATT&CK → 증거 요청 → 영향 범위·원인 → Incident Artifact(20) + 탐지 룰 제안(24) + 대응 방안 → Slack 알림 → Human 승인·확정(21) → Case(22). 발견 정보는 항상 붙이고, 새 엔티티·증거가 늘 때만 재실행(최대 5회, D-039). 반려는 사유로 재분석, 2회면 사람 처리.
+- **L3 (23)**: 운영자 위협 시나리오 + Case + L1 보류 건 → 가설 → 검증(Event·Alert RDB, SIEM MCP) → 기각 또는 L3 승격 티켓 → L2 Ticket으로 바로 투입. L3는 룰을 제안하지 않는다.
+- **SIEM**: 외부에 있는 SIEM 하나를 설정으로 골라 연결만 한다(초기 Wazuh, 확장 ELK·Splunk). 커넥터(3)와 SIEM MCP(15)만 SIEM별로 다르고 코어는 같은 인터페이스를 쓴다(D-037).
+- **Ticket 출처**: L1 승격 / L3 승격 / 시나리오 세 가지(D-038, 필드 이름은 계약 이슈에서).
 - 사람의 승인은 21(승인·확정)에만 있다. 폐기 박스: 9 Analyst Agent, 16(v1의 사람 검토), 17 Correlation. 번호는 다시 쓰지 않는다.
 
 ## 저장소 규칙
 
 | 객체 | 저장소 |
 |---|---|
-| Alert, Event, Lookup, Incident, Incident Artifact | RDB (PostgreSQL) |
+| Alert, Event (원본, 불변) / 정규화 결과 (별도 테이블, FK) | RDB (PostgreSQL) |
+| Lookup, Incident, Incident Artifact | RDB (PostgreSQL) |
 | Ticket, Case | RDB + VDB (Qdrant). VDB에는 판정이 끝난 것만 |
 
-- OpenSearch 같은 별도 로그 저장소는 쓰지 않는다. 티켓은 내부 UI, 알림은 Slack.
+- 자체 저장소로 OpenSearch 같은 별도 로그 저장소는 쓰지 않는다(외부 SIEM인 ELK와는 무관). 티켓은 내부 UI, 알림은 Slack(L2 승인 필요 시만, 렌더링 금지).
 - 이벤트 소스는 Web부터. Cloud는 보류하되 확장 가능한 구조로 둔다. 첫 데모 데이터셋은 AIT 로그 데이터셋.
 
 ## 먼저 읽을 문서

@@ -6,15 +6,15 @@
 
 > **v2 불일치 (아키텍처 v2, #33).** 아래 필드는 v1 흐름 기준이라 v2(`docs/architecture.md`)와 맞지 않는다. 후속 계약 변경 이슈에서 "바꾸는 절차"로 고친다. 그전까지 필드와 enum을 말없이 바꾸지 않는다. 해당 박스를 구현할 때 먼저 계약 변경을 제안한다.
 >
-> - C6 Ticket: `handling_type`·`specialist`는 폐기된 Analyst Agent(9)의 라우팅 결과. 보류, L2 승격 상태와 생성 경로(25 직접, 11 승격, 23 헌팅)가 없다
-> - C9 HumanReview, C6 `awaiting_human`·`awaiting_human_at`, C7 `needs_human`: v2에서 L1은 완전 자동이고 사람은 L1 결과를 조회만 한다(27). 판정 뒤집기가 없다
+> - C6 Ticket: `handling_type`은 폐기된 Analyst Agent(9)의 라우팅 결과라 삭제한다. `specialist`는 유지하고 Web·Cloud 도메인에서 채운다. 보류·L2 승격 상태와 Ticket 출처 구분(D-038: L1 승격 / L3 승격 / 시나리오. 제안 이름 `origin` = `l1_escalated` / `l3_escalated` / `scenario`)이 없다
+> - C9 HumanReview, C6 `awaiting_human`·`awaiting_human_at`, C7 `needs_human`: v2에서 L1은 완전 자동이고 사람은 L1 결과를 조회만 한다(27). 판정 뒤집기가 없고, L1 판정 실패는 보류한다(D-036)
 > - C10 Incident: `created_by`의 `correlation`, IncidentMember `source`(`l1`, `human_l1`, `l3`), `member_type`의 `hunt`, `rule`은 폐기된 Correlation(17) 기준
-> - C10 `review_state`·`review_round`, C15 반려: v2 도식에 없음, 유지 여부 TBD (`docs/architecture.md` 박스 21)
+> - C10: L2 재실행이 한도(D-039)에 걸려 멈췄다는 표시가 없다. `review_state`·`review_round`와 C15 반려는 v2에서도 유지한다(D-039)
 > - C17 HuntFinding: v2에서 헌팅 결과는 Ticket(C6)으로 L2에 들어간다
 > - C18 RuleProposal: `hunt_id`·`case_id` 대신 Incident·Artifact에서 나온다. 별도 승인 `status` 대신 21의 승인에 포함된다
 > - C19 VectorDoc: 기본 컬렉션 중 `closed_incidents`, `assets`, `alerts_summary`, `events_rare`와 `source_kind`의 `incident`, `asset`, `alert`, `event`는 v2에서 VDB에 넣지 않는다
-> - C5 AlertRecord, C13 EventRecord: v2에서 Alert(6)·Event(7)는 정규화 전 SIEM 출력(C2)을 저장한다. 지금은 정규화 후 객체가 저장 행으로 정의되어 있다
-> - 없는 계약: 26 증거 요청 큐 항목, 25 분기 결과, L1 승격·보류 기록(27이 조회)
+> - C5 AlertRecord, C13 EventRecord: v2에서 Alert(6)·Event(7)는 정규화 전 원본(C2)을 불변으로 저장하고, 정규화 결과는 별도 테이블에 두어 원본을 FK로 가리킨다(D-002). 지금은 정규화 후 객체가 저장 행으로 정의되어 있다
+> - 없는 계약: 26 증거 요청 큐 항목(재시도 횟수, 실패 상태 포함), 25 분기 결과, L1 승격·보류 기록(27이 조회)
 
 ## 공통 규칙
 

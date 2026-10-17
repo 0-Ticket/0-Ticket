@@ -12,7 +12,7 @@
 
 - 인터페이스: `src/soc/<그룹>/<확장 지점>/base.py`
 - 기본 구현체: 같은 폴더의 `<이름>.py`
-- 예: `src/soc/ingest/siem/base.py`(SIEM 어댑터 인터페이스), `src/soc/ingest/siem/direct.py`(SIEM 없이 수집하는 기본 구현체), `src/soc/ingest/siem/<SIEM 이름>.py`(외부 SIEM 어댑터)
+- 예: `src/soc/ingest/siem/base.py`(SIEM 커넥터 인터페이스), `src/soc/ingest/siem/direct.py`(SIEM 없이 수집하는 기본 구현체), `src/soc/ingest/siem/<SIEM 이름>.py`(외부 SIEM 커넥터)
 
 ### 2. 코어는 구현체 이름을 모른다
 
@@ -80,7 +80,7 @@ model = "my-larger-model"
 |---|---|---|---|---|
 | 소스 커넥터 | 1 | `sources` | 파일, 웹 로그, 클라우드 감사 로그 | EDR, 메일 게이트웨이, 사내 앱 로그 추가 |
 | 원본 저장소 | 2 | `raw_stores` | 로컬 파일 | 오브젝트 스토리지 |
-| SIEM 어댑터 | 3 | `siem` | Wazuh (D-006), `direct`(SIEM 없이 C1을 C2로 넘김) | Splunk 등 다른 SIEM, 로그 수집기 |
+| SIEM 커넥터 | 3 | `siem` (기존 그룹을 그대로 쓰는 것을 제안) | Wazuh (초기 구현 대상, D-037), `direct`(SIEM 없이 C1을 C2로 넘김). 한 번에 하나를 설정으로 선택 | ELK, Splunk |
 | 별칭 표 | 4 | (파일) | 기본 시나리오 별칭 표 | 자사 SIEM 시나리오, 새 로그 형식 |
 | 룩업 제공자 | 5 | `lookups` | CSV 자산·계정 표 | CMDB, 디렉터리 서비스, 위협 인텔 평판 서비스 |
 | 저장소 백엔드 | 5, 6, 7, 10, 12, 18, 20, 22, 24 | `stores` | PostgreSQL (D-002). Event도 RDB | 다른 RDB, 별도 로그 저장소(이벤트) |
@@ -89,14 +89,17 @@ model = "my-larger-model"
 | LLM 제공자 | 11, 13, 14, 19, 23, 24 | `llm_providers` | D-009 + OpenAI 호환 API | 상용 모델, 사내 모델, 로컬 모델 |
 | 전문 에이전트 | 13, 14 | `specialists` | Web (Cloud는 보류) | Cloud, 엔드포인트, 메일, 네트워크 전문 에이전트 추가 |
 | 프롬프트 | 11, 13, 14, 19, 23, 24 | (파일) | 기본 프롬프트 | 자사 판정 기준, 언어 |
-| MCP 도구 | 15 | `mcp_servers` | 내부 데이터 조회, Web 도메인, SIEM MCP (D-035) | 사내 도구 연결 |
-| 증거 요청 큐 | 26 | (미정, D-034) | D-034 | 다른 큐 백엔드 |
+| MCP 도구 | 15 | `mcp_servers` | 내부 데이터 조회, Web 도메인 | 사내 도구 연결 |
+| SIEM MCP 어댑터 | 15 | (제안: siem_mcp_adapters) | Wazuh (초기, D-035). 선택된 SIEM을 따라간다. 읽기 전용 | ELK, Splunk |
+| 증거 요청 큐 | 26 | (제안: evidence_queues) | PostgreSQL 테이블 큐 (D-034) | 다른 큐 백엔드 |
 | 사람 검토 채널 | 21 | `review_channels` | 웹 화면 (D-013, `docs/frontend.md`) | 메신저, 사내 포털 |
 | 티켓·케이스 시스템 | 10, 22 | `case_systems` | 내부 저장과 내부 UI (D-012) | 외부 티켓·케이스 관리 도구와 동기화 |
-| 알림 채널 | 사용자 접점 | (미정) | Slack (D-033) | 메신저, 메일 |
+| 알림 채널 | 사용자 접점 | (제안: notification_channels) | Slack (D-033) | 메신저, 메일 |
 | 엔티티 분기 규칙 | 25 | (파일) | 공격 대상 시나리오 목록, 공용 엔티티 기준, Incident 매칭 기준 | 자사 공격 시나리오, 자사 공용 자산 |
 | 헌팅 쿼리 | 23 | (파일) | 기본 기준선 쿼리 | 자사 환경 기준선 |
 | 룰 변환 대상 | 24 | `rule_targets` | 연결된 SIEM 어댑터를 따름 | 다른 SIEM 쿼리 언어 |
+
+"(제안: …)"으로 적은 그룹 이름은 `src/soc/plugins.py`의 기존 규칙(소문자 snake_case 복수형, 예: `review_channels`, `vector_stores`)을 따른 제안이다. 확정되면 코드와 이 표를 함께 고친다. SIEM 커넥터와 SIEM MCP 어댑터는 같은 SIEM 이름으로 함께 선택된다(D-037).
 
 기본 구현체 중 "로컬 파일", "CSV", `direct`는 외부 도구 없이 표준 라이브러리만으로 만드는 기본값이라 결정 대장에 따로 두지 않는다. 외부 도구를 쓰는 기본 구현체는 결정 대장의 ID를 따른다.
 
@@ -110,9 +113,9 @@ model = "my-larger-model"
 
 ### 새 SIEM 붙이기
 
-1. `src/soc/ingest/siem/base.py`의 인터페이스를 구현한다. 알럿을 받아 C2 SiemAlert를 내보내면 된다.
+1. `src/soc/ingest/siem/base.py`의 커넥터 인터페이스를 구현한다. 그 SIEM에서 알럿·이벤트를 가져와 C2 SiemAlert를 내보내면 된다. 같은 SIEM용 SIEM MCP 어댑터(읽기 전용)도 함께 만든다.
 2. 레포에 기여하면 같은 폴더에 두고, 사내 전용이면 별도 패키지로 만들어 `zero_ticket_soc.siem` entry point로 등록한다.
-3. 설정의 `[siem] adapter`를 새 이름으로 바꾼다.
+3. 설정의 `[siem] adapter`를 새 이름으로 바꾼다. 한 번에 하나의 SIEM만 연결한다.
 4. 그 SIEM의 시나리오용 별칭 표를 추가한다(박스 4).
 
 ### 다른 LLM 쓰기

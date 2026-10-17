@@ -66,7 +66,7 @@ LLM 없이 규칙으로 해야 하는 곳: 4(실행 중 정규화), 5, 6, 7, 25(
 
 | 객체 | 실패 시 |
 |---|---|
-| C7 Verdict | `verdict: unknown`, `confidence: 0`. v2에서 L1은 사람에게 넘기지 않으므로 이 Ticket은 보류 또는 승격한다. 어느 쪽인지는 TBD(D-036). `needs_human` 필드 정리는 후속 계약 이슈 |
+| C7 Verdict | `verdict: unknown`, `confidence: 0`. v2에서 L1은 사람에게 넘기지 않고 이 Ticket을 보류한다(D-036). 보류 건은 L3 헌팅 데이터 풀로 간다. `needs_human` 필드 정리는 후속 계약 이슈 |
 | C14 SpecialistFinding | `succeeded: unknown`, `confidence: 0`, `needs_human: true`. L1은 이 결과를 판정 근거로 쓰지 않는다 |
 | C11 IncidentArtifact | 만든 부분까지 저장하고 `needs_human: true`. Incident는 `investigating`에 머문다 |
 | C17 HuntFinding | `is_anomaly: false`, `rule_candidate: false`, `needs_human: true` |
