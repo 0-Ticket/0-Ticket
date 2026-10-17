@@ -12,7 +12,7 @@
 
 - 인터페이스: `src/soc/<그룹>/<확장 지점>/base.py`
 - 기본 구현체: 같은 폴더의 `<이름>.py`
-- 예: `src/soc/ingest/siem/base.py`(SIEM 커넥터 인터페이스), `src/soc/ingest/siem/direct.py`(SIEM 없이 수집하는 기본 구현체), `src/soc/ingest/siem/<SIEM 이름>.py`(외부 SIEM 커넥터)
+- 예: `src/soc/ingest/siem/base.py`(SIEM 커넥터 인터페이스), `src/soc/ingest/siem/direct.py`(SIEM 없이 데이터셋을 재생하는 개발·데모용 구현체), `src/soc/ingest/siem/<SIEM 이름>.py`(외부 SIEM 커넥터)
 
 ### 2. 코어는 구현체 이름을 모른다
 
@@ -78,9 +78,9 @@ model = "my-larger-model"
 
 | 확장 지점 | 박스 | 그룹 (entry point) | 기본 구현체 | 조직이 바꾸는 예 |
 |---|---|---|---|---|
-| 소스 커넥터 | 1 | `sources` | 파일, 웹 로그, 클라우드 감사 로그 | EDR, 메일 게이트웨이, 사내 앱 로그 추가 |
-| 원본 저장소 | 2 | `raw_stores` | 로컬 파일 | 오브젝트 스토리지 |
-| SIEM 커넥터 | 3 | `siem` (기존 그룹을 그대로 쓰는 것을 제안) | Wazuh (초기 구현 대상, D-037), `direct`(SIEM 없이 C1을 C2로 넘김). 한 번에 하나를 설정으로 선택 | ELK, Splunk |
+| 소스 커넥터 | 1 (외부) | `sources` | 파일 (`direct` 어댑터의 데이터셋 재생 입력, 개발·테스트·데모용) | 다른 데이터셋 형식. 운영 로그 소스는 외부 SIEM에 붙인다 |
+| 원본 저장소 | 2 (외부) | `raw_stores` | 로컬 파일 (`direct` 재생용) | 운영 원본 로그 보관은 외부 SIEM 소관 |
+| SIEM 커넥터 | 3 | `siem` (기존 그룹을 그대로 쓰는 것을 제안) | Wazuh (초기 구현 대상, D-037), `direct`(SIEM 없이 데이터셋을 재생해 C1을 C2로 넘김. 개발·테스트·데모용, 운영 대상 아님). 운영에서는 외부 SIEM 하나를 설정으로 선택 | ELK, Splunk |
 | 별칭 표 | 4 | (파일) | 기본 시나리오 별칭 표 | 자사 SIEM 시나리오, 새 로그 형식 |
 | 룩업 제공자 | 5 | `lookups` | CSV 자산·계정 표 | CMDB, 디렉터리 서비스, 위협 인텔 평판 서비스 |
 | 저장소 백엔드 | 5, 6, 7, 10, 12, 18, 20, 22, 24 | `stores` | PostgreSQL (D-002). Event도 RDB | 다른 RDB, 별도 로그 저장소(이벤트) |
@@ -107,9 +107,9 @@ model = "my-larger-model"
 
 ## 자주 하는 확장
 
-### SIEM 없이 받기
+### SIEM 없이 받기 (개발·테스트·데모용)
 
-설정의 `[siem] adapter`를 `direct`로 둔다. 소스 커넥터가 낸 C1이 `direct` 어댑터를 거쳐 C2가 되고, 이후 흐름은 SIEM이 있을 때와 같다. 어느 소스를 알럿으로, 어느 소스를 이벤트로 볼지와 시나리오 이름은 설정에서 정한다.
+운영에서는 항상 외부 SIEM 하나에 연결한다. SIEM이 없는 개발·테스트·데모(데이터셋 재생)에서만 설정의 `[siem] adapter`를 `direct`로 둔다. 소스 커넥터가 낸 C1이 `direct` 어댑터를 거쳐 C2가 되고, 이후 흐름은 SIEM이 있을 때와 같다. 어느 소스를 알럿으로, 어느 소스를 이벤트로 볼지와 시나리오 이름은 설정에서 정한다.
 
 ### 새 SIEM 붙이기
 
@@ -125,8 +125,8 @@ model = "my-larger-model"
 
 ### 새 로그 소스 붙이기
 
-1. 소스 커넥터를 구현해 C1 RawRecord를 내보낸다. `source_type`에 새 이름을 등록한다.
-2. 그 로그의 별칭 표를 추가한다.
+1. 운영 로그 소스는 외부 SIEM에 붙인다(박스 1·2는 SIEM 소관). 이 프로젝트에서는 그 SIEM 시나리오의 별칭 표를 추가한다.
+2. 데이터셋을 `direct` 어댑터로 재생할 때만 소스 커넥터를 구현해 C1 RawRecord를 내보내고 `source_type`에 새 이름을 등록한다.
 3. 기존 C3·C13 필드로 표현되지 않는 값은 `extensions`에 넣는다. 여러 조직에 공통으로 필요해 보이면 계약 변경을 제안한다.
 
 ## 확장하지 않는 것

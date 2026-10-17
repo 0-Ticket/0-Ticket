@@ -14,6 +14,7 @@
 > - C18 RuleProposal: `hunt_id`·`case_id` 대신 Incident·Artifact에서 나온다. 별도 승인 `status` 대신 21의 승인에 포함된다
 > - C19 VectorDoc: 기본 컬렉션 중 `closed_incidents`, `assets`, `alerts_summary`, `events_rare`와 `source_kind`의 `incident`, `asset`, `alert`, `event`는 v2에서 VDB에 넣지 않는다
 > - C5 AlertRecord, C13 EventRecord: v2에서 Alert(6)·Event(7)는 정규화 전 원본(C2)을 불변으로 저장하고, 정규화 결과는 별도 테이블에 두어 원본을 FK로 가리킨다(D-002). 지금은 정규화 후 객체가 저장 행으로 정의되어 있다
+> - C11 IncidentArtifact·C10: L2 "증거 수집 실패" 표시(D-034)가 없다
 > - 없는 계약: 26 증거 요청 큐 항목(재시도 횟수, 실패 상태 포함), 25 분기 결과, L1 승격·보류 기록(27이 조회)
 
 ## 공통 규칙
@@ -76,7 +77,7 @@ Schema로 옮길 때 지킬 것:
 
 | ID | 객체 | 만드는 박스 → 쓰는 박스 |
 |---|---|---|
-| C1 | RawRecord | 1 → 2, 3 |
+| C1 | RawRecord | 1 → 2, 3 (박스 1·2는 외부. `direct` 어댑터의 재생 입력) |
 | C2 | SiemAlert | 3 → 4 |
 | C20 | AliasTable (설정) | 사람 → 4 |
 | C3 | NormalizedAlert | 4 → 5 |
@@ -113,7 +114,7 @@ Schema로 옮길 때 지킬 것:
 
 ## C2 · SiemAlert
 
-SIEM 어댑터가 낸 알럿 또는 이벤트. 시나리오마다 필드명이 달라도 그대로 둔다. SIEM 없이 받을 때는 `direct` 어댑터가 C1을 이 형식으로 바꾼다.
+SIEM 어댑터가 낸 알럿 또는 이벤트. 시나리오마다 필드명이 달라도 그대로 둔다. SIEM 없이 받을 때(개발·테스트·데모용 데이터셋 재생)는 `direct` 어댑터가 C1을 이 형식으로 바꾼다.
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
