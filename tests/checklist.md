@@ -91,9 +91,9 @@
 | K47 | F3 | 보고서 타임라인이 시간순이고 모든 항목에 근거 링크가 있다. 반려에는 유형과 코멘트가 필수이고, 두 번 반려되면 "사람 직접 처리"로 표시된다 | ✅ 통과 | `incident-detail.test.tsx`: 응답 순서 유지·근거 링크·2회 반려 표시; `incident-review.test.tsx`: 반려 필수 입력. #21부터 "사람 직접 처리"는 `review_state`=`human_handling`으로만 표시. 실제 재반려 처리(박스 21)는 후속 |
 | K48 | F4 | Case 작업의 상태·담당자·마감과 교훈을 수정할 수 있다 | 🟡 일부 | #27: 작업 상태 변경만 `case-tasks.test.tsx`(전체 `tasks` PATCH·재조회·중복 제출·오류 구분). 담당자·마감·교훈 수정은 후속 API/계약 이슈 필요 |
 | K49 | F5 | 룰 제안에 문법 검사 결과와 백테스트가 보이고, 승인해도 화면이 SIEM 반영을 하지 않는다 | ✅ 통과 | #29 화면 범위: `rules.test.tsx`, `rule-detail.test.tsx`(문법 결과·백테스트 그대로·null, 배포·실행 버튼 없음), `rule-review.test.tsx`(요청 본문은 `reviewer`·`decision`뿐, 서버 상태 표시). 실제 룰 검사·백테스트·배포 승인(박스 24, K27)은 후속 |
-| K50 | F6 | 지표 대시보드가 뒤집은 비율, 반려 유형 통계, 정규화 실패 수를 보여 준다 | ⬜ | |
-| K51 | 전체 | HTML·스크립트 조각이 든 로그 원문, LLM 출력, `extensions` 값이 텍스트로만 표시된다 | 🟡 일부 | F1: `tickets.test.tsx`; F2: `ticket-detail.test.tsx`; F3: `incidents.test.tsx`, `incident-detail.test.tsx`; F4: `cases.test.tsx`, `case-detail.test.tsx`, `case-tasks.test.tsx`; F5: `hunts.test.tsx`, `hunt-detail.test.tsx`, `rules.test.tsx`, `rule-detail.test.tsx`(C17·C18에는 `extensions`가 없음); 다른 화면은 후속 검증 |
-| K52 | 전체 | 플러그인이 등록한 새 등록형 값과 새 `extensions` 키가 화면 수정 없이 보인다 | 🟡 일부 | F1: `tickets.test.tsx`; F2: `ticket-detail.test.tsx`; F3: `incidents.test.tsx`, `incident-detail.test.tsx`; F4: `cases.test.tsx`, `case-detail.test.tsx`, `case-tasks.test.tsx`; F5: `hunts.test.tsx`, `hunt-detail.test.tsx`, `rules.test.tsx`, `rule-detail.test.tsx`(C17·C18에는 `extensions`가 없음); 다른 화면은 후속 검증 |
+| K50 | F6 | 지표 대시보드가 뒤집은 비율, 반려 유형 통계, 정규화 실패 수를 보여 준다 | ✅ 통과 | #31 화면 범위: `dashboard.test.tsx`(L1 검토·뒤집음 원본 값 나란히 표시, 비율 계산 없음, `l2_rejects_by_type`·`incident_members_by_source`·`normalize_failures_by_reason` 원본 값, 집계 기간 표시). 지표 집계 자체(박스 4·16·21)는 해당 박스에서 확인 |
+| K51 | 전체 | HTML·스크립트 조각이 든 로그 원문, LLM 출력, `extensions` 값이 텍스트로만 표시된다 | 🟡 일부 | F1: `tickets.test.tsx`; F2: `ticket-detail.test.tsx`; F3: `incidents.test.tsx`, `incident-detail.test.tsx`; F4: `cases.test.tsx`, `case-detail.test.tsx`, `case-tasks.test.tsx`; F5: `hunts.test.tsx`, `hunt-detail.test.tsx`, `rules.test.tsx`, `rule-detail.test.tsx`(C17·C18에는 `extensions`가 없음), F6: `dashboard.test.tsx`(C10·C16·C17·C18에 든 제목·가설, 새 상태·등록형 값; 대시보드는 `extensions`를 보여 주지 않음); 다른 화면은 후속 검증 |
+| K52 | 전체 | 플러그인이 등록한 새 등록형 값과 새 `extensions` 키가 화면 수정 없이 보인다 | 🟡 일부 | F1: `tickets.test.tsx`; F2: `ticket-detail.test.tsx`; F3: `incidents.test.tsx`, `incident-detail.test.tsx`; F4: `cases.test.tsx`, `case-detail.test.tsx`, `case-tasks.test.tsx`; F5: `hunts.test.tsx`, `hunt-detail.test.tsx`, `rules.test.tsx`, `rule-detail.test.tsx`(C17·C18에는 `extensions`가 없음), F6: `dashboard.test.tsx`(C10·C16·C17·C18에 든 제목·가설, 새 상태·등록형 값; 대시보드는 `extensions`를 보여 주지 않음); 다른 화면은 후속 검증 |
 
 ## 계약 Schema
 
@@ -486,3 +486,37 @@ K55는 여전히 일부이며 코어 비즈니스 검증은 해당 박스에서 
   `pnpm format:check`, 기본 `pnpm test`(177개, 3회 연속), `pnpm build` 통과.
 - 환경 메모: 로컬 Homebrew Node 24가 라이브러리 누락(`libsimdjson`)으로 실행되지 않아 Node 22.22.3으로 확인했다.
   프로젝트 설정은 바꾸지 않았다. CI Node 24 통과가 머지 조건이다.
+
+## #31 F6 구현 검증
+
+- 범위: `/` 운영·지표 대시보드. 기준 브랜치 `test`(`origin/test` a68fb4f와 같은 커밋에서 시작).
+- K50은 화면 범위에서 통과로 표시했다. 지표 값 자체의 집계(박스 4 정규화 실패, 16 뒤집기, 21 반려)는 실제 박스 구현에서 확인한다.
+- K51·K52는 F6 근거만 더하고 상태는 기존 정책대로 🟡 일부를 유지했다.
+- 테스트: `dashboard.test.tsx` 16개. heading 구조와 진입 링크, 지표의 대기 건수, 지표 원본 값과 `%` 없음, 빈 지표 묶음,
+  첫 페이지 표시용 집계·모르는 값·응답 순서, 최대 5건, `next_cursor` 표시, 요청 목록(문서의 목록·지표 GET 각 1회,
+  상세·`normalize-failures` 요청 없음), Case·Rule·지표 단독 실패와 그 Query만 재시도, 지표 갱신 실패 뒤 이전 대기 건수를
+  보여 주지 않음, 영역별 로딩·빈 상태, untrusted 문자열, 메뉴 `end`(`/cases`, `/rules`, `/hunts/ht_web`, `/tickets/…`에서 비활성)와
+  키보드 이동. 모든 테스트 끝에 요청 메서드가 GET뿐인지 확인한다(읽기 전용).
+- 깨뜨려 본 확인: 대기 건수를 고정값으로, 상단 항목을 역순으로 바꾸면 각각 7건, 3건이 실패했다. `end`를 지워도 통과한다.
+  React Router가 `/` 링크를 하위 경로에서 활성으로 보지 않기 때문이며, 테스트는 동작(`/`에서만 활성)을 확인한다.
+- 3단계에서 고친 것: 지표가 한 번 성공한 뒤 갱신이 실패하면 Ticket 영역이 이전 대기 건수를 현재 값처럼 계속 보였다
+  (브라우저에서 발견). 오류가 있으면 이전 값 대신 "확인할 수 없음" 안내를 보이게 하고 테스트를 더했다(수정 전 코드에서 실패 확인).
+  같은 이유로 갱신에 실패한 목록·지표 영역에 이전 값이 남아 있으면 "마지막으로 받은 값" 안내를 붙이고 테스트를 더했다.
+- 브라우저(mock dev 서버, 같은 출처 iframe 375px·1280px × 라이트·다크, `/`): 4조합 모두 페이지 가로 넘침 0, 화면 폭을 넘는
+  요소 없음, 375px에서 영역 6개가 한 열(1280px은 두 열, 지표는 전체 폭), 테마 배경(라이트 `rgb(243,245,247)`, 다크
+  `rgb(12,17,23)`), `h1` 하나와 영역 `h2` 6개(더 깊은 heading 없음), 이름 없는 링크·버튼 없음, 좁은 메뉴에서 "대시보드"가
+  현재 링크로 띠 안에 보임, `%` 없음, 외부 링크 없음. 상태 확인은 iframe의 `fetch`를 감싸 Case·지표 500, 헌팅 빈 목록,
+  Incident 제목에 긴 `<script>`·URL 문자열과 80자 모르는 상태, `next_cursor`를 주었다: 오류는 두 영역에만, 헌팅 빈 상태,
+  "불러온 8건 기준 · 더 있음", 긴 문자열·상태가 텍스트로 줄바꿈되어 넘침 없음, script 실행·요소 생성 없음. 요청은 문서의 GET 6개뿐.
+  Case 재시도는 `/api/cases`만, 지표 재시도는 `/api/metrics`만 보냈다(한 번은 30초 폴링과 겹쳐 다른 목록도 기록되어, 단독으로
+  다시 확인). 창이 백그라운드라 TanStack Query가 재시도·폴링을 멈춰서 검사용 iframe에서만 `visibilityState`를 visible로 두었다.
+  새로고침 후 콘솔 오류 없음. 본문 링크 26개 모두 Tab으로 접근 가능(`tabIndex` 음수·disabled 없음).
+- 기본 `pnpm test` 반복(설정·timeout·worker 변경 없음):
+  - 3단계 중간 코드(193개): 1분 load average 3.8~29에서 3회 연속 통과(29~34초).
+  - 최종 코드(195개): 5회 중 3회 통과, 2회는 각 2건 실패. 대기 중 1분 load average는 다른 앱 때문에 20 아래로 내려가지 않았다
+    (시작 시점 9~44). 실패는 매번 다른 F2·F3 파일이었다(`ticket-review`·`incident-review` 5초 초과, `incidents`·`incident-detail`
+    1초 `findBy` 대기 중 아직 로딩). 그 사이 `cases.test.tsx`도 한 번 "Case 불러오는 중…" 상태로 1초 대기를 넘겼다.
+    값 단언 실패, 요청 수 불일치, 테스트 사이 상태 누수는 없었다. 실패한 4개 파일만 따로 2회 돌리면 모두 통과했다(39개).
+    F6 테스트는 모든 실행에서 통과했다. #29 기록과 같은 부하 민감성으로 판단한다. F6 16개가 더해져 suite가 무거워진 것은 사실이다.
+  - 정상 부하에서 3회 연속 통과는 최종 코드로 다시 확인하지 못했다. CI 통과로 확인한다.
+- 기존 테스트 기대값 갱신(동작 변경 아님): 메뉴 첫 항목 "대시보드" 추가, `/` heading 단계 검사 추가(`layout.test.tsx`).

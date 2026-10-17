@@ -6,6 +6,7 @@ import { useTheme } from '../lib/theme-context';
 import { cn } from '../lib/utils';
 
 const menu: { to: string; label: string; icon: IconName }[] = [
+  { to: '/', label: '대시보드', icon: 'dashboard' },
   { to: '/review', label: '검토 대기함', icon: 'inbox' },
   { to: '/tickets', label: '전체 티켓', icon: 'ticket' },
   { to: '/incidents', label: 'Incident', icon: 'incident' },
@@ -58,6 +59,7 @@ export function Shell() {
             <NavLink
               key={item.to}
               to={item.to}
+              end={item.to === '/'}
               onFocus={(event) => reveal(nav.current, event.currentTarget)}
               className={({ isActive }) =>
                 cn(
