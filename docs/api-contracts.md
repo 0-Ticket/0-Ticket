@@ -43,7 +43,7 @@
 | `GET /api/hunts/{hunt_id}` | | 아래 "헌팅 상세" | F5 |
 | `GET /api/rules` | `status` | 목록: C18 RuleProposal | F5 |
 | `GET /api/rules/{proposal_id}` | | C18 RuleProposal | F5 |
-| `GET /api/normalize-failures` | `reason` | 목록: C12 NormalizeFailure | F6 |
+| `GET /api/normalize-failures` | `reason` | 목록: C12 NormalizeFailure | 없음 (F6은 지표의 `normalize_failures_by_reason`만 씀, #31) |
 | `GET /api/metrics` | `from`, `to` (epoch 밀리초) | 아래 "지표" | F1, F6 |
 
 검토 대기함(F1)은 `GET /api/tickets?status=awaiting_human`이다.
