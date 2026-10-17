@@ -54,6 +54,24 @@ it('scrolls only the narrow menu strip to show the active link', () => {
   expect(scroll).not.toHaveBeenCalled();
 });
 
+it('keeps the narrow menu strip at the start on the dashboard and marks only it active', () => {
+  narrowMenu();
+  const scroll = vi.spyOn(window, 'scrollTo');
+  mount('/');
+  const nav = screen.getByRole('navigation', { name: '주 메뉴' });
+  expect(nav.scrollLeft).toBe(0);
+  expect(within(nav).getByRole('link', { name: '대시보드' })).toHaveAttribute(
+    'aria-current',
+    'page',
+  );
+  expect(
+    within(nav)
+      .getAllByRole('link')
+      .filter((link) => link.hasAttribute('aria-current')),
+  ).toHaveLength(1);
+  expect(scroll).not.toHaveBeenCalled();
+});
+
 it('scrolls the narrow menu strip to a link reached by keyboard', () => {
   narrowMenu();
   mount('/tickets');

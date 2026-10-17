@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { http, HttpResponse } from 'msw';
-import { afterEach, expect, it } from 'vitest';
+import { afterEach, beforeEach, expect, it } from 'vitest';
 import { routes } from '../app/router';
 import { ThemeProvider } from '../lib/theme';
 import { server } from '../mocks/server';
@@ -25,12 +25,15 @@ function mount(path = '/') {
     defaultOptions: { queries: { retry: false, refetchInterval: false } },
   });
   const router = createMemoryRouter(routes, { initialEntries: [path] });
-  return render(
-    <QueryClientProvider client={client}>
-      <ThemeProvider>
-        <RouterProvider router={router} />
-      </ThemeProvider>
-    </QueryClientProvider>,
+  return Object.assign(
+    render(
+      <QueryClientProvider client={client}>
+        <ThemeProvider>
+          <RouterProvider router={router} />
+        </ThemeProvider>
+      </QueryClientProvider>,
+    ),
+    { client },
   );
 }
 
@@ -56,8 +59,16 @@ async function ready(skip: string[] = []) {
     await waitFor(() => expect(region(name).getByText(/^불러온 \d+건 기준/)).toBeInTheDocument());
 }
 
+// The dashboard is read-only: every request in every test here must be a GET.
+const methods: string[] = [];
+beforeEach(() => {
+  methods.length = 0;
+  server.events.on('request:start', ({ request }) => methods.push(request.method));
+});
 afterEach(() => {
   server.events.removeAllListeners();
+  expect(methods.length).toBeGreaterThan(0);
+  expect(new Set(methods)).toEqual(new Set(['GET']));
 });
 
 it('shows one h1, an h2 per region and every work entry link', async () => {
@@ -314,33 +325,39 @@ it('calls only the documented list and metrics APIs, once each, with no per-row 
   expect(paths.some((path) => /^\/api\/[a-z-]+\/[^/?]+/.test(path))).toBe(false);
 });
 
-it('keeps a Case failure inside the Case region and retries only that query', async () => {
-  let fail = true;
-  server.use(
-    http.get('*/api/cases', () => {
-      if (fail)
-        return HttpResponse.json(
-          { error: { code: 'internal', message: 'case down' } },
-          { status: 500 },
-        );
-      return page([{ ...data.cases[0], case_id: 'cs_back' }]);
-    }),
-  );
-  mount();
-  await ready(['Case 현황']);
-  const cases = region('Case 현황');
-  expect(await cases.findByRole('alert')).toHaveTextContent('case down');
-  expect(screen.getAllByRole('alert')).toHaveLength(1);
-  for (const name of ['Ticket 현황', 'Incident 현황', '헌팅 현황', '룰 제안 현황'])
-    expect(region(name).getByRole('list', { name: /상단 항목$/ })).toBeInTheDocument();
-  expect(region('검토 지표').getByText(/^L1 검토/)).toBeInTheDocument();
-  const paths = recordRequests();
-  fail = false;
-  await userEvent.click(cases.getByRole('button', { name: '다시 시도' }));
-  expect(await cases.findByRole('link', { name: 'cs_back' })).toBeInTheDocument();
-  expect(paths.map((path) => path.replace(/\?.*$/, ''))).toEqual(['/api/cases']);
-  expect(screen.queryByRole('alert')).toBeNull();
-});
+it.each([
+  ['cases', 'Case 현황', 'cs_back', () => page([{ ...data.cases[0], case_id: 'cs_back' }])],
+  ['rules', '룰 제안 현황', 'rp_back', () => page([{ ...data.rules[0], proposal_id: 'rp_back' }])],
+] as const)(
+  'keeps a %s failure inside its region and retries only that query',
+  async (path, name, back, recovered) => {
+    let fail = true;
+    server.use(
+      http.get(`*/api/${path}`, () =>
+        fail
+          ? HttpResponse.json(
+              { error: { code: 'internal', message: `${path} down` } },
+              { status: 500 },
+            )
+          : recovered(),
+      ),
+    );
+    mount();
+    await ready([name]);
+    const failed = region(name);
+    expect(await failed.findByRole('alert')).toHaveTextContent(`${path} down`);
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+    for (const other of regions.slice(0, 5).filter((item) => item !== name))
+      expect(region(other).getByRole('list', { name: /상단 항목$/ })).toBeInTheDocument();
+    expect(region('검토 지표').getByText(/^L1 검토/)).toBeInTheDocument();
+    const paths = recordRequests();
+    fail = false;
+    await userEvent.click(failed.getByRole('button', { name: '다시 시도' }));
+    expect(await failed.findByRole('link', { name: back })).toBeInTheDocument();
+    expect(paths.map((item) => item.replace(/\?.*$/, ''))).toEqual([`/api/${path}`]);
+    expect(screen.queryByRole('alert')).toBeNull();
+  },
+);
 
 it('keeps a metrics failure inside the metrics region and never falls back to the list length', async () => {
   let fail = true;
@@ -374,6 +391,62 @@ it('keeps a metrics failure inside the metrics region and never falls back to th
   await userEvent.click(metricsRegion.getByRole('button', { name: '다시 시도' }));
   expect(await tickets.findByText(`검토 대기 ${waiting}건`)).toBeInTheDocument();
   expect(paths.map((path) => path.replace(/\?.*$/, ''))).toEqual(['/api/metrics']);
+});
+
+it('does not keep showing an older waiting count after a metrics refresh fails', async () => {
+  let fail = false;
+  server.use(
+    http.get('*/api/metrics', ({ request }) => {
+      if (fail)
+        return HttpResponse.json(
+          { error: { code: 'internal', message: 'metrics down' } },
+          { status: 500 },
+        );
+      const query = new URL(request.url).searchParams;
+      return HttpResponse.json({
+        ...metrics,
+        from: Number(query.get('from')),
+        to: Number(query.get('to')),
+        tickets_awaiting_human: 7,
+      });
+    }),
+  );
+  const { client } = mount();
+  const tickets = region('Ticket 현황');
+  expect(await tickets.findByText('검토 대기 7건')).toBeInTheDocument();
+  fail = true;
+  await client.refetchQueries({ queryKey: ['metrics'] });
+  expect(await region('검토 지표').findByRole('alert')).toHaveTextContent('metrics down');
+  expect(
+    tickets.getByText('검토 대기 건수를 확인할 수 없습니다. 검토 지표 영역에서 다시 시도하세요.'),
+  ).toBeInTheDocument();
+  expect(tickets.queryByText('검토 대기 7건')).toBeNull();
+  // Older metrics stay visible only with an explicit note.
+  expect(
+    region('검토 지표').getByText('아래는 마지막으로 받은 값입니다. 갱신에 실패했습니다.'),
+  ).toBeInTheDocument();
+});
+
+it('marks an older list as last received when its refresh fails', async () => {
+  let fail = false;
+  server.use(
+    http.get('*/api/rules', () =>
+      fail
+        ? HttpResponse.json({ error: { code: 'internal', message: 'rules down' } }, { status: 500 })
+        : page([data.rules[0]]),
+    ),
+  );
+  const { client } = mount();
+  const rules = region('룰 제안 현황');
+  expect(await rules.findByText('불러온 1건 기준')).toBeInTheDocument();
+  expect(rules.queryByText(/마지막으로 받은 값/)).toBeNull();
+  fail = true;
+  await client.refetchQueries({ queryKey: ['rules'] });
+  expect(await rules.findByRole('alert')).toHaveTextContent('rules down');
+  expect(
+    rules.getByText('아래는 마지막으로 받은 값입니다. 갱신에 실패했습니다.'),
+  ).toBeInTheDocument();
+  expect(screen.getAllByText(/마지막으로 받은 값/)).toHaveLength(1);
 });
 
 it('shows loading and empty states per region independently', async () => {
@@ -444,7 +517,7 @@ it('activates the dashboard menu item only at / and reaches every link by keyboa
   }
   for (const target of targets) expect(reached).toContain(target);
   unmount();
-  for (const path of ['/cases', '/rules', '/tickets/tk_sample']) {
+  for (const path of ['/cases', '/rules', '/hunts/ht_web', '/tickets/tk_sample']) {
     const view = mount(path);
     const menu = within(screen.getByRole('navigation', { name: '주 메뉴' }));
     expect(menu.getByRole('link', { name: '대시보드' })).not.toHaveAttribute('aria-current');

@@ -11,7 +11,14 @@ import {
   StatusNote,
   Timestamp,
 } from '../components/contract-display';
-import { CountTable, EntryLink, ItemLink, ListPanel, TopList } from '../components/dashboard-panel';
+import {
+  CountTable,
+  EntryLink,
+  ItemLink,
+  ListPanel,
+  StaleNote,
+  TopList,
+} from '../components/dashboard-panel';
 import { PageHeader } from '../components/page-header';
 import { PlainText } from '../components/plain-text';
 import { ToneBadge } from '../components/ui/badge';
@@ -34,18 +41,19 @@ function Row({ children }: { children: ReactNode }) {
 }
 
 // The waiting count always comes from metrics. The loaded ticket page is never counted.
+// After a failed metrics refresh an older count is not shown as if it were current.
 function WaitingCount() {
   const query = useWaitingCount();
-  if (query.data)
-    return (
-      <p className="text-2xl font-semibold tracking-tight">
-        검토 대기 {query.data.tickets_awaiting_human}건
-      </p>
-    );
   if (query.error)
     return (
       <p className="text-sm text-muted-foreground">
         검토 대기 건수를 확인할 수 없습니다. 검토 지표 영역에서 다시 시도하세요.
+      </p>
+    );
+  if (query.data)
+    return (
+      <p className="text-2xl font-semibold tracking-tight">
+        검토 대기 {query.data.tickets_awaiting_human}건
       </p>
     );
   return <StatusNote busy>대기 건수 불러오는 중…</StatusNote>;
@@ -256,6 +264,7 @@ function MetricsPanel() {
       )}
       {data && (
         <>
+          {query.error && <StaleNote />}
           <p className="text-xs text-muted-foreground">
             집계 기간: <Timestamp value={data.from} /> ~ <Timestamp value={data.to} />. 현재 검토
             대기 건수는 기간과 관계없이 지금 값입니다.

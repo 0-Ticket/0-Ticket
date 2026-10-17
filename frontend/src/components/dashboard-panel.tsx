@@ -68,6 +68,13 @@ export function ItemLink({ to, children }: { to: string; children: string }) {
   );
 }
 
+// Shown with an error when older data is still on screen, so it is not read as current.
+export function StaleNote() {
+  return (
+    <p className="text-xs text-warning">아래는 마지막으로 받은 값입니다. 갱신에 실패했습니다.</p>
+  );
+}
+
 type ListQuery<T> = UseInfiniteQueryResult<InfiniteData<Page<T>>, Error>;
 
 // One dashboard region over an existing list query. Loading, error, retry and empty states
@@ -105,6 +112,7 @@ export function ListPanel<T>({
           retry={() => void query.refetch()}
         />
       )}
+      {query.error && first && <StaleNote />}
       {first &&
         (first.items.length ? (
           <>
