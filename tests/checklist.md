@@ -50,7 +50,7 @@ v2 박스 기준이다(`docs/architecture.md`). 폐기한 박스(9, 16, 17)의 �
 | K57 | 25, 18 | L2 입구: 열린 Incident가 없으면 새 Incident가 생기고 SIEM MCP 과거 조회 결과가 붙는다. 있으면 기존 Incident에 추가된다. 노이즈 알럿과 공용 자산은 묶이지 않는다 | ⬜ | |
 | K58 | 11 | 엔티티 정보 조회와 Ticket 판정 결과가 승격·종결·L2 승격·보류 중 하나가 되고, 어떤 결과도 사람 확인을 기다리지 않는다. 보류 건은 출처와 관계없이 L3 헌팅 데이터 풀에 들어간다 | ⬜ | 분기 조건은 K61 |
 | K60 | 27 | 사람이 L1 결과(승격·보류된 Alert, Ticket 판정, 증거 요청 실패)를 Alert·Ticket 단위로 조회할 수 있다. L1 결과를 바꾸는 API가 없다 | ⬜ | 기록 계약 C23은 #37에서 정의, 조회 구현은 미완료 |
-| K59 | 26 | 증거 요청이 PostgreSQL 테이블 큐를 거쳐 도메인별 전문가에게 전달되고, 결과가 요청한 Ticket·Incident에 연결된다 | ⬜ | 실패 처리는 K62 |
+| K59 | 26 | 증거 요청이 PostgreSQL 테이블 큐를 거쳐 도메인별 전문가에게 전달되고, 결과가 요청한 Ticket·Incident에 연결된다 | ⬜ | 실패 처리는 K62. 요청자(Alert·Ticket·Incident), 요청 내용(`params`), 결과(`result`) 계약 C22는 #49에서 정의(`test_evidence_request_branches_accept_valid_values`, `test_evidence_request_condition_errors`), 큐 구현은 미완료 |
 | K22 | 19, 20 | Incident 생성·갱신으로 L2가 실행되어 C11이 만들어진다. 타임라인이 시간순이고 모든 항목에 근거가 있다. 예산을 넘으면 멈춘다 | ⬜ | 재실행 기준은 K63 |
 | K23 | 20 | C11에서 사람이 읽는 보고서(대응 방안, 탐지 룰 제안 포함)가 만들어진다 | ⬜ | |
 | K27 | 24 | Incident Artifact에서 C18이 만들어지고, 룰이 문법 검사와 쿼리 변환을 통과하며 백테스트 결과가 붙는다. 21 승인 전에는 SIEM에 반영되지 않는다 | ⬜ | 계약 정리 후 |
