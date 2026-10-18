@@ -95,7 +95,7 @@ Schema로 옮길 때 지킬 것:
 | C18 | RuleProposal | 24 → 20, 21, 3 (사람 승인 후) |
 | C19 | VectorDoc | 10, 22 → 8 |
 | C21 | BranchResult | 25 → 10, 11, 18 |
-| C22 | EvidenceRequest | 10, 11, 19 → 26 → 14, 15, 11, 19 |
+| C22 | EvidenceRequest | 10, 11, 19 → 26 → 14, 15, 5 → 26 → 11, 19 |
 | C23 | L1DecisionRecord | 11 → 27 |
 
 ---
@@ -587,15 +587,41 @@ Vector DB에 넣는 문서 한 건. 임베딩할 문장과 원본 연결 정보.
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
 | request_id | str | ✅ | `rq_` 접두어 |
-| requester_type | enum | ✅ | `ticket`, `incident` |
-| requester_id | str | ✅ | 요청을 만든 Ticket(`tk_`) 또는 Incident(`in_`) ID |
-| request_type | enum | ✅ | `specialist_agent`, `siem_mcp`, `lookup` |
+| requester_type | enum | ✅ | `ticket`, `incident`, `alert`. `alert`는 티켓 생성 전 L1 엔티티 정보 조회(11)의 요청이다 |
+| requester_id | str | ✅ | 요청을 만든 Ticket(`tk_`), Incident(`in_`) 또는 Alert(`al_`) ID. `requester_type`과 접두어가 맞아야 한다 |
+| request_type | enum | ✅ | `specialist_agent`, `siem_mcp`, `lookup`. `requester_type`이 `alert`이면 `siem_mcp`, `lookup`만 쓴다 |
 | domain | str | 선택 | 전문가 도메인. `specialist_agent`이면 필요하며 기본 제공 도메인은 `web`, `cloud`; 그 외 요청은 `null` |
+| params | object | ✅ | 무엇을 조회할지. `request_type`별 모양은 아래 표. 표에 없는 키는 받지 않는다 |
 | retry_count | int | ✅ | 0 이상. 최초 요청은 0 |
 | status | enum | ✅ | `pending`, `in_progress`, `completed`, `failed` |
 | failure_reason | str | 선택 | 실패 상태일 때 사유, 그 외에는 `null` |
+| result | object | 선택 | 요청 결과. `status`가 `completed`일 때만 값이 있고, 그 외에는 `null`. `request_type`별 모양은 아래 표 |
 | created_at | int | ✅ | |
 | updated_at | int | ✅ | |
+
+**`params`** (모든 키 필수)
+
+| request_type | 키 | 설명 |
+|---|---|---|
+| `specialist_agent` | `question` (str) | 전문가에게 물을 내용. 1자 이상 |
+| `siem_mcp` | `entity` (Entity), `kind` (enum `alert`, `event`), `start_at` (int), `end_at` (int), `limit` (int) | SIEM MCP 공통 조회 조건(박스 15 `SiemQuery`와 같은 모양). 시간 범위는 양 끝 포함. `limit`은 1 이상 |
+| `lookup` | `entity` (Entity), `at` (int, 선택) | 조회할 엔티티와 매칭 시점. 자산·계정 표의 유효 기간(`valid_from`, `valid_to`)을 이 시점으로 맞춘다. `null`이면 현재 시각 |
+
+**`result`** (`status`가 `completed`일 때, 모든 키 필수)
+
+| request_type | 키 | 설명 |
+|---|---|---|
+| `specialist_agent` | `finding` (C14) | 전문가 Agent의 분석 결과 |
+| `siem_mcp` | `records` (list[C2]) | SIEM MCP가 돌려준 C2. 찾은 것이 없으면 `[]` |
+| `lookup` | `asset` (C4 AssetInfo, 선택), `user` (C4 UserInfo, 선택) | Lookup(5)이 고른 자산·계정 한 건씩. 찾은 것이 없으면 둘 다 `null`이고 그래도 `completed`다 |
+
+`requester_type`이 `alert`이면 전문가를 부르지 않는다. 전문가 결과 C14는 Ticket에 연결되기 때문이다.
+
+코어 검증: 박스 26 큐가 요청 저장·결과 저장 때 수행한다(draft-07 Schema로 표현할 수 없는 조건).
+
+- `siem_mcp`의 `params.end_at`은 `params.start_at` 이상이다.
+- `siem_mcp`의 `params.limit`은 설정 `mcp.max_query_limit` 이하다.
+- `specialist_agent` 결과의 `result.finding.ticket_id`는 `requester_id`와 같다.
 
 ## C23 · L1DecisionRecord
 
@@ -673,6 +699,7 @@ CI와 테스트가 재생성 결과를 검증한다. 생성 폴더는 생성기�
 - `extensions`는 추가 값을 허용하되 키는 `<조직 또는 플러그인>.<필드>` 형식이다.
 - `if`/`then`: 뒤집기 사유, 반려 유형·코멘트, 멤버 종류별 ID, 제외 사유,
   C10의 `review_state`와 `review_round` 짝(`awaiting_review`일 때만 1 이상 정수),
+  C22의 요청자별 ID 접두어·요청 종류, 요청 종류별 `params`·`result` 모양, 완료 상태일 때만 `result`,
   `needs_human` 사유, AgentStep의 작업 종류별 필드·주체 ID, 알럿 별칭 표 조건,
   C17의 `is_anomaly`가 `false`일 때 `severity_id`가 0인 조건.
 - `anyOf`: C3·C5의 출발지·목적지·호스트 중 하나, C18의 헌팅·Case 근거 중 하나.
@@ -687,7 +714,7 @@ TypeScript는 런타임 검증기가 아니며, Pydantic도 루트 조건을 대
 로컬 리소스 레지스트리로 `$ref`를 해석하며 네트워크 Schema 참조는 사용하지 않는다.
 
 후속 박스에서 구현할 비즈니스 검증은 K55의 미완료 부분으로 남긴다.
-원문 해시 대조(2), 별칭 적용·변환 실패 처리(4), 시점별 자산 매칭(5),
+원문 해시 대조(2), 증거 요청의 시간 범위·조회 한도·결과 Ticket 일치(26), 별칭 적용·변환 실패 처리(4), 시점별 자산 매칭(5),
 중복 집계(6), 컬렉션별 원본 종결 여부(8), 우선순위·상태 전이(10),
 근거 ID 실재 여부·등록형 값의 등록 여부·LLM 실패 처리(관련 박스),
 조사 단계 순번(12), 뒤집기 여부 계산(v1 16), 실제 묶음·심각도 계산(25·18),

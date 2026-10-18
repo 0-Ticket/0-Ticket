@@ -114,6 +114,30 @@ def test_new_contract_conditions_use_public_validation(name, changes):
         validate_contract(title(name), fixture(name) | changes)
 
 
+@pytest.mark.parametrize(
+    "changes,path,rule",
+    [
+        ({"requester_type": "alert", "request_type": "lookup"}, "/requester_id", "pattern"),
+        ({"requester_type": "alert", "requester_id": "al_sample"}, "/request_type", "enum"),
+        ({"params": {}}, "/params/question", "required"),
+        (
+            {"params": {"question": "Sample?", "UNTRUSTED_VALUE": 1}},
+            "/params",
+            "additionalProperties",
+        ),
+        ({"status": "completed"}, "/result", "type"),
+        ({"result": {"records": []}}, "/result", "type"),
+        ({"status": "completed", "result": {"finding": {}}}, "/result/*/ticket_id", "required"),
+    ],
+)
+def test_evidence_request_condition_errors(changes, path, rule):
+    value = fixture("evidence_request") | changes
+    with pytest.raises(ContractValidationError) as caught:
+        validate_contract("EvidenceRequest", value)
+    assert (caught.value.path, caught.value.rule) == (path, rule)
+    assert "UNTRUSTED_VALUE" not in repr(vars(caught.value))
+
+
 def test_nested_reference_conditions():
     value = fixture("incident")
     value["members"][0]["excluded"] = True

@@ -201,7 +201,16 @@ def test_all_references_are_local_and_resolve():
             "branch_result",
             {"subject_type": "ticket", "subject_id": "tk_sample", "path": "existing_incident"},
         ),
-        ("evidence_request", {"domain": None, "request_type": "lookup", "status": "completed"}),
+        (
+            "evidence_request",
+            {
+                "domain": None,
+                "request_type": "lookup",
+                "params": {"entity": {"type": "ip", "value": "192.0.2.10"}, "at": None},
+                "status": "completed",
+                "result": {"asset": None, "user": None},
+            },
+        ),
         (
             "evidence_request",
             {"status": "failed", "failure_reason": "Synthetic timeout", "retry_count": 1},
@@ -228,6 +237,48 @@ def test_all_references_are_local_and_resolve():
 )
 def test_condition_branches_accept_valid_values(name, changes):
     validator(name).validate(fixture(name) | changes)
+
+
+ENTITY = {"type": "ip", "value": "192.0.2.10"}
+SIEM_PARAMS = {
+    "entity": ENTITY,
+    "kind": "event",
+    "start_at": 1791849000000,
+    "end_at": 1791849600000,
+    "limit": 50,
+}
+ALERT_SIEM = {
+    "requester_type": "alert",
+    "requester_id": "al_sample",
+    "request_type": "siem_mcp",
+    "domain": None,
+    "params": SIEM_PARAMS,
+}
+ALERT_LOOKUP = ALERT_SIEM | {
+    "request_type": "lookup",
+    "params": {"entity": ENTITY, "at": 1791849600000},
+}
+COMPLETED = {"status": "completed"}
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        ALERT_SIEM,
+        ALERT_SIEM | COMPLETED | {"result": {"records": [fixture("siem_alert")]}},
+        ALERT_SIEM | COMPLETED | {"result": {"records": []}},
+        ALERT_LOOKUP | {"params": {"entity": ENTITY, "at": None}},
+        ALERT_LOOKUP | COMPLETED | {"result": {"asset": fixture("asset_info"), "user": None}},
+        ALERT_LOOKUP | COMPLETED | {"result": {"asset": None, "user": fixture("user_info")}},
+        ALERT_SIEM | {"status": "failed", "failure_reason": "Synthetic timeout", "retry_count": 2},
+        COMPLETED | {"result": {"finding": fixture("specialist_finding")}},
+        {"status": "in_progress"},
+        ALERT_LOOKUP | {"requester_type": "incident", "requester_id": "in_sample"},
+        {"requester_type": "incident", "requester_id": "in_sample"},
+    ],
+)
+def test_evidence_request_branches_accept_valid_values(changes):
+    validator("evidence_request").validate(fixture("evidence_request") | changes)
 
 
 def test_extension_key_namespace():

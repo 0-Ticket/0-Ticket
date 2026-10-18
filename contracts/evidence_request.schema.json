@@ -12,7 +12,8 @@
       "type": "string",
       "enum": [
         "ticket",
-        "incident"
+        "incident",
+        "alert"
       ]
     },
     "requester_id": {
@@ -33,6 +34,11 @@
       ],
       "description": "Registered specialist domain; built-in domains are web and cloud. Cloud support is deferred."
     },
+    "params": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "What to read. Its shape depends on request_type."
+    },
     "retry_count": {
       "type": "integer",
       "minimum": 0
@@ -52,6 +58,14 @@
         "null"
       ]
     },
+    "result": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": true,
+      "description": "Result of a completed request; null in every other status. Its shape depends on request_type."
+    },
     "created_at": {
       "type": "integer"
     },
@@ -65,9 +79,11 @@
     "requester_id",
     "request_type",
     "domain",
+    "params",
     "retry_count",
     "status",
     "failure_reason",
+    "result",
     "created_at",
     "updated_at"
   ],
@@ -107,6 +123,31 @@
         "properties": {
           "requester_id": {
             "pattern": "^in_"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "requester_type": {
+            "const": "alert"
+          }
+        },
+        "required": [
+          "requester_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "requester_id": {
+            "pattern": "^al_"
+          },
+          "request_type": {
+            "enum": [
+              "siem_mcp",
+              "lookup"
+            ]
           }
         }
       }
@@ -161,6 +202,262 @@
         "properties": {
           "failure_reason": {
             "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "request_type": {
+            "const": "specialist_agent"
+          }
+        },
+        "required": [
+          "request_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "params": {
+            "type": "object",
+            "properties": {
+              "question": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "question"
+            ],
+            "additionalProperties": false
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "request_type": {
+            "const": "siem_mcp"
+          }
+        },
+        "required": [
+          "request_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "params": {
+            "type": "object",
+            "properties": {
+              "entity": {
+                "$ref": "entity.schema.json"
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "alert",
+                  "event"
+                ]
+              },
+              "start_at": {
+                "type": "integer"
+              },
+              "end_at": {
+                "type": "integer"
+              },
+              "limit": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "required": [
+              "entity",
+              "kind",
+              "start_at",
+              "end_at",
+              "limit"
+            ],
+            "additionalProperties": false
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "request_type": {
+            "const": "lookup"
+          }
+        },
+        "required": [
+          "request_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "params": {
+            "type": "object",
+            "properties": {
+              "entity": {
+                "$ref": "entity.schema.json"
+              },
+              "at": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "entity",
+              "at"
+            ],
+            "additionalProperties": false
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "completed"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "result": {
+            "type": "object"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "result": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "request_type": {
+            "const": "specialist_agent"
+          },
+          "status": {
+            "const": "completed"
+          }
+        },
+        "required": [
+          "request_type",
+          "status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "result": {
+            "type": "object",
+            "properties": {
+              "finding": {
+                "$ref": "specialist_finding.schema.json"
+              }
+            },
+            "required": [
+              "finding"
+            ],
+            "additionalProperties": false
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "request_type": {
+            "const": "siem_mcp"
+          },
+          "status": {
+            "const": "completed"
+          }
+        },
+        "required": [
+          "request_type",
+          "status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "result": {
+            "type": "object",
+            "properties": {
+              "records": {
+                "type": "array",
+                "items": {
+                  "$ref": "siem_alert.schema.json"
+                }
+              }
+            },
+            "required": [
+              "records"
+            ],
+            "additionalProperties": false
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "request_type": {
+            "const": "lookup"
+          },
+          "status": {
+            "const": "completed"
+          }
+        },
+        "required": [
+          "request_type",
+          "status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "result": {
+            "type": "object",
+            "properties": {
+              "asset": {
+                "anyOf": [
+                  {
+                    "$ref": "asset_info.schema.json"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "user": {
+                "anyOf": [
+                  {
+                    "$ref": "user_info.schema.json"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "asset",
+              "user"
+            ],
+            "additionalProperties": false
           }
         }
       }
