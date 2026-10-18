@@ -78,7 +78,7 @@ def test_builds_c1_with_raw_id_hash_and_untouched_payload():
     assert last.sha256 == hashlib.sha256(lines[4].encode("utf-8")).hexdigest()
     assert last.source_type == "web"
     assert last.received_at == CLOCK_MS
-    assert [r.raw_id for r in replay.records] == [i.raw_ids[0] for i in replay.batch.items]
+    assert [r.raw_id for r in replay.records] == [i["raw_ids"][0] for i in replay.batch.items]
 
 
 def test_skips_malformed_line_and_logs_location_only(caplog):
@@ -86,7 +86,7 @@ def test_skips_malformed_line_and_logs_location_only(caplog):
     with caplog.at_level(logging.WARNING):
         batch = connector.fetch(None, 100)
     assert batch.skipped == 1
-    assert "raw_suricata_eve.jsonl_2" not in [i.raw_ids[0] for i in batch.items]
+    assert "raw_suricata_eve.jsonl_2" not in [i["raw_ids"][0] for i in batch.items]
     assert "suricata_eve.jsonl line 2" in caplog.text
     assert "cleartext" not in caplog.text
 
@@ -99,15 +99,15 @@ def test_blank_lines_are_not_records_or_failures():
 
 def test_rejects_non_object_json_nan_and_undecodable_bytes(tmp_path):
     jsonl = tmp_path / "bad.jsonl"
-    jsonl.write_bytes(b'[1, 2]\n{"a": NaN}\n"text"\n{"ok": 1}\n')
+    jsonl.write_bytes(b'[1, 2]\n{"a": NaN}\n"text"\n{"a": "\\ud800"}\n{"ok": 1}\n')
     text = tmp_path / "bad.log"
     text.write_bytes(b"\xff\xfe broken\nfine line\n")
     batch = connector_for(file_entry(jsonl, fmt="jsonl"), file_entry(text)).fetch(None, 100)
-    assert [i.fields for i in batch.items] == [
+    assert [i["fields"] for i in batch.items] == [
         {"ok": 1},
         {"message": "fine line", "source_file": "bad.log"},
     ]
-    assert batch.skipped == 4
+    assert batch.skipped == 5
 
 
 def test_crlf_line_ending_is_not_part_of_payload(tmp_path):

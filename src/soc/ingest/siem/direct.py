@@ -2,8 +2,9 @@
 
 For development, tests and demos only; production always connects to a SIEM.
 Each non-blank line of a configured file becomes one C1 RawRecord and one C2
-SiemAlert. Line content may be attacker-written, so it is kept as data and never
-written to logs or error messages; only file names and line numbers are.
+content (no ``source_record_id``: the core entry assigns it). Line content may
+be attacker-written, so it is kept as data and never written to logs or error
+messages; only file names and line numbers are.
 """
 
 import hashlib
@@ -17,7 +18,7 @@ from pathlib import Path
 from typing import Any
 
 from soc.config import DirectFileSettings, DirectSiemSettings, SiemSettings
-from soc.contracts import RawRecord, SiemAlert, validate_contract
+from soc.contracts import RawRecord, validate_contract
 
 from .base import FetchBatch, HealthStatus, InvalidCursorError
 
@@ -30,7 +31,7 @@ def _now_ms() -> int:
 
 @dataclass(frozen=True)
 class Replay:
-    """One fetch with the C1 records behind its C2 items, in the same order."""
+    """One fetch with the C1 records behind its C2 contents, in the same order."""
 
     records: tuple[RawRecord, ...]
     batch: FetchBatch
@@ -67,7 +68,7 @@ class DirectSiemConnector:
             raise ValueError("limit must be at least 1")
         index, offset, line_number = self._parse_cursor(cursor)
         records: list[RawRecord] = []
-        items: list[SiemAlert] = []
+        items: list[dict[str, Any]] = []
         skipped = 0
         while index < len(self._files) and len(items) < limit:
             entry = self._files[index]
@@ -126,7 +127,7 @@ class DirectSiemConnector:
 
     def _convert(
         self, entry: DirectFileSettings, line: bytes, line_number: int
-    ) -> tuple[RawRecord, SiemAlert]:
+    ) -> tuple[RawRecord, dict[str, Any]]:
         try:
             payload = line.decode("utf-8")
         except UnicodeDecodeError:
@@ -143,15 +144,12 @@ class DirectSiemConnector:
                 "sha256": hashlib.sha256(line).hexdigest(),
             },
         )
-        item = validate_contract(
-            "SiemAlert",
-            {
-                "kind": entry.kind,
-                "scenario": entry.scenario,
-                "raw_ids": [raw_id],
-                "fields": self._fields(entry.format, payload, name),
-            },
-        )
+        item = {
+            "kind": entry.kind,
+            "scenario": entry.scenario,
+            "raw_ids": [raw_id],
+            "fields": self._fields(entry.format, payload, name),
+        }
         return record, item
 
     @staticmethod
@@ -165,6 +163,11 @@ class DirectSiemConnector:
             raise _SkipLine("not valid JSON") from None
         if not isinstance(fields, dict):
             raise _SkipLine("not a JSON object")
+        try:
+            # A \ud800-style escape decodes to a lone surrogate the core cannot hash.
+            json.dumps(fields, ensure_ascii=False).encode("utf-8")
+        except UnicodeEncodeError:
+            raise _SkipLine("holds a string that is not valid UTF-8") from None
         return fields
 
 

@@ -1,5 +1,7 @@
 """In-memory fake SIEM connector for tests (box 3, K66).
 
+Like any adapter it returns C2 content without source_record_id; the core assigns it.
+
 It reads its address and token the way a real adapter would: the address from
 settings, the token from the environment variable that settings name.
 """
@@ -7,7 +9,6 @@ settings, the token from the environment variable that settings name.
 from collections.abc import Mapping
 
 from soc.config import SiemSettings, read_secret
-from soc.contracts import SiemAlert, validate_contract
 from soc.ingest.siem.base import FetchBatch, HealthStatus, InvalidCursorError
 
 FAKE_ALERTS = [
@@ -25,7 +26,7 @@ class FakeSiem:
     def __init__(self, base_url: str, token: str, alerts=FAKE_ALERTS, reachable: bool = True):
         self.base_url = base_url
         self._token = token
-        self._alerts: list[SiemAlert] = [validate_contract("SiemAlert", a) for a in alerts]
+        self._alerts = [dict(alert) for alert in alerts]
         self._reachable = reachable
         self.limits: list[int] = []
 

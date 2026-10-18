@@ -2,11 +2,15 @@
 
 Subclass ``AdapterContract`` in a ``Test*`` class and provide the fixtures below.
 The direct adapter and the fake SIEM use it now; the Wazuh adapter will reuse it.
+Adapters return C2 content without source_record_id; the core entry assigns it.
 """
+
+from collections.abc import Mapping
 
 import pytest
 
-from soc.contracts import validate_contract
+from soc.contracts import SiemAlert, validate_contract
+from soc.ingest.connector import SiemIngest
 from soc.ingest.siem.base import FetchBatch, HealthStatus
 
 BIG_LIMIT = 10_000
@@ -29,7 +33,7 @@ def walk(fetch):
 
 
 def dump(items):
-    return [item.model_dump(mode="json") for item in items]
+    return [item.model_dump(mode="json") if isinstance(item, SiemAlert) else item for item in items]
 
 
 class AdapterContract:
@@ -40,12 +44,29 @@ class AdapterContract:
     - ``forbidden_text``: strings (secrets, log content) a health detail must never show
     """
 
-    def test_fetch_returns_c2_batch(self, connector):
+    def test_fetch_returns_c2_content_without_source_record_id(self, connector):
         batch = connector.fetch(None, BIG_LIMIT)
         assert isinstance(batch, FetchBatch)
         assert len(batch.items) >= 3
         for item in batch.items:
+            assert isinstance(item, Mapping)
+            assert "source_record_id" not in item
+
+    def test_core_output_is_valid_c2_with_source_record_id(self, connector):
+        for item in SiemIngest(connector, BIG_LIMIT).fetch(None).items:
+            assert item.source_record_id.startswith("src_")
             validate_contract("SiemAlert", item.model_dump(mode="json"))
+
+    def test_same_cursor_gives_same_source_record_ids(self, connector):
+        ingest = SiemIngest(connector, 2)
+        cursor = ingest.fetch(None).next_cursor
+        first = [item.source_record_id for item in ingest.fetch(cursor).items]
+        assert first
+        assert first == [item.source_record_id for item in ingest.fetch(cursor).items]
+
+    def test_different_items_get_different_source_record_ids(self, connector):
+        items, _ = walk(SiemIngest(connector, 2).fetch)
+        assert len({item.source_record_id for item in items}) == len(items)
 
     def test_small_batches_walk_every_item_once(self, connector):
         everything = dump(connector.fetch(None, BIG_LIMIT).items)

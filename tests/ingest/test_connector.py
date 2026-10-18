@@ -8,7 +8,7 @@ from fake_siem import FAKE_ALERTS, FakeSiem, fake_factory
 
 from soc.config import ConfigError, MissingSecretError, load_config
 from soc.contracts import ContractValidationError, SiemAlert
-from soc.ingest.connector import open_connector
+from soc.ingest.connector import canonical_c2_content, open_connector, source_record_id
 from soc.ingest.siem import SIEM_CONNECTORS
 from soc.ingest.siem.base import FetchBatch, HealthStatus
 from soc.plugins import PluginNotFoundError, PluginRegistry
@@ -50,7 +50,9 @@ def test_core_runs_the_fake_siem_chosen_by_setting(tmp_path):
         org_settings(tmp_path, FAKE_CONFIG), environ=ENV, registry=fake_registry()
     )
     batch = connector.fetch(None)
-    assert [item.model_dump(mode="json") for item in batch.items] == FAKE_ALERTS[:2]
+    assert [item.model_dump(mode="json") for item in batch.items] == [
+        {**alert, "source_record_id": source_record_id(alert)} for alert in FAKE_ALERTS[:2]
+    ]
     assert connector.health_check() == HealthStatus(
         ok=True, detail="connected to https://siem.example.com"
     )
@@ -76,28 +78,88 @@ def test_unknown_adapter_fails_with_available_names(tmp_path):
         open_connector(settings, environ=ENV, registry=fake_registry())
 
 
-class NotC2Siem(FakeSiem):
+class ItemsSiem(FakeSiem):
+    """Returns the given items as they are, to probe the core's checks."""
+
+    def __init__(self, items):
+        super().__init__("https://siem.example.com", TOKEN)
+        self._items = tuple(items)
+
     def fetch(self, cursor, limit):
-        return FetchBatch(items=({"kind": "alert", "raw_ids": [], "fields": {}},), next_cursor="1")
+        return FetchBatch(items=self._items, next_cursor="1")
+
+
+def fetch_items(tmp_path, *items):
+    registry = fake_registry(lambda settings, environ: ItemsSiem(items))
+    connector = open_connector(org_settings(tmp_path, FAKE_CONFIG), environ=ENV, registry=registry)
+    return connector.fetch(None)
 
 
 def test_core_rejects_plugin_output_that_is_not_c2(tmp_path):
-    registry = fake_registry(lambda settings, environ: NotC2Siem("x", TOKEN))
-    connector = open_connector(org_settings(tmp_path, FAKE_CONFIG), environ=ENV, registry=registry)
     with pytest.raises(ContractValidationError) as error:
-        connector.fetch(None)
+        fetch_items(tmp_path, {"kind": "alert", "raw_ids": [], "fields": {}})
     assert error.value.rule == "required"
 
 
-class DictSiem(FakeSiem):
-    def fetch(self, cursor, limit):
-        return FetchBatch(items=(FAKE_ALERTS[0],), next_cursor="1")
+def test_core_rejects_source_record_id_from_an_adapter(tmp_path):
+    item = {**FAKE_ALERTS[0], "source_record_id": "src_" + "0" * 64}
+    with pytest.raises(ContractValidationError) as error:
+        fetch_items(tmp_path, item)
+    assert (error.value.path, error.value.rule) == ("/source_record_id", "assigned_by_core")
+
+
+def test_core_rejects_items_that_are_not_objects(tmp_path):
+    with pytest.raises(ContractValidationError) as error:
+        fetch_items(tmp_path, ["alert"])
+    assert error.value.rule == "object_type"
+
+
+def test_core_rejects_values_that_are_not_plain_json(tmp_path):
+    item = {**FAKE_ALERTS[0], "fields": {"score": float("nan")}}
+    with pytest.raises(ContractValidationError) as error:
+        fetch_items(tmp_path, item)
+    assert error.value.path == "/fields"
 
 
 def test_core_turns_valid_plugin_dicts_into_c2_models(tmp_path):
-    registry = fake_registry(lambda settings, environ: DictSiem("x", TOKEN))
-    connector = open_connector(org_settings(tmp_path, FAKE_CONFIG), environ=ENV, registry=registry)
-    assert isinstance(connector.fetch(None).items[0], SiemAlert)
+    [item] = fetch_items(tmp_path, FAKE_ALERTS[0]).items
+    assert isinstance(item, SiemAlert)
+    assert item.source_record_id == source_record_id(FAKE_ALERTS[0])
+
+
+PINNED_CONTENT = {
+    "scenario": "s",
+    "raw_ids": ["raw_1"],
+    "kind": "alert",
+    "fields": {"b": [1, 2], "a": "\u00e9"},
+}
+PINNED_BYTES = (
+    b'{"fields":{"a":"\xc3\xa9","b":[1,2]},"kind":"alert","raw_ids":["raw_1"],"scenario":"s"}'
+)
+PINNED_ID = "src_27daf556801141c674e59006d84cd62d23f00e408f2bc9ed79c9e452a43f3b41"
+
+
+def test_canonical_c2_content_is_fixed():
+    """Sorted keys, no spaces, raw UTF-8. Changing this changes every stored ID."""
+    assert canonical_c2_content(PINNED_CONTENT) == PINNED_BYTES
+    assert source_record_id(PINNED_CONTENT) == PINNED_ID
+
+
+def test_source_record_id_ignores_keys_outside_c2_content():
+    assert source_record_id({**PINNED_CONTENT, "extra": 1}) == PINNED_ID
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"raw_ids": ["raw_2"]},
+        {"fields": {"b": [1, 2], "a": "e"}},
+        {"kind": "event"},
+        {"scenario": "t"},
+    ],
+)
+def test_any_content_change_gives_a_different_id(change):
+    assert source_record_id({**PINNED_CONTENT, **change}) != PINNED_ID
 
 
 def test_siem_token_is_read_from_env_only(tmp_path):
