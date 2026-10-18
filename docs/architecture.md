@@ -143,6 +143,8 @@ flowchart TB
 | 4 · L2 | 18 → 19 → 20 → 24 → 21 → 22 | D-033, D-039, D-040 |
 | 5 · L3 | 23 | |
 
+중간 발표는 `docs/milestone-l1.md`의 범위만 한다.
+
 이벤트 소스는 Web부터 한다. Cloud(박스 13, D-005)는 보류하되, SIEM 시나리오의 별칭 표와 전문가 Agent는 Cloud를 추가할 수 있는 구조로 둔다.
 
 **화면 트랙**: 웹 화면은 위 단계와 나란히 진행한다. 화면은 mock API(`docs/api-contracts.md`)로 먼저 만들고, 박스와 화면용 API가 생기면 실제 API로 바꾼다. 화면 구성은 `docs/frontend.md`에 있다.
