@@ -11,7 +11,7 @@ class AgentStep(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    subject_type: Literal["ticket", "incident", "hunt"]
+    subject_type: Literal["alert", "ticket", "incident", "hunt"]
     subject_id: StrictStr
     step: conint(ge=1, strict=True)
     agent: StrictStr

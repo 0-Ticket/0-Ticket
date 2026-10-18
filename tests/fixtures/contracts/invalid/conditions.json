@@ -56,6 +56,12 @@
   {
     "schema": "agent_step",
     "changes": {
+      "subject_id": "tk_sample"
+    }
+  },
+  {
+    "schema": "agent_step",
+    "changes": {
       "action": "tool_call"
     }
   },

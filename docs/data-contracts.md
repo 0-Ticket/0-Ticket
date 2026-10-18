@@ -303,8 +303,8 @@ L1의 판정 결과. LLM 출력이 이 형식을 통과하지 못하면 판정�
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| subject_type | enum | ✅ | `ticket`, `incident`, `hunt`. 이 단계가 속한 작업 |
-| subject_id | str | ✅ | 해당 객체 ID (`tk_`, `in_`, `ht_`) |
+| subject_type | enum | ✅ | `alert`, `ticket`, `incident`, `hunt`. 티켓 생성 전 L1 단계는 `alert`에 연결 |
+| subject_id | str | ✅ | 해당 객체 ID (`al_`, `tk_`, `in_`, `ht_`) |
 | step | int | ✅ | 같은 작업 안에서 1부터 증가 |
 | agent | str | ✅ | 예: `l1`, `web`, `cloud`, `l2`, `l3` |
 | action | enum | ✅ | `llm_call`, `tool_call`, `decision` |
