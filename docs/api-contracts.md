@@ -1,6 +1,6 @@
 # 화면용 API
 
-웹 화면(`frontend/`)과 화면용 API(`src/soc/api/`) 사이의 약속이다. mock(D-022)과 실제 API가 모두 이 문서를 따른다. API 서버 도구는 D-027에서 정한다.
+웹 화면(`frontend/`)과 화면용 API(`src/soc/api/`) 사이의 약속이다. mock(D-022)과 실제 API가 모두 이 문서를 따른다. API 서버는 FastAPI다(D-027).
 
 ## 원칙
 

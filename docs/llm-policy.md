@@ -2,7 +2,7 @@
 
 파이프라인 안에서 LLM을 부르는 코드가 지킬 규칙이다. 어떤 모델을 쓰든 똑같이 적용한다.
 
-> 기본 제공자는 결정 대장 D-009에서 정한다. 설정 키는 맨 아래 "모델과 설정"에 있다.
+> 기본 제공자는 OpenAI 호환 제공자이고, 데모 기본값: 서빙 도구 Ollama, 모델 `granite4:micro`(로컬 서빙, D-009). 설정 키는 맨 아래 "모델과 설정"에 있다.
 
 ## 적용 범위
 
@@ -21,6 +21,7 @@ LLM 없이 규칙으로 해야 하는 곳: 4(실행 중 정규화), 5, 6, 7, 25(
 
 - 모든 LLM 호출은 `src/soc/llm/`의 호출 함수 하나를 거친다. 박스 코드에서 모델 SDK를 직접 부르지 않는다.
 - 이 함수가 Agent Log 기록(3항), 출력 검증(4항), 재시도를 맡는다.
+- 에이전트는 프레임워크 없이 직접 구현한다(D-008). 박스 11·14는 코드가 단계 순서를 정하는 정해진 흐름이고, 각 단계의 LLM 호출은 이 함수를 부른다.
 - 실제 모델 호출은 **제공자**(provider) 구현체가 한다. 제공자 인터페이스는 `src/soc/llm/base.py`, 구현체는 `src/soc/llm/providers/`에 둔다.
 - **OpenAI 호환 제공자**를 기본으로 함께 제공한다. OpenAI 호환 API를 내는 상용·사내·로컬 모델은 코드 수정 없이 설정만으로 연결한다.
 - 어떤 제공자와 모델을 쓸지는 설정이 정한다. 에이전트마다 다른 모델을 지정할 수 있다. 박스 코드에 모델 이름을 쓰지 않는다.
@@ -94,13 +95,17 @@ LLM 없이 규칙으로 해야 하는 곳: 4(실행 중 정규화), 5, 6, 7, 25(
 
 ## 모델과 설정
 
-설정 키는 아래와 같다(형식은 D-015, 예시는 TOML). 기본 제공자는 D-009에서 정한다.
+설정 키는 아래와 같다(형식은 TOML, D-015). 기본 제공자는 `openai_compatible`이다. 모델 이름과 `base_url`은 설정 값이고 코드에 쓰지 않는다(D-009).
+
+- 작은 로컬 모델(데모 기본값)은 JSON 형식 준수와 도구 호출이 불안정할 수 있다. 실패하면 4항의 실패 처리(L1은 보류, D-036)를 따른다.
+- 확신도 값이 보정되지 않았을 수 있으므로 임계값(초기 0.8)은 AIT 샘플로 먼저 확인한다.
+- 더 큰 모델로 바꿀 때는 아래 설정만 바꾼다.
 
 ```toml
 [llm]
 provider = "openai_compatible"     # 등록된 제공자 이름
-model = "model-name"
-base_url = "https://llm.example.com/v1"
+model = "granite4:micro"           # 데모 기본값 예시 (Ollama 서빙 이름)
+base_url = "http://localhost:11434/v1"  # 데모 기본값 예시 (Ollama의 OpenAI 호환 주소)
 api_key_env = "LLM_API_KEY"         # 키 값이 아니라 환경변수 이름
 temperature = 0
 max_steps_per_task = 20
@@ -110,5 +115,5 @@ max_tokens_per_task = 50000
 model = "larger-model-name"
 ```
 
-- 키는 `.env`의 환경변수로만 읽는다.
+- 키는 `.env`의 환경변수로만 읽는다. 로컬 Ollama처럼 키가 필요 없어도 `api_key_env` 항목은 둔다(OpenAI 호환 클라이언트가 값을 요구할 수 있다).
 - 호환되지 않는 API를 쓰려면 제공자를 새로 구현해 `zero_ticket_soc.llm_providers` entry point로 등록한다(`docs/extensibility.md`).

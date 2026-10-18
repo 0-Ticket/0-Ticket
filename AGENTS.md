@@ -41,12 +41,13 @@
 
 1. `docs/product-spec.md`: 무엇을 만들고 무엇을 만들지 않는지
 2. `docs/architecture.md`: 작업할 박스의 절만
-3. `docs/data-contracts.md`: 그 박스의 입출력 객체. 맨 위 "v2 불일치"를 먼저 본다
-4. `docs/extensibility.md`: 그 박스의 확장 지점
-5. `docs/decisions.md`: 쓸 수 있는 도구와 데이터셋 ("확정"만)
-6. `docs/security-policy.md`: 비밀, 데이터, 로그 원문
-7. LLM을 호출하는 코드라면 `docs/llm-policy.md`
-8. 지금 단계의 작업 지시: `prompts/01-plan.md`, `02-implement.md`, `03-test-and-fix.md` 중 하나
+3. 중간 발표 범위 안의 작업이라면 `docs/milestone-l1.md`
+4. `docs/data-contracts.md`: 그 박스의 입출력 객체. 맨 위 "v2 불일치"를 먼저 본다
+5. `docs/extensibility.md`: 그 박스의 확장 지점
+6. `docs/decisions.md`: 쓸 수 있는 도구와 데이터셋 ("확정"만)
+7. `docs/security-policy.md`: 비밀, 데이터, 로그 원문
+8. LLM을 호출하는 코드라면 `docs/llm-policy.md`
+9. 지금 단계의 작업 지시: `prompts/01-plan.md`, `02-implement.md`, `03-test-and-fix.md` 중 하나
 
 ## 작업 원칙
 
