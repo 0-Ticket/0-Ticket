@@ -67,7 +67,7 @@ SIEM (시연에서는 direct)
 | | 원본·정규화 결과 분리 (C5·C13·C2) |
 | 미룸 | `handling_type`, `awaiting_human`, C9의 삭제는 발표 후. 필요하면 선택 필드로 완화만 한다 |
 | 주의 | 필수 필드를 추가하면 fixture와 화면 영향을 계획에 적는다 |
-| 발표 후 | 후속 이슈 A·E·F·G |
+| 발표 후 | 발표 후로 미루는 계약 정리: C9 HumanReview와 awaiting_human 삭제, Incident 묶음 필드(correlation 기반) 정리, 탐지 룰 제안을 Incident 기준으로 변경, VectorDoc 기본 컬렉션 정리 |
 
 ## 시연 완료 기준
 
