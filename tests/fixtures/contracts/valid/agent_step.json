@@ -1,6 +1,6 @@
 {
-  "subject_type": "ticket",
-  "subject_id": "tk_sample",
+  "subject_type": "alert",
+  "subject_id": "al_sample",
   "step": 1,
   "agent": "l1",
   "action": "decision",
