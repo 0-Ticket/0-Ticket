@@ -31,7 +31,7 @@ v2 박스 기준이다(`docs/architecture.md`). 폐기한 박스(9, 16, 17)의 �
 |---|---|---|---|---|
 | K1 | 1 (외부) | 범위 밖: Event Source는 외부 SIEM 소관이다. `direct` 재생용 소스 커넥터만 기존 코드 수정 없이 추가할 수 있으면 된다 | ⬜ | |
 | K2 | 2 (외부) | 범위 밖: 원본 로그 보관은 외부 SIEM 소관이다. 이 프로젝트의 원본 보관은 K67(Alert·Event 원본) | ⬜ | |
-| K3 | 3 | 설정으로 고른 SIEM 커넥터(초기 Wazuh)가 알럿·이벤트를 가져와 `kind`가 붙은 C2로 넘긴다. `direct` 어댑터는 개발·테스트·데모용으로 데이터셋을 같은 입구에 재생하고 같은 흐름이 된다. 운영 설정의 기본값은 `direct`가 아니다 | ⬜ | |
+| K3 | 3 | 설정으로 고른 SIEM 커넥터(초기 Wazuh)가 알럿·이벤트를 가져와 `kind`가 붙은 C2로 넘긴다. `direct` 어댑터는 개발·테스트·데모용으로 데이터셋을 같은 입구에 재생하고 같은 흐름이 된다. 운영 설정의 기본값은 `direct`가 아니다 | 🟡 일부 | `test_replays_fixture_config_to_expected_c2`, `test_default_settings_pick_no_adapter_so_direct_is_never_the_default`, `TestDirectContract`, `TestFakeSiemContract`; Wazuh 어댑터는 SIEM 환경 구축 후 같은 `AdapterContract`로 검증 |
 | K4 | 4 | 필드명이 다른 시나리오의 알럿이 같은 C3 필드로 정규화되고, 시간·심각도가 변환표대로 바뀐다 | ⬜ | |
 | K5 | 4 | 별칭 표에 없는 필드는 `unmapped`에 남고, 실패는 C12로 간다. 이벤트는 C13으로 바뀐다 | ⬜ | |
 | K6 | 4 | C3를 OCSF 1.9.0 원형 JSON으로 내보내고 스키마 검증을 통과한다 | ⬜ | |
@@ -62,7 +62,7 @@ v2 박스 기준이다(`docs/architecture.md`). 폐기한 박스(9, 16, 17)의 �
 | K63 | 18, 19 | L2가 찾은 정보는 항상 Incident에 붙는다. 새 엔티티나 새 증거 ID가 늘 때만 L2가 재실행되고, 늘지 않으면 재실행하지 않는다. 최대 재실행 횟수(설정, 초기 5)에 걸리면 정보는 계속 붙고 자동 재실행만 멈추며 표시가 남는다 | ⬜ | |
 | K64 | 21, 사용자 접점 | Slack 알림은 L2 분석이 끝나 사람 승인이 필요할 때만 나가고, L1 단계 이벤트로는 나가지 않는다. HTML·마크다운 조각이 든 값이 알림에서 텍스트로만 보인다 | ⬜ | |
 | K65 | 10, 11, 23, 25 | Ticket 출처가 세 값(L1 승격 / L3 승격 / 시나리오) 중 하나다. L1 승격·시나리오 티켓은 증거 요청 큐 → L1 판정으로, L3 승격 티켓은 L2 입구로 바로 간다 | ⬜ | C6 `origin`과 값은 #37에서 정의, 경로 구현은 미완료 |
-| K66 | 3, 15 | 설정으로 고른 SIEM 하나(초기 Wazuh)로 커넥터와 SIEM MCP가 함께 동작한다. 가짜 SIEM 커넥터·SIEM MCP로 바꿔도 코어와 에이전트 코드가 같은 인터페이스로 동작하고, 코어에 SIEM 이름 분기가 없다 | ⬜ | |
+| K66 | 3, 15 | 설정으로 고른 SIEM 하나(초기 Wazuh)로 커넥터와 SIEM MCP가 함께 동작한다. 가짜 SIEM 커넥터·SIEM MCP로 바꿔도 코어와 에이전트 코드가 같은 인터페이스로 동작하고, 코어에 SIEM 이름 분기가 없다 | 🟡 일부 | 커넥터: `test_core_runs_the_fake_siem_chosen_by_setting`, `test_core_has_no_siem_name_branch`, `test_core_rejects_plugin_output_that_is_not_c2`; SIEM MCP 교체는 박스 15 |
 | K67 | 4, 6, 7 | 정규화 결과가 원본과 별도 테이블에 저장되고 FK로 원본을 가리킨다. 정규화 후에도 원본 행이 바뀌지 않는다. 원본 보관 기간을 설정으로 바꿀 수 있다(기본 무기한) | ⬜ | C2·C5·C13 ID 연결은 #37에서 정의, 저장 동작은 미완료 |
 
 ## 중간 발표 범위
