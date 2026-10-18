@@ -8,6 +8,10 @@
       "type": "string",
       "pattern": "^al_"
     },
+    "source_record_id": {
+      "type": "string",
+      "pattern": "^src_"
+    },
     "class_uid": {
       "type": "integer",
       "const": 2004
@@ -141,6 +145,7 @@
   },
   "required": [
     "alert_id",
+    "source_record_id",
     "class_uid",
     "time",
     "severity_id",

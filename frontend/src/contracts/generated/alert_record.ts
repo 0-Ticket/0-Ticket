@@ -2,6 +2,7 @@
 
 export interface AlertRecord {
   alert_id: string;
+  source_record_id: string;
   class_uid: 2004;
   time: number;
   severity_id: number;

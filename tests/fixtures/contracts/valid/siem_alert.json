@@ -1,5 +1,6 @@
 {
   "kind": "alert",
+  "source_record_id": "src_sample",
   "scenario": "sample",
   "raw_ids": [
     "raw_sample_1"

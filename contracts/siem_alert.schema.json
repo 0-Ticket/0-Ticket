@@ -11,6 +11,10 @@
         "event"
       ]
     },
+    "source_record_id": {
+      "type": "string",
+      "pattern": "^src_"
+    },
     "scenario": {
       "type": "string"
     },
@@ -28,6 +32,7 @@
   },
   "required": [
     "kind",
+    "source_record_id",
     "scenario",
     "raw_ids",
     "fields"

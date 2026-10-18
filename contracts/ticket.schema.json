@@ -8,15 +8,25 @@
       "type": "string",
       "pattern": "^tk_"
     },
+    "origin": {
+      "type": "string",
+      "enum": [
+        "l1_escalated",
+        "l3_escalated",
+        "scenario"
+      ]
+    },
     "status": {
       "type": "string",
       "enum": [
         "new",
         "triaging",
         "awaiting_human",
+        "on_hold",
         "closed_benign",
         "closed_fp",
-        "escalated"
+        "escalated",
+        "l2_escalated"
       ]
     },
     "handling_type": {
@@ -77,6 +87,7 @@
   },
   "required": [
     "ticket_id",
+    "origin",
     "status",
     "handling_type",
     "specialist",
