@@ -52,7 +52,8 @@
     },
     "created_at": 1791849600000,
     "updated_at": 1791849600000,
-    "awaiting_human_at": 1791849612345
+    "awaiting_human_at": 1791849612345,
+    "origin": "scenario"
   },
   "alerts": [
     {
@@ -110,7 +111,8 @@
       },
       "count": 1,
       "first_seen": 1791849600000,
-      "last_seen": 1791849600000
+      "last_seen": 1791849600000,
+      "source_record_id": "src_sample"
     }
   ],
   "findings": [

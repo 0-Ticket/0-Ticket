@@ -11,10 +11,10 @@ import tomllib
 from collections.abc import Mapping
 from importlib.resources import files
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 from urllib.parse import urlsplit
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
 ORG_CONFIG_ENV = "ZT_CONFIG"
 
@@ -62,11 +62,44 @@ class LLMSettings(_Section):
         return value.rstrip("/")
 
 
+class DirectFileSettings(_Section):
+    """One dataset file the direct adapter replays, and how its lines become C2."""
+
+    path: str = Field(min_length=1)
+    kind: Literal["alert", "event"]
+    scenario: str = Field(min_length=1)
+    source_type: str = Field(min_length=1)
+    format: Literal["text", "jsonl"]
+
+
+class DirectSiemSettings(_Section):
+    files: tuple[DirectFileSettings, ...]
+
+    @model_validator(mode="after")
+    def _unique_file_names(self) -> "DirectSiemSettings":
+        # raw_id is raw_<file name>_<line>, so two files with one name would clash.
+        names = [Path(entry.path).name for entry in self.files]
+        if len(names) != len(set(names)):
+            raise ValueError("each file name must be unique")
+        return self
+
+
+class SiemSettings(_Section):
+    adapter: str
+    base_url: str
+    token_env: EnvName
+    verify_tls: bool
+    timeout_seconds: int = Field(ge=1)
+    batch_size: int = Field(ge=1)
+    direct: DirectSiemSettings
+
+
 class Settings(_Section):
     """Typed settings. Each box issue adds its own section here and in default.toml."""
 
     database: DatabaseSettings
     llm: LLMSettings
+    siem: SiemSettings
 
 
 def _default_config_text() -> str:

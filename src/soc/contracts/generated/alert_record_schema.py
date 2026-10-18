@@ -14,6 +14,7 @@ class AlertRecord(BaseModel):
         extra="forbid",
     )
     alert_id: constr(pattern=r"^al_", strict=True)
+    source_record_id: constr(pattern=r"^src_", strict=True)
     class_uid: Literal[2004]
     time: StrictInt
     severity_id: conint(ge=0, le=6, strict=True)

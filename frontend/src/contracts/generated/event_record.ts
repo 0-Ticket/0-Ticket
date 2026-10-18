@@ -2,6 +2,7 @@
 
 export interface EventRecord {
   event_id: string;
+  source_record_id: string;
   class_uid: number;
   time: number;
   activity: string;

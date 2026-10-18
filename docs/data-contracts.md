@@ -4,24 +4,21 @@
 
 > **상태: 초안.** v1 아키텍처의 박스가 주고받는 객체를 정의했다. 공통 기반(구현 순서 0단계) PR에서 사람이 검토해 "확정"으로 바꾼다. 확정 후에는 아래 "바꾸는 절차"를 거쳐야만 바꿀 수 있다.
 
-> **v2 불일치 (아키텍처 v2, #33).** 아래 필드는 v1 흐름 기준이라 v2(`docs/architecture.md`)와 맞지 않는다. 후속 계약 변경 이슈에서 "바꾸는 절차"로 고친다. 그전까지 필드와 enum을 말없이 바꾸지 않는다. 해당 박스를 구현할 때 먼저 계약 변경을 제안한다.
+> **v2 불일치 (아키텍처 v2, #33).** 아래 필드 중 L1 시연 계약 이슈(#37)에서 다룬 항목은 본문 계약에 반영했다. 나머지는 v1 흐름 기준으로, 후속 계약 변경 때 "바꾸는 절차"를 따른다. 그전까지 필드와 enum을 말없이 바꾸지 않는다.
 >
-> - C6 Ticket: `handling_type`은 폐기된 Analyst Agent(9)의 라우팅 결과라 삭제한다. `specialist`는 유지하고 Web·Cloud 도메인에서 채운다. 보류·L2 승격 상태와 Ticket 출처 구분(D-038: L1 승격 / L3 승격 / 시나리오. 제안 이름 `origin` = `l1_escalated` / `l3_escalated` / `scenario`)이 없다
-> - C9 HumanReview, C6 `awaiting_human`·`awaiting_human_at`, C7 `needs_human`: v2에서 L1은 완전 자동이고 사람은 L1 결과를 조회만 한다(27). 판정 뒤집기가 없고, L1 판정 실패는 보류한다(D-036)
+> - C6의 `handling_type`, `awaiting_human` 및 `awaiting_human_at`, C9 HumanReview, C7 `needs_human`은 발표 후 정리 대상으로 유지한다. v2 경로에서 사람 검토나 라우팅에 사용하지 않는다.
 > - C10 Incident: `created_by`의 `correlation`, IncidentMember `source`(`l1`, `human_l1`, `l3`), `member_type`의 `hunt`, `rule`은 폐기된 Correlation(17) 기준
 > - C10: L2 재실행이 한도(D-039)에 걸려 멈췄다는 표시가 없다. `review_state`·`review_round`와 C15 반려는 v2에서도 유지한다(D-039)
 > - C17 HuntFinding: v2에서 헌팅 결과는 Ticket(C6)으로 L2에 들어간다
 > - C18 RuleProposal: `hunt_id`·`case_id` 대신 Incident·Artifact에서 나온다. 별도 승인 `status` 대신 21의 승인에 포함된다
 > - C19 VectorDoc: 기본 컬렉션 중 `closed_incidents`, `assets`, `alerts_summary`, `events_rare`와 `source_kind`의 `incident`, `asset`, `alert`, `event`는 v2에서 VDB에 넣지 않는다
-> - C5 AlertRecord, C13 EventRecord: v2에서 Alert(6)·Event(7)는 정규화 전 원본(C2)을 불변으로 저장하고, 정규화 결과는 별도 테이블에 두어 원본을 FK로 가리킨다(D-002). 지금은 정규화 후 객체가 저장 행으로 정의되어 있다
 > - C11 IncidentArtifact·C10: L2 "증거 수집 실패" 표시(D-034)가 없다
-> - 없는 계약: 26 증거 요청 큐 항목(재시도 횟수, 실패 상태 포함), 25 분기 결과, L1 승격·보류 기록(27이 조회)
 
 ## 공통 규칙
 
 - 필드명은 `snake_case`
 - 시간은 UTC epoch 밀리초 정수(`int`). 필드명은 `time`, `*_at`, `*_seen`, 그리고 유효 기간용 `valid_from`, `valid_to`
-- ID는 접두어가 붙은 문자열: `raw_`, `al_`, `ev_`, `tk_`, `in_`, `cs_`, `ht_`, `rp_`, `doc_`
+- ID는 접두어가 붙은 문자열: `raw_`, `src_`, `al_`, `ev_`, `tk_`, `in_`, `cs_`, `ht_`, `rp_`, `doc_`, `br_`, `rq_`, `ld_`
 - 필수 아님(`선택`) 필드는 값이 없으면 `null`. 필드 자체를 빼지 않는다
 - 목록 필드는 값이 없으면 빈 목록 `[]`
 - 열거형(enum)은 아래 표에 적힌 값만 쓴다
@@ -78,7 +75,7 @@ Schema로 옮길 때 지킬 것:
 | ID | 객체 | 만드는 박스 → 쓰는 박스 |
 |---|---|---|
 | C1 | RawRecord | 1 → 2, 3 (박스 1·2는 외부. `direct` 어댑터의 재생 입력) |
-| C2 | SiemAlert | 3 → 4 |
+| C2 | SiemAlert | 3 → 4, 6, 7 |
 | C20 | AliasTable (설정) | 사람 → 4 |
 | C3 | NormalizedAlert | 4 → 5 |
 | C12 | NormalizeFailure | 4 → 사람 확인 |
@@ -97,6 +94,9 @@ Schema로 옮길 때 지킬 것:
 | C17 | HuntFinding | 23 (v2에서 헌팅 결과는 C6으로 L2에 들어감. 위 "v2 불일치") |
 | C18 | RuleProposal | 24 → 20, 21, 3 (사람 승인 후) |
 | C19 | VectorDoc | 10, 22 → 8 |
+| C21 | BranchResult | 25 → 10, 11, 18 |
+| C22 | EvidenceRequest | 10, 11, 19 → 26 → 14, 15, 11, 19 |
+| C23 | L1DecisionRecord | 11 → 27 |
 
 ---
 
@@ -114,11 +114,12 @@ Schema로 옮길 때 지킬 것:
 
 ## C2 · SiemAlert
 
-SIEM 어댑터가 낸 알럿 또는 이벤트. 시나리오마다 필드명이 달라도 그대로 둔다. SIEM 없이 받을 때(개발·테스트·데모용 데이터셋 재생)는 `direct` 어댑터가 C1을 이 형식으로 바꾼다.
+SIEM 어댑터가 낸 알럿 또는 이벤트. 시나리오마다 필드명이 달라도 그대로 둔다. `source_record_id`는 저장된 불변 원본 행을 식별하며, 정규화 결과가 이 값을 FK로 보존한다. `raw_ids`는 별도 원본 로그(C1) 참조로 유지한다. SIEM 없이 받을 때(개발·테스트·데모용 데이터셋 재생)는 `direct` 어댑터가 C1을 이 형식으로 바꾼다.
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
 | kind | enum | ✅ | `alert`(박스 4가 C3로 바꿈), `event`(C13으로 바꿈) |
+| source_record_id | str | ✅ | `src_` 접두어. 저장되는 C2 원본 행의 고유 ID. 코어가 `src_` + sha256(정규화된 JSON: `kind`, `scenario`, `raw_ids`, `fields`만, 키 정렬, 공백 없음, UTF-8) 16진수 전체로 부여한다(`docs/architecture.md` 박스 3). 어댑터는 이 필드를 채우지 않는다 |
 | scenario | str | ✅ | 탐지 시나리오 또는 이벤트 종류 이름. 정규화 시 C20 별칭 표를 고르는 키. `direct` 어댑터는 설정에서 정한 이름을 쓴다 |
 | raw_ids | list[str] | ✅ | 근거가 된 RawRecord ID |
 | fields | dict | ✅ | SIEM 알럿 JSON 원본 그대로 |
@@ -185,11 +186,12 @@ SIEM 어댑터가 낸 알럿 또는 이벤트. 시나리오마다 필드명이 �
 
 ## C13 · EventRecord
 
-정규화와 룩업을 거친 info 수준 이벤트. Event 저장소의 한 행. 알럿보다 양이 훨씬 많다.
+정규화와 룩업을 거친 info 수준 이벤트. Event 저장소의 한 행. 알럿보다 양이 훨씬 많다. `source_record_id`로 불변 C2 원본 행을 가리킨다.
 
 | 필드 | 타입 | 필수 | 설명 | OCSF 경로 (참고) |
 |---|---|---|---|---|
 | event_id | str | ✅ | `ev_` 접두어 | |
+| source_record_id | str | ✅ | `src_` 접두어. C2 원본 Event 행을 가리키는 FK | |
 | class_uid | int | ✅ | OCSF 활동 클래스 ID (예: HTTP Activity, Authentication) | `class_uid` |
 | time | int | ✅ | | `time` |
 | activity | str | ✅ | 활동 이름. 예: `http_request`, `logon`, `api_call` | `activity_name` |
@@ -237,11 +239,12 @@ Lookup 표의 한 행이자, 알럿에 붙는 정보.
 
 ## C5 · AlertRecord
 
-C3에 룩업 결과와 저장 정보를 더한 것. Alert 저장소의 한 행.
+C3에 룩업 결과와 저장 정보를 더한 것. Alert 저장소의 한 행. C2 원본은 별도 불변 행으로 저장하고 `source_record_id`로 연결한다.
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
 | alert_id | str | ✅ | `al_` 접두어 |
+| source_record_id | str | ✅ | `src_` 접두어. 정규화 전 C2 원본 Alert 행을 가리키는 FK |
 | (C3의 모든 필드) | | | C3와 같은 이름, 같은 타입. `extensions` 포함 |
 | src_asset | AssetInfo | 선택 | 모르는 IP면 `null` |
 | dst_asset | AssetInfo | 선택 | |
@@ -257,7 +260,8 @@ L1이 처리하는 업무 단위.
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
 | ticket_id | str | ✅ | `tk_` 접두어 |
-| status | enum | ✅ | `new`, `triaging`, `awaiting_human`, `closed_benign`, `closed_fp`, `escalated` |
+| origin | enum | ✅ | `l1_escalated`(L1 승격), `l3_escalated`(L3 승격), `scenario`(시나리오) (D-038) |
+| status | enum | ✅ | `new`, `triaging`, `awaiting_human`, `on_hold`, `closed_benign`, `closed_fp`, `escalated`, `l2_escalated` |
 | handling_type | 등록형 | ✅ | 기본 `web_attack`, `scan`, `cloud`, `other` |
 | specialist | 등록형 | ✅ | 전문 에이전트 이름. 기본 `none`, `web`, `cloud` |
 | priority | int | ✅ | `severity_id × 대상 자산 criticality`. 대상 자산은 `dst_asset`, 없으면 `src_asset`, 둘 다 없으면 criticality 1로 계산 |
@@ -269,7 +273,7 @@ L1이 처리하는 업무 단위.
 | updated_at | int | ✅ | |
 | awaiting_human_at | int | 선택 | `awaiting_human` 상태에 진입한 UTC epoch 밀리초. 아직 진입하지 않았다면 `null`. 상태를 벗어나도 진입 시각을 유지한다 |
 
-상태 전이: `new → triaging → (awaiting_human →) closed_benign | closed_fp | escalated`
+v2 상태 전이: `new → triaging → on_hold | closed_benign | closed_fp | l2_escalated`. `on_hold`는 L1 보류 결과로 L3 풀에 전달되고, `l2_escalated`는 박스 25의 L2 입구로 간다. `awaiting_human`과 `escalated` 값은 기존 데이터 호환을 위해 계약에 남기며 v2 흐름에서는 새로 만들지 않는다. `handling_type`과 `awaiting_human_at`도 발표 후 정리 전까지 유지한다.
 
 `awaiting_human_at`은 공통 규칙에 따라 필드 자체는 필수이고 값만 nullable이다.
 미진입 시 `null`, `awaiting_human` 진입 시 해당 시각 `t1`, 상태 종료 후에도 `t1`을 유지한다.
@@ -315,7 +319,7 @@ L1의 판정 결과. LLM 출력이 이 형식을 통과하지 못하면 판정�
 
 ## C9 · HumanReview
 
-사람의 L1 판정 검토 결과(v1). v2에서는 L1 판정을 사람이 뒤집지 않으므로 제거 예정이다(위 "v2 불일치").
+사람의 L1 판정 검토 결과(v1). v2에서는 L1 판정을 사람이 뒤집지 않지만, 발표 후 정리 전까지 계약 호환을 위해 유지한다(위 "v2 불일치").
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
@@ -561,6 +565,54 @@ Vector DB에 넣는 문서 한 건. 임베딩할 문장과 원본 연결 정보.
 
 규칙: `closed_tickets`, `closed_incidents`, `cases` 컬렉션에는 판정이 끝난 원본만 넣는다.
 
+## C21 · BranchResult
+
+박스 25가 알럿 또는 Ticket에 대해 선택한 경로와 근거다. 분기 규칙은 코드로 적용하며 이 객체는 결과를 기록한다.
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| branch_id | str | ✅ | `br_` 접두어 |
+| subject_type | enum | ✅ | `alert`, `ticket` |
+| subject_id | str | ✅ | 대상 `al_` 또는 `tk_` ID |
+| path | enum | ✅ | `deduplicated`, `excluded_shared_entity`, `scenario_ticket`, `l1_entity_lookup`, `existing_incident`, `new_incident` |
+| reason | object | ✅ | 분기 근거. `rule_id`와 `entity`를 포함한다 |
+| created_at | int | ✅ | |
+
+`reason` 객체의 `rule_id`는 선택 문자열, `entity`는 선택 Entity이며 둘 다 없을 수는 없다. 분기 규칙 ID와 분기에 사용한 엔티티를 보존한다.
+
+## C22 · EvidenceRequest
+
+박스 26 증거 요청 큐의 한 항목. 재시도 횟수는 최초 요청 뒤 다시 시도한 횟수다.
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| request_id | str | ✅ | `rq_` 접두어 |
+| requester_type | enum | ✅ | `ticket`, `incident` |
+| requester_id | str | ✅ | 요청을 만든 Ticket(`tk_`) 또는 Incident(`in_`) ID |
+| request_type | enum | ✅ | `specialist_agent`, `siem_mcp`, `lookup` |
+| domain | str | 선택 | 전문가 도메인. `specialist_agent`이면 필요하며 기본 제공 도메인은 `web`, `cloud`; 그 외 요청은 `null` |
+| retry_count | int | ✅ | 0 이상. 최초 요청은 0 |
+| status | enum | ✅ | `pending`, `in_progress`, `completed`, `failed` |
+| failure_reason | str | 선택 | 실패 상태일 때 사유, 그 외에는 `null` |
+| created_at | int | ✅ | |
+| updated_at | int | ✅ | |
+
+## C23 · L1DecisionRecord
+
+박스 11이 남기고 박스 27이 읽는 Alert·Ticket 단위의 승격·보류·판정 결과.
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| decision_id | str | ✅ | `ld_` 접두어 |
+| subject_type | enum | ✅ | `alert`, `ticket` |
+| subject_id | str | ✅ | 대상 Alert(`al_`) 또는 Ticket(`tk_`) ID |
+| decision | enum | ✅ | Alert: `l1_escalated`, `held`; Ticket: `held`, `closed_fp`, `l2_escalated` |
+| confidence | float | 선택 | 0.0~1.0. 평가할 수 없는 경우 `null` |
+| reason | enum | 선택 | `below_threshold`, `llm_failure`, `evidence_request_failure`; 보류가 아니면 `null` |
+| created_at | int | ✅ | |
+
+보류 결정에는 `reason`이 필요하다. 확신도 임계값은 D-036의 설정 값이며 계약은 고정 임계값을 검사하지 않는다. LLM 실패 처리에 대한 `needs_human` 필드는 C7에서 유지한다.
+
 ---
 
 ## 공통 객체
@@ -582,13 +634,13 @@ Vector DB에 넣는 문서 한 건. 임베딩할 문장과 원본 연결 정보.
 
 ## 계약 생성 구현 (#5)
 
-이 절은 위 "계약 Schema"의 생성 방법을 구체화한다. C1~C20 및 보조 객체를
+이 절은 위 "계약 Schema"의 생성 방법을 구체화한다. C1~C23 및 보조 객체를
 문서와 수동 대조했으며, 테스트에서 이 Markdown 문서를 파싱하지 않는다.
 계약의 코드 원본은 `contracts/`만 유지한다. 이 문서의 상태는 사람 검토 전까지 초안이다.
 
 | 항목 | 구현 |
 |---|---|
-| Schema 파일 | `contracts/<snake_case>.schema.json`, 객체 하나에 파일 하나 (총 29개) |
+| Schema 파일 | `contracts/<snake_case>.schema.json`, 객체 하나에 파일 하나 (총 32개) |
 | Python 모델 | `src/soc/contracts/generated/*_schema.py`, 공개 진입점 `soc.contracts` |
 | TypeScript 타입 | `frontend/src/contracts/generated/*.ts`, 공개 진입점 `frontend/src/contracts/index.ts` |
 | 두 언어 생성 | `uv run python scripts/generate_contracts.py` |

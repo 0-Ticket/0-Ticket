@@ -1,5 +1,6 @@
 {
   "ticket_id": "tk_sample",
+  "origin": "scenario",
   "status": "awaiting_human",
   "handling_type": "web_attack",
   "specialist": "none",

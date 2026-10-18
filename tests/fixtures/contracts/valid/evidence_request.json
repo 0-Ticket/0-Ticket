@@ -1,0 +1,12 @@
+{
+  "request_id": "rq_sample",
+  "requester_type": "ticket",
+  "requester_id": "tk_sample",
+  "request_type": "specialist_agent",
+  "domain": "web",
+  "retry_count": 0,
+  "status": "pending",
+  "failure_reason": null,
+  "created_at": 1791849600000,
+  "updated_at": 1791849600000
+}

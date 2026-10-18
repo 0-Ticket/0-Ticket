@@ -12,6 +12,7 @@ class SiemAlert(BaseModel):
         extra="forbid",
     )
     kind: Literal["alert", "event"]
+    source_record_id: constr(pattern=r"^src_", strict=True)
     scenario: StrictStr
     raw_ids: list[constr(pattern=r"^raw_", strict=True)]
     fields: dict[str, Any]

@@ -113,7 +113,7 @@ model = "my-larger-model"
 
 ### 새 SIEM 붙이기
 
-1. `src/soc/ingest/siem/base.py`의 커넥터 인터페이스를 구현한다. 그 SIEM에서 알럿·이벤트를 가져와 C2 SiemAlert를 내보내면 된다. 같은 SIEM용 SIEM MCP 어댑터(읽기 전용)도 함께 만든다.
+1. `src/soc/ingest/siem/base.py`의 커넥터 인터페이스를 구현한다. 그 SIEM에서 알럿·이벤트를 가져와 C2 SiemAlert 내용(`kind`, `scenario`, `raw_ids`, `fields`)을 내보내면 된다. 어댑터는 `source_record_id` 없이 C2 내용을 돌려주고, 코어가 ID를 붙인다(넣어 보내면 거부된다). `tests/ingest/adapter_contract.py`의 공통 계약 테스트를 통과해야 한다. 같은 SIEM용 SIEM MCP 어댑터(읽기 전용)도 함께 만든다.
 2. 레포에 기여하면 같은 폴더에 두고, 사내 전용이면 별도 패키지로 만들어 `zero_ticket_soc.siem` entry point로 등록한다.
 3. 설정의 `[siem] adapter`를 새 이름으로 바꾼다. 한 번에 하나의 SIEM만 연결한다.
 4. 그 SIEM의 시나리오용 별칭 표를 추가한다(박스 4).
