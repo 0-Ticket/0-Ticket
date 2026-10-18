@@ -90,7 +90,7 @@ model = "my-larger-model"
 | 전문 에이전트 | 13, 14 | `specialists` | Web (Cloud는 보류) | Cloud, 엔드포인트, 메일, 네트워크 전문 에이전트 추가 |
 | 프롬프트 | 11, 13, 14, 19, 23, 24 | (파일) | 기본 프롬프트 | 자사 판정 기준, 언어 |
 | MCP 도구 | 15 | `mcp_servers` | 내부 데이터 조회, Web 도메인. 공식 Python MCP SDK로 구현 (D-041) | 사내 도구 연결 |
-| SIEM MCP 어댑터 | 15 | (제안: siem_mcp_adapters) | Wazuh (초기, D-035). 선택된 SIEM을 따라간다. 읽기 전용 | ELK, Splunk |
+| SIEM MCP 어댑터 | 15 | `siem_mcp_adapters` | Wazuh (초기, D-035). 선택된 SIEM을 따라간다. 읽기 전용 | ELK, Splunk |
 | 증거 요청 큐 | 26 | (제안: evidence_queues) | PostgreSQL 테이블 큐 (D-034) | 다른 큐 백엔드 |
 | 사람 검토 채널 | 21 | `review_channels` | 웹 화면 (D-013, `docs/frontend.md`) | 메신저, 사내 포털 |
 | 티켓·케이스 시스템 | 10, 22 | `case_systems` | 내부 저장과 내부 UI (D-012) | 외부 티켓·케이스 관리 도구와 동기화 |
@@ -99,7 +99,9 @@ model = "my-larger-model"
 | 헌팅 쿼리 | 23 | (파일) | 기본 기준선 쿼리 | 자사 환경 기준선 |
 | 룰 변환 대상 | 24 | `rule_targets` | 연결된 SIEM 어댑터를 따름 | 다른 SIEM 쿼리 언어 |
 
-"(제안: …)"으로 적은 그룹 이름은 `src/soc/plugins.py`의 기존 규칙(소문자 snake_case 복수형, 예: `review_channels`, `vector_stores`)을 따른 제안이다. 확정되면 코드와 이 표를 함께 고친다. SIEM 커넥터와 SIEM MCP 어댑터는 같은 SIEM 이름으로 함께 선택된다(D-037).
+"(제안: …)"으로 적은 그룹 이름은 `src/soc/plugins.py`의 기존 규칙(소문자 snake_case 복수형, 예: `review_channels`, `vector_stores`)을 따른 제안이다. 확정되면 코드와 이 표를 함께 고친다.
+
+SIEM 커넥터와 SIEM MCP 어댑터는 설정의 `[siem] adapter` 값 하나로 함께 선택된다(D-037). 두 확장 지점의 그룹은 따로지만 이름은 같은 것을 쓴다. 에이전트가 어떤 MCP 도구를 부를 수 있는지는 설정의 `[mcp.allowed_tools]`에 에이전트 이름별로 적고, 기본값은 비어 있어 모든 호출이 거부된다(박스 15).
 
 기본 구현체 중 "로컬 파일", "CSV", `direct`는 외부 도구 없이 표준 라이브러리만으로 만드는 기본값이라 결정 대장에 따로 두지 않는다. 외부 도구를 쓰는 기본 구현체는 결정 대장의 ID를 따른다.
 

@@ -1,0 +1,5 @@
+[siem]
+adapter = "fake"
+
+[mcp.allowed_tools]
+l1 = ["query_siem"]

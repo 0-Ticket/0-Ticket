@@ -45,6 +45,37 @@ def test_org_config_adds_agent_model_overrides():
     assert settings.llm.agents["new_agent"].model == "new-agent-model"
 
 
+def test_default_config_denies_every_mcp_tool():
+    settings = load_config(environ={})
+    assert settings.mcp.max_query_limit == 500
+    assert settings.mcp.allowed_tools == {}
+
+
+def test_org_config_grants_mcp_tools_per_agent():
+    settings = load_config(FIXTURES / "mcp_allowed_tools.toml", environ={})
+    assert settings.mcp.allowed_tools == {"l1": ("query_siem",)}
+
+
+def test_org_config_adds_an_agent_to_the_mcp_allowlist():
+    settings = load_config(FIXTURES / "mcp_allowed_tools_added_agent.toml", environ={})
+    assert settings.mcp.max_query_limit == 50
+    assert sorted(settings.mcp.allowed_tools) == ["l1", "l3"]
+
+
+def test_mcp_allowlist_rejects_a_repeated_tool(tmp_path):
+    org = tmp_path / "org.toml"
+    org.write_text('[mcp.allowed_tools]\nl1 = ["query_siem", "query_siem"]\n', encoding="utf-8")
+    with pytest.raises(ConfigError, match="mcp.allowed_tools.l1"):
+        load_config(org, environ={})
+
+
+def test_mcp_max_query_limit_below_one_fails(tmp_path):
+    org = tmp_path / "org.toml"
+    org.write_text("[mcp]\nmax_query_limit = 0\n", encoding="utf-8")
+    with pytest.raises(ConfigError, match="mcp.max_query_limit"):
+        load_config(org, environ={})
+
+
 def test_agent_model_override_rejects_unknown_fields(tmp_path):
     org = tmp_path / "org.toml"
     org.write_text("[llm.agents.l2]\nmodle = 'typo'\n", encoding="utf-8")
