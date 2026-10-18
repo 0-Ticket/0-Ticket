@@ -58,7 +58,10 @@ def test_generation_reproducible(tmp_path):
 
 
 def test_typescript_types():
-    subprocess.run(["pnpm", "--dir", "tools/contracts", "typecheck"], cwd=ROOT, check=True)
+    command = ["pnpm", "typecheck"]
+    if sys.platform == "win32":
+        command[:0] = ["cmd", "/c"]
+    subprocess.run(command, cwd=ROOT / "tools/contracts", check=True)
 
 
 def test_all_fixture_types(tmp_path):
