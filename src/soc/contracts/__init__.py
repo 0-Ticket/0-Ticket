@@ -16,6 +16,9 @@ from .generated import (
     Backtest as Backtest,
 )
 from .generated import (
+    BranchResult as BranchResult,
+)
+from .generated import (
     Case as Case,
 )
 from .generated import (
@@ -29,6 +32,9 @@ from .generated import (
 )
 from .generated import (
     Evidence as Evidence,
+)
+from .generated import (
+    EvidenceRequest as EvidenceRequest,
 )
 from .generated import (
     HumanReview as HumanReview,
@@ -47,6 +53,9 @@ from .generated import (
 )
 from .generated import (
     Ioc as Ioc,
+)
+from .generated import (
+    L1DecisionRecord as L1DecisionRecord,
 )
 from .generated import (
     L2Review as L2Review,

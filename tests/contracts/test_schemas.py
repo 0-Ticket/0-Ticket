@@ -13,7 +13,8 @@ FIXTURES = ROOT / "tests/fixtures/contracts"
 NAMES = """raw_record siem_alert alias_table normalized_alert normalize_failure event_record
 asset_info user_info alert_record ticket verdict agent_step human_review incident incident_member
 incident_artifact timeline_entry ioc recommendation specialist_finding l2_review case case_task
-hunt_finding rule_proposal backtest vector_doc entity evidence""".split()
+hunt_finding rule_proposal backtest vector_doc entity evidence branch_result evidence_request
+l1_decision_record""".split()
 
 
 def read(path):
@@ -74,6 +75,13 @@ def test_structural_conditions(case):
         ("agent_step", "step", 0),
         ("l2_review", "round", 0),
         ("ticket", "status", "custom"),
+        ("ticket", "origin", "custom"),
+        ("siem_alert", "source_record_id", "raw_source"),
+        ("alert_record", "source_record_id", "raw_source"),
+        ("event_record", "source_record_id", "raw_source"),
+        ("branch_result", "branch_id", "wrong"),
+        ("evidence_request", "request_id", "wrong"),
+        ("l1_decision_record", "decision_id", "wrong"),
         ("raw_record", "received_at", "123"),
         ("raw_record", "raw_id", "wrong"),
     ],
@@ -110,6 +118,24 @@ def test_alert_inherits_normalized_fields():
     alert = items["alert_record.schema.json"]
     for name, field in normalized["properties"].items():
         assert alert["properties"][name] == field
+
+
+def test_normalized_records_reference_the_original_c2_id():
+    source_alert = fixture("siem_alert")
+    alert = fixture("alert_record")
+    source_event = source_alert | {
+        "kind": "event",
+        "source_record_id": "src_event_sample",
+    }
+    event = fixture("event_record")
+
+    validator("siem_alert").validate(source_alert)
+    validator("siem_alert").validate(source_event)
+    validator("alert_record").validate(alert)
+    validator("event_record").validate(event)
+    assert alert["source_record_id"] == source_alert["source_record_id"]
+    assert event["source_record_id"] == source_event["source_record_id"]
+    assert alert["raw_ids"] == source_alert["raw_ids"]
 
 
 @pytest.mark.parametrize("name", NAMES)
@@ -167,6 +193,35 @@ def test_all_references_are_local_and_resolve():
         ("agent_step", {"subject_type": "hunt", "subject_id": "ht_sample"}),
         ("agent_step", {"action": "tool_call", "tool": "sample"}),
         ("agent_step", {"action": "llm_call", "prompt_version": "sample-v1"}),
+        ("ticket", {"status": "on_hold"}),
+        ("ticket", {"status": "l2_escalated"}),
+        (
+            "branch_result",
+            {"subject_type": "ticket", "subject_id": "tk_sample", "path": "existing_incident"},
+        ),
+        ("evidence_request", {"domain": None, "request_type": "lookup", "status": "completed"}),
+        (
+            "evidence_request",
+            {"status": "failed", "failure_reason": "Synthetic timeout", "retry_count": 1},
+        ),
+        (
+            "l1_decision_record",
+            {
+                "subject_type": "ticket",
+                "subject_id": "tk_sample",
+                "decision": "held",
+                "confidence": None,
+                "reason": "evidence_request_failure",
+            },
+        ),
+        (
+            "l1_decision_record",
+            {
+                "subject_type": "ticket",
+                "subject_id": "tk_sample",
+                "decision": "l2_escalated",
+            },
+        ),
     ],
 )
 def test_condition_branches_accept_valid_values(name, changes):

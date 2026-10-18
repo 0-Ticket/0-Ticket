@@ -8,6 +8,10 @@
       "type": "string",
       "pattern": "^ev_"
     },
+    "source_record_id": {
+      "type": "string",
+      "pattern": "^src_"
+    },
     "class_uid": {
       "type": "integer"
     },
@@ -116,6 +120,7 @@
   },
   "required": [
     "event_id",
+    "source_record_id",
     "class_uid",
     "time",
     "activity",

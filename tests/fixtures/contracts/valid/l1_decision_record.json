@@ -1,0 +1,9 @@
+{
+  "decision_id": "ld_sample",
+  "subject_type": "alert",
+  "subject_id": "al_sample",
+  "decision": "l1_escalated",
+  "confidence": 0.9,
+  "reason": null,
+  "created_at": 1791849600000
+}

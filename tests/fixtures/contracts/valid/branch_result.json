@@ -1,0 +1,14 @@
+{
+  "branch_id": "br_sample",
+  "subject_type": "alert",
+  "subject_id": "al_sample",
+  "path": "scenario_ticket",
+  "reason": {
+    "rule_id": "web.attack",
+    "entity": {
+      "type": "ip",
+      "value": "203.0.113.10"
+    }
+  },
+  "created_at": 1791849600000
+}

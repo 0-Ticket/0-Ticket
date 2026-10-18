@@ -1,5 +1,6 @@
 {
   "event_id": "ev_sample",
+  "source_record_id": "src_event_sample",
   "class_uid": 4001,
   "time": 1791849600000,
   "activity": "http_request",
