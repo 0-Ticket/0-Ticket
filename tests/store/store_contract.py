@@ -221,6 +221,17 @@ class RecordStoreContract:
         assert event_ids("src_ip", attacker, 0, NOW, 10) == [wplogin.event_id]
         assert event_ids("dst_ip", attacker, 0, NOW, 10) == []
 
+    def test_nul_in_lookup_value_is_stored_and_kept_in_the_record(self, store):
+        store.save_source_records(load_c2(), CURSOR_KEY, "c1")
+        host = "web\u000001"
+        record = load_alert_records()[0].model_copy(update={"host": host, "src_ip": "a\u0000"})
+        store.save_alert_record(record)
+        stored = store.get_alert_record(record.alert_id)
+        assert stored.host == host
+        assert dump(stored) == dump(record)
+        found = store.find_alert_records("host", host, 0, NOW, 10)
+        assert [r.alert_id for r in found] == [record.alert_id]
+
     def test_find_rejects_other_fields_and_bad_limits(self, store):
         with pytest.raises(ValueError, match="field"):
             store.find_alert_records("user", "x", 0, NOW, 10)

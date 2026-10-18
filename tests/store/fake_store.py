@@ -13,6 +13,7 @@ from soc.store.records.checks import (
     check_event_record,
     check_limit,
     check_source_records,
+    lookup_value,
     retention_cutoff,
 )
 
@@ -84,7 +85,8 @@ class FakeRecordStore:
         found = [
             r
             for r in table.values()
-            if getattr(r, field) == value and time_from <= r.time < time_to
+            if lookup_value(getattr(r, field)) == lookup_value(value)
+            and time_from <= r.time < time_to
         ]
         return tuple(sorted(found, key=lambda r: (r.time, getattr(r, id_field)))[:limit])
 

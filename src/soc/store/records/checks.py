@@ -51,6 +51,15 @@ def check_entity_field(field: str) -> None:
         raise ValueError(f"field must be one of {', '.join(ENTITY_FIELDS)}")
 
 
+def lookup_value(value: str | None) -> str | None:
+    """The form an entity value takes in a lookup column: NUL becomes U+FFFD.
+
+    Log values may hold NUL, which text columns refuse. Only the lookup copy is
+    changed; the stored record keeps the original. Lookups compare in this form.
+    """
+    return None if value is None else value.replace("\x00", "\ufffd")
+
+
 def retention_cutoff(now: int, retention_days: int) -> int | None:
     """Source records stored before this time are expired. None: kept forever (0 days)."""
     if retention_days == 0:

@@ -31,6 +31,7 @@ from .checks import (
     check_event_record,
     check_limit,
     check_source_records,
+    lookup_value,
     retention_cutoff,
 )
 
@@ -125,9 +126,9 @@ class PostgresRecordStore:
             record_id,
             record.source_record_id,
             record.time,
-            record.src_ip,
-            record.dst_ip,
-            record.host,
+            lookup_value(record.src_ip),
+            lookup_value(record.dst_ip),
+            lookup_value(record.host),
             Json(record.model_dump(mode="json")),
         )
         try:
@@ -172,7 +173,7 @@ class PostgresRecordStore:
         ).format(
             table=sql.Identifier(table), field=sql.Identifier(field), id=sql.Identifier(id_column)
         )
-        rows = self._all(query, (value, time_from, time_to, limit))
+        rows = self._all(query, (lookup_value(value), time_from, time_to, limit))
         return tuple(validate_contract(contract, row[0]) for row in rows)
 
     # Retention
