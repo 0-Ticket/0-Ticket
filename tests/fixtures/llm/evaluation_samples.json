@@ -1,0 +1,7 @@
+[
+  {"scenario": "web request", "event": "Synthetic request to /login", "evidence_id": "raw_eval_1"},
+  {"scenario": "authentication", "event": "Synthetic failed login", "evidence_id": "raw_eval_2"},
+  {"scenario": "web request", "event": "Synthetic request to /health", "evidence_id": "raw_eval_3"},
+  {"scenario": "authentication", "event": "Synthetic successful login", "evidence_id": "raw_eval_4"},
+  {"scenario": "web request", "event": "Synthetic request to /profile", "evidence_id": "raw_eval_5"}
+]
