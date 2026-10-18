@@ -51,7 +51,9 @@ def test_core_runs_the_fake_siem_chosen_by_setting(tmp_path):
     )
     batch = connector.fetch(None)
     assert [item.model_dump(mode="json") for item in batch.items] == FAKE_ALERTS[:2]
-    assert connector.health_check() == HealthStatus(ok=True, detail="connected to https://siem.example.com")
+    assert connector.health_check() == HealthStatus(
+        ok=True, detail="connected to https://siem.example.com"
+    )
 
 
 def test_core_passes_batch_size_as_limit(tmp_path):

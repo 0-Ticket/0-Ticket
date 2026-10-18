@@ -63,7 +63,7 @@ def test_replays_fixture_config_to_expected_c2(monkeypatch):
     monkeypatch.chdir(ROOT)  # Relative paths in the settings file are read from the repo root.
     settings = load_config(FIXTURES / "direct.toml", environ={})
     connector = open_connector(settings, environ={})
-    items, _ = walk(connector, 3)
+    items, _ = walk(connector.fetch)
     expected = json.loads((FIXTURES / "expected_c2.json").read_text(encoding="utf-8"))
     assert [item.model_dump(mode="json") for item in items] == expected
 

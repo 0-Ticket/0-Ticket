@@ -12,12 +12,15 @@ from soc.ingest.siem.base import FetchBatch, HealthStatus
 BIG_LIMIT = 10_000
 
 
-def walk(connector, limit):
-    """Fetch from the start until a batch comes back empty. Returns (items, last_cursor)."""
+def walk(fetch):
+    """Call ``fetch(cursor)`` from the start until nothing is left. Returns (items, last_cursor).
+
+    A batch with only skipped records may move the cursor; a batch with nothing must not.
+    """
     cursor, items = None, []
     for _ in range(BIG_LIMIT):
-        batch = connector.fetch(cursor, limit)
-        if not batch.items:
+        batch = fetch(cursor)
+        if not batch.items and not batch.skipped:
             assert batch.next_cursor == cursor, "an empty batch must not move the cursor"
             return items, cursor
         items.extend(batch.items)
@@ -46,11 +49,11 @@ class AdapterContract:
 
     def test_small_batches_walk_every_item_once(self, connector):
         everything = dump(connector.fetch(None, BIG_LIMIT).items)
-        walked, _ = walk(connector, 1)
+        walked, _ = walk(lambda cursor: connector.fetch(cursor, 1))
         assert dump(walked) == everything
 
     def test_last_cursor_returns_nothing_new(self, connector):
-        _, last = walk(connector, 2)
+        _, last = walk(lambda cursor: connector.fetch(cursor, 2))
         again = connector.fetch(last, BIG_LIMIT)
         assert again.items == ()
         assert again.next_cursor == last
