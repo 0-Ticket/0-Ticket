@@ -109,9 +109,12 @@ def test_ticket_store_rejects_invalid_contract_before_writing(connection):
 def test_migrations_apply_once_and_include_ticket_schema(connection):
     from soc.db import discover_migrations
 
-    versions = [migration.version for migration in discover_migrations()]
-    assert 20 in versions
-    assert all(version < 30 for version in versions)
+    ticket_migrations = [
+        migration for migration in discover_migrations() if migration.name == "create_tickets"
+    ]
+    assert [(migration.version, migration.name) for migration in ticket_migrations] == [
+        (20, "create_tickets")
+    ]
     assert [migration.version for migration in apply_migrations(connection)] == []
     assert connection.execute(
         "SELECT count(*) FROM schema_migrations WHERE version = 20"

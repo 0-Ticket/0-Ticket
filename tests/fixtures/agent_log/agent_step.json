@@ -1,0 +1,15 @@
+{
+  "subject_type": "alert",
+  "subject_id": "al_agent_log_sample",
+  "step": 1,
+  "agent": "l1",
+  "action": "decision",
+  "tool": null,
+  "prompt_version": null,
+  "input_excerpt": "synthetic alert context",
+  "output_excerpt": "synthetic decision result",
+  "model": null,
+  "tokens": null,
+  "latency_ms": 1,
+  "created_at": 1791849600000
+}

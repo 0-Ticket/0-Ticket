@@ -29,9 +29,7 @@ _UNSET = object()
 class AgentLogStore(Protocol):
     """Storage operations required by the C8 Agent Log service."""
 
-    def save_step(
-        self, step: AgentStep, artifact: "ArtifactReference | None" = None
-    ) -> None: ...
+    def save_step(self, step: AgentStep, artifact: "ArtifactReference | None" = None) -> None: ...
 
     def list_steps(self, subject_type: str, subject_id: str) -> list["AgentLogEntry"]: ...
 
