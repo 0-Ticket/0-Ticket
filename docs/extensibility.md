@@ -37,10 +37,10 @@ entry point 그룹 이름은 `zero_ticket_soc.<확장 지점>`이다. 아래 "�
 
 어떤 구현체를 쓸지, 모델 이름, 임계값, 규칙 파일 경로 같은 조직별 값은 코드가 아니라 설정 파일에 둔다.
 
-- 기본 설정: `config/default.<확장자>` (레포에 커밋, 비밀 값 없음)
+- 기본 설정: `config/default.toml` (레포에 커밋, 비밀 값 없음)
 - 조직 설정: 환경변수 `ZT_CONFIG`가 가리키는 파일. 기본 설정 위에 덮어쓴다. 레포에 커밋하지 않는다.
 - 비밀 값은 설정에 직접 쓰지 않는다. **환경변수 이름**만 적고, 값은 `.env`에 둔다.
-- 설정 파일 형식은 결정 대장 D-015에서 정한다. 아래 예시는 TOML로 썼다.
+- 설정 파일 형식은 TOML이다(D-015). 표준 라이브러리 `tomllib`로 읽는다.
 
 ```toml
 # 조직 설정 예시
@@ -85,11 +85,11 @@ model = "my-larger-model"
 | 룩업 제공자 | 5 | `lookups` | CSV 자산·계정 표 | CMDB, 디렉터리 서비스, 위협 인텔 평판 서비스 |
 | 저장소 백엔드 | 5, 6, 7, 10, 12, 18, 20, 22, 24 | `stores` | PostgreSQL (D-002). Event도 RDB | 다른 RDB, 별도 로그 저장소(이벤트) |
 | 벡터 저장소 | 8 | `vector_stores` | Qdrant (D-003). Ticket, Case만 | 다른 벡터 DB |
-| 임베딩 제공자 | 8 | `embedders` | D-010 | 상용 임베딩 API |
-| LLM 제공자 | 11, 13, 14, 19, 23, 24 | `llm_providers` | D-009 + OpenAI 호환 API | 상용 모델, 사내 모델, 로컬 모델 |
+| 임베딩 제공자 | 8 | `embedders` | bge-m3, 로컬 실행 (D-010) | 상용 임베딩 API |
+| LLM 제공자 | 11, 13, 14, 19, 23, 24 | `llm_providers` | OpenAI 호환 제공자. 데모 기본값: granite4-micro (로컬 서빙, D-009 검토중) | 상용 모델, 사내 모델, 로컬 모델 |
 | 전문 에이전트 | 13, 14 | `specialists` | Web (Cloud는 보류) | Cloud, 엔드포인트, 메일, 네트워크 전문 에이전트 추가 |
 | 프롬프트 | 11, 13, 14, 19, 23, 24 | (파일) | 기본 프롬프트 | 자사 판정 기준, 언어 |
-| MCP 도구 | 15 | `mcp_servers` | 내부 데이터 조회, Web 도메인 | 사내 도구 연결 |
+| MCP 도구 | 15 | `mcp_servers` | 내부 데이터 조회, Web 도메인. 공식 Python MCP SDK로 구현 (D-041) | 사내 도구 연결 |
 | SIEM MCP 어댑터 | 15 | (제안: siem_mcp_adapters) | Wazuh (초기, D-035). 선택된 SIEM을 따라간다. 읽기 전용 | ELK, Splunk |
 | 증거 요청 큐 | 26 | (제안: evidence_queues) | PostgreSQL 테이블 큐 (D-034) | 다른 큐 백엔드 |
 | 사람 검토 채널 | 21 | `review_channels` | 웹 화면 (D-013, `docs/frontend.md`) | 메신저, 사내 포털 |
