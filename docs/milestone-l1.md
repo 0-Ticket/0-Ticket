@@ -61,11 +61,11 @@ SIEM (시연에서는 direct)
 | 구분 | 내용 |
 |---|---|
 | 추가 | Ticket 출처 구분(D-038)과 보류·L2 승격 상태 (C6) |
-| | 분기 결과 (25) |
-| | 증거 요청 항목 (26) |
-| | L1 승격·보류 기록 (27) |
+| | 분기 결과 (C21, 박스 25) |
+| | 증거 요청 항목 (C22, 박스 26) |
+| | L1 승격·보류 기록 (C23, 박스 27) |
 | | 원본·정규화 결과 분리 (C5·C13·C2) |
-| 미룸 | `handling_type`, `awaiting_human`, C9의 삭제는 발표 후. 필요하면 선택 필드로 완화만 한다 |
+| 미룸 | `handling_type`, `awaiting_human`·`awaiting_human_at`, C9, C7 `needs_human`의 삭제는 발표 후. 이슈 #37에서는 현재 계약을 보존하고 v2 흐름에서 새로 사용하지 않는다 |
 | 주의 | 필수 필드를 추가하면 fixture와 화면 영향을 계획에 적는다 |
 | 발표 후 | 발표 후로 미루는 계약 정리: C9 HumanReview와 awaiting_human 삭제, Incident 묶음 필드(correlation 기반) 정리, 탐지 룰 제안을 Incident 기준으로 변경, VectorDoc 기본 컬렉션 정리 |
 

@@ -26,6 +26,7 @@
     }
   },
   "alert_id": "al_sample",
+  "source_record_id": "src_sample",
   "src_asset": null,
   "dst_asset": {
     "match": "192.0.2.10",

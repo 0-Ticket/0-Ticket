@@ -2,7 +2,9 @@
 
 export interface Ticket {
   ticket_id: string;
-  status: 'new' | 'triaging' | 'awaiting_human' | 'closed_benign' | 'closed_fp' | 'escalated';
+  origin: 'l1_escalated' | 'l3_escalated' | 'scenario';
+  status:
+    'new' | 'triaging' | 'awaiting_human' | 'on_hold' | 'closed_benign' | 'closed_fp' | 'escalated' | 'l2_escalated';
   handling_type: string;
   specialist: string;
   priority: number;

@@ -98,6 +98,22 @@ def test_incident_review_signal_errors(changes, path, rule):
     assert "UNTRUSTED_VALUE" not in repr(vars(caught.value))
 
 
+@pytest.mark.parametrize(
+    "name,changes",
+    [
+        ("branch_result", {"subject_id": "tk_sample"}),
+        ("branch_result", {"reason": {"rule_id": None, "entity": None}}),
+        ("evidence_request", {"domain": None}),
+        ("evidence_request", {"status": "failed"}),
+        ("l1_decision_record", {"decision": "l2_escalated"}),
+        ("l1_decision_record", {"decision": "held"}),
+    ],
+)
+def test_new_contract_conditions_use_public_validation(name, changes):
+    with pytest.raises(ContractValidationError):
+        validate_contract(title(name), fixture(name) | changes)
+
+
 def test_nested_reference_conditions():
     value = fixture("incident")
     value["members"][0]["excluded"] = True

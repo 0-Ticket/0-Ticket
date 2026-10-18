@@ -14,7 +14,17 @@ class Ticket(BaseModel):
         extra="forbid",
     )
     ticket_id: constr(pattern=r"^tk_", strict=True)
-    status: Literal["new", "triaging", "awaiting_human", "closed_benign", "closed_fp", "escalated"]
+    origin: Literal["l1_escalated", "l3_escalated", "scenario"]
+    status: Literal[
+        "new",
+        "triaging",
+        "awaiting_human",
+        "on_hold",
+        "closed_benign",
+        "closed_fp",
+        "escalated",
+        "l2_escalated",
+    ]
     handling_type: StrictStr
     specialist: StrictStr
     priority: StrictInt

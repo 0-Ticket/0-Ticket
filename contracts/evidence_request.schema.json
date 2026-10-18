@@ -1,0 +1,169 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "evidence_request.schema.json",
+  "title": "EvidenceRequest",
+  "type": "object",
+  "properties": {
+    "request_id": {
+      "type": "string",
+      "pattern": "^rq_"
+    },
+    "requester_type": {
+      "type": "string",
+      "enum": [
+        "ticket",
+        "incident"
+      ]
+    },
+    "requester_id": {
+      "type": "string"
+    },
+    "request_type": {
+      "type": "string",
+      "enum": [
+        "specialist_agent",
+        "siem_mcp",
+        "lookup"
+      ]
+    },
+    "domain": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Registered specialist domain; built-in domains are web and cloud. Cloud support is deferred."
+    },
+    "retry_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "in_progress",
+        "completed",
+        "failed"
+      ]
+    },
+    "failure_reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "created_at": {
+      "type": "integer"
+    },
+    "updated_at": {
+      "type": "integer"
+    }
+  },
+  "required": [
+    "request_id",
+    "requester_type",
+    "requester_id",
+    "request_type",
+    "domain",
+    "retry_count",
+    "status",
+    "failure_reason",
+    "created_at",
+    "updated_at"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "requester_type": {
+            "const": "ticket"
+          }
+        },
+        "required": [
+          "requester_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "requester_id": {
+            "pattern": "^tk_"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "requester_type": {
+            "const": "incident"
+          }
+        },
+        "required": [
+          "requester_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "requester_id": {
+            "pattern": "^in_"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "request_type": {
+            "const": "specialist_agent"
+          }
+        },
+        "required": [
+          "request_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "domain": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "domain": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "failed"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "failure_reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "failure_reason": {
+            "type": "null"
+          }
+        }
+      }
+    }
+  ]
+}

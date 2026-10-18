@@ -138,5 +138,44 @@
       "review_state": "human_handling",
       "review_round": 2
     }
+  },
+  {
+    "schema": "branch_result",
+    "changes": {
+      "subject_id": "tk_sample"
+    }
+  },
+  {
+    "schema": "branch_result",
+    "changes": {
+      "reason": {
+        "rule_id": null,
+        "entity": null
+      }
+    }
+  },
+  {
+    "schema": "evidence_request",
+    "changes": {
+      "domain": null
+    }
+  },
+  {
+    "schema": "evidence_request",
+    "changes": {
+      "status": "failed"
+    }
+  },
+  {
+    "schema": "l1_decision_record",
+    "changes": {
+      "decision": "l2_escalated"
+    }
+  },
+  {
+    "schema": "l1_decision_record",
+    "changes": {
+      "decision": "held"
+    }
   }
 ]

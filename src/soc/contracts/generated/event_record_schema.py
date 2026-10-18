@@ -14,6 +14,7 @@ class EventRecord(BaseModel):
         extra="forbid",
     )
     event_id: constr(pattern=r"^ev_", strict=True)
+    source_record_id: constr(pattern=r"^src_", strict=True)
     class_uid: StrictInt
     time: StrictInt
     activity: StrictStr
