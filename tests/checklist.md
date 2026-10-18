@@ -87,7 +87,7 @@ v2 박스 기준이다(`docs/architecture.md`). 폐기한 박스(9, 16, 17)의 �
 |---|---|---|---|
 | K31 | 확장 지점마다 가짜 구현체를 등록하고 설정만 바꿔 교체할 수 있다 | 🟡 일부 | `test_fake_implementation_replaces_default`, `test_get_returns_registered_implementation`; 실제 확장 지점의 인터페이스·기본 구현체와 설정 연결은 후속 |
 | K32 | 외부 패키지의 entry point로 등록한 플러그인을 코어 수정 없이 불러온다 | ✅ 통과 | `test_entry_point_plugin_loads_without_core_import`, `test_broken_entry_point_is_skipped` |
-| K33 | 조직 설정 파일(`ZT_CONFIG`)이 기본 설정을 덮어쓰고, 비밀 값은 환경변수에서만 읽는다 | ⬜ | |
+| K33 | 조직 설정 파일(`ZT_CONFIG`)이 기본 설정을 덮어쓰고, 비밀 값은 환경변수에서만 읽는다 | ✅ 통과 | `test_org_config_overrides_only_given_keys`, `test_unknown_key_fails`, `test_secret_literal_in_env_name_field_fails_without_echoing_it`, `test_secret_read_from_env_only`, `test_missing_secret_names_variable_only` |
 | K34 | `extensions` 필드의 값이 정규화부터 저장·조회까지 그대로 보존된다 | ⬜ | |
 | K35 | LLM 제공자와 모델을 설정만으로 바꿔도 같은 테스트(가짜 응답)가 통과한다 | ⬜ | |
 | K36 | 조직 폴더의 규칙·프롬프트 파일이 같은 이름의 기본 파일보다 우선한다 | ⬜ | |

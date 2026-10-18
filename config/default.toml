@@ -1,0 +1,11 @@
+# 0-Ticket SOC 기본 설정 (D-015). 레포에 커밋하고 비밀 값은 넣지 않는다.
+# 조직 설정은 환경변수 ZT_CONFIG가 가리키는 파일에 두며, 이 파일에 있는 키만 덮어쓸 수 있다.
+# 비밀 값이 필요한 곳에는 환경변수 이름만 적고(`*_env`), 값은 .env에 둔다.
+# 새 설정 값을 추가할 때는 바로 위에 한 줄 설명을 적는다.
+
+# PostgreSQL 연결 (D-002)
+[database]
+# 연결 URL을 담은 환경변수 이름. 값(postgresql://...)은 .env에만 둔다.
+url_env = "DATABASE_URL"
+# 연결을 기다리는 최대 시간(초). 1 이상.
+connect_timeout_seconds = 5

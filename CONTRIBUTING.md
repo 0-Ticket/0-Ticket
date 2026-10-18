@@ -16,6 +16,16 @@ uvx ruff format .       # 포맷
 
 실제 LLM을 부르는 테스트는 `uv run pytest -m llm`으로 따로 실행합니다. 키가 필요합니다.
 
+DB가 필요한 테스트(`db` 마커)는 기본 실행에서 빠집니다. 개발용 PostgreSQL을 띄우고 따로 실행합니다. CI는 PostgreSQL 서비스 컨테이너로 같은 테스트를 돌립니다.
+
+```bash
+docker compose up -d                  # 개발용 PostgreSQL·Qdrant (.env의 POSTGRES_*, DATABASE_URL 필요)
+uv run python -m soc.db.migrate       # 마이그레이션 적용
+uv run pytest -m db                   # DB 테스트
+```
+
+마이그레이션은 `src/soc/db/migrations/`에 `NNNN_<이름>.sql`로 추가합니다. 이미 적용된 파일은 고치지 않고 새 번호의 파일을 만듭니다.
+
 ## 작업 흐름
 
 ```

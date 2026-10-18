@@ -61,11 +61,20 @@ cp .env.example .env    # API 키 등 비밀 값을 채움
 uv run pytest           # 테스트
 ```
 
+개발용 PostgreSQL과 Qdrant는 Docker로 띄웁니다. `.env`의 `POSTGRES_*`와 `DATABASE_URL`을 먼저 채웁니다.
+
+```bash
+docker compose up -d                  # PostgreSQL(5432), Qdrant(6333) 실행
+uv run python -m soc.db.migrate       # DB 마이그레이션 적용
+uv run pytest -m db                   # DB가 필요한 테스트
+docker compose down                   # 중지 (데이터는 볼륨에 남음, 지우려면 -v)
+```
+
 설치·실행 방법은 구성 요소가 구현되는 대로 이 절에 추가합니다.
 
 ## 설정과 확장
 
-- 조직별 설정은 기본 설정 위에 덮어쓰는 파일 하나로 관리합니다. 비밀 값은 설정에 직접 쓰지 않고 환경변수 이름만 적습니다.
+- 조직별 설정은 기본 설정(`config/default.toml`) 위에 덮어쓰는 파일 하나로 관리합니다. 환경변수 `ZT_CONFIG`에 그 파일 경로를 적고, 기본 설정에 있는 키만 바꿀 수 있습니다. 비밀 값은 설정에 직접 쓰지 않고 환경변수 이름만 적습니다.
 - 새 SIEM, 로그 소스, LLM 제공자, 전문 에이전트를 붙이는 방법은 [docs/extensibility.md](docs/extensibility.md)의 "자주 하는 확장"을 보세요.
 
 ## 문서
