@@ -1,6 +1,7 @@
 """LLM call wrapper: fake providers only; no model or network access."""
 
 from pathlib import Path
+from typing import get_args, get_type_hints
 
 from soc.config import AgentModelSettings, LLMSettings, load_config
 from soc.llm import CallContext, call_llm, create_provider_registry
@@ -68,6 +69,29 @@ def test_fake_provider_returns_contract_validated_json_and_agent_step():
     assert records[0].prompt_version == "test-verdict-1"
     assert records[0].tokens == 9
     assert records[0].model == "granite4:micro"
+
+
+def test_alert_context_records_alert_subject_in_agent_step():
+    assert "alert" in get_args(get_type_hints(CallContext)["subject_type"])
+
+    provider = FakeProvider(_response("valid_verdict.json"))
+    records = []
+
+    result = call_llm(
+        prompt_path=PROMPT,
+        data={"event": "synthetic"},
+        contract_name="Verdict",
+        context=CallContext(subject_type="alert", subject_id="al_sample", step=1, agent="l1"),
+        settings=_settings(),
+        provider_registry=_registry(provider),
+        record_step=records.append,
+        environ={},
+    )
+
+    assert result.ok
+    assert len(records) == 1
+    assert records[0].subject_type == "alert"
+    assert records[0].subject_id == "al_sample"
 
 
 def test_agent_model_override_selects_configured_model():

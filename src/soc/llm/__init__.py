@@ -28,7 +28,7 @@ _EXCERPT_LIMIT = 2000
 
 @dataclass(frozen=True, slots=True)
 class CallContext:
-    subject_type: Literal["ticket", "incident", "hunt"]
+    subject_type: Literal["alert", "ticket", "incident", "hunt"]
     subject_id: str
     step: int
     agent: str
