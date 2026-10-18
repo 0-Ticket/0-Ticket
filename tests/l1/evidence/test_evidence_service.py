@@ -42,16 +42,15 @@ class Ids:
 class Handler:
     """Fails ``failures`` times, then answers with ``result``."""
 
-    def __init__(self, result=None, failures=0, error=RuntimeError(INJECTED)):
+    def __init__(self, result=None, failures=0):
         self.result = result
         self.failures = failures
-        self.error = error
         self.calls = []
 
     def __call__(self, request, *, agent):
         self.calls.append((request["request_id"], request["retry_count"], agent))
         if len(self.calls) <= self.failures:
-            raise self.error
+            raise RuntimeError(INJECTED)
         return self.result
 
 
