@@ -22,6 +22,9 @@ dev = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[project.entry-points."zero_ticket_soc.stores"]
+"postgresql.tickets" = "soc.store.postgresql.tickets:create_postgresql_ticket_store"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/soc"]
 

@@ -99,6 +99,9 @@ model = "my-larger-model"
 | 헌팅 쿼리 | 23 | (파일) | 기본 기준선 쿼리 | 자사 환경 기준선 |
 | 룰 변환 대상 | 24 | `rule_targets` | 연결된 SIEM 어댑터를 따름 | 다른 SIEM 쿼리 언어 |
 
+`stores` 그룹의 이름은 `<백엔드>.<저장소 종류>` 형식이다. Ticket 저장소는 `postgresql.tickets`로 등록하며,
+공통 `open_store("tickets", ...)`가 `[store] backend` 설정에 따라 선택한다.
+
 "(제안: …)"으로 적은 그룹 이름은 `src/soc/plugins.py`의 기존 규칙(소문자 snake_case 복수형, 예: `review_channels`, `vector_stores`)을 따른 제안이다. 확정되면 코드와 이 표를 함께 고친다.
 
 SIEM 커넥터와 SIEM MCP 어댑터는 설정의 `[siem] adapter` 값 하나로 함께 선택된다(D-037). 두 확장 지점의 그룹은 따로지만 이름은 같은 것을 쓴다. 에이전트가 어떤 MCP 도구를 부를 수 있는지는 설정의 `[mcp.allowed_tools]`에 에이전트 이름별로 적고, 기본값은 비어 있어 모든 호출이 거부된다(박스 15).

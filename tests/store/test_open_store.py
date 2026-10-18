@@ -64,7 +64,11 @@ def test_bad_store_settings_fail(tmp_path, body):
 
 def test_core_store_code_has_no_backend_name_branch():
     """Only the registration and the implementation itself may name a backend."""
-    allowed = {STORE / "__init__.py", STORE / "records" / "postgres.py"}
+    allowed = {
+        STORE / "__init__.py",
+        STORE / "records" / "postgres.py",
+        STORE / "postgresql" / "tickets.py",
+    }
     for path in STORE.rglob("*.py"):
         if path in allowed:
             continue
