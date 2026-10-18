@@ -12,8 +12,9 @@ from collections.abc import Mapping
 from importlib.resources import files
 from pathlib import Path
 from typing import Annotated, Any, Literal
+from urllib.parse import urlsplit
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
 ORG_CONFIG_ENV = "ZT_CONFIG"
 
@@ -36,6 +37,29 @@ class _Section(BaseModel):
 class DatabaseSettings(_Section):
     url_env: EnvName
     connect_timeout_seconds: int = Field(ge=1)
+
+
+class AgentModelSettings(_Section):
+    model: str = Field(min_length=1)
+
+
+class LLMSettings(_Section):
+    provider: str = Field(min_length=1)
+    model: str = Field(min_length=1)
+    base_url: str = Field(min_length=1)
+    api_key_env: EnvName
+    temperature: float = Field(ge=0, le=2)
+    agents: dict[str, AgentModelSettings] = Field(default_factory=dict)
+
+    @field_validator("base_url")
+    @classmethod
+    def validate_base_url(cls, value: str) -> str:
+        parsed = urlsplit(value)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            raise ValueError("must be an HTTP or HTTPS URL")
+        if parsed.query or parsed.fragment:
+            raise ValueError("must not include a query or fragment")
+        return value.rstrip("/")
 
 
 class DirectFileSettings(_Section):
@@ -74,6 +98,7 @@ class Settings(_Section):
     """Typed settings. Each box issue adds its own section here and in default.toml."""
 
     database: DatabaseSettings
+    llm: LLMSettings
     siem: SiemSettings
 
 
@@ -107,7 +132,12 @@ def _merge(base: dict[str, Any], override: Mapping[str, Any], prefix: str = "") 
         if isinstance(base[key], dict):
             if not isinstance(value, dict):
                 raise ConfigError(f"Setting '{path}' must be a table")
-            merged[key] = _merge(base[key], value, path + ".")
+            if path == "llm.agents":
+                # Agent names are extension points. Pydantic validates each model
+                # override while the containing table accepts newly added agents.
+                merged[key] = {**base[key], **value}
+            else:
+                merged[key] = _merge(base[key], value, path + ".")
         elif isinstance(value, dict):
             raise ConfigError(f"Setting '{path}' must be a value, not a table")
         else:

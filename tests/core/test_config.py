@@ -21,6 +21,11 @@ def test_default_config_loads_without_org_file():
     settings = load_config(environ={})
     assert settings.database.url_env == "DATABASE_URL"
     assert settings.database.connect_timeout_seconds == 5
+    assert settings.llm.provider == "openai_compatible"
+    assert settings.llm.model == "granite4:micro"
+    assert settings.llm.base_url == "http://localhost:11434/v1"
+    assert settings.llm.api_key_env == "LLM_API_KEY"
+    assert settings.llm.temperature == 0
 
 
 def test_empty_zt_config_means_no_org_file():
@@ -31,6 +36,20 @@ def test_org_config_overrides_only_given_keys():
     settings = load_config(environ={"ZT_CONFIG": str(FIXTURES / "org_override.toml")})
     assert settings.database.connect_timeout_seconds == 12
     assert settings.database.url_env == "DATABASE_URL"
+
+
+def test_org_config_adds_agent_model_overrides():
+    settings = load_config(FIXTURES / "llm_agent_override.toml", environ={})
+    assert settings.llm.model == "org-default-model"
+    assert settings.llm.agents["l1"].model == "l1-special-model"
+    assert settings.llm.agents["new_agent"].model == "new-agent-model"
+
+
+def test_agent_model_override_rejects_unknown_fields(tmp_path):
+    org = tmp_path / "org.toml"
+    org.write_text("[llm.agents.l2]\nmodle = 'typo'\n", encoding="utf-8")
+    with pytest.raises(ConfigError, match=r"llm.agents.l2.modle"):
+        load_config(org, environ={})
 
 
 def test_explicit_path_beats_zt_config():
@@ -122,6 +141,7 @@ def test_default_env_names_are_listed_in_env_example():
     example = (ROOT / ".env.example").read_text(encoding="utf-8")
     settings = load_config(environ={})
     assert f"# {settings.database.url_env}=" in example
+    assert f"# {settings.llm.api_key_env}=" in example
 
 
 def test_wheel_contains_and_uses_default_config(tmp_path):

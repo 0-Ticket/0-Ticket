@@ -17,6 +17,16 @@ def run(*args):
     subprocess.run(args, cwd=ROOT, check=True)
 
 
+def normalize_line_endings(directory: Path):
+    """Make generated source bytes independent of the host operating system."""
+    for path in directory.rglob("*"):
+        if path.is_file():
+            content = path.read_bytes()
+            normalized = content.replace(b"\r\n", b"\n")
+            if normalized != content:
+                path.write_bytes(normalized)
+
+
 def type_projection(value):
     """Keep field types; conditional validation remains in the authoritative schemas.
 
@@ -103,6 +113,8 @@ def generate(destination):
         str(ROOT / "pyproject.toml"),
         str(py_dir),
     )
+    normalize_line_endings(py_dir)
+    normalize_line_endings(ts_dir)
     for path in source.iterdir():
         path.unlink()
     source.rmdir()

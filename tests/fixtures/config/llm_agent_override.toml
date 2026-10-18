@@ -1,0 +1,8 @@
+[llm]
+model = "org-default-model"
+
+[llm.agents.l1]
+model = "l1-special-model"
+
+[llm.agents.new_agent]
+model = "new-agent-model"

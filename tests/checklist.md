@@ -90,7 +90,7 @@ v2 박스 기준이다(`docs/architecture.md`). 폐기한 박스(9, 16, 17)의 �
 | K32 | 외부 패키지의 entry point로 등록한 플러그인을 코어 수정 없이 불러온다 | ✅ 통과 | `test_entry_point_plugin_loads_without_core_import`, `test_broken_entry_point_is_skipped` |
 | K33 | 조직 설정 파일(`ZT_CONFIG`)이 기본 설정을 덮어쓰고, 비밀 값은 환경변수에서만 읽는다 | ✅ 통과 | `test_org_config_overrides_only_given_keys`, `test_unknown_key_fails`, `test_secret_literal_in_env_name_field_fails_without_echoing_it`, `test_secret_read_from_env_only`, `test_missing_secret_names_variable_only` |
 | K34 | `extensions` 필드의 값이 정규화부터 저장·조회까지 그대로 보존된다 | ⬜ | |
-| K35 | LLM 제공자와 모델을 설정만으로 바꿔도 같은 테스트(가짜 응답)가 통과한다 | ⬜ | |
+| K35 | LLM 제공자와 모델을 설정만으로 바꿔도 같은 테스트(가짜 응답)가 통과한다 | ✅ 통과 | `test_default_provider_is_registered_and_config_switches_to_fake`, `test_agent_model_override_selects_configured_model` |
 | K36 | 조직 폴더의 규칙·프롬프트 파일이 같은 이름의 기본 파일보다 우선한다 | ⬜ | |
 | K37 | 코어 코드에 특정 구현체 이름으로 분기하는 곳이 없다 | 🟡 일부 | `test_new_registry_has_no_builtins`, `test_entry_point_plugin_loads_without_core_import`; 레지스트리까지만 확인, 파이프라인 코어는 해당 박스에서 |
 | K38 | 플러그인이 등록형 값(소스 종류, 처리 유형, 전문 에이전트, IOC 종류 등)을 새로 등록하면 계약 검증을 통과한다 | ⬜ | |
@@ -128,7 +128,7 @@ v2 박스 기준이다(`docs/architecture.md`). 폐기한 박스(9, 16, 17)의 �
 
 | 확인할 것 | 상태 |
 |---|---|
-| 실제 LLM 키 없이 `uv run pytest`가 통과한다 | ⬜ |
+| 실제 LLM 키 없이 `uv run pytest`가 통과한다 | ✅ 통과 |
 | 샘플 데이터와 화면 mock 데이터에 실제 IP·도메인·계정이 없다 (문서용 대역, `example.com`) | ⬜ |
 
 ## #5 계약 구현 검증 결과
