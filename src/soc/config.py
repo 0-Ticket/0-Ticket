@@ -132,10 +132,18 @@ class AgentLogSettings(_Section):
     artifact_dir: str = Field(min_length=1)
 
 
+class EvidenceQueueSettings(_Section):
+    # The name registered in the evidence_queues group; same naming rule as store.backend.
+    backend: str = Field(pattern=r"^[a-z0-9_]+$")
+    # Retries after the first attempt (D-034, shared by L1 and L2).
+    max_retries: int = Field(ge=0)
+
+
 class Settings(_Section):
     """Typed settings. Each box issue adds its own section here and in default.toml."""
 
     database: DatabaseSettings
+    evidence_queue: EvidenceQueueSettings
     llm: LLMSettings
     mcp: McpSettings
     siem: SiemSettings

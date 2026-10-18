@@ -26,6 +26,7 @@ EXTENSION_POINT_GROUPS = frozenset(
         "specialists",
         "mcp_servers",
         "siem_mcp_adapters",
+        "evidence_queues",
         "review_channels",
         "case_systems",
         "rule_targets",
