@@ -68,6 +68,7 @@ def test_core_store_code_has_no_backend_name_branch():
         STORE / "__init__.py",
         STORE / "records" / "postgres.py",
         STORE / "postgresql" / "tickets.py",
+        STORE / "postgresql" / "agent_log.py",
     }
     for path in STORE.rglob("*.py"):
         if path in allowed:

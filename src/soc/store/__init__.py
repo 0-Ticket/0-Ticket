@@ -1,7 +1,7 @@
 """Stores (boxes 5, 6, 7, 10, 12, ... D-002): one ``stores`` registry for every kind of store.
 
 Implementations are registered as ``<backend>.<kind>``: ``postgresql.records``
-for Alert/Event (boxes 6, 7), later ``postgresql.tickets``, ``postgresql.agent_log``.
+for Alert/Event (boxes 6, 7), ``postgresql.tickets``, and ``postgresql.agent_log``.
 ``[store] backend`` picks the backend for all of them; the core passes only the
 kind to ``open_store`` and never names a backend.
 """
