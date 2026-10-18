@@ -1,0 +1,3 @@
+# Typo of an existing key: must be rejected, not silently ignored.
+[database]
+conect_timeout_seconds = 12
