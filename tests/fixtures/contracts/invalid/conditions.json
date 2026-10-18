@@ -183,5 +183,237 @@
     "changes": {
       "decision": "held"
     }
+  },
+  {
+    "schema": "evidence_request",
+    "changes": {
+      "requester_type": "alert",
+      "params": {
+        "entity": {
+          "type": "ip",
+          "value": "192.0.2.10"
+        },
+        "at": null
+      },
+      "request_type": "lookup",
+      "domain": null
+    }
+  },
+  {
+    "schema": "evidence_request",
+    "changes": {
+      "requester_type": "ticket",
+      "requester_id": "al_sample"
+    }
+  },
+  {
+    "schema": "evidence_request",
+    "changes": {
+      "requester_type": "alert",
+      "requester_id": "al_sample"
+    }
+  },
+  {
+    "schema": "evidence_request",
+    "changes": {
+      "params": {}
+    }
+  },
+  {
+    "schema": "evidence_request",
+    "changes": {
+      "params": {
+        "question": ""
+      }
+    }
+  },
+  {
+    "schema": "evidence_request",
+    "changes": {
+      "params": {
+        "question": "Sample?",
+        "extra": 1
+      }
+    }
+  },
+  {
+    "schema": "evidence_request",
+    "changes": {
+      "request_type": "siem_mcp",
+      "domain": null,
+      "params": {
+        "entity": {
+          "type": "ip",
+          "value": "192.0.2.10"
+        },
+        "kind": "event",
+        "start_at": 1791849000000,
+        "end_at": 1791849600000
+      }
+    }
+  },
+  {
+    "schema": "evidence_request",
+    "changes": {
+      "request_type": "siem_mcp",
+      "domain": null,
+      "params": {
+        "question": "Sample?"
+      }
+    }
+  },
+  {
+    "schema": "evidence_request",
+    "changes": {
+      "request_type": "siem_mcp",
+      "domain": null,
+      "params": {
+        "entity": {
+          "type": "ip",
+          "value": "192.0.2.10"
+        },
+        "kind": "custom",
+        "start_at": 1791849000000,
+        "end_at": 1791849600000,
+        "limit": 50
+      }
+    }
+  },
+  {
+    "schema": "evidence_request",
+    "changes": {
+      "request_type": "siem_mcp",
+      "domain": null,
+      "params": {
+        "entity": {
+          "type": "ip",
+          "value": "192.0.2.10"
+        },
+        "kind": "event",
+        "start_at": 1791849000000,
+        "end_at": 1791849600000,
+        "limit": 0
+      }
+    }
+  },
+  {
+    "schema": "evidence_request",
+    "changes": {
+      "request_type": "lookup",
+      "domain": null,
+      "params": {
+        "entity": {
+          "type": "ip",
+          "value": "192.0.2.10"
+        }
+      }
+    }
+  },
+  {
+    "schema": "evidence_request",
+    "changes": {
+      "request_type": "lookup",
+      "domain": null,
+      "params": {
+        "entity": {
+          "type": "ip"
+        },
+        "at": null
+      }
+    }
+  },
+  {
+    "schema": "evidence_request",
+    "changes": {
+      "status": "completed"
+    }
+  },
+  {
+    "schema": "evidence_request",
+    "changes": {
+      "result": {
+        "records": []
+      }
+    }
+  },
+  {
+    "schema": "evidence_request",
+    "changes": {
+      "status": "failed",
+      "failure_reason": "Synthetic timeout",
+      "result": {
+        "records": []
+      }
+    }
+  },
+  {
+    "schema": "evidence_request",
+    "changes": {
+      "request_type": "lookup",
+      "domain": null,
+      "params": {
+        "entity": {
+          "type": "ip",
+          "value": "192.0.2.10"
+        },
+        "at": null
+      },
+      "status": "completed",
+      "result": {
+        "records": []
+      }
+    }
+  },
+  {
+    "schema": "evidence_request",
+    "changes": {
+      "request_type": "lookup",
+      "domain": null,
+      "params": {
+        "entity": {
+          "type": "ip",
+          "value": "192.0.2.10"
+        },
+        "at": null
+      },
+      "status": "completed",
+      "result": {
+        "asset": null
+      }
+    }
+  },
+  {
+    "schema": "evidence_request",
+    "changes": {
+      "request_type": "siem_mcp",
+      "domain": null,
+      "params": {
+        "entity": {
+          "type": "ip",
+          "value": "192.0.2.10"
+        },
+        "kind": "event",
+        "start_at": 1791849000000,
+        "end_at": 1791849600000,
+        "limit": 50
+      },
+      "status": "completed",
+      "result": {
+        "records": [
+          {
+            "kind": "alert"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "schema": "evidence_request",
+    "changes": {
+      "status": "completed",
+      "result": {
+        "finding": {}
+      }
+    }
   }
 ]
