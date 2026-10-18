@@ -83,7 +83,7 @@ model = "my-larger-model"
 | SIEM 커넥터 | 3 | `siem` (기존 그룹을 그대로 쓰는 것을 제안) | Wazuh (초기 구현 대상, D-037), `direct`(SIEM 없이 데이터셋을 재생해 C1을 C2로 넘김. 개발·테스트·데모용, 운영 대상 아님). 운영에서는 외부 SIEM 하나를 설정으로 선택 | ELK, Splunk |
 | 별칭 표 | 4 | (파일) | 기본 시나리오 별칭 표 | 자사 SIEM 시나리오, 새 로그 형식 |
 | 룩업 제공자 | 5 | `lookups` | CSV 자산·계정 표 | CMDB, 디렉터리 서비스, 위협 인텔 평판 서비스 |
-| 저장소 백엔드 | 5, 6, 7, 10, 12, 18, 20, 22, 24 | `stores` | PostgreSQL (D-002). Event도 RDB | 다른 RDB, 별도 로그 저장소(이벤트) |
+| 저장소 백엔드 | 5, 6, 7, 10, 12, 18, 20, 22, 24 | `stores` | PostgreSQL (D-002). Event도 RDB. 구현체 이름은 `<백엔드>.<저장소 종류>`(예: `postgresql.records`, `postgresql.tickets`)이고, `[store] backend` 하나로 고르며 코어는 `soc.store.open_store(<종류>, ...)`에 종류만 넘긴다 | 다른 RDB, 별도 로그 저장소(이벤트) |
 | 벡터 저장소 | 8 | `vector_stores` | Qdrant (D-003). Ticket, Case만 | 다른 벡터 DB |
 | 임베딩 제공자 | 8 | `embedders` | bge-m3, 로컬 실행 (D-010) | 상용 임베딩 API |
 | LLM 제공자 | 11, 13, 14, 19, 23, 24 | `llm_providers` | OpenAI 호환 제공자. 데모 기본값: 서빙 도구 Ollama, 모델 `granite4:micro` (로컬 서빙, D-009) | 상용 모델, 사내 모델, 로컬 모델 |

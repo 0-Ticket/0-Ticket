@@ -122,6 +122,12 @@ class SiemSettings(_Section):
     direct: DirectSiemSettings
 
 
+class StoreSettings(_Section):
+    # Stores are registered as "<backend>.<kind>", so a dot in the name would be ambiguous.
+    backend: str = Field(pattern=r"^[a-z0-9_]+$")
+    raw_retention_days: int = Field(ge=0)
+
+
 class Settings(_Section):
     """Typed settings. Each box issue adds its own section here and in default.toml."""
 
@@ -129,6 +135,7 @@ class Settings(_Section):
     llm: LLMSettings
     mcp: McpSettings
     siem: SiemSettings
+    store: StoreSettings
 
 
 def _default_config_text() -> str:
