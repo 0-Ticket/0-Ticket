@@ -62,6 +62,14 @@ class TestPostgresEvidenceQueueContract(EvidenceQueueContract):
         return lambda: PostgresEvidenceQueue(make_connection())
 
 
+def test_queue_migrations_use_only_0040_to_0049():
+    from soc.db import discover_migrations
+
+    versions = [m.version for m in discover_migrations() if "evidence" in m.name]
+    assert versions == [40]
+    assert all(40 <= version < 50 for version in versions)
+
+
 def test_status_column_must_match_the_payload(make_connection):
     connection = make_connection()
     queue = PostgresEvidenceQueue(connection)
