@@ -1,7 +1,7 @@
 # 0-Ticket SOC
 
 **AI 에이전트가 SIEM 알럿을 판정하고, 사고 단위로 묶어 보고서를 쓰고, 알럿이 없는 위협까지 찾아내는 오픈소스 SOC 파이프라인.**
-분석가는 알럿을 하나씩 보는 대신, 에이전트가 만든 판정과 보고서를 검토하고 승인합니다.
+분석가는 알럿을 하나씩 보는 대신, 에이전트가 만든 사고 보고서를 검토하고 승인합니다.
 
 > **상태: 개발 초기.** 설계와 개발 기반을 갖추고 박스 단위로 구현하고 있습니다. 진행 상황은 [tests/checklist.md](tests/checklist.md)에서 볼 수 있습니다.
 
@@ -15,74 +15,30 @@ SOC 분석가가 받는 알럿은 대부분 오탐이고, 진짜 공격은 여�
 
 | 단계 | 에이전트가 하는 일 | 사람이 하는 일 |
 |---|---|---|
-| **L1 · 알럿 판정** | 알럿마다 공격·오탐·불명을 판정하고 근거와 확신도를 붙인다. 웹·클라우드 알럿은 전문 에이전트가 깊게 본다. | 확신이 낮거나 중요 자산과 관련된 티켓만 확인한다. |
-| **L2 · 사고 분석** | 관련 티켓을 하나의 사고로 묶고, 관계없는 것을 빼고, 빠진 단계를 로그로 채워 타임라인 보고서를 쓴다. | 보고서를 보고 실제 사고인지 승인한다. 승인된 사고는 대응을 관리한다. |
-| **L3 · 위협 헌팅** | 최근 사고(Case)와 ATT&CK 기법으로 가설을 세워 알럿이 없는 이벤트에서 이상 징후를 찾고, 기존 탐지에 없는 반복 패턴은 Sigma 탐지 룰로 제안한다. | 백테스트 결과를 보고 룰 반영을 승인한다. |
+| **수집 · 정규화** | (파이프라인) 이미 운영 중인 외부 SIEM 하나(초기 Wazuh, 확장 ELK·Splunk)에서 알럿을 가져와 OCSF로 정규화하고, 중복과 공용 엔티티를 빼고, 엔티티가 이미 사고(Incident)에 있는지에 따라 경로를 나눈다. | |
+| **L1 · 알럿 판정** | (완전 자동) 엔티티 정보를 조회해 티켓으로 올리거나 보류하고, 전문가 에이전트에게 증거를 요청해 판정한다. 확신도가 임계값 이상이면 오탐은 종결, 이상 행위는 L2로 올리고, 미만이면 보류해 헌팅 재료로 넘긴다. | 어떤 알럿이 승격·보류됐는지 조회만 한다. |
+| **L2 · 사고 분석** | 같은 엔티티의 티켓을 사고로 묶고, 사고가 바뀔 때마다 타임라인·ATT&CK 매핑·영향 범위·원인을 분석해 보고서, 대응 방안, 탐지 룰 제안을 만든다. | 보고서를 보고 승인·확정한다. 확정된 사고는 Case로 대응을 관리한다. |
+| **L3 · 위협 헌팅** | 운영자가 준 위협 시나리오, 최근 Case, L1이 보류한 건으로 가설을 세워 검증하고, 위협을 찾으면 티켓으로 L2에 넘긴다. | 위협 시나리오를 입력한다. |
 
 ## 구조
 
 ```mermaid
-%%{init: {"block": {"padding": 44}}}%%
-block-beta
-  columns 10
-  space space ES("<b>1 · Event Source</b><br/>플러그인 커넥터") space:7
-  space space RAW("<b>2 · Raw Log</b><br/>원본 보존") space:7
-  space space SIEM("<b>3 · SIEM</b>") space:4 LOG("<b>12 · Agent Log</b><br/>+ RDB · 조사 기록") space:2
-  space space OCSF("<b>4 · OCSF</b><br/>필드 정규화") LK("<b>5 · Lookup</b><br/>+ RDB · VDB") AL("<b>6 · Alert</b><br/>+ RDB · VDB") AN("<b>9 · Analyst Agent</b><br/>라우팅") TK("<b>10 · Ticket</b><br/>+ RDB · VDB") L1("<b>11 · SOC L1 Agent</b><br/>단건 분석") CL("<b>13 · Cloud Agent</b>") MCP1("<b>15 · MCP</b>")
-  space space:2 EV("<b>7 · Event</b><br/>+ 이벤트 저장소 · VDB") VDB("<b>8 · Vector DB</b><br/>유사 사례 · 지식") space COR("<b>17 · Correlation</b><br/>엔티티 + 시간") H1("<b>16 · Human</b><br/>L1 검토") WEB("<b>14 · Web Agent</b>") MCP2("<b>15 · MCP</b>")
-  RULE("<b>24 · 탐지 룰 제안</b><br/>Sigma · + RDB") space:3 L3("<b>23 · SOC L3 Agent</b><br/>위협 헌팅") space INC("<b>18 · Incident</b><br/>+ RDB · VDB") L2("<b>19 · SOC L2 Agent</b><br/>캠페인 분석") ART("<b>20 · Incident Artifact</b><br/>+ RDB · 타임라인") space
-  space:8 H2("<b>21 · Human</b><br/>L2 검토") space
-  space:8 CASE("<b>22 · Case</b><br/>+ RDB · VDB") space
-
-  ES --> RAW
-  RAW --> SIEM
-  SIEM --> OCSF
-  OCSF --> LK
-  LK --> AL
-  AL --> AN
-  AN --> TK
-  TK --> L1
-  L1 --> TK
-  L1 -- "기록" --> LOG
-  LOG --> TK
-  L1 --> CL
-  CL --> MCP1
-  L1 --> WEB
-  WEB --> MCP2
-  LK --> EV
-  AL --> VDB
-  EV --> VDB
-  VDB --> L3
-  EV --> L3
-  TK --> COR
-  COR --> INC
-  L1 -- "검토 / False" --> H1
-  H1 --> L1
-  H1 -- "True / TP" --> COR
-  L3 -- "이상 징후" --> COR
-  INC --> L2
-  L2 --> ART
-  ART --> H2
-  H2 -- "False" --> L2
-  H2 -- "True" --> CASE
-  L3 --> RULE
-  RULE -- "분석가 승인 후 반영" --> SIEM
-  CASE -- "가설 생성용" --> L3
-
-  %% 색상: 회색=수집·사람, 초록=처리 레이어, 주황=데이터 객체(+저장소), 파랑=Agent, 노랑=Vector DB
-  classDef src fill:#EDEDED,stroke:#3A3A3A,color:#1D2329
-  classDef proc fill:#D5E8D4,stroke:#82B366,color:#1D2329
-  classDef data fill:#FFE6CC,stroke:#D79B00,color:#1D2329
-  classDef agent fill:#DAE8FC,stroke:#6C8EBF,color:#1D2329
-  classDef vdb fill:#FFF2CC,stroke:#D6B656,color:#1D2329
-  class ES,RAW,SIEM,H1,H2 src
-  class OCSF,LK,COR proc
-  class AL,EV,TK,LOG,INC,ART,CASE,RULE data
-  class AN,L1,CL,WEB,MCP1,MCP2,L2,L3 agent
-  class VDB vdb
+flowchart LR
+  SIEM[("외부 SIEM 1개 (설정으로 선택)<br/>초기 Wazuh · 확장 ELK, Splunk")] -- "SIEM 커넥터" --> NORM["원본 저장 · OCSF 정규화 · Lookup"] --> BR["엔티티 분기"]
+  BR -- "Incident에 존재" --> INC["Incident"]
+  BR -- "공격 대상 시나리오: 시나리오 티켓" --> TK["Ticket"]
+  BR -- "그 외" --> L1["L1 Agent"]
+  L1 -- "승격: L1 승격 티켓" --> TK
+  L1 -- "보류" --> POOL["L3 헌팅 데이터 풀"] --> L3["L3 Agent (헌팅)"]
+  TK --> EVQ["증거 요청 → 전문가 Agent + MCP"] --> L1V["L1 판정"]
+  L1V -- "이상 행위 · 확신도 ≥ 임계값: L2 승격" --> INC
+  L1V -- "확신도 미만 · 실패: 보류" --> POOL
+  INC --> L2["L2 Agent"] --> ART["Incident Artifact · 탐지 룰 제안 · 대응 방안"] --> H["사람 승인 · 확정"] --> CASE["Case"]
+  CASE --> L3
+  L3 -- "L3 승격 티켓" --> INC
 ```
 
-24개 구성 요소의 역할과 입출력은 [docs/architecture.md](docs/architecture.md)에 있습니다.
+구성 요소의 역할과 입출력은 [docs/architecture.md](docs/architecture.md)에 있습니다. Alert·Event·Lookup·Incident는 RDB(PostgreSQL)에, Ticket·Case는 RDB와 Vector DB(Qdrant)에 둡니다.
 
 ## 특징
 
@@ -117,7 +73,7 @@ uv run pytest           # 테스트
 | 문서 | 내용 |
 |---|---|
 | [docs/product-spec.md](docs/product-spec.md) | 사용자, 시나리오, 기능 목록 |
-| [docs/architecture.md](docs/architecture.md) | 구성 요소 24개, 구현 순서 |
+| [docs/architecture.md](docs/architecture.md) | 구성 요소, 저장소, 구현 순서 |
 | [docs/extensibility.md](docs/extensibility.md) | 확장 지점과 플러그인 만드는 법 |
 | [docs/data-contracts.md](docs/data-contracts.md) | 구성 요소 사이 데이터 형식 |
 | [docs/security-policy.md](docs/security-policy.md) | 보안 원칙 |

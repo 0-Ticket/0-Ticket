@@ -118,10 +118,10 @@
 | tickets_total | int | 기간 안에 만들어진 티켓 수 |
 | tickets_awaiting_human | int | 지금 검토 대기 중인 티켓 수 |
 | l1_reviews_total | int | 기간 안의 C9 수 |
-| l1_overturned | int | 그중 `overturned`가 `true`인 수 (박스 16) |
+| l1_overturned | int | 그중 `overturned`가 `true`인 수 (v1 박스 16. v2 정리는 후속) |
 | l2_reviews_total | int | 기간 안의 C15 수 |
 | l2_rejects_by_type | dict[str, int] | `reject_type`별 반려 수 (박스 21) |
-| incident_members_by_source | dict[str, int] | 묶음 항목 `source`(`l1`, `human_l1`, `l3`)별 수 |
+| incident_members_by_source | dict[str, int] | 묶음 항목 `source`(`l1`, `human_l1`, `l3`)별 수 (v1 Correlation 기준. v2 정리는 후속) |
 | normalize_failures_by_reason | dict[str, int] | `reason`별 C12 수 (박스 4) |
 
 ## 쓰기
