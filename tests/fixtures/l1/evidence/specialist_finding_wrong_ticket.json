@@ -1,0 +1,20 @@
+{
+  "ticket_id": "tk_another_ticket",
+  "specialist": "web",
+  "question": "Did the SQL injection attempt from 203.0.113.10 succeed?",
+  "summary": "The injected search request returned 200 but no data leak is visible.",
+  "attack_type": "sqli",
+  "succeeded": "unknown",
+  "confidence": 0.6,
+  "evidence": [
+    {
+      "ref_type": "raw",
+      "ref_id": "raw_web_access.log_2",
+      "note": "Injected search request"
+    }
+  ],
+  "details": {},
+  "needs_human": false,
+  "human_reason": null,
+  "created_at": 1791849600000
+}
