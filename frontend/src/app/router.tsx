@@ -2,12 +2,18 @@ import type { RouteObject } from 'react-router';
 import { Shell } from './shell';
 import { TicketsPage } from '../pages/tickets';
 import { ReviewPage } from '../pages/review';
-
+import { DashboardPage } from '../pages/dashboard';
 import { TicketDetailPage } from '../pages/ticket-detail';
 import { IncidentsPage } from '../pages/incidents';
 import { IncidentDetailPage } from '../pages/incident-detail';
+import { CasesPage } from '../pages/cases';
+import { CaseDetailPage } from '../pages/case-detail';
+import { HuntsPage } from '../pages/hunts';
+import { HuntDetailPage } from '../pages/hunt-detail';
+import { RulesPage } from '../pages/rules';
+import { RuleDetailPage } from '../pages/rule-detail';
 
-// F1~F3 supply ticket and incident pages; later screens retain their reserved routes.
+// F1~F5 supply ticket, incident, case, hunt and rule pages; F6 is the dashboard at `/`.
 export const routes: RouteObject[] = [
   {
     element: <Shell />,
@@ -27,7 +33,9 @@ export const routes: RouteObject[] = [
     ].map((path) => ({
       path,
       element:
-        path === '/review' ? (
+        path === '/' ? (
+          <DashboardPage />
+        ) : path === '/review' ? (
           <ReviewPage />
         ) : path === '/tickets' ? (
           <TicketsPage />
@@ -37,6 +45,18 @@ export const routes: RouteObject[] = [
           <IncidentsPage />
         ) : path === '/incidents/:incident_id' ? (
           <IncidentDetailPage />
+        ) : path === '/cases' ? (
+          <CasesPage />
+        ) : path === '/cases/:case_id' ? (
+          <CaseDetailPage />
+        ) : path === '/hunts' ? (
+          <HuntsPage />
+        ) : path === '/hunts/:hunt_id' ? (
+          <HuntDetailPage />
+        ) : path === '/rules' ? (
+          <RulesPage />
+        ) : path === '/rules/:proposal_id' ? (
+          <RuleDetailPage />
         ) : null,
     })),
   },

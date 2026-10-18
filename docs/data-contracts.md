@@ -2,7 +2,20 @@
 
 박스끼리 주고받는 데이터의 필드명, 타입, 필수 여부를 고정한다. 박스를 따로 만들어도 서로 맞물리게 하기 위한 문서다.
 
-> **상태: 초안.** 박스 1~24가 주고받는 객체를 모두 정의했다. 공통 기반(구현 순서 0단계) PR에서 사람이 검토해 "확정"으로 바꾼다. 확정 후에는 아래 "바꾸는 절차"를 거쳐야만 바꿀 수 있다.
+> **상태: 초안.** v1 아키텍처의 박스가 주고받는 객체를 정의했다. 공통 기반(구현 순서 0단계) PR에서 사람이 검토해 "확정"으로 바꾼다. 확정 후에는 아래 "바꾸는 절차"를 거쳐야만 바꿀 수 있다.
+
+> **v2 불일치 (아키텍처 v2, #33).** 아래 필드는 v1 흐름 기준이라 v2(`docs/architecture.md`)와 맞지 않는다. 후속 계약 변경 이슈에서 "바꾸는 절차"로 고친다. 그전까지 필드와 enum을 말없이 바꾸지 않는다. 해당 박스를 구현할 때 먼저 계약 변경을 제안한다.
+>
+> - C6 Ticket: `handling_type`은 폐기된 Analyst Agent(9)의 라우팅 결과라 삭제한다. `specialist`는 유지하고 Web·Cloud 도메인에서 채운다. 보류·L2 승격 상태와 Ticket 출처 구분(D-038: L1 승격 / L3 승격 / 시나리오. 제안 이름 `origin` = `l1_escalated` / `l3_escalated` / `scenario`)이 없다
+> - C9 HumanReview, C6 `awaiting_human`·`awaiting_human_at`, C7 `needs_human`: v2에서 L1은 완전 자동이고 사람은 L1 결과를 조회만 한다(27). 판정 뒤집기가 없고, L1 판정 실패는 보류한다(D-036)
+> - C10 Incident: `created_by`의 `correlation`, IncidentMember `source`(`l1`, `human_l1`, `l3`), `member_type`의 `hunt`, `rule`은 폐기된 Correlation(17) 기준
+> - C10: L2 재실행이 한도(D-039)에 걸려 멈췄다는 표시가 없다. `review_state`·`review_round`와 C15 반려는 v2에서도 유지한다(D-039)
+> - C17 HuntFinding: v2에서 헌팅 결과는 Ticket(C6)으로 L2에 들어간다
+> - C18 RuleProposal: `hunt_id`·`case_id` 대신 Incident·Artifact에서 나온다. 별도 승인 `status` 대신 21의 승인에 포함된다
+> - C19 VectorDoc: 기본 컬렉션 중 `closed_incidents`, `assets`, `alerts_summary`, `events_rare`와 `source_kind`의 `incident`, `asset`, `alert`, `event`는 v2에서 VDB에 넣지 않는다
+> - C5 AlertRecord, C13 EventRecord: v2에서 Alert(6)·Event(7)는 정규화 전 원본(C2)을 불변으로 저장하고, 정규화 결과는 별도 테이블에 두어 원본을 FK로 가리킨다(D-002). 지금은 정규화 후 객체가 저장 행으로 정의되어 있다
+> - C11 IncidentArtifact·C10: L2 "증거 수집 실패" 표시(D-034)가 없다
+> - 없는 계약: 26 증거 요청 큐 항목(재시도 횟수, 실패 상태 포함), 25 분기 결과, L1 승격·보류 기록(27이 조회)
 
 ## 공통 규칙
 
@@ -64,26 +77,26 @@ Schema로 옮길 때 지킬 것:
 
 | ID | 객체 | 만드는 박스 → 쓰는 박스 |
 |---|---|---|
-| C1 | RawRecord | 1 → 2, 3 |
+| C1 | RawRecord | 1 → 2, 3 (박스 1·2는 외부. `direct` 어댑터의 재생 입력) |
 | C2 | SiemAlert | 3 → 4 |
 | C20 | AliasTable (설정) | 사람 → 4 |
 | C3 | NormalizedAlert | 4 → 5 |
 | C12 | NormalizeFailure | 4 → 사람 확인 |
 | C13 | EventRecord | 4, 5 → 7, 23 |
 | C4 | AssetInfo, UserInfo | 5 (룩업 표) |
-| C5 | AlertRecord | 5, 6 → 8, 9, 11 |
-| C6 | Ticket | 9, 10 → 11, 16, 17 |
-| C7 | Verdict | 11 → 10, 16 |
-| C8 | AgentStep | 9, 11, 13, 14, 19, 23, 24 → 12 |
-| C9 | HumanReview | 16 → 10, 17 (`tp`면 Correlation으로) |
-| C10 | Incident | 17, 18 → 19 |
+| C5 | AlertRecord | 5, 6 → 25, 11, 23, 27 |
+| C6 | Ticket | 25, 11, 23, 10 → 26, 11, 25(L2 입구), 18, 19, 27 |
+| C7 | Verdict | 11 → 10, 27 |
+| C8 | AgentStep | 11, 13, 14, 19, 23, 24 → 12 |
+| C9 | HumanReview | (v1 객체. v2에서 제거 예정. 위 "v2 불일치") |
+| C10 | Incident | 25, 18, 19 → 19 |
 | C11 | IncidentArtifact | 19 → 20, 21 |
-| C14 | SpecialistFinding | 13, 14 → 11 |
-| C15 | L2Review | 21 → 19, 22 |
-| C16 | Case | 22 → 8, 23, 24 |
-| C17 | HuntFinding | 23 → 17, 24 |
-| C18 | RuleProposal | 24 → 3 (사람 승인 후) |
-| C19 | VectorDoc | 5, 6, 7, 10, 18, 22 → 8 |
+| C14 | SpecialistFinding | 13, 14 → 11, 19 |
+| C15 | L2Review | 21 → 22 |
+| C16 | Case | 22 → 8, 23 |
+| C17 | HuntFinding | 23 (v2에서 헌팅 결과는 C6으로 L2에 들어감. 위 "v2 불일치") |
+| C18 | RuleProposal | 24 → 20, 21, 3 (사람 승인 후) |
+| C19 | VectorDoc | 10, 22 → 8 |
 
 ---
 
@@ -101,7 +114,7 @@ Schema로 옮길 때 지킬 것:
 
 ## C2 · SiemAlert
 
-SIEM 어댑터가 낸 알럿 또는 이벤트. 시나리오마다 필드명이 달라도 그대로 둔다. SIEM 없이 받을 때는 `direct` 어댑터가 C1을 이 형식으로 바꾼다.
+SIEM 어댑터가 낸 알럿 또는 이벤트. 시나리오마다 필드명이 달라도 그대로 둔다. SIEM 없이 받을 때(개발·테스트·데모용 데이터셋 재생)는 `direct` 어댑터가 C1을 이 형식으로 바꾼다.
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
@@ -208,7 +221,7 @@ Lookup 표의 한 행이자, 알럿에 붙는 정보.
 | criticality | int | ✅ | 1(낮음) ~ 5(높음) |
 | owner | str | 선택 | 담당자 |
 | zone | str | 선택 | `dmz`, `internal` 등 |
-| shared | bool | ✅ | 프록시·DNS·도메인 컨트롤러 같은 공용 자산이면 `true`. Correlation에서 묶는 기준으로 쓰지 않는다 |
+| shared | bool | ✅ | 프록시·DNS·도메인 컨트롤러 같은 공용 자산이면 `true`. 엔티티 분기(25)에서 공용 엔티티로 빼는 기준이다 |
 | valid_from | int | 선택 | 이 대응이 유효한 시작 시각 |
 | valid_to | int | 선택 | 끝 시각. `null`이면 현재까지 |
 | extensions | dict | ✅ | CMDB 등에서 가져온 추가 속성. 없으면 `{}` |
@@ -249,7 +262,7 @@ L1이 처리하는 업무 단위.
 | specialist | 등록형 | ✅ | 전문 에이전트 이름. 기본 `none`, `web`, `cloud` |
 | priority | int | ✅ | `severity_id × 대상 자산 criticality`. 대상 자산은 `dst_asset`, 없으면 `src_asset`, 둘 다 없으면 criticality 1로 계산 |
 | alert_ids | list[str] | ✅ | 하나 이상 |
-| entities | list[Entity] | ✅ | 공통 객체 Entity. Correlation이 이 값을 본다 |
+| entities | list[Entity] | ✅ | 공통 객체 Entity. 엔티티 분기(25)가 이 값을 본다 |
 | verdict | Verdict | 선택 | 판정 전에는 `null` |
 | extensions | dict | ✅ | 조직·플러그인 추가 필드. 외부 티켓 시스템 ID 등. 없으면 `{}` |
 | created_at | int | ✅ | |
@@ -289,7 +302,7 @@ L1의 판정 결과. LLM 출력이 이 형식을 통과하지 못하면 판정�
 | subject_type | enum | ✅ | `ticket`, `incident`, `hunt`. 이 단계가 속한 작업 |
 | subject_id | str | ✅ | 해당 객체 ID (`tk_`, `in_`, `ht_`) |
 | step | int | ✅ | 같은 작업 안에서 1부터 증가 |
-| agent | str | ✅ | 예: `analyst`, `l1`, `web`, `cloud`, `l2`, `l3` |
+| agent | str | ✅ | 예: `l1`, `web`, `cloud`, `l2`, `l3` |
 | action | enum | ✅ | `llm_call`, `tool_call`, `decision` |
 | tool | str | 선택 | `tool_call`일 때 도구 이름 |
 | prompt_version | str | 선택 | `llm_call`일 때 프롬프트 파일 버전 |
@@ -302,7 +315,7 @@ L1의 판정 결과. LLM 출력이 이 형식을 통과하지 못하면 판정�
 
 ## C9 · HumanReview
 
-사람의 L1 검토 결과.
+사람의 L1 판정 검토 결과(v1). v2에서는 L1 판정을 사람이 뒤집지 않으므로 제거 예정이다(위 "v2 불일치").
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
@@ -315,7 +328,7 @@ L1의 판정 결과. LLM 출력이 이 형식을 통과하지 못하면 판정�
 
 ## C10 · Incident
 
-한 캠페인으로 묶인 티켓·헌팅 결과 묶음. 모든 Incident는 Correlation(17)이 만든다.
+같은 엔티티로 엮인 Ticket 묶음. v2에서는 엔티티 분기(25)의 결과로 만들어지거나 갱신된다(박스 18). 묶음 관련 필드는 v1 Correlation 기준이다(위 "v2 불일치").
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
@@ -329,7 +342,35 @@ L1의 판정 결과. LLM 출력이 이 형식을 통과하지 못하면 판정�
 | tactics | list[str] | ✅ | ATT&CK 전술 ID. 예: `TA0001` |
 | summary | str | 선택 | L2가 채운다 |
 | members | list[IncidentMember] | ✅ | 아래 IncidentMember |
+| review_state | enum | ✅ | L2 검토 흐름 상태. `analyzing`, `awaiting_review`, `approved`, `human_handling`. 아래 "L2 검토 흐름" |
+| review_round | int | 선택 | 지금 열려 있는 L2 검토 기회의 회차. 1부터. `review_state`가 `awaiting_review`일 때만 값이 있고, 나머지 상태에서는 `null` |
 | extensions | dict | ✅ | 조직·플러그인 추가 필드. 없으면 `{}` |
+
+**L2 검토 흐름 (#21)**
+
+`status`와 `review_state`는 서로 다른 값이다. `status`는 Incident 생명주기(열림 → 조사 → 종결·Case 전환)이고,
+`review_state`는 그 안에서 L2 분석 → 사람 검토가 몇 번 오가는지를 나타낸다. 한쪽 값으로 다른 쪽을 대신하지 않는다.
+
+| review_state | review_round | 뜻 |
+|---|---|---|
+| `analyzing` | `null` | 아직 검토 기회가 열리지 않았다. L2가 분석하거나 반려 후 재분석하는 중 |
+| `awaiting_review` | 1 이상 | 지금 검토 기회가 열려 있다. 사람이 승인하거나 반려할 수 있다 |
+| `approved` | `null` | L2 검토에서 승인했다. Case 생성은 박스 22가 한다 |
+| `human_handling` | `null` | 두 번 반려되어 L2 자동 재검토를 끝냈다. 사람이 직접 처리한다 |
+
+```
+analyzing ──새 C11 검토 대상 준비──▶ awaiting_review (round n)
+awaiting_review ──approve──▶ approved
+awaiting_review ──reject (첫 번째 반려)──▶ analyzing ──재분석 후 새 검토 대상 준비──▶ awaiting_review (다음 round)
+awaiting_review ──reject (두 번째 반려)──▶ human_handling
+```
+
+- 상태를 바꾸고 회차를 부여하는 것은 코어(박스 21)다. 화면과 검토 채널은 계산하지 않는다.
+- 첫 검토 기회는 round 1이다. 새 기회가 열릴 때마다 코어가 다음 회차를 부여하며, 같은 Incident에서 회차는 단조 증가한다.
+- 검토 기회 하나에는 검토(C15)가 하나만 남는다. 처리된 기회에는 다시 제출할 수 없다.
+- `human_handling`은 L2 자동 검토 흐름의 끝일 뿐, Incident 생명주기의 끝이 아니다. 그 뒤 Case로 넘길지 종결할지는 `status`와 박스 22가 정한다. 이 상태에서는 새 L2 검토 기회를 열지 않는다.
+- 반려 후 `analyzing`으로 돌아가 재분석하는 동안 `status`는 `investigating`을 유지한다. 이 흐름은 `status` 값이나 전이를 바꾸지 않는다.
+- 화면은 검토 건수, C15 `round`, C11 `generated_at`, 그 밖의 시각으로 새 검토 기회를 추론하지 않는다. `review_state`와 `review_round`만 본다.
 
 **IncidentMember**
 
@@ -415,8 +456,18 @@ L2의 분석 결과물. 사람이 읽는 보고서는 이 객체로부터 만든
 | decision | enum | ✅ | `approve`, `reject` |
 | reject_type | enum | 선택 | `wrong_grouping`, `missing_step`, `wrong_conclusion`. `reject`면 필수 |
 | comment | str | 선택 | `reject`면 필수 |
-| round | int | ✅ | 같은 Incident의 몇 번째 검토인지. 1부터 |
+| round | int | ✅ | 이 검토가 처리한 검토 기회의 회차. 1부터. 코어가 그 기회의 C10 `review_round`를 기록한다. 요청 값이 아니다 |
 | created_at | int | ✅ | |
+
+검토와 관련된 값은 다섯 가지이고 서로 다르다.
+
+| 값 | 위치 | 뜻 | 누가 정하나 |
+|---|---|---|---|
+| `status` | C10 | Incident 생명주기 | 코어(박스 18, 22) |
+| `review_state` | C10 | L2 검토 흐름 상태 | 코어(박스 21) |
+| `review_round` | C10 | 지금 열려 있는 검토 기회의 회차 | 코어(박스 21) |
+| `expected_review_round` | 검토 요청 본문 | 요청이 답하는 검토 기회. 그 기회가 아직 열려 있는지 확인하는 사전 조건이며 계약 객체에 저장하지 않는다(`docs/api-contracts.md`) | 화면이 받은 `review_round`를 그대로 보냄 |
+| `round` | C15 | 이 검토가 실제로 처리한 회차 | 코어(박스 21)가 기록 |
 
 ## C16 · Case
 
@@ -457,7 +508,7 @@ L3 헌팅 한 번의 결과.
 | evidence | list[Evidence] | ✅ | 찾은 근거. `ref_type`은 주로 `event`. 없으면 `[]` |
 | is_anomaly | bool | ✅ | 이상 징후로 판단했으면 `true` |
 | severity_id | int | ✅ | 0~6 (C3와 같은 척도). L3가 이상 징후의 심각도를 정한다. `is_anomaly`가 `false`면 0(Unknown) |
-| incident_id | str | 선택 | Correlation이 Incident로 묶었으면 그 ID |
+| incident_id | str | 선택 | Incident로 묶였으면 그 ID (v1 Correlation 기준) |
 | rule_candidate | bool | ✅ | 반복 가능한 패턴이라 룰 제안으로 넘길지 |
 | needs_human | bool | ✅ | 사람 확인이 필요하면 `true`. LLM 출력 실패 처리는 `docs/llm-policy.md` 4항 |
 | human_reason | str | 선택 | `needs_human`이 `true`일 때 이유 |
@@ -569,6 +620,7 @@ CI와 테스트가 재생성 결과를 검증한다. 생성 폴더는 생성기�
 - 고정 enum, 명시된 숫자 범위·목록 최소 길이·문자열 최대 길이·ID 접두어를 검사한다.
 - `extensions`는 추가 값을 허용하되 키는 `<조직 또는 플러그인>.<필드>` 형식이다.
 - `if`/`then`: 뒤집기 사유, 반려 유형·코멘트, 멤버 종류별 ID, 제외 사유,
+  C10의 `review_state`와 `review_round` 짝(`awaiting_review`일 때만 1 이상 정수),
   `needs_human` 사유, AgentStep의 작업 종류별 필드·주체 ID, 알럿 별칭 표 조건,
   C17의 `is_anomaly`가 `false`일 때 `severity_id`가 0인 조건.
 - `anyOf`: C3·C5의 출발지·목적지·호스트 중 하나, C18의 헌팅·Case 근거 중 하나.
@@ -584,8 +636,8 @@ TypeScript는 런타임 검증기가 아니며, Pydantic도 루트 조건을 대
 
 후속 박스에서 구현할 비즈니스 검증은 K55의 미완료 부분으로 남긴다.
 원문 해시 대조(2), 별칭 적용·변환 실패 처리(4), 시점별 자산 매칭(5),
-중복 집계(6), 컬렉션별 원본 종결 여부(8), 우선순위·상태 전이(9·10),
+중복 집계(6), 컬렉션별 원본 종결 여부(8), 우선순위·상태 전이(10),
 근거 ID 실재 여부·등록형 값의 등록 여부·LLM 실패 처리(관련 박스),
-조사 단계 순번(12), 뒤집기 여부 계산(16), 실제 묶음·심각도 계산(17·18),
-타임라인 정렬(19), 검토 회차·재반려 처리(21), 승인 후 Case 생성(22),
+조사 단계 순번(12), 뒤집기 여부 계산(v1 16), 실제 묶음·심각도 계산(25·18),
+타임라인 정렬(19), 검토 흐름 상태 전이·회차 부여·같은 기회 중복 제출 거부(21), 승인 후 Case 생성(22),
 룰 검사·백테스트·배포 승인(24)이 해당한다.

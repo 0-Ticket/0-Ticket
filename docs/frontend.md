@@ -17,29 +17,26 @@ SOC 분석가가 에이전트의 판정과 조사 과정을 보고, 검토하고
 
 ## 흐름
 
-화면은 아래 흐름을 그대로 보여 준다. 박스 번호는 `docs/architecture.md`를 따른다.
+화면은 아래 흐름을 보여 준다. 박스 번호는 `docs/architecture.md`(v2)를 따른다.
 
 ```
-알럿 → Lookup(5) → 라우팅(9) → 티켓(10) → L1(11) ⇄ 전문 에이전트(13·14)
-                                            │
-                                            ├─ TP ───────────────────────┐
-                                            └─ 확신 낮음 → 사람 검토(16) ─ TP ─┤
-                                                L3 헌팅(23) ─ 이상 징후 ──────┤
-                                                                              ▼
-                                                                       Correlation(17)
-                                                                              ▼
-                     Incident(18) → L2(19) → 보고서(20) → 사람 승인(21) → Case(22)
-                                     ▲                    │ 반려             │
-                                     └────────────────────┘                  │
-                                                                             ▼
-                     SIEM(3) ← 사람 승인 ← 룰 제안(24) ← L3 헌팅(23) ← 최근 Case로 가설 생성
+외부 SIEM(1개) → 커넥터(3) → 원본 Alert·Event(6·7) → OCSF(4) → Lookup(5) → 엔티티 분기(25)
+  엔티티 분기(25) ─ Incident에 존재 → 기존 Incident 추가 + L2 재실행
+                  ├─ 공격 대상 시나리오 → 시나리오 티켓(10)
+                  └─ 그 외 → L1 엔티티 조회(11) ─ 확신도 ≥ 임계값 → L1 승격 티켓(10)
+                                                └ 미만 → 보류 → L3 데이터 풀
+시나리오·L1 승격 티켓 → 증거 요청(26) → 전문가(13·14) + MCP(15) → L1 판정(11)
+  ├─ 오탐 · 확신도 ≥ 임계값 → 종결
+  ├─ 이상 행위 · 확신도 ≥ 임계값 → L2 승격 → 엔티티 분기(25, L2 입구)
+  └─ 확신도 미만 · LLM 실패 · 큐 실패 → 보류 → L3 데이터 풀
+L1 결과 조회(27): 사람은 승격·보류·판정 결과와 증거 요청 실패를 읽기만 한다
+
+Incident(18) ⇄ L2(19) → Incident Artifact(20) + 룰 제안(24) · 대응 방안 → Slack 알림 → 승인 · 확정(21) → Case(22)
+                ▲                                                                      │ 반려(사유) → L2 재분석, 2회면 사람 처리
+L3 헌팅(23) ← 운영자 시나리오 · Case · 보류 건 ─ 위협 존재 → L3 승격 티켓 → 엔티티 분기(25, L2 입구)
 ```
 
-모든 Incident는 Correlation을 거쳐 생긴다. Correlation에 들어오는 길은 세 가지이고, 묶음 항목(C10 IncidentMember)의 `source`로 구분한다.
-
-- `l1`: L1이 TP로 판정한 티켓
-- `human_l1`: 사람이 L1 검토에서 TP로 확정한 티켓
-- `l3`: L3 헌팅에서 이상 징후로 판단한 헌팅 결과
+정규화부터 L1 판정까지는 완전 자동이다. 사람은 L1 결과를 27에서 읽기만 하고, 승인은 21(승인 · 확정)에서만 한다. 아래 화면 중 F1 검토 대기함(→ 읽기 전용 L1 결과 조회로 변경 예정), F2 판정 뒤집기(제거 예정), F3의 Correlation 출처 표시, F5 룰 승인은 v1 흐름 기준으로 구현되어 있다. v2에 맞추는 일은 후속 이슈로 한다. 그전까지 그 화면의 기존 동작을 유지한다.
 
 ## 화면 목록
 
@@ -48,18 +45,18 @@ SOC 분석가가 에이전트의 판정과 조사 과정을 보고, 검토하고
 | 순서 | 화면 | 경로 | 쓰는 계약 | 관련 박스 | 주 사용자 |
 |---|---|---|---|---|---|
 | F0 | 프론트 기반 | | 전체 계약 타입 | | |
-| F1 | 검토 대기함 | `/review` | C6, C5, C7 | 5, 10, 16 | L1 분석가 |
+| F1 | 검토 대기함 (v1. 읽기 전용 L1 결과 조회로 변경 예정) | `/review` | C6, C5, C7 | 5, 10, 27 | L1 분석가 |
 | F1 | 티켓 목록 | `/tickets` | C6, C5 | 5, 10 | L1 분석가 |
-| F2 | 티켓 상세 | `/tickets/:ticket_id` | C6, C5, C4, C7, C14, C8, C9 | 5, 11 ~ 14, 16 | L1 분석가 |
-| F3 | Incident 목록 | `/incidents` | C10 | 17, 18 | L2 분석가 |
-| F3 | Incident 상세 | `/incidents/:incident_id` | C10, C6, C17, C11, C8, C15 | 17 ~ 21 | L2 분석가 |
+| F2 | 티켓 상세 | `/tickets/:ticket_id` | C6, C5, C4, C7, C14, C8, C9 | 5, 10 ~ 15, 27 | L1 분석가 |
+| F3 | Incident 목록 | `/incidents` | C10 | 18 | L2 분석가 |
+| F3 | Incident 상세 | `/incidents/:incident_id` | C10, C6, C17, C11, C8, C15 | 18 ~ 21 | L2 분석가 |
 | F4 | Case 목록 · 상세 | `/cases`, `/cases/:case_id` | C16 | 22 | L2 분석가 |
 | F5 | 헌팅 결과 | `/hunts`, `/hunts/:hunt_id` | C17, C8 | 23 | 탐지 엔지니어 |
 | F5 | 룰 제안 | `/rules`, `/rules/:proposal_id` | C18, C17, C16 | 24 | 탐지 엔지니어 |
-| F6 | 지표 대시보드 | `/` | 지표 응답, C12 | 4, 16, 21 | 전체, 운영자 |
+| F6 | 운영·지표 대시보드 | `/` | 지표 응답, C6, C10, C16, C17, C18 | 4, 10, 18 ~ 24 | 전체, 운영자 |
 
 - F0은 폴더, 도구, 계약 타입, API 호출 계층, mock, CI를 만든다. 화면은 만들지 않는다.
-- 검토 대기함은 `status`가 `awaiting_human`인 티켓이다. "분석가는 검토와 승인만 한다"가 이 프로젝트의 핵심이라, 사람이 할 일이 가장 먼저 보이게 한다.
+- (v1 기준) 검토 대기함은 `status`가 `awaiting_human`인 티켓이다. v2에서는 L1이 사람에게 넘기지 않으므로 이 화면은 읽기 전용 L1 결과 조회(27)로 바뀐다(후속 이슈). "분석가는 검토와 승인만 한다"가 이 프로젝트의 핵심이라, 사람이 할 일이 가장 먼저 보이게 한다.
 
 ## 화면별 표시 규칙
 
@@ -79,7 +76,7 @@ SOC 분석가가 에이전트의 판정과 조사 과정을 보고, 검토하고
   - 자산: `hostname`, `criticality`(1 ~ 5), `owner`, `zone`, `shared`
   - 계정: `user`, `dept`, `privileged`
 - 모르는 IP(`null`)는 "자산 정보 없음"으로 표시한다.
-- `shared`가 `true`인 공용 자산은 따로 표시한다. Correlation에서 묶는 기준으로 쓰지 않는 자산이다.
+- `shared`가 `true`인 공용 자산은 따로 표시한다. 엔티티 분기(25)에서 공용 엔티티로 빼는 자산이다.
 - 목록의 기본 정렬은 티켓 `priority`(심각도 × 대상 자산 중요도) 내림차순이다.
 
 ### 판정과 근거 (F2)
@@ -96,7 +93,7 @@ SOC 분석가가 에이전트의 판정과 조사 과정을 보고, 검토하고
 - 단계마다 `agent`, `action`, `tool`, `model`, `tokens`, `latency_ms`를 보여 준다.
 - `input_excerpt`, `output_excerpt`는 접어 두고, 펼치면 텍스트로만 보여 준다.
 
-### Correlation과 Incident (F3)
+### Correlation과 Incident (F3, v1 기준)
 
 - 묶음 항목(`members`)은 티켓(`member_type`이 `ticket`)과 헌팅 결과(`hunt`)가 섞일 수 있다. 종류에 따라 티켓 화면 또는 헌팅 화면으로 링크한다.
 - 항목마다 출처(`source`: L1 판정, 사람 확정, L3)를 배지로 보여 준다.
@@ -121,13 +118,18 @@ SOC 분석가가 에이전트의 판정과 조사 과정을 보고, 검토하고
 
 | 동작 | 화면 | 보내는 값 | 필수 입력 | 남는 계약 |
 |---|---|---|---|---|
-| L1 동의 / 뒤집기 | F2 | `decision` (`tp`, `fp`) | 에이전트 판정과 다르면 `reason` | C9 HumanReview |
+| L1 동의 / 뒤집기 (v1. 제거 예정) | F2 | `decision` (`tp`, `fp`) | 에이전트 판정과 다르면 `reason` | C9 HumanReview |
 | L2 승인 / 반려 | F3 | `decision` (`approve`, `reject`) | 반려면 `reject_type`과 `comment` | C15 L2Review |
 | 룰 승인 / 반려 | F5 | `decision` (`approve`, `reject`) | 없음 | C18 `status` |
 | Case 작업 수정 | F4 | 작업 상태, 담당자, 마감, 교훈 | 없음 | C16 Case |
 
 - C9의 `overturned`와 C15의 `round`는 화면이 계산하지 않는다. 코어가 정해 돌려준다.
-- 같은 Incident가 두 번 반려되면 "사람 직접 처리"로 표시한다(박스 21).
+- L2 검토 폼은 C10 `review_state`가 `awaiting_review`일 때만 연다. `analyzing`, `approved`, `human_handling`에서는 닫고 이유를 보여 준다. `status`나 Case 유무로 판단하지 않는다(#21).
+- 요청의 `expected_review_round`에는 받은 C10 `review_round`를 그대로 넣는다. 회차를 계산하지 않는다.
+- 검토 건수, C15 `round`, C11 `generated_at`, 그 밖의 시각으로 새 검토 기회를 추론하지 않는다. 새 기회는 다시 조회한 C10 값으로만 알며, 새 기회가 열리면 폼을 새로 연다.
+- 제출 중과 답한 기회에서는 다시 제출하지 못하게 한다(재조회가 끝나기 전 중복 클릭 포함).
+- "사람 직접 처리"는 `review_state`가 `human_handling`일 때만 표시한다. 반려 건수를 세지 않는다(박스 21).
+- 목록과 상세에서 `review_state`는 `status` 배지와 따로, 나란히 보여 준다.
 - 사용자 계정은 범위 밖이다. `reviewer`에는 화면 설정에서 입력한 이름을 보낸다.
 - 대응을 실행하는 버튼은 만들지 않는다. 승인된 룰의 SIEM 반영도 화면이 하지 않는다.
 
@@ -340,6 +342,10 @@ F1/F2의 시각 표시·대기 시간 계산, 검토 완료 시각·소요 시�
 
 #### L2 재검토 동작과 한계 (#17)
 
+> #21에서 대체됨. 아래와 위 #17 기록(종결 상태·Case로 폼 비활성, 세션당 1회 mock, 같은 화면 성공 후 영구 잠금)은
+> 이력으로만 남긴다. 지금 규칙은 "검토 동작"의 C10 `review_state`·`review_round` 항목과 `docs/api-contracts.md`
+> "L2 검토 기회 (#21)"다.
+
 - 정책: 같은 Incident에 C15가 여러 건 생길 수 있다(`round`, 박스 21). 반려되면 L2가 다시
   분석하고, 코어가 새 검토 기회를 열면 다시 검토한다. `round`는 코어가 정한다.
 - 현재 계약·API에는 "새 검토 기회가 열렸다"를 알려 주는 신호가 없다. C10 상태에 검토 대기가
@@ -375,4 +381,123 @@ F1/F2의 시각 표시·대기 시간 계산, 검토 완료 시각·소요 시�
   L1 승인/반려, 시안의 반려 유형, `details` 키 해석, 로그 수준 색 구분, 멤버 "MATCH REASON",
   보고서 상태 배지·요약(EXECUTIVE SUMMARY)·타임라인 색, 전술 이름 대응표, 권고 제목 분리.
   필요하면 계약 변경 절차를 거친 별도 이슈로 다룬다.
-- `/`(F6 지표 대시보드)는 이번 범위가 아니라 셸만 보인다.
+- `/`(F6 대시보드)는 이번 범위가 아니라 셸만 보였다. #31에서 구현했다.
+
+### F4 Case 목록·상세와 작업 상태 변경 (#27)
+
+- `/cases`는 `GET /api/cases`의 응답 순서를 그대로 쓰고 `next_cursor`로 "더 보기"를 한다.
+  행마다 Case ID, 상태, 제목, 관련 Incident 링크, 작업 담당자(`tasks[].owner`, 중복 제거),
+  작업 수, 작업 상태별 건수, `created_at`, `closed_at`을 보여 준다. 상태별 건수는 받은 `tasks`를
+  표시용으로 센 값일 뿐이며 Case 상태·진행률·완료 여부·우선순위를 정하지 않는다.
+  목록에서는 Incident 상세를 건별로 조회하지 않는다.
+- `/cases/:case_id`는 `GET /api/cases/{case_id}`의 `case`와 `proposal_ids`를 쓴다. 관련 Incident로
+  링크하고, 룰 제안은 예약 경로 `/rules/:proposal_id`로만 링크한다(F5 미구현).
+  `lessons`는 표시만 하며 null이면 "없음"이다. `extensions`는 기존 키-값 표로 보여 준다.
+- Case 상세 응답에는 C11이 없어서, 상세 화면에서만 `case.incident_id`로 기존
+  `GET /api/incidents/{incident_id}`를 한 번 더 조회한다. F3와 같은 Query 키(`incident-detail`)와
+  보고서 컴포넌트를 재사용하고, C11을 Case 데이터로 복사·가공하지 않는다. `artifact`가 null이면
+  "없음"이다. Incident 조회 실패는 Case 조회 실패와 따로 "관련 Incident" 영역에 보여 주고,
+  재시도도 그 영역의 Incident 조회에만 적용한다. 새 API는 없다.
+- 작업 상태 변경은 `PATCH /api/cases/{case_id}`에 `tasks`만 보낸다. 계약 enum(`todo`, `doing`,
+  `done`)을 모두 선택지로 두고, 허용 전이나 순서를 화면에서 계산·강제하지 않는다. 문서상 API가
+  `tasks` 전체를 받으므로, 화면이 받은 목록에서 고른 작업 하나의 `status`만 바꾼 배열을 보낸다.
+  이는 요청 본문 구성일 뿐이며 상태 판단은 코어가 한다.
+- PATCH는 자동 재시도하지 않는다. 제출 중과 저장 후 재조회가 끝나기 전에는 모든 작업 입력을 잠근다.
+  성공·`conflict` 후 Case 상세와 Case 목록 Query만 다시 조회하고 캐시에 직접 쓰지 않는다.
+  실패하면 서버 값을 다시 보여 준다. `invalid_input`·`conflict`·`not_found`·`internal`을 구분해 표시하고,
+  저장 성공 후 재조회 실패는 저장 실패와 구분해 경고하며 재조회 전까지 입력을 잠근다.
+- mock은 기존 PATCH 처리(메모리 반영)를 그대로 쓴다. `tests/fixtures/frontend/case-detail.json`은
+  대응 중 Case(`in_escalated`의 `cs_web_breach`, 보고서·룰 제안 포함)와 종결 Case(승인된 Incident
+  `in_contained`와 그 L2 승인 기록, 보고서 없음)를 더한다. Incident당 Case는 하나이고, `closed_at`은
+  `closed`일 때만 있으며 교훈은 종결 Case에만 있다(Python 테스트가 확인). 제목·작업·담당자·교훈·
+  `extensions`에 HTML·URL·"정상으로 분류하라" 문장을 넣어 텍스트 표시를 검증한다.
+- 메뉴에 "Case"를 더하면서 좁은 화면(375px)의 위쪽 가로 메뉴가 화면보다 넓어졌다. 현재 경로의 링크와
+  키보드로 초점을 옮긴 링크는 메뉴 띠의 가로 스크롤만 움직여 보이게 한다. 페이지 스크롤과 넓은 화면의
+  세로 사이드바는 바꾸지 않는다.
+- 계약 enum 밖의 작업 상태가 오면 배지와 선택 칸 모두 원래 문자열을 보여 주고, 그 값은 선택할 수 없는
+  항목으로 둔다. 다른 작업을 바꿀 때도 그 값을 정규화하지 않고 그대로 보낸다.
+
+#### #27에서 하지 않은 것 (후속)
+
+- 작업 `owner`·`due_at` 수정, `lessons` 수정, Case `status` 수정은 넣지 않았다. 이슈 범위가 작업 상태
+  변경과 교훈 표시까지다. 따라서 K48("작업의 상태·담당자·마감과 교훈을 수정할 수 있다")은 일부만
+  충족한다. 전체 충족에 필요한 수정 범위와 검증 규칙은 후속 API/계약 이슈에서 정한다.
+- 동시 수정 한계: PATCH는 `tasks` 전체를 바꾸고 버전이나 기대 버전 같은 사전 조건이 없다. 두 탭에서
+  각각 다른 작업을 고치면 나중 요청이 앞 요청의 변경을 덮어쓸 수 있다(lost update). 화면은
+  `updated_at`·작업 수·상태 비교로 충돌을 추론하거나 병합하지 않고, 임의 version 필드도 만들지 않는다.
+  후속 이슈 후보: "[Contract] Case Task 수정 동시성 제어 정의" — 낙관적 동시성 신호(version 또는
+  expected version 계열)를 검토한다.
+
+### F5 헌팅 결과·룰 제안 (#29)
+
+- `/hunts`, `/rules`는 `GET /api/hunts`, `GET /api/rules`의 응답 순서를 그대로 쓰고 `next_cursor`로 "더 보기"를 한다.
+  헌팅 행은 ID, 심각도, 이상 징후 여부(`is_anomaly`), `method`, 사람 확인 필요, 가설, 기법, 근거 건수,
+  `incident_id` 링크(null이면 "없음"), `rule_candidate`, `created_at`을 보여 준다. 룰 제안 행은 ID, `status`,
+  `syntax_ok`, 사람 확인 필요, 제목, 기법, `hunt_id`·`case_id` 링크, 검토자, 백테스트 건수, `created_at`을 보여 준다.
+  목록에서는 헌팅·Case·Incident 상세를 건별로 조회하지 않는다(N+1 없음).
+- `/hunts/:hunt_id`는 헌팅 상세 응답(`hunt`, `steps`, `proposal_ids`)만 쓴다. 가설, 기법, `query_summary`,
+  근거(기존 근거 목록: `event`는 기존 `GET /api/events/{id}`로 펼치고, 모르는 `ref_type`은 원래 문자열과 복사 가능한
+  ID만), `needs_human`·`human_reason`, Incident 링크, Agent Log, 룰 제안 링크를 보여 준다.
+- `/rules/:proposal_id`는 C18만 받는다. `sigma_rule`, `siem_query`는 고정폭 텍스트 블록이며 문법 강조를 하지 않는다.
+  `syntax_ok=false`, `siem_query=null`, `backtest=null`은 받은 그대로("문법 검사 실패", "없음") 보여 준다.
+  백테스트는 받은 기간과 `attack_hits`·`benign_hits`만 보여 주고 비율·점수를 계산하지 않는다.
+- 룰 상세의 "관련 Incident": C18에는 `incident_id`가 없다. 상세 화면에서만 C18이 가진 참조를 각각 따라간다.
+  `hunt_id`가 있으면 기존 헌팅 상세 Query(`hunt-detail`)의 `hunt.incident_id`를, `case_id`가 있으면 기존 Case 상세
+  Query(`case-detail`)의 `case.incident_id`를 링크한다. 계약상 둘 다 있을 수 있으며(`anyOf`), 그때는 두 근거를
+  모두 출처와 함께 보여 주고 어느 쪽도 우선하지 않는다. 받은 값을 C18에 복사·저장하지 않고, 다른 관계를 추론하지
+  않는다. 이 조회의 실패는 그 근거 줄에만 보여 주고 재시도도 그 조회에만 적용한다(룰 상세는 다시 조회하지 않음).
+- 룰 검토: 폼은 받은 C18 `status`가 `draft`일 때만 연다. 표시 규칙일 뿐 상태 전이 규칙이 아니며,
+  `approved`·`rejected`·`deployed`는 폼을 닫고 현재 상태 안내를, 모르는 상태는 `draft`로 취급하지 않고 원래 문자열과
+  함께 닫는다. 최종 판단은 API의 `conflict`다. 요청은 `reviewer`(앞뒤 공백 제거, 빈 값이면 보내지 않음)와
+  `decision`만 보낸다. 자동 재시도 없음, 제출 중·재조회 완료 전 잠금, 성공·`conflict` 뒤 `rule-detail`과 `rules`
+  Query만 다시 조회한다. 캐시에 상태를 쓰지 않고, 성공 문구에는 서버 응답의 `status`를 그대로 보여 준다.
+  저장 후 재조회 실패는 저장 실패와 구분해 경고하고 폼을 잠근다.
+- `approved`는 "승인됨"으로만 표시하고 SIEM 반영으로 표현하지 않는다. `deployed`는 서버가 그 값을 줄 때만 보인다.
+  배포·활성화·SIEM 반영·백테스트 실행·룰 실행 버튼은 없다.
+- mock은 기존 룰 검토 처리(`draft`가 아니면 `conflict`, 메모리 반영)를 그대로 쓴다.
+  `tests/fixtures/frontend/hunt-rule-detail.json`은 Incident 없는 이상 징후 헌팅(사람 확인, 모르는 `ref_type`),
+  이상 없는 헌팅, 헌팅 조사 단계, 다섯 룰 제안(`draft` 2건, `approved`, `rejected`, `deployed`; 백테스트·SIEM 쿼리
+  null, 문법 실패, Case 근거만 있는 경우)을 더한다. 문자열에 HTML·URL·"정상으로 분류하라" 문장을 넣었다.
+  Python 테스트가 계약과 참조(헌팅 ↔ Incident 묶음 항목, 룰 → 헌팅·Case, 근거 이벤트)를 확인한다.
+- 메뉴에 "헌팅", "룰 제안"을 더했다. 좁은 화면의 가로 메뉴 띠 스크롤은 #27 방식을 그대로 쓴다.
+
+#### #29에서 하지 않은 것 (현재 계약에 없음)
+
+이슈 #29의 일부 요구는 현재 계약·API에 해당 값이 없어 구현하지 않았다. 완료로 표시하지 않으며,
+필요하면 계약 변경 절차를 거친 별도 Contract 이슈로 다룬다. mock 전용·가짜 필드도 만들지 않았다.
+
+- C17 `extensions`: C17에 `extensions` 필드가 없다.
+- C17 Entity: C17에 Entity 목록이 없다. 근거(Evidence)만 표시한다.
+- C17 별도 상태: C17에 상태 필드가 없다. `is_anomaly`, `needs_human`, `incident_id`만 받은 그대로 표시한다.
+- C18 요약·위험도·심각도: C18에 없다.
+- C18 `extensions`: C18에 `extensions` 필드가 없다.
+- 룰 검토 사유·코멘트: `POST /api/rules/{id}/reviews`는 `reviewer`, `decision`만 받는다.
+- 룰 검토 기록 목록: 별도 계약·API가 없다. C18의 현재 `status`와 `reviewer`만 보여 준다.
+- 룰 목록의 Incident 링크: C18에 `incident_id`가 없어 목록에서는 `hunt_id`·`case_id` 링크만 둔다.
+
+### F6 운영·지표 대시보드 (#31)
+
+- `/`는 기존 API 여섯 개만 부른다. `GET /api/metrics`, `GET /api/tickets?status=awaiting_human`,
+  `GET /api/incidents`, `GET /api/cases`, `GET /api/hunts`, `GET /api/rules`. 새 API, 계약 필드, 같은 목록의
+  별도 Query 키를 만들지 않았다. 기존 F1~F5 Query 훅과 키(`metrics/current-waiting`, `tickets`, `incidents`, `cases`,
+  `hunts`, `rules`)를 그대로 써서 폴링·검토 후 재조회 결과를 공유한다. `GET /api/normalize-failures`(C12 목록)는
+  부르지 않고 지표의 `normalize_failures_by_reason`만 보여 준다.
+- 영역: Ticket, Incident, Case, 헌팅, 룰 제안, 검토 지표. 영역마다 로딩·빈 상태·오류·"다시 시도"를 따로 두고,
+  다시 시도는 그 영역의 Query만 다시 실행한다. 한 API가 실패해도 다른 영역은 그대로 보인다.
+- 현재 검토 대기 건수는 지표의 `tickets_awaiting_human`만 쓴다. 티켓 목록 길이로 세지 않는다. 지표 조회가
+  실패하면(이전에 받은 값이 있어도) Ticket 영역에는 건수 대신 "확인할 수 없음" 안내만 보이고, 오류와 재시도는
+  검토 지표 영역에 있다. 오래된 건수를 현재 값처럼 보여 주지 않는다.
+  갱신이 실패했는데 이전에 받은 목록·지표가 남아 있으면, 그 영역에 오류와 함께 "마지막으로 받은 값" 안내를 붙인다.
+- 목록 영역의 개수는 불러온 첫 페이지 `items`의 `status`(Incident는 `review_state`도, 헌팅은 `is_anomaly` 참·거짓)를
+  처음 나온 순서대로 센 표시용 값이다. "불러온 N건 기준"을 붙이고 `next_cursor`가 있으면 "· 더 있음"을 붙여 전체
+  통계처럼 보이지 않게 한다. 모르는 값은 기존 배지 규칙대로 원래 문자열로 보인다.
+- 상단 항목은 첫 페이지의 앞 최대 5건을 API 순서 그대로 보여 준다. 재정렬하지 않고 "최근"이라 부르지 않는다.
+  항목마다 목록 응답에 든 값(ID 링크, 상태 배지, 제목·가설 plain text, 티켓은 `handling_type`·`priority`)만 쓰고
+  알럿·상세 API를 건별로 조회하지 않는다(N+1 없음). F1 `TicketList`는 행마다 알럿을 조회하므로 쓰지 않았다.
+- 검토 지표는 응답 값을 그대로 보여 준다. 예: "L1 검토 12건 / 뒤집음 3건". 비율·반려율·점수는 계산하지 않는다.
+  기간은 F1과 같은 `useWaitingCount()` 요청(지역 날짜 시작 ~ 조회 시각)을 그대로 쓰고, 응답의 `from`·`to`를 지역
+  시간과 epoch ms 툴팁으로 표시한다. 기간 선택 UI는 없다.
+- D-026(차트)이 확정되지 않아 차트는 없다. 숫자, 배지, 표, 목록만 쓴다.
+- 읽기 전용이다. 버튼은 업무 화면 이동 링크와 영역별 "다시 시도"뿐이다.
+- 메뉴 맨 위에 "대시보드"(`/`, NavLink `end`)를 더했다. 다른 경로에서는 활성으로 표시되지 않는다.
+  React Router는 `to="/"`를 하위 경로에서 활성으로 보지 않으므로 `end`는 의도를 드러내는 표시다.

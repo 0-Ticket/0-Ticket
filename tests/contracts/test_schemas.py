@@ -201,3 +201,34 @@ def test_empty_lists_follow_min_items(name):
 def test_hunt_severity(anomaly, severity, valid):
     value = fixture("hunt_finding") | {"is_anomaly": anomaly, "severity_id": severity}
     assert validator("hunt_finding").is_valid(value) == valid
+
+
+@pytest.mark.parametrize(
+    "state,round_,valid",
+    [
+        ("awaiting_review", 1, True),
+        ("awaiting_review", 3, True),
+        ("awaiting_review", None, False),
+        ("awaiting_review", 0, False),
+        ("analyzing", None, True),
+        ("analyzing", 1, False),
+        ("approved", None, True),
+        ("approved", 1, False),
+        ("human_handling", None, True),
+        ("human_handling", 2, False),
+        ("analyzing", 0, False),
+        ("example.custom", None, False),
+    ],
+)
+def test_incident_review_state_round_pairing(state, round_, valid):
+    value = fixture("incident") | {"review_state": state, "review_round": round_}
+    assert validator("incident").is_valid(value) == valid
+
+
+def test_incident_review_state_is_closed_enum_like_status():
+    # review_state is a fixed workflow enum like C10 status, not a registered value.
+    props = schemas()["incident.schema.json"]["properties"]
+    assert "incident" not in REGISTERED
+    for field in ("status", "review_state"):
+        assert props[field]["type"] == "string"
+        assert "enum" in props[field]

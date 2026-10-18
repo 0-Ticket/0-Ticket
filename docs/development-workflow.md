@@ -37,7 +37,9 @@
 ├── CONTRIBUTING.md #추후 외부 인원이 기여할 때 확인할 문서
 ├── contracts/ #계약 원본 JSON Schema. 여기서 Python·TypeScript 코드를 생성 (생성된 코드는 직접 수정 금지)
 ├── src/soc/ #백엔드 코드가 위치할 예정 (화면용 API는 src/soc/api/)
-├── frontend/ #웹 화면 코드가 위치할 예정 (F0에서 만듦)
+├── frontend/ #웹 화면 코드 (F0에서 만듦)
+│   ├── AGENTS.md #화면 작업에만 적용되는 AI 지침 (루트 AGENTS.md에 더해 읽음)
+│   └── CLAUDE.md #Claude Code가 frontend/AGENTS.md를 따르도록 연결하는 파일
 ├── tests/ #테스트 관련 문서
 │   ├── checklist.md #무엇을 구현해야 완료라고 볼 것인가 확인하는 체크리스트
 │   ├── fixtures/ #테스트용 입력 데이터

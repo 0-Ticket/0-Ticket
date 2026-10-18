@@ -175,3 +175,172 @@ def test_incident_detail_fixture_contracts_and_references():
         for t in a["timeline"]
         for e in t["evidence"]
     )
+
+
+def test_incident_review_fixtures_follow_box21_flow():
+    # Synthetic mock states must tell a consistent box 21 story (#21); the screen never
+    # derives them, so this only checks the hand-written fixtures.
+    data = json.loads((FIXTURES / "scenarios.json").read_text())
+    extra = json.loads((FIXTURES / "incident-detail.json").read_text())
+    case_extra = json.loads((FIXTURES / "case-detail.json").read_text())
+    incidents = data["incidents"] + extra["incidents"] + case_extra["incidents"]
+    reviews = data["l2_reviews"] + extra["l2_reviews"] + case_extra["l2_reviews"]
+    artifacts = {
+        a["incident_id"] for a in data["artifacts"] + extra["artifacts"] + case_extra["artifacts"]
+    }
+    cases = {c["incident_id"] for c in data["cases"] + case_extra["cases"]}
+    scenario = {}
+    for incident in incidents:
+        incident_id, state = incident["incident_id"], incident["review_state"]
+        mine = sorted(
+            (r for r in reviews if r["incident_id"] == incident_id), key=lambda r: r["round"]
+        )
+        rounds = [r["round"] for r in mine]
+        rejects = sum(r["decision"] == "reject" for r in mine)
+        assert rounds == list(range(1, len(rounds) + 1)), incident_id
+        # Only rejections continue the loop; an approval is always the last review.
+        assert all(r["decision"] == "reject" for r in mine[:-1]), incident_id
+        if mine:
+            # L2 review happens after investigation starts, never on a fresh Incident.
+            assert incident["status"] != "open", incident_id
+        if incident_id in cases:
+            assert state == "approved", incident_id
+        if state == "awaiting_review":
+            assert incident["review_round"] == len(rounds) + 1, incident_id
+            assert rejects < 2 and incident_id in artifacts, incident_id
+            assert incident["status"] == "investigating", incident_id
+        elif state == "analyzing":
+            assert rejects < 2 and (not mine or mine[-1]["decision"] == "reject"), incident_id
+            assert incident["status"] == "investigating", incident_id
+        elif state == "approved":
+            assert mine and mine[-1]["decision"] == "approve", incident_id
+        else:
+            assert state == "human_handling"
+            assert rejects == 2 and mine[-1]["decision"] == "reject", incident_id
+        scenario[incident_id] = (state, incident["review_round"], rejects)
+    assert scenario["in_web_campaign"] == ("awaiting_review", 1, 0)
+    assert scenario["in_reanalysis"] == ("analyzing", None, 1)
+    assert scenario["in_second_round"] == ("awaiting_review", 2, 1)
+    assert scenario["in_manual"] == ("human_handling", None, 2)
+    assert scenario["in_benign"] == ("human_handling", None, 2)
+    assert scenario["in_sample"] == ("approved", None, 0)
+    assert scenario["in_escalated"] == ("approved", None, 0)
+    assert scenario["in_contained"] == ("approved", None, 0)
+
+
+def test_case_detail_fixture_contracts_and_references():
+    extra = json.loads((FIXTURES / "case-detail.json").read_text())
+    assert set(extra) <= CONTRACTS.keys()
+    for collection, items in extra.items():
+        for item in items:
+            validate_contract(CONTRACTS[collection], item)
+    data = json.loads((FIXTURES / "scenarios.json").read_text())
+    incident_extra = json.loads((FIXTURES / "incident-detail.json").read_text())
+    incidents = data["incidents"] + incident_extra["incidents"] + extra["incidents"]
+    ids = {
+        kind: {row[field] for row in data[key] + incident_extra.get(key, [])}
+        for kind, key, field in [
+            ("alert", "alerts", "alert_id"),
+            ("event", "events", "event_id"),
+            ("raw", "raw", "raw_id"),
+            ("ticket", "tickets", "ticket_id"),
+        ]
+    }
+    incident_ids = {i["incident_id"] for i in incidents}
+    cases = data["cases"] + extra["cases"]
+    # One Case per Incident; the mock links an Incident to its Case by incident_id.
+    assert len({c["incident_id"] for c in cases}) == len(cases)
+    assert len({c["case_id"] for c in cases}) == len(cases)
+    for incident in extra["incidents"]:
+        for member in incident["members"]:
+            assert member["ticket_id"] in ids["ticket"]
+    for case in cases:
+        assert case["incident_id"] in incident_ids
+        # closed_at is set exactly when the Case is closed; lessons are written on close.
+        assert (case["status"] == "closed") == (case["closed_at"] is not None), case["case_id"]
+        if case["status"] != "closed":
+            assert case["lessons"] is None, case["case_id"]
+    statuses = {c["status"] for c in extra["cases"]}
+    assert {"responding", "closed"} <= statuses
+    tasks = [t for c in extra["cases"] for t in c["tasks"]]
+    assert {t["status"] for t in tasks} == {"todo", "doing", "done"}
+    assert any(t["due_at"] is None for t in tasks)
+    existing_artifacts = {a["incident_id"] for a in data["artifacts"] + incident_extra["artifacts"]}
+    for artifact in extra["artifacts"]:
+        assert artifact["incident_id"] in {c["incident_id"] for c in extra["cases"]}
+        assert artifact["incident_id"] not in existing_artifacts
+        times = [entry["time"] for entry in artifact["timeline"]]
+        assert times == sorted(times)
+        for entry in artifact["timeline"]:
+            for evidence in entry["evidence"]:
+                if evidence["ref_type"] in ids:
+                    assert evidence["ref_id"] in ids[evidence["ref_type"]]
+    case_ids = {c["case_id"] for c in cases}
+    for rule in extra["rules"]:
+        assert rule["case_id"] in case_ids
+
+
+def test_hunt_rule_fixture_contracts_and_references():
+    extra = json.loads((FIXTURES / "hunt-rule-detail.json").read_text())
+    assert set(extra) <= CONTRACTS.keys()
+    for collection, items in extra.items():
+        for item in items:
+            validate_contract(CONTRACTS[collection], item)
+    data = json.loads((FIXTURES / "scenarios.json").read_text())
+    incident_extra = json.loads((FIXTURES / "incident-detail.json").read_text())
+    case_extra = json.loads((FIXTURES / "case-detail.json").read_text())
+    hunts = data["hunts"] + incident_extra["hunts"] + extra["hunts"]
+    hunt_ids = [h["hunt_id"] for h in hunts]
+    assert len(set(hunt_ids)) == len(hunt_ids)
+    incidents = data["incidents"] + incident_extra["incidents"] + case_extra["incidents"]
+    members = {
+        (i["incident_id"], m["hunt_id"]) for i in incidents for m in i["members"] if m["hunt_id"]
+    }
+    events = {e["event_id"] for e in data["events"]}
+    for hunt in extra["hunts"]:
+        # A hunt links to an Incident only when Correlation grouped it (member_type hunt).
+        if hunt["incident_id"] is not None:
+            assert (hunt["incident_id"], hunt["hunt_id"]) in members
+        if not hunt["is_anomaly"]:
+            assert hunt["incident_id"] is None
+        for evidence in hunt["evidence"]:
+            if evidence["ref_type"] == "event":
+                assert evidence["ref_id"] in events
+    # Unknown registered ref_type is kept to check the screen shows it as the original string.
+    assert any(
+        e["ref_type"] not in {"alert", "event", "raw", "ticket"}
+        for h in extra["hunts"]
+        for e in h["evidence"]
+    )
+    steps = extra["steps"]
+    assert {s["subject_type"] for s in steps} == {"hunt"}
+    assert {s["subject_id"] for s in steps} <= set(hunt_ids)
+    for step in steps:
+        hunt = next(h for h in hunts if h["hunt_id"] == step["subject_id"])
+        assert step["created_at"] <= hunt["created_at"]
+    keys = [(s["subject_id"], s["step"]) for s in steps]
+    assert len(set(keys)) == len(keys)
+    rules = data["rules"] + case_extra["rules"] + extra["rules"]
+    proposal_ids = [r["proposal_id"] for r in rules]
+    assert len(set(proposal_ids)) == len(proposal_ids)
+    hunt_by_id = {h["hunt_id"]: h for h in hunts}
+    case_by_id = {c["case_id"]: c for c in data["cases"] + case_extra["cases"]}
+    for rule in extra["rules"]:
+        assert rule["hunt_id"] is None or rule["hunt_id"] in hunt_by_id
+        assert rule["case_id"] is None or rule["case_id"] in case_by_id
+        # A proposal comes from a hunt marked as a rule candidate, after that hunt or Case.
+        if rule["hunt_id"]:
+            basis = hunt_by_id[rule["hunt_id"]]
+            assert basis["rule_candidate"], rule["proposal_id"]
+            assert basis["created_at"] < rule["created_at"]
+        if rule["case_id"]:
+            assert case_by_id[rule["case_id"]]["created_at"] < rule["created_at"]
+        if rule["backtest"]:
+            window = rule["backtest"]
+            assert window["window_start_at"] < window["window_end_at"] <= rule["created_at"]
+        # The mock records a reviewer only when a draft is reviewed.
+        assert (rule["status"] == "draft") == (rule["reviewer"] is None), rule["proposal_id"]
+    assert {r["status"] for r in extra["rules"]} == {"draft", "approved", "rejected", "deployed"}
+    assert any(r["backtest"] is None for r in extra["rules"])
+    assert any(not r["syntax_ok"] for r in extra["rules"])
+    assert any(r["hunt_id"] is None and r["case_id"] for r in extra["rules"])

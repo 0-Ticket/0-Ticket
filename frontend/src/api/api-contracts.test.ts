@@ -13,6 +13,7 @@ describe('documented API contracts', () => {
           decision: 'reject',
           reject_type: ['missing_step'],
           comment: 'Synthetic',
+          expected_review_round: 1,
         },
       }),
     ).rejects.toMatchObject({ code: 'invalid_input' });
@@ -49,12 +50,21 @@ describe('documented API contracts', () => {
 
   it('preserves unknown registered values and extensions, and handles empty filtered lists', async () => {
     expect((await api.ticket('tk_custom')).ticket).toEqual(data.tickets[2]);
-    expect((await api.hunts({ is_anomaly: false })).items).toEqual([]);
+    // F5 fixtures include a non-anomaly hunt, so the filter is checked against the data.
+    const quiet = data.hunts.filter((item) => !item.is_anomaly);
+    expect(quiet.length).toBeGreaterThan(0);
+    expect((await api.hunts({ is_anomaly: false })).items).toEqual(quiet);
     expect(
       (await api.incidents({ status: 'escalated_to_case', created_by: 'manual' })).items,
     ).toEqual([]);
-    expect((await api.cases({ status: 'closed' })).items).toEqual([]);
-    expect((await api.rules({ status: 'deployed' })).items).toEqual([]);
+    // F4 fixtures cover every Case status, so the status filter is checked against the data.
+    expect((await api.cases({ status: 'closed' })).items).toEqual(
+      data.cases.filter((item) => item.status === 'closed'),
+    );
+    // F5 fixtures include a deployed proposal (fixture state, not set by the screen).
+    expect((await api.rules({ status: 'deployed' })).items).toEqual(
+      data.rules.filter((item) => item.status === 'deployed'),
+    );
     expect((await api.normalizeFailures({ reason: 'unknown_scenario' })).items).toEqual([]);
   });
 
@@ -82,7 +92,9 @@ describe('documented API contracts', () => {
     });
     expect((await api.cases()).items).toEqual(data.cases);
     expect(await api.case('cs_sample')).toEqual({ case: data.cases[0], proposal_ids: [] });
-    expect((await api.hunts({ is_anomaly: true })).items).toEqual(data.hunts);
+    expect((await api.hunts({ is_anomaly: true })).items).toEqual(
+      data.hunts.filter((item) => item.is_anomaly),
+    );
     expect(await api.hunt('ht_sample')).toEqual({
       hunt: data.hunts[0],
       steps: [],
@@ -110,13 +122,14 @@ describe('documented API contracts', () => {
       api.reviewTicket('tk_sample', { reviewer: 'demo', decision: 'tp' }),
     ).rejects.toMatchObject({ code: 'conflict' });
     expect(
-      await api.reviewIncident('in_manual', {
+      await api.reviewIncident('in_web_campaign', {
         reviewer: 'demo',
         decision: 'reject',
         reject_type: 'missing_step',
         comment: 'Synthetic review',
+        expected_review_round: 1,
       }),
-    ).toMatchObject({ decision: 'reject', round: 3 });
+    ).toMatchObject({ decision: 'reject', round: 1 });
     expect(
       await api.reviewRule('rp_sample', { reviewer: 'demo', decision: 'approve' }),
     ).toMatchObject({ status: 'approved' });
@@ -130,30 +143,180 @@ describe('documented API contracts', () => {
       api.reviewRule('rp_sample', { reviewer: 'demo', decision: 'approve' }),
     ).rejects.toMatchObject({ code: 'conflict' });
     await expect(
-      api.reviewIncident('in_manual', { reviewer: 'demo', decision: 'approve' }),
+      api.reviewIncident('in_web_campaign', {
+        reviewer: 'demo',
+        decision: 'approve',
+        expected_review_round: 1,
+      }),
     ).rejects.toMatchObject({ code: 'conflict' });
   });
 
-  it.each(['in_sample', 'in_benign', 'in_escalated'])(
-    'returns conflict for %s, which has a Case or a terminal status, without recording a review',
-    async (id) => {
-      const before = await api.incident(id);
-      for (const body of [
-        { reviewer: 'demo', decision: 'approve' as const },
-        { reviewer: 'demo', decision: 'reject' as const },
-      ])
-        await expect(api.reviewIncident(id, body)).rejects.toMatchObject({ code: 'conflict' });
-      expect(await api.incident(id)).toEqual(before);
-    },
-  );
+  it.each([
+    ['in_sample', 'approved'],
+    ['in_escalated', 'approved'],
+    ['in_reanalysis', 'analyzing'],
+    ['in_manual', 'human_handling'],
+    ['in_benign', 'human_handling'],
+  ])('returns conflict for %s (review_state %s) without recording a review', async (id, state) => {
+    const before = await api.incident(id);
+    expect(before.incident.review_state).toBe(state);
+    expect(before.incident.review_round).toBeNull();
+    for (const body of [
+      { reviewer: 'demo', decision: 'approve' as const, expected_review_round: 1 },
+      {
+        reviewer: 'demo',
+        decision: 'reject' as const,
+        reject_type: 'missing_step' as const,
+        comment: 'Synthetic',
+        expected_review_round: 2,
+      },
+    ])
+      await expect(api.reviewIncident(id, body)).rejects.toMatchObject({ code: 'conflict' });
+    expect(await api.incident(id)).toEqual(before);
+  });
+
+  it('opens review only for the current opportunity and records the server round', async () => {
+    const before = await api.incident('in_second_round');
+    expect(before.incident).toMatchObject({ review_state: 'awaiting_review', review_round: 2 });
+    for (const expected of [1, 3])
+      await expect(
+        api.reviewIncident('in_second_round', {
+          reviewer: 'demo',
+          decision: 'approve',
+          expected_review_round: expected,
+        }),
+      ).rejects.toMatchObject({ code: 'conflict' });
+    expect(await api.incident('in_second_round')).toEqual(before);
+    const review = await api.reviewIncident('in_second_round', {
+      reviewer: 'demo',
+      decision: 'approve',
+      expected_review_round: 2,
+    });
+    expect(review).toMatchObject({ decision: 'approve', round: 2 });
+    const after = await api.incident('in_second_round');
+    expect(after.reviews).toEqual([...before.reviews, review]);
+    // Lifecycle status is untouched; Case creation belongs to box 22.
+    expect(after.incident).toEqual({
+      ...before.incident,
+      review_state: 'approved',
+      review_round: null,
+    });
+    expect(after.case_id).toBeNull();
+    await expect(
+      api.reviewIncident('in_second_round', {
+        reviewer: 'demo',
+        decision: 'approve',
+        expected_review_round: 2,
+      }),
+    ).rejects.toMatchObject({ code: 'conflict' });
+  });
+
+  it('applies the documented L2 error precedence', async () => {
+    const post = (id: string, body: Record<string, unknown>) =>
+      request(`incidents/${id}/reviews`, { method: 'POST', body });
+    // 1. not_found wins over every body problem.
+    await expect(post('in_missing', { decision: 'maybe' })).rejects.toMatchObject({
+      code: 'not_found',
+    });
+    // 2. A closed review workflow is a conflict even when the body is malformed.
+    await expect(post('in_manual', { decision: 'maybe' })).rejects.toMatchObject({
+      code: 'conflict',
+    });
+    await expect(
+      post('in_reanalysis', { reviewer: 'demo', decision: 'approve' }),
+    ).rejects.toMatchObject({ code: 'conflict' });
+    // 3. On an open opportunity, body errors come before the round check.
+    await expect(
+      post('in_second_round', { reviewer: 'demo', decision: 'reject', expected_review_round: 1 }),
+    ).rejects.toMatchObject({ code: 'invalid_input' });
+    await expect(
+      post('in_second_round', { reviewer: 'demo', decision: 'approve' }),
+    ).rejects.toMatchObject({ code: 'invalid_input' });
+    // 4. A well-formed body for another round is a conflict.
+    await expect(
+      post('in_second_round', { reviewer: 'demo', decision: 'approve', expected_review_round: 1 }),
+    ).rejects.toMatchObject({ code: 'conflict' });
+    expect((await api.incident('in_second_round')).incident.review_round).toBe(2);
+  });
+
+  it('rejects a stale tab that still holds an answered round', async () => {
+    // Tabs A and B both loaded round 1.
+    const seen = (await api.incident('in_web_campaign')).incident.review_round!;
+    const a = await api.reviewIncident('in_web_campaign', {
+      reviewer: 'tab-a',
+      decision: 'reject',
+      reject_type: 'missing_step',
+      comment: 'Synthetic rejection',
+      expected_review_round: seen,
+    });
+    expect(a.round).toBe(1);
+    const before = await api.incident('in_web_campaign');
+    await expect(
+      api.reviewIncident('in_web_campaign', {
+        reviewer: 'tab-b',
+        decision: 'approve',
+        expected_review_round: seen,
+      }),
+    ).rejects.toMatchObject({ code: 'conflict' });
+    expect(await api.incident('in_web_campaign')).toEqual(before);
+    // After reanalysis opens a later round, an old round is still refused (fixture round 2).
+    await expect(
+      api.reviewIncident('in_second_round', {
+        reviewer: 'tab-b',
+        decision: 'approve',
+        expected_review_round: 1,
+      }),
+    ).rejects.toMatchObject({ code: 'conflict' });
+    expect((await api.incident('in_second_round')).incident).toMatchObject({
+      review_state: 'awaiting_review',
+      review_round: 2,
+    });
+  });
+
+  it('moves a first rejection to analyzing and a second rejection to human handling', async () => {
+    const reject = (id: string, round: number) =>
+      api.reviewIncident(id, {
+        reviewer: 'demo',
+        decision: 'reject',
+        reject_type: 'wrong_conclusion',
+        comment: 'Synthetic rejection',
+        expected_review_round: round,
+      });
+    expect(await reject('in_web_campaign', 1)).toMatchObject({ round: 1 });
+    expect((await api.incident('in_web_campaign')).incident).toMatchObject({
+      status: 'investigating',
+      review_state: 'analyzing',
+      review_round: null,
+    });
+    expect(await reject('in_second_round', 2)).toMatchObject({ round: 2 });
+    expect((await api.incident('in_second_round')).incident).toMatchObject({
+      status: 'investigating',
+      review_state: 'human_handling',
+      review_round: null,
+    });
+    await expect(reject('in_second_round', 2)).rejects.toMatchObject({ code: 'conflict' });
+    await expect(reject('in_second_round', 3)).rejects.toMatchObject({ code: 'conflict' });
+  });
 
   it('rejects incomplete reviews, unknown objects and invalid case patches', async () => {
     await expect(
       api.reviewTicket('tk_sample', { reviewer: 'demo', decision: 'fp' }),
     ).rejects.toMatchObject({ code: 'invalid_input' });
     await expect(
-      api.reviewIncident('in_web_campaign', { reviewer: 'demo', decision: 'reject' }),
+      api.reviewIncident('in_web_campaign', {
+        reviewer: 'demo',
+        decision: 'reject',
+        expected_review_round: 1,
+      }),
     ).rejects.toMatchObject({ code: 'invalid_input' });
+    for (const expected of [undefined, null, '1', 1.5])
+      await expect(
+        request('incidents/in_web_campaign/reviews', {
+          method: 'POST',
+          body: { reviewer: 'demo', decision: 'approve', expected_review_round: expected },
+        }),
+      ).rejects.toMatchObject({ code: 'invalid_input' });
+    expect((await api.incident('in_web_campaign')).reviews).toEqual([]);
     await expect(api.ticket('tk_missing')).rejects.toMatchObject({ code: 'not_found' });
     await expect(api.updateCase('cs_sample', { status: 'invalid' as never })).rejects.toMatchObject(
       { code: 'invalid_input' },
@@ -170,7 +333,7 @@ describe('documented API contracts', () => {
     await expect(
       request('incidents/in_web_campaign/reviews', {
         method: 'POST',
-        body: { reviewer: 'demo', decision: 'approve', round: 99 },
+        body: { reviewer: 'demo', decision: 'approve', expected_review_round: 1, round: 1 },
       }),
     ).rejects.toMatchObject({ code: 'invalid_input' });
     await expect(

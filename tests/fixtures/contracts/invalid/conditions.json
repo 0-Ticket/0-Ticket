@@ -110,5 +110,33 @@
     "changes": {
       "class_uid": null
     }
+  },
+  {
+    "schema": "incident",
+    "changes": {
+      "review_state": "awaiting_review",
+      "review_round": null
+    }
+  },
+  {
+    "schema": "incident",
+    "changes": {
+      "review_state": "analyzing",
+      "review_round": 1
+    }
+  },
+  {
+    "schema": "incident",
+    "changes": {
+      "review_state": "approved",
+      "review_round": 1
+    }
+  },
+  {
+    "schema": "incident",
+    "changes": {
+      "review_state": "human_handling",
+      "review_round": 2
+    }
   }
 ]

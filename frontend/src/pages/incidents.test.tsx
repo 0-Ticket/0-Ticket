@@ -44,6 +44,10 @@ it('keeps the API order and shows status, severity, grouping origin, nulls and l
   expect(manual.getByText('전술: 없음')).toBeInTheDocument();
   expect(manual.getByText('요약: 없음')).toBeInTheDocument();
   expect(within(links[3].closest('article')!).getByText('정상 종결')).toBeInTheDocument();
+  // The L2 review workflow badge sits beside, not in place of, the lifecycle status.
+  expect(web.getByText('L2 검토 대기')).toBeInTheDocument();
+  expect(manual.getByText('사람 직접 처리')).toBeInTheDocument();
+  expect(within(links[0].closest('article')!).getByText('L2 승인')).toBeInTheDocument();
   for (const time of container.querySelectorAll('time'))
     expect(time).toHaveTextContent(new Date(Number(time.title)).toLocaleString());
   expect(container.querySelector('script, img, b, a[href^="https:"]')).toBeNull();

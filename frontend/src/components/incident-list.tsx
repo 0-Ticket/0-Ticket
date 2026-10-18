@@ -1,7 +1,7 @@
 import type { Incident } from '../contracts';
 import { severityTones, toneRails } from '../lib/display';
 import { cn } from '../lib/utils';
-import { Badge, ObjectId, Timestamp } from './contract-display';
+import { Badge, ObjectId, ReviewStateBadge, Timestamp } from './contract-display';
 
 export function IncidentList({ incidents }: { incidents: Incident[] }) {
   return (
@@ -25,6 +25,7 @@ export function IncidentList({ incidents }: { incidents: Incident[] }) {
                   <Badge value={null} severity={incident.severity_id} />
                   <Badge value={incident.status} />
                   <Badge value={incident.created_by} />
+                  <ReviewStateBadge value={incident.review_state} />
                 </div>
               </header>
               <div className="grid min-w-0 gap-4 px-4 py-3 md:grid-cols-[minmax(0,1fr)_auto]">

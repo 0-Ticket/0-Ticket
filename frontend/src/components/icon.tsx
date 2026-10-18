@@ -3,6 +3,11 @@ import { cn } from '../lib/utils';
 
 // Decorative inline SVG icons (no icon package). Meaning is always carried by adjacent text.
 const paths = {
+  dashboard: (
+    <>
+      <path d="M4 4h7v7H4zM13 4h7v4h-7zM13 10h7v10h-7zM4 13h7v7H4z" />
+    </>
+  ),
   inbox: (
     <>
       <path d="M4 4h16v13H4z" />
@@ -19,6 +24,24 @@ const paths = {
     <>
       <path d="m12 3 9 16H3z" />
       <path d="M12 9v4M12 17h.01" />
+    </>
+  ),
+  case: (
+    <>
+      <path d="M3 8h18v12H3z" />
+      <path d="M9 8V5h6v3M3 13h18" />
+    </>
+  ),
+  hunt: (
+    <>
+      <circle cx="11" cy="11" r="6" />
+      <path d="m20 20-4.5-4.5" />
+    </>
+  ),
+  rule: (
+    <>
+      <path d="M6 3h9l4 4v14H6z" />
+      <path d="M9 11h7M9 15h7M9 7h3" />
     </>
   ),
   shield: (
