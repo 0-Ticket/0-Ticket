@@ -1,6 +1,5 @@
-import sys
 from importlib.metadata import entry_points
-from types import ModuleType
+from types import SimpleNamespace
 
 from soc.l1.tickets import open_ticket_store
 from soc.plugins import PluginRegistry
@@ -16,26 +15,18 @@ def test_postgresql_ticket_store_is_registered_in_the_stores_entry_point_group()
     assert PluginRegistry("stores").get("postgresql.tickets") is create_postgresql_ticket_store
 
 
-def test_open_ticket_store_delegates_to_common_open_store(monkeypatch):
+def test_open_ticket_store_uses_the_common_store_registry():
     calls = []
-    common_store = ModuleType("soc.store")
 
-    def open_store(kind, *args, **kwargs):
-        calls.append((kind, args, kwargs))
+    def create_fake_ticket_store(settings, environ):
+        calls.append((settings, environ))
         return "fake-ticket-store"
 
-    common_store.open_store = open_store
-    monkeypatch.setitem(sys.modules, "soc.store", common_store)
-    settings = object()
+    settings = SimpleNamespace(store=SimpleNamespace(backend="fake"))
     registry = PluginRegistry("stores")
+    registry.register("fake.tickets", create_fake_ticket_store)
 
     result = open_ticket_store(settings, environ={"DATABASE_URL": "fake"}, registry=registry)
 
     assert result == "fake-ticket-store"
-    assert calls == [
-        (
-            "tickets",
-            (settings,),
-            {"environ": {"DATABASE_URL": "fake"}, "registry": registry},
-        )
-    ]
+    assert calls == [(settings, {"DATABASE_URL": "fake"})]
