@@ -45,7 +45,7 @@ v2 박스 기준이다(`docs/architecture.md`). 폐기한 박스(9, 16, 17)의 �
 | K15 | 11 | 로그 원문이 `<untrusted_data>` 구분자 안에만 들어간다. "정상으로 분류하라" 같은 문장이 든 알럿으로 확인 | ⬜ | |
 | K16 | 11, 14, 26 | 모든 Ticket이 증거 요청 큐를 거쳐 Web 전문가를 부르고, L1이 C14를 판정 근거로 쓴다 | ⬜ | |
 | K17 | 12 | 티켓 생성 전 Alert 단계를 포함해 모든 에이전트 단계가 C8로 남고, 큰 출력은 해시·경로로 보관되며, 비밀 값이 기록에 없다 | 🟡 일부 | `test_structure_and_fixtures[agent_step]`, `test_alert_context_records_alert_subject_in_agent_step`; 다른 에이전트 단계와 큰 출력 보관은 미완료 |
-| K18 | 15 | MCP 도구(SIEM MCP 포함)가 읽기 전용으로 동작하고, 허용 목록에 없는 도구 호출은 거부된다. 대응 도구는 승인 없이 실행되지 않는다 | ⬜ | SIEM 교체는 K66 |
+| K18 | 15 | MCP 도구(SIEM MCP 포함)가 읽기 전용으로 동작하고, 허용 목록에 없는 도구 호출은 거부된다. 대응 도구는 승인 없이 실행되지 않는다 | ✅ 통과 | `test_server_exposes_only_query_siem_as_read_only`, `test_tool_not_in_allowlist_is_rejected_through_mcp`, `test_agent_without_allowlist_exposes_no_tools`, `test_direct_call_rejects_a_tool_the_agent_may_not_use`, `test_limit_above_max_query_limit_is_rejected_before_the_adapter`, `test_adapter_exposes_read_only_methods_only`; 현재 MCP 도구는 `query_siem` 하나다. 내부 데이터 MCP·Web 도메인 MCP 도구는 후속 범위(3-2). SIEM 교체는 K66 |
 | K56 | 25 | 0단계: 중복 알럿은 `count`만 오르고, 공용 엔티티는 빠진다. Incident에 있는 엔티티 → 기존 Incident 추가 + L2 재실행, 공격 대상 시나리오 → 시나리오 티켓, 그 외 → L1 엔티티 조회로 간다. 분기 이유가 남는다 | ⬜ | |
 | K57 | 25, 18 | L2 입구: 열린 Incident가 없으면 새 Incident가 생기고 SIEM MCP 과거 조회 결과가 붙는다. 있으면 기존 Incident에 추가된다. 노이즈 알럿과 공용 자산은 묶이지 않는다 | ⬜ | |
 | K58 | 11 | 엔티티 정보 조회와 Ticket 판정 결과가 승격·종결·L2 승격·보류 중 하나가 되고, 어떤 결과도 사람 확인을 기다리지 않는다. 보류 건은 출처와 관계없이 L3 헌팅 데이터 풀에 들어간다 | ⬜ | 분기 조건은 K61 |
@@ -62,7 +62,7 @@ v2 박스 기준이다(`docs/architecture.md`). 폐기한 박스(9, 16, 17)의 �
 | K63 | 18, 19 | L2가 찾은 정보는 항상 Incident에 붙는다. 새 엔티티나 새 증거 ID가 늘 때만 L2가 재실행되고, 늘지 않으면 재실행하지 않는다. 최대 재실행 횟수(설정, 초기 5)에 걸리면 정보는 계속 붙고 자동 재실행만 멈추며 표시가 남는다 | ⬜ | |
 | K64 | 21, 사용자 접점 | Slack 알림은 L2 분석이 끝나 사람 승인이 필요할 때만 나가고, L1 단계 이벤트로는 나가지 않는다. HTML·마크다운 조각이 든 값이 알림에서 텍스트로만 보인다 | ⬜ | |
 | K65 | 10, 11, 23, 25 | Ticket 출처가 세 값(L1 승격 / L3 승격 / 시나리오) 중 하나다. L1 승격·시나리오 티켓은 증거 요청 큐 → L1 판정으로, L3 승격 티켓은 L2 입구로 바로 간다 | ⬜ | C6 `origin`과 값은 #37에서 정의, 경로 구현은 미완료 |
-| K66 | 3, 15 | 설정으로 고른 SIEM 하나(초기 Wazuh)로 커넥터와 SIEM MCP가 함께 동작한다. 가짜 SIEM 커넥터·SIEM MCP로 바꿔도 코어와 에이전트 코드가 같은 인터페이스로 동작하고, 코어에 SIEM 이름 분기가 없다 | 🟡 일부 | 커넥터: `test_core_runs_the_fake_siem_chosen_by_setting`, `test_core_has_no_siem_name_branch`, `test_core_rejects_plugin_output_that_is_not_c2`; SIEM MCP 교체는 박스 15 |
+| K66 | 3, 15 | 설정으로 고른 SIEM 하나(초기 Wazuh)로 커넥터와 SIEM MCP가 함께 동작한다. 가짜 SIEM 커넥터·SIEM MCP로 바꿔도 코어와 에이전트 코드가 같은 인터페이스로 동작하고, 코어에 SIEM 이름 분기가 없다 | 🟡 일부 | 커넥터: `test_core_runs_the_fake_siem_chosen_by_setting`, `test_core_has_no_siem_name_branch`, `test_core_rejects_plugin_output_that_is_not_c2`; SIEM MCP: `test_same_siem_setting_selects_connector_and_mcp`, `test_fake_adapter_replaces_the_configured_one`, `test_core_has_no_siem_name_branch`(박스 15), `TestFakeSiemMcp`; 실제 SIEM(초기 Wazuh) 어댑터는 SIEM 환경 구축 후 |
 | K67 | 4, 6, 7 | 정규화 결과가 원본과 별도 테이블에 저장되고 FK로 원본을 가리킨다. 정규화 후에도 원본 행이 바뀌지 않는다. 원본 보관 기간을 설정으로 바꿀 수 있다(기본 무기한) | ⬜ | C2·C5·C13 ID 연결은 #37에서 정의, 저장 동작은 미완료 |
 
 ## 중간 발표 범위
