@@ -2,7 +2,7 @@
 
 파이프라인 안에서 LLM을 부르는 코드가 지킬 규칙이다. 어떤 모델을 쓰든 똑같이 적용한다.
 
-> 기본 제공자는 OpenAI 호환 제공자이고, 데모 기본값: granite4-micro(로컬 서빙)다. 서빙 도구와 서빙 이름은 아직 정하지 않았다(D-009 검토중). 설정 키는 맨 아래 "모델과 설정"에 있다.
+> 기본 제공자는 OpenAI 호환 제공자이고, 데모 기본값: 서빙 도구 Ollama, 모델 `granite4:micro`(로컬 서빙, D-009). 설정 키는 맨 아래 "모델과 설정"에 있다.
 
 ## 적용 범위
 
@@ -104,8 +104,8 @@ LLM 없이 규칙으로 해야 하는 곳: 4(실행 중 정규화), 5, 6, 7, 25(
 ```toml
 [llm]
 provider = "openai_compatible"     # 등록된 제공자 이름
-model = "model-name"
-base_url = "https://llm.example.com/v1"
+model = "granite4:micro"           # 데모 기본값 예시 (Ollama 서빙 이름)
+base_url = "http://localhost:11434/v1"  # 데모 기본값 예시 (Ollama의 OpenAI 호환 주소)
 api_key_env = "LLM_API_KEY"         # 키 값이 아니라 환경변수 이름
 temperature = 0
 max_steps_per_task = 20
@@ -115,5 +115,5 @@ max_tokens_per_task = 50000
 model = "larger-model-name"
 ```
 
-- 키는 `.env`의 환경변수로만 읽는다.
+- 키는 `.env`의 환경변수로만 읽는다. 로컬 Ollama처럼 키가 필요 없어도 `api_key_env` 항목은 둔다(OpenAI 호환 클라이언트가 값을 요구할 수 있다).
 - 호환되지 않는 API를 쓰려면 제공자를 새로 구현해 `zero_ticket_soc.llm_providers` entry point로 등록한다(`docs/extensibility.md`).
