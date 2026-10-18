@@ -47,3 +47,12 @@ batch_size = 500
 # 항목: path, kind("alert"|"event"), scenario(C2 scenario), source_type(C1, 기본 "web"), format("text"|"jsonl").
 # 파일 이름(raw_id에 쓰임)은 서로 달라야 한다. 예시는 tests/fixtures/ingest/direct.toml.
 files = []
+
+# MCP 도구 (박스 15, D-041). 에이전트가 도구를 부르는 유일한 경로다. SIEM MCP 어댑터는 siem.adapter로 함께 고른다(D-037).
+[mcp]
+# 조회 하나가 돌려줄 수 있는 최대 건수. 수집 배치(siem.batch_size)와 별개 값이다. 1 이상.
+max_query_limit = 500
+
+# 에이전트별 허용 도구. 기본은 비어 있어 모든 도구 호출이 거부된다.
+# 조직 설정에서 `에이전트 이름 = ["도구", ...]`로 적는다. 여기에 없는 에이전트 이름도 더할 수 있다.
+[mcp.allowed_tools]

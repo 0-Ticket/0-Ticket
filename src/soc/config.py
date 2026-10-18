@@ -14,12 +14,24 @@ from pathlib import Path
 from typing import Annotated, Any, Literal
 from urllib.parse import urlsplit
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
 
 ORG_CONFIG_ENV = "ZT_CONFIG"
 
 # Environment variable names only, so a URL or a key pasted here is rejected.
 EnvName = Annotated[str, Field(pattern=r"^[A-Z_][A-Z0-9_]*$")]
+
+# Tables keyed by agent name: the organization adds names here, so an unknown key
+# is a new agent, not a typo. Every other table only takes the keys it defines.
+OPEN_TABLES = frozenset({"llm.agents", "mcp.allowed_tools"})
 
 
 class ConfigError(ValueError):
@@ -62,6 +74,22 @@ class LLMSettings(_Section):
         return value.rstrip("/")
 
 
+def _without_repeats(tools: tuple[str, ...]) -> tuple[str, ...]:
+    if len(set(tools)) != len(tools):
+        raise ValueError("lists the same tool twice")
+    return tools
+
+
+ToolName = Annotated[str, Field(min_length=1)]
+# The allowlist is read on every call, so a repeated name is a mistake worth failing on.
+AgentTools = Annotated[tuple[ToolName, ...], AfterValidator(_without_repeats)]
+
+
+class McpSettings(_Section):
+    max_query_limit: int = Field(ge=1)
+    allowed_tools: dict[str, AgentTools] = Field(default_factory=dict)
+
+
 class DirectFileSettings(_Section):
     """One dataset file the direct adapter replays, and how its lines become C2."""
 
@@ -99,6 +127,7 @@ class Settings(_Section):
 
     database: DatabaseSettings
     llm: LLMSettings
+    mcp: McpSettings
     siem: SiemSettings
 
 
@@ -132,9 +161,9 @@ def _merge(base: dict[str, Any], override: Mapping[str, Any], prefix: str = "") 
         if isinstance(base[key], dict):
             if not isinstance(value, dict):
                 raise ConfigError(f"Setting '{path}' must be a table")
-            if path == "llm.agents":
-                # Agent names are extension points. Pydantic validates each model
-                # override while the containing table accepts newly added agents.
+            if path in OPEN_TABLES:
+                # Agent names are extension points. Pydantic validates each entry
+                # while the containing table accepts newly added agents.
                 merged[key] = {**base[key], **value}
             else:
                 merged[key] = _merge(base[key], value, path + ".")
