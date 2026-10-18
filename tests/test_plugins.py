@@ -63,7 +63,7 @@ def test_documented_groups_are_accepted():
             documented.update(re.findall(r"`([a-z_]+)`", columns[3]))
     assert documented == set(EXTENSION_POINT_GROUPS)
     for group in EXTENSION_POINT_GROUPS:
-        assert PluginRegistry(group).names() == ()
+        assert PluginRegistry(group).group == group
 
 
 def test_unknown_group_rejected():

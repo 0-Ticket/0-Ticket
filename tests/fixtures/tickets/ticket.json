@@ -1,0 +1,20 @@
+{
+  "ticket_id": "tk_ticket_sample",
+  "origin": "scenario",
+  "status": "new",
+  "handling_type": "other",
+  "specialist": "none",
+  "priority": 20,
+  "alert_ids": ["al_ticket_priority_dst"],
+  "entities": [
+    {
+      "type": "ip",
+      "value": "203.0.113.10"
+    }
+  ],
+  "verdict": null,
+  "extensions": {},
+  "created_at": 1791849600000,
+  "updated_at": 1791849600000,
+  "awaiting_human_at": null
+}
