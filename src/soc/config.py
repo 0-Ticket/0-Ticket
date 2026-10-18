@@ -128,6 +128,10 @@ class StoreSettings(_Section):
     raw_retention_days: int = Field(ge=0)
 
 
+class AgentLogSettings(_Section):
+    artifact_dir: str = Field(min_length=1)
+
+
 class Settings(_Section):
     """Typed settings. Each box issue adds its own section here and in default.toml."""
 
@@ -136,6 +140,7 @@ class Settings(_Section):
     mcp: McpSettings
     siem: SiemSettings
     store: StoreSettings
+    agent_log: AgentLogSettings
 
 
 def _default_config_text() -> str:

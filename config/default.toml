@@ -18,6 +18,11 @@ backend = "postgresql"
 # 정규화 결과가 가리키는 원본은 기간이 지나도 지우지 않는다.
 raw_retention_days = 0
 
+# Box 12 large-result artifacts. The directory is ignored by git because it is under data/.
+[agent_log]
+# Directory for the remainder of large tool results; paths stored in PostgreSQL are relative to it.
+artifact_dir = "data/agent_log"
+
 # LLM 제공자 설정 (D-008, D-009)
 [llm]
 # 등록된 제공자 이름.
