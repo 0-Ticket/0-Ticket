@@ -42,6 +42,7 @@ packages = ["src/soc"]
 [tool.hatch.build.targets.wheel.force-include]
 "contracts" = "soc/contracts/schemas"
 "config/default.toml" = "soc/default.toml"
+"src/soc/l1/prompts/l1_entity_lookup.md" = "soc/l1/prompts/l1_entity_lookup.md"
 "src/soc/l1/prompts/web_specialist.md" = "soc/l1/prompts/web_specialist.md"
 "src/soc/store/vectors/templates/decided_ticket.txt" = "soc/store/vectors/templates/decided_ticket.txt"
 "src/soc/store/vectors/templates/entity_sentence.txt" = "soc/store/vectors/templates/entity_sentence.txt"

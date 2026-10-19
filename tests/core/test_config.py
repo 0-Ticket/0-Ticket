@@ -29,6 +29,9 @@ def test_default_config_loads_without_org_file():
     assert settings.vector_store.backend == "qdrant"
     assert settings.vector_store.url == "http://localhost:6333"
     assert settings.vector_store.collection == "closed_tickets"
+    assert settings.l1.confidence_threshold == 0.8
+    assert settings.l1.siem_window_minutes == 5
+    assert settings.l1.similar_tickets == 5
     assert settings.embedder.provider == "ollama"
     assert settings.embedder.base_url == "http://localhost:11434"
     assert settings.embedder.model == "bge-m3"
@@ -42,6 +45,22 @@ def test_default_normalize_and_lookup_settings():
     assert settings.normalize.batch_size == 500
     assert settings.normalize.max_parse_length == 16384
     assert settings.lookup.provider == "csv"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "[l1]\nconfidence_threshold = 1.1\n",
+        "[l1]\nconfidence_threshold = -0.1\n",
+        "[l1]\nsiem_window_minutes = 0\n",
+        "[l1]\nsimilar_tickets = 0\n",
+    ],
+)
+def test_invalid_l1_settings_fail(tmp_path, text):
+    org = tmp_path / "org.toml"
+    org.write_text(text, encoding="utf-8")
+    with pytest.raises(ConfigError):
+        load_config(org, environ={})
 
 
 @pytest.mark.parametrize(

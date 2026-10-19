@@ -1,0 +1,11 @@
+{
+  "verdict": "tp",
+  "confidence": 0.79,
+  "summary": "Synthetic low confidence result",
+  "evidence": [
+    {"ref_type": "alert", "ref_id": "al_sample_wpscan", "note": "Synthetic alert"}
+  ],
+  "recommended_action": "Hold",
+  "needs_human": false,
+  "human_reason": null
+}
