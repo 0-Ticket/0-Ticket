@@ -344,3 +344,72 @@ def test_hunt_rule_fixture_contracts_and_references():
     assert any(r["backtest"] is None for r in extra["rules"])
     assert any(not r["syntax_ok"] for r in extra["rules"])
     assert any(r["hunt_id"] is None and r["case_id"] for r in extra["rules"])
+
+
+L1_CONTRACTS = {
+    "alerts": "AlertRecord",
+    "tickets": "Ticket",
+    "branches": "BranchResult",
+    "decisions": "L1DecisionRecord",
+    "evidence_requests": "EvidenceRequest",
+    "steps": "AgentStep",
+}
+
+
+def test_l1_result_fixture_contracts_and_references():
+    extra = json.loads((FIXTURES / "l1-results.json").read_text(encoding="utf-8"))
+    assert extra.keys() == L1_CONTRACTS.keys()
+    for collection, name in L1_CONTRACTS.items():
+        for item in extra[collection]:
+            validate_contract(name, item)
+    data = json.loads((FIXTURES / "scenarios.json").read_text(encoding="utf-8"))
+    alert_ids = {row["alert_id"] for row in data["alerts"] + extra["alerts"]}
+    ticket_ids = {row["ticket_id"] for row in data["tickets"] + extra["tickets"]}
+    raw_ids = {row["raw_id"] for row in data["raw"]}
+    subjects = {"alert": alert_ids, "ticket": ticket_ids}
+    for ticket in extra["tickets"]:
+        assert set(ticket["alert_ids"]) <= alert_ids
+    for alert in extra["alerts"]:
+        assert set(alert["raw_ids"]) <= raw_ids
+    for item in extra["branches"] + extra["decisions"] + extra["steps"]:
+        assert item["subject_id"] in subjects[item["subject_type"]]
+    for request in extra["evidence_requests"]:
+        assert request["requester_id"] in subjects[request["requester_type"]]
+    for evidence in (
+        ticket["verdict"]["evidence"] for ticket in extra["tickets"] if ticket["verdict"]
+    ):
+        for item in evidence:
+            assert item["ref_id"] in {"alert": alert_ids, "raw": raw_ids}[item["ref_type"]]
+
+
+def test_l1_result_fixture_covers_every_decision_and_hold_reason():
+    # F1 and F2 show promotions, holds and verdicts apart; the sample must carry one of each.
+    extra = json.loads((FIXTURES / "l1-results.json").read_text(encoding="utf-8"))
+    decisions = extra["decisions"]
+    assert {d["decision"] for d in decisions} == {
+        "l1_escalated",
+        "held",
+        "closed_fp",
+        "l2_escalated",
+    }
+    assert {d["reason"] for d in decisions if d["decision"] == "held"} == {
+        "below_threshold",
+        "llm_failure",
+        "evidence_request_failure",
+    }
+    assert {d["reason"] for d in decisions if d["decision"] != "held"} == {None}
+    assert any(d["confidence"] is None for d in decisions)
+    # A failed request is the "증거 수집 실패" the screen shows (D-034, K62).
+    failed = [r for r in extra["evidence_requests"] if r["status"] == "failed"]
+    assert {r["requester_type"] for r in failed} == {"alert", "ticket"}
+    assert all(r["retry_count"] > 0 and r["failure_reason"] for r in failed)
+    assert {r["request_type"] for r in extra["evidence_requests"]} == {
+        "lookup",
+        "siem_mcp",
+        "specialist_agent",
+    }
+    # v2 Ticket statuses and origins, and an alert-level Agent Log step for the merged F2 log.
+    assert {t["status"] for t in extra["tickets"]} == {"on_hold", "closed_fp", "l2_escalated"}
+    assert {t["origin"] for t in extra["tickets"]} == {"l1_escalated", "scenario"}
+    assert any(s["subject_type"] == "alert" for s in extra["steps"])
+    assert any(s["subject_type"] == "ticket" for s in extra["steps"])
