@@ -1,9 +1,12 @@
-"""Stores (boxes 5, 6, 7, 10, 12, ... D-002): one ``stores`` registry for every kind of store.
+"""Stores (boxes 5, 6, 7, 10, 11, 12, 25, 27, D-002): one ``stores`` registry for every kind.
 
 Implementations are registered as ``<backend>.<kind>``: ``postgresql.records``
 for Alert/Event (boxes 6, 7), ``postgresql.readonly_records`` (the same records through
 the read-only account agent tools use, box 15), ``postgresql.lookups`` (box 5),
-``postgresql.tickets``, and ``postgresql.agent_log``.
+``postgresql.branches`` (C21, box 25), ``postgresql.l1_decisions`` (C23, boxes 11, 27),
+``postgresql.tickets``, and ``postgresql.agent_log``. ``readonly_branches``,
+``readonly_l1_decisions`` and ``readonly_tickets`` read the same tables through the
+read-only account, for the screen API (box 27).
 ``[store] backend`` picks the backend for all of them; the core passes only the
 kind to ``open_store`` and never names a backend.
 """
@@ -14,16 +17,34 @@ from collections.abc import Mapping
 from soc.config import Settings
 from soc.plugins import PluginRegistry
 
+from .branches.base import READONLY_STORE_KIND as READONLY_BRANCHES
+from .branches.base import STORE_KIND as BRANCHES
+from .branches.postgres import create_postgres_branches, create_postgres_readonly_branches
+from .l1_decisions.base import READONLY_STORE_KIND as READONLY_L1_DECISIONS
+from .l1_decisions.base import STORE_KIND as L1_DECISIONS
+from .l1_decisions.postgres import (
+    create_postgres_l1_decisions,
+    create_postgres_readonly_l1_decisions,
+)
 from .lookups.base import STORE_KIND as LOOKUPS
 from .lookups.postgres import create_postgres_lookups
+from .postgresql.tickets import create_postgresql_readonly_ticket_store
 from .records.base import READONLY_STORE_KIND as READONLY_RECORDS
 from .records.base import STORE_KIND as RECORDS
 from .records.postgres import create_postgres_readonly_records, create_postgres_records
+
+# The read-only Ticket kind; ``tickets`` itself is registered by entry point (pyproject.toml).
+READONLY_TICKETS = "readonly_tickets"
 
 STORES = PluginRegistry("stores")
 STORES.register(f"postgresql.{RECORDS}", create_postgres_records)
 STORES.register(f"postgresql.{LOOKUPS}", create_postgres_lookups)
 STORES.register(f"postgresql.{READONLY_RECORDS}", create_postgres_readonly_records)
+STORES.register(f"postgresql.{BRANCHES}", create_postgres_branches)
+STORES.register(f"postgresql.{READONLY_BRANCHES}", create_postgres_readonly_branches)
+STORES.register(f"postgresql.{L1_DECISIONS}", create_postgres_l1_decisions)
+STORES.register(f"postgresql.{READONLY_L1_DECISIONS}", create_postgres_readonly_l1_decisions)
+STORES.register(f"postgresql.{READONLY_TICKETS}", create_postgresql_readonly_ticket_store)
 
 
 def open_store(
