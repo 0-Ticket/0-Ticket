@@ -1,0 +1,54 @@
+[
+  {
+    "source_record_id": "src_43e8396a61b70e553f54e52212558f5bf17738ad190ad022cf3612e71e442c9e",
+    "c3": {
+      "class_uid": 2004,
+      "time": 1642500341120,
+      "severity_id": 4,
+      "rule_id": "2008983",
+      "rule_name": "ET SCAN WPScan User Agent",
+      "src_ip": "198.51.100.23",
+      "src_port": 51544,
+      "dst_ip": "192.0.2.80",
+      "dst_port": 80,
+      "host": null,
+      "user": null,
+      "http_url": null,
+      "http_status": null,
+      "techniques": [],
+      "raw_ids": ["raw_suricata_eve.jsonl_1"],
+      "unmapped": {
+        "event_type": "alert",
+        "proto": "TCP",
+        "alert": {"category": "Web Application Attack"}
+      },
+      "extensions": {}
+    }
+  },
+  {
+    "source_record_id": "src_5ba33a9565b99edebb58d223ed29578655f435d4586fc2ccb499931481d218cc",
+    "c3": {
+      "class_uid": 2004,
+      "time": 1642500430500,
+      "severity_id": 4,
+      "rule_id": "2019401",
+      "rule_name": "ET WEB_SERVER Possible SQL Injection Attempt UNION SELECT",
+      "src_ip": "198.51.100.23",
+      "src_port": 51590,
+      "dst_ip": "192.0.2.80",
+      "dst_port": 80,
+      "host": null,
+      "user": null,
+      "http_url": null,
+      "http_status": null,
+      "techniques": [],
+      "raw_ids": ["raw_suricata_eve.jsonl_3"],
+      "unmapped": {
+        "event_type": "alert",
+        "proto": "TCP",
+        "alert": {"category": "Web Application Attack"}
+      },
+      "extensions": {}
+    }
+  }
+]

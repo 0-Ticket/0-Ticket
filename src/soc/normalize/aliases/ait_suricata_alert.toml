@@ -1,0 +1,27 @@
+# AIT Log Data Set V2 (D-004)의 Suricata EVE 알럿 → C3. 박스 4 기본 별칭 표(C20).
+# 조직은 normalize.alias_dir 폴더에 같은 이름의 파일을 두어 이 표를 통째로 바꾼다.
+scenario = "ait_suricata_alert"
+kind = "alert"
+class_uid = 2004
+time_format = "iso8601"
+default_techniques = []
+
+# Suricata 심각도는 1이 가장 높다. 값 → severity_id (4 High, 3 Medium, 2 Low).
+[severity_map]
+"1" = 4
+"2" = 3
+"3" = 2
+
+# C3 필드 → 원본 필드 후보. 앞에서부터 찾고 점(.)은 중첩 필드다.
+[fields]
+time = ["timestamp"]
+severity_id = ["alert.severity"]
+rule_id = ["alert.signature_id"]
+rule_name = ["alert.signature"]
+src_ip = ["src_ip"]
+src_port = ["src_port"]
+dst_ip = ["dest_ip"]
+dst_port = ["dest_port"]
+http_url = ["http.url"]
+http_status = ["http.status"]
+techniques = ["alert.metadata.mitre_technique_id"]
