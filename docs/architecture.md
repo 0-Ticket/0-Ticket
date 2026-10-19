@@ -112,7 +112,7 @@ flowchart TB
 | 그룹 | 박스 | 코드 위치 |
 |---|---|---|
 | 수집 | 3 (1, 2는 외부) | `src/soc/ingest/` |
-| 정규화 · 저장 · 분기 | 4, 5, 6, 7, 8, 25 | `src/soc/normalize/` (4, 5, 25), `src/soc/store/` (6, 7, 8) |
+| 정규화 · 저장 · 분기 | 4, 5, 6, 7, 8, 25 | `src/soc/normalize/` (4, 5), `src/soc/branch/` (25), `src/soc/store/` (6, 7, 8) |
 | L1 | 10, 11, 12, 13, 14, 15, 26, 27 | `src/soc/l1/`. 12, 15, 26은 L2·L3도 쓴다. 27의 화면 쪽은 `src/soc/api/`, `frontend/` |
 | L2 | 18, 19, 20, 21, 22, 24 | `src/soc/l2/` |
 | L3 | 23 | `src/soc/l3/` |
@@ -264,6 +264,7 @@ flowchart TB
   - 공용 엔티티 기준은 Lookup(5)의 공용 자산 표시와 설정의 목록이다. 빼지 않으면 모든 것이 하나로 묶인다.
   - "공격 대상 시나리오" 목록과 Incident 매칭 기준(엔티티 종류, 시간 범위)은 규칙 파일로 둔다.
   - C21에 경로와 분기 근거(규칙 ID, 엔티티)를 남긴다.
+  - C21 `reason.entity`는 세 경로 모두 대표 엔티티다. `reason.rule_id`는 경로마다 뜻이 다르다: `deduplicated`는 알럿의 `rule_id`, `scenario_ticket`은 맞은 시나리오 규칙의 `id`, `l1_entity_lookup`은 `null`(엔티티가 하나도 없는 알럿만 C21 규칙상 알럿의 `rule_id`).
 - **완료 조건**: 두 입구 모두 중복 제거, 엔티티 추출, 공용 엔티티 제거, Incident 존재 여부 분기를 규칙대로 하고, 분기 이유를 남긴다.
 
 ## SOC L1
