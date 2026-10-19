@@ -5,11 +5,25 @@ from collections.abc import Mapping
 from typing import Any
 
 import psycopg
+from psycopg import sql
 
 from soc.config import Settings
 from soc.contracts import validate_contract
-from soc.db import connect
-from soc.l1.tickets import ConcurrentTicketUpdateError, TicketNotFoundError
+from soc.db import connect, connect_readonly
+from soc.l1.tickets import (
+    ConcurrentTicketUpdateError,
+    TicketNotFoundError,
+    TicketPage,
+    check_ticket_list_args,
+    decode_ticket_cursor,
+    ticket_cursor,
+)
+from soc.store.paging import DEFAULT_PAGE_LIMIT
+
+# GET /api/tickets order; ticket_id compares by code point like Python (migration 0092).
+_PRIORITY = sql.SQL("((payload ->> 'priority')::bigint)")
+_CREATED_AT = sql.SQL("((payload ->> 'created_at')::bigint)")
+_TICKET_ID = sql.SQL('(ticket_id COLLATE "C")')
 
 
 def _ticket_dict(ticket: Mapping[str, Any]) -> dict[str, Any]:
@@ -99,9 +113,54 @@ class PostgresTicketStore:
                     [(ticket_id, entity["type"], entity["value"]) for entity in entities],
                 )
 
+    # Last in the class: the method name shadows the built-in list in the class body.
+    def list(
+        self,
+        *,
+        status: str | None = None,
+        origin: str | None = None,
+        cursor: str | None = None,
+        limit: int = DEFAULT_PAGE_LIMIT,
+    ) -> TicketPage:
+        check_ticket_list_args(status, origin, limit)
+        after = decode_ticket_cursor(cursor)
+        conditions, params = [], []
+        for key, value in (("status", status), ("origin", origin)):
+            if value is not None:
+                conditions.append(sql.SQL("payload ->> {} = %s").format(sql.Literal(key)))
+                params.append(value)
+        if after is not None:
+            priority, created_at, ticket_id = after
+            conditions.append(
+                sql.SQL("({p} < %s OR ({p} = %s AND ({c}, {t}) > (%s, %s)))").format(
+                    p=_PRIORITY, c=_CREATED_AT, t=_TICKET_ID
+                )
+            )
+            params.extend([priority, priority, created_at, ticket_id])
+        where = (
+            sql.SQL(" WHERE ") + sql.SQL(" AND ").join(conditions) if conditions else sql.SQL("")
+        )
+        query = sql.SQL(
+            "SELECT payload FROM tickets{w} ORDER BY {p} DESC, {c}, {t} LIMIT %s"
+        ).format(w=where, p=_PRIORITY, c=_CREATED_AT, t=_TICKET_ID)
+        rows = self._connection.execute(query, [*params, limit + 1]).fetchall()
+        items = [_decode_ticket(row[0]) for row in rows[:limit]]
+        next_cursor = ticket_cursor(items[-1]) if len(rows) > limit else None
+        return TicketPage(items, next_cursor)
+
 
 def create_postgresql_ticket_store(
     settings: Settings, environ: Mapping[str, str] | None = None
 ) -> PostgresTicketStore:
     """Factory registered in the ``zero_ticket_soc.stores`` entry point group."""
     return PostgresTicketStore(connect(settings, environ), owns_connection=True)
+
+
+def create_postgresql_readonly_ticket_store(
+    settings: Settings, environ: Mapping[str, str] | None = None
+) -> PostgresTicketStore:
+    """The ``postgresql.readonly_tickets`` factory: reads and lists work, every write fails.
+
+    For the screen API (box 27), which only reads Tickets (docs/security-policy.md 4).
+    """
+    return PostgresTicketStore(connect_readonly(settings, environ), owns_connection=True)
