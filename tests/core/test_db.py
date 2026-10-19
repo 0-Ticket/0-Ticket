@@ -19,8 +19,10 @@ from soc.db import (
     MigrationError,
     apply_migrations,
     connect,
+    connect_readonly,
     discover_migrations,
 )
+from soc.db.connection import READ_ONLY_OPTIONS
 from soc.db.migrator import DEFAULT_MIGRATIONS
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "migrations"
@@ -69,6 +71,29 @@ def test_unreachable_server_error_hides_password():
     assert "DATABASE_URL" in str(caught.value)
     assert "hunter-two-example" not in str(caught.value)
     assert caught.value.__cause__ is None
+
+
+@pytest.fixture
+def connect_calls(monkeypatch):
+    """Record what each connect function passes to the driver (#83)."""
+    calls = []
+    monkeypatch.setattr(psycopg, "connect", lambda url, **kwargs: calls.append(kwargs))
+    return calls
+
+
+def test_connect_opens_autocommit_connections(connect_calls):
+    environ = {"DATABASE_URL": "postgresql://analyst@127.0.0.1:1/soc"}
+    connect(load_config(environ={}), environ=environ)
+    # A read must not leave a transaction open that later writes join and close rolls back.
+    assert connect_calls[0]["autocommit"] is True
+    assert "options" not in connect_calls[0]
+
+
+def test_readonly_connect_keeps_read_only_option(connect_calls):
+    environ = {"DATABASE_READONLY_URL": "postgresql://reader@127.0.0.1:1/soc"}
+    connect_readonly(load_config(environ={}), environ=environ)
+    assert connect_calls[0]["autocommit"] is True
+    assert connect_calls[0]["options"] == READ_ONLY_OPTIONS
 
 
 @pytest.fixture
