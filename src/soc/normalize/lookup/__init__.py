@@ -1,7 +1,8 @@
 """Lookup providers (``lookups`` group) and the join step that uses them.
 
 ``[lookup] provider`` picks a registered provider; the core opens it with
-``open_lookup`` and never names it. ``none`` is registered here.
+``open_lookup`` and never names it. ``csv`` (box 5, the default) and ``none``
+are registered here.
 """
 
 import os
@@ -12,8 +13,10 @@ from soc.plugins import PluginRegistry
 
 from .base import LookupProvider
 from .none import create_none_lookup
+from .table import create_csv_lookup
 
 LOOKUPS = PluginRegistry("lookups")
+LOOKUPS.register("csv", create_csv_lookup)
 LOOKUPS.register("none", create_none_lookup)
 
 

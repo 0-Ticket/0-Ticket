@@ -1,7 +1,8 @@
 """Lookup join step (box 4 -> 5): fills src_asset, dst_asset and user_info of C5 and C13.
 
 The enricher is core; what it asks is the configured provider. Provider output
-is plugin output, so it is checked as C4 before it is joined.
+is plugin output, so it is checked as C4 before it is joined. The evidence
+queue's lookup handler asks through ``asset`` and ``user`` for the same check.
 """
 
 from dataclasses import dataclass
@@ -27,17 +28,19 @@ class LookupEnricher:
     ) -> Enrichment:
         """Look up each entity the record has, as of the record's time ``at``."""
         return Enrichment(
-            src_asset=self._asset(src_ip, at),
-            dst_asset=self._asset(dst_ip, at),
-            user_info=self._user(user, at),
+            src_asset=self.asset(src_ip, at),
+            dst_asset=self.asset(dst_ip, at),
+            user_info=self.user(user, at),
         )
 
-    def _asset(self, value: str | None, at: int) -> AssetInfo | None:
+    def asset(self, value: str | None, at: int) -> AssetInfo | None:
+        """The checked C4 asset for an IP or host name at ``at``; None if absent or unknown."""
         if value is None:
             return None
         return _checked("AssetInfo", self._provider.find_asset(value, at))
 
-    def _user(self, user: str | None, at: int) -> UserInfo | None:
+    def user(self, user: str | None, at: int) -> UserInfo | None:
+        """The checked C4 account for ``user`` at ``at``; None if absent or unknown."""
         if user is None:
             return None
         return _checked("UserInfo", self._provider.find_user(user, at))

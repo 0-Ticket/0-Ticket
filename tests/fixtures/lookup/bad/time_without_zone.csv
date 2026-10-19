@@ -1,0 +1,2 @@
+match,hostname,criticality,shared,valid_from
+192.0.2.80,web-01,5,false,2021-01-01T00:00:00
