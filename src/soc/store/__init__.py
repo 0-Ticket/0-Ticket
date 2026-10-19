@@ -5,8 +5,8 @@ for Alert/Event (boxes 6, 7), ``postgresql.readonly_records`` (the same records 
 the read-only account agent tools use, box 15), ``postgresql.lookups`` (box 5),
 ``postgresql.branches`` (C21, box 25), ``postgresql.l1_decisions`` (C23, boxes 11, 27),
 ``postgresql.tickets``, and ``postgresql.agent_log``. ``readonly_branches``,
-``readonly_l1_decisions`` and ``readonly_tickets`` read the same tables through the
-read-only account, for the screen API (box 27).
+``readonly_l1_decisions``, ``readonly_tickets`` and ``readonly_agent_log`` read the
+same tables through the read-only account, for the screen API (box 27).
 ``[store] backend`` picks the backend for all of them; the core passes only the
 kind to ``open_store`` and never names a backend.
 """
@@ -28,13 +28,33 @@ from .l1_decisions.postgres import (
 )
 from .lookups.base import STORE_KIND as LOOKUPS
 from .lookups.postgres import create_postgres_lookups
-from .postgresql.tickets import create_postgresql_readonly_ticket_store
 from .records.base import READONLY_STORE_KIND as READONLY_RECORDS
 from .records.base import STORE_KIND as RECORDS
 from .records.postgres import create_postgres_readonly_records, create_postgres_records
 
-# The read-only Ticket kind; ``tickets`` itself is registered by entry point (pyproject.toml).
+# Kinds whose writable half is registered by entry point (pyproject.toml).
 READONLY_TICKETS = "readonly_tickets"
+READONLY_AGENT_LOG = "readonly_agent_log"
+
+
+# The ``postgresql`` Ticket and Agent Log modules import ``soc.l1``, which imports
+# this package, so they are imported when the store is opened instead of here:
+# at module level, whichever of the two is imported first sees the other half-built.
+
+
+def _readonly_ticket_store(settings: Settings, environ: Mapping[str, str]):
+    """Open ``postgresql.readonly_tickets``."""
+    from .postgresql.tickets import create_postgresql_readonly_ticket_store
+
+    return create_postgresql_readonly_ticket_store(settings, environ)
+
+
+def _readonly_agent_log_store(settings: Settings, environ: Mapping[str, str]):
+    """Open ``postgresql.readonly_agent_log``."""
+    from .postgresql.agent_log import create_postgresql_readonly_agent_log_store
+
+    return create_postgresql_readonly_agent_log_store(settings, environ)
+
 
 STORES = PluginRegistry("stores")
 STORES.register(f"postgresql.{RECORDS}", create_postgres_records)
@@ -44,7 +64,8 @@ STORES.register(f"postgresql.{BRANCHES}", create_postgres_branches)
 STORES.register(f"postgresql.{READONLY_BRANCHES}", create_postgres_readonly_branches)
 STORES.register(f"postgresql.{L1_DECISIONS}", create_postgres_l1_decisions)
 STORES.register(f"postgresql.{READONLY_L1_DECISIONS}", create_postgres_readonly_l1_decisions)
-STORES.register(f"postgresql.{READONLY_TICKETS}", create_postgresql_readonly_ticket_store)
+STORES.register(f"postgresql.{READONLY_TICKETS}", _readonly_ticket_store)
+STORES.register(f"postgresql.{READONLY_AGENT_LOG}", _readonly_agent_log_store)
 
 
 def open_store(

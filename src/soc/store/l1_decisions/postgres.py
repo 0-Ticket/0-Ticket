@@ -58,16 +58,18 @@ class PostgresL1DecisionStore:
         self,
         *,
         subject_type: str | None = None,
+        subject_id: str | None = None,
         decision: str | None = None,
         reason: str | None = None,
         cursor: str | None = None,
         limit: int = DEFAULT_PAGE_LIMIT,
     ) -> DecisionPage:
-        check_list_args(subject_type, decision, reason, limit)
+        check_list_args(subject_type, decision, reason, limit, subject_id)
         after = decode_decision_cursor(cursor)
         conditions, params = [], []
         for column, value in (
             ("subject_type", subject_type),
+            ("subject_id", subject_id),
             ("decision", decision),
             ("reason", reason),
         ):

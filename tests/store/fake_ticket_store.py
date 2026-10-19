@@ -15,6 +15,7 @@ from soc.store.paging import DEFAULT_PAGE_LIMIT
 class FakeTicketStore:
     def __init__(self):
         self.tickets = {}
+        self.closed = False
 
     def create(self, ticket):
         self.tickets[ticket["ticket_id"]] = copy.deepcopy(dict(ticket))
@@ -28,12 +29,30 @@ class FakeTicketStore:
         entity = {"type": entity_type, "value": entity_value}
         return [copy.deepcopy(t) for t in self.tickets.values() if entity in t["entities"]]
 
+    def close(self):
+        self.closed = True
+
     def update(self, ticket, *, expected_status):
         self.tickets[ticket["ticket_id"]] = copy.deepcopy(dict(ticket))
         return copy.deepcopy(self.tickets[ticket["ticket_id"]])
 
-    def list(self, *, status=None, origin=None, cursor=None, limit=DEFAULT_PAGE_LIMIT):
-        check_ticket_list_args(status, origin, limit)
+    def list(
+        self,
+        *,
+        status=None,
+        origin=None,
+        handling_type=None,
+        min_priority=None,
+        cursor=None,
+        limit=DEFAULT_PAGE_LIMIT,
+    ):
+        check_ticket_list_args(
+            status=status,
+            origin=origin,
+            handling_type=handling_type,
+            min_priority=min_priority,
+            limit=limit,
+        )
         after = decode_ticket_cursor(cursor)
         after_key = None if after is None else (-after[0], after[1], after[2])
         found = sorted(
@@ -42,6 +61,8 @@ class FakeTicketStore:
                 for t in self.tickets.values()
                 if (status is None or t["status"] == status)
                 and (origin is None or t["origin"] == origin)
+                and (handling_type is None or t["handling_type"] == handling_type)
+                and (min_priority is None or t["priority"] >= min_priority)
                 and (after_key is None or ticket_sort_key(t) > after_key)
             ),
             key=ticket_sort_key,

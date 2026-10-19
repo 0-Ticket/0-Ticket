@@ -51,6 +51,7 @@ class L1DecisionStore(Protocol):
         self,
         *,
         subject_type: str | None = None,
+        subject_id: str | None = None,
         decision: str | None = None,
         reason: str | None = None,
         cursor: str | None = None,
@@ -58,8 +59,12 @@ class L1DecisionStore(Protocol):
     ) -> DecisionPage:
         """C23 matching every given filter, newest first, ``limit`` (1-200) per page.
 
-        A filter value outside the C23 enum, or a cursor this method did not
-        make, is a ValueError.
+        ``subject_id`` is how box 27 reads one subject's whole decision history;
+        ``get`` keeps only the latest. Filters are applied before the page is
+        cut, so paging a filtered list has no gaps.
+
+        A filter value outside the C23 enum, an empty ``subject_id``, or a
+        cursor this method did not make, is a ValueError.
         """
         ...
 

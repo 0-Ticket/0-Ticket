@@ -14,7 +14,7 @@ import psycopg
 
 from soc.config import Settings
 from soc.contracts import validate_contract
-from soc.db import connect
+from soc.db import connect, connect_readonly
 
 from .base import ClaimedRequest, DuplicateRequestError, RequestNotFoundError, RequestStateError
 
@@ -155,3 +155,14 @@ def create_postgresql_evidence_queue(
 ) -> PostgresEvidenceQueue:
     """Factory registered as ``postgresql`` in the ``evidence_queues`` registry."""
     return PostgresEvidenceQueue(connect(settings, environ), owns_connection=True)
+
+
+def create_postgresql_readonly_evidence_queue(
+    settings: Settings, environ: Mapping[str, str] | None = None
+) -> PostgresEvidenceQueue:
+    """The ``postgresql.readonly`` factory: ``list_by_requester`` works, every write fails.
+
+    For the screen API (box 27), which only reads the queue
+    (docs/security-policy.md 4).
+    """
+    return PostgresEvidenceQueue(connect_readonly(settings, environ), owns_connection=True)

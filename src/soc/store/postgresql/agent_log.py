@@ -9,7 +9,7 @@ from psycopg import errors
 
 from soc.config import Settings
 from soc.contracts import AgentStep, validate_contract
-from soc.db import connect
+from soc.db import connect, connect_readonly
 from soc.l1.agent_log import AgentLogEntry, ArtifactReference, DuplicateAgentStepError
 
 
@@ -86,3 +86,14 @@ def create_postgresql_agent_log_store(
 ) -> PostgresAgentLogStore:
     """Factory registered as ``postgresql.agent_log`` in the stores group."""
     return PostgresAgentLogStore(connect(settings, environ), owns_connection=True)
+
+
+def create_postgresql_readonly_agent_log_store(
+    settings: Settings, environ: Mapping[str, str] | None = None
+) -> PostgresAgentLogStore:
+    """The ``postgresql.readonly_agent_log`` factory: reads work, every write fails.
+
+    For the screen API (box 27), which only reads the Agent Log
+    (docs/security-policy.md 4).
+    """
+    return PostgresAgentLogStore(connect_readonly(settings, environ), owns_connection=True)

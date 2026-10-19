@@ -11,11 +11,17 @@ def check_decision(record: L1DecisionRecord) -> L1DecisionRecord:
 
 
 def check_list_args(
-    subject_type: str | None, decision: str | None, reason: str | None, limit: int
+    subject_type: str | None,
+    decision: str | None,
+    reason: str | None,
+    limit: int,
+    subject_id: str | None = None,
 ) -> None:
     check_filter("subject_type", subject_type, SUBJECT_TYPES)
     check_filter("decision", decision, DECISIONS)
     check_filter("reason", reason, REASONS)
+    if subject_id is not None and not subject_id:
+        raise ValueError("subject_id must not be empty")
     check_page_limit(limit)
 
 

@@ -221,9 +221,17 @@ class VectorSearchSettings(_Section):
     rrf_rank_constant: int = Field(ge=1)
 
 
+class ApiSettings(_Section):
+    """Where the screen API listens (box 27). It serves read-only L1 results."""
+
+    host: str = Field(min_length=1)
+    port: int = Field(ge=1, le=65535)
+
+
 class Settings(_Section):
     """Typed settings. Each box issue adds its own section here and in default.toml."""
 
+    api: ApiSettings
     database: DatabaseSettings
     evidence_queue: EvidenceQueueSettings
     embedder: EmbedderSettings
