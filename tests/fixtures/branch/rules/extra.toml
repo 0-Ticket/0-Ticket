@@ -1,0 +1,6 @@
+# Organization file with a new name: adds rules after the files before it by name.
+[[scenario]]
+id = "org_policy"
+techniques = ["T1071"]
+handling_type = "other"
+specialist = "web"

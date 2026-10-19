@@ -47,6 +47,29 @@ def test_default_normalize_and_lookup_settings():
     assert settings.lookup.provider == "csv"
 
 
+def test_default_branch_settings():
+    settings = load_config(environ={})
+    assert settings.branch.dedup_window_minutes == 10
+    assert settings.branch.batch_size == 500
+    assert settings.branch.dedup_scan_limit == 500
+    assert settings.branch.rules_dir == ""
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "[branch]\ndedup_window_minutes = 0\n",
+        "[branch]\nbatch_size = 0\n",
+        "[branch]\ndedup_scan_limit = 0\n",
+    ],
+)
+def test_invalid_branch_settings_fail(tmp_path, text):
+    org = tmp_path / "org.toml"
+    org.write_text(text, encoding="utf-8")
+    with pytest.raises(ConfigError):
+        load_config(org, environ={})
+
+
 @pytest.mark.parametrize(
     "text",
     [
@@ -262,6 +285,7 @@ def test_wheel_contains_and_uses_default_config(tmp_path):
         assert "soc/default.toml" in archive.namelist()
         assert "soc/normalize/aliases/ait_suricata_alert.toml" in archive.namelist()
         assert "soc/normalize/aliases/ait_apache_access.toml" in archive.namelist()
+        assert "soc/branch/rules/scenarios.toml" in archive.namelist()
         assert "soc/store/vectors/templates/decided_ticket.txt" in archive.namelist()
         assert "soc/store/vectors/templates/entity_sentence.txt" in archive.namelist()
         archive.extractall(installed)

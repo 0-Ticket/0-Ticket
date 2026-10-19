@@ -164,6 +164,19 @@ class NormalizeSettings(_Section):
     max_parse_length: int = Field(ge=1)
 
 
+class BranchSettings(_Section):
+    """Box 25 entity branching: duplicate window, batch sizes, scenario rule folder."""
+
+    # A repeat of the same rule and entities within this many minutes of the first
+    # alert's first_seen is merged into it.
+    dedup_window_minutes: int = Field(ge=1)
+    batch_size: int = Field(ge=1)
+    # Most alerts read when looking for an alert's first alert.
+    dedup_scan_limit: int = Field(ge=1)
+    # Organization scenario rule folder. Empty: default rules only.
+    rules_dir: str
+
+
 class LookupSettings(_Section):
     # The name registered in the lookups group; same naming rule as store.backend.
     provider: str = Field(pattern=r"^[a-z0-9_]+$")
@@ -232,6 +245,7 @@ class Settings(_Section):
     """Typed settings. Each box issue adds its own section here and in default.toml."""
 
     api: ApiSettings
+    branch: BranchSettings
     database: DatabaseSettings
     evidence_queue: EvidenceQueueSettings
     embedder: EmbedderSettings
