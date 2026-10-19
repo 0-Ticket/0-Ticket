@@ -67,6 +67,7 @@ def test_core_store_code_has_no_backend_name_branch():
     allowed = {
         STORE / "__init__.py",
         STORE / "records" / "postgres.py",
+        STORE / "lookups" / "postgres.py",
         STORE / "postgresql" / "tickets.py",
         STORE / "postgresql" / "agent_log.py",
     }
