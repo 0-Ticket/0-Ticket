@@ -88,7 +88,7 @@ model = "my-larger-model"
 | 임베딩 제공자 | 8 | `embedders` | bge-m3, 로컬 실행 (D-010) | 상용 임베딩 API |
 | 검색 결과 융합 | 8 | `FUSION_FUNCTIONS` 함수 맵 | RRF (`[vector_search] fusion_method`) | `keyword_first`, `weighted_rrf`, `dbsf`, `weighted_score` 중 선택하거나 함수를 추가 |
 | LLM 제공자 | 11, 13, 14, 19, 23, 24 | `llm_providers` | OpenAI 호환 제공자. 데모 기본값: 서빙 도구 Ollama, 모델 `granite4:micro` (로컬 서빙, D-009) | 상용 모델, 사내 모델, 로컬 모델 |
-| 전문 에이전트 | 13, 14 | `specialists` | Web (Cloud는 보류) | Cloud, 엔드포인트, 메일, 네트워크 전문 에이전트 추가 |
+| 전문 에이전트 | 13, 14 | `specialists` | `web`: Web 전문가 Agent(#63). 인터페이스 `src/soc/l1/specialists/base.py`의 `SpecialistContext`를 받아 C22 요청 하나를 C14로 답하는 함수. C22 `domain` 값이 구현체 이름이고(도메인이 없으면 `web`), 코어는 `soc.l1.specialists.open_specialist(domain, context)`로 연다. Cloud(13)는 등록 한 줄 (D-005 확정 후) | Cloud, 엔드포인트, 메일, 네트워크 전문 에이전트 추가 |
 | 프롬프트 | 11, 13, 14, 19, 23, 24 | (파일) | 기본 프롬프트 | 자사 판정 기준, 언어 |
 | MCP 도구 | 15 | `mcp_servers` | 내부 데이터 조회, Web 도메인. 공식 Python MCP SDK로 구현 (D-041) | 사내 도구 연결 |
 | SIEM MCP 어댑터 | 15 | `siem_mcp_adapters` | Wazuh (초기, D-035). 선택된 SIEM을 따라간다. 읽기 전용 | ELK, Splunk |
@@ -108,6 +108,8 @@ model = "my-larger-model"
 SIEM 커넥터와 SIEM MCP 어댑터는 설정의 `[siem] adapter` 값 하나로 함께 선택된다(D-037). 두 확장 지점의 그룹은 따로지만 이름은 같은 것을 쓴다. 에이전트가 어떤 MCP 도구를 부를 수 있는지는 설정의 `[mcp.allowed_tools]`에 에이전트 이름별로 적고, 기본값은 비어 있어 모든 호출이 거부된다(박스 15).
 
 `mcp_servers` 그룹의 구현체는 **도구 묶음 함수 하나**다. `ToolContext`(설정, 환경변수, 읽기 전용 Alert·Event 저장소를 처음 쓸 때 여는 함수)를 받아 `ToolSpec` 목록을 돌려주고, 코어가 등록된 모든 묶음을 한 서버에 올린다. 레포 기본 묶음은 `internal_data`(`query_records`, `get_alert`)와 `web`(`query_http_flow`)이고, SIEM 도구(`query_siem`)는 선택된 어댑터에서 온다. 이미 등록된 도구 이름을 다시 쓰는 묶음은 시작할 때 거부된다(허용 목록이 가리키는 도구가 바뀌지 않게). 내부 데이터 조회는 `[database] readonly_url_env`가 가리키는 읽기 전용 계정으로만 하고, 연결에 읽기 전용 트랜잭션도 함께 건다(`docs/security-policy.md` 4항).
+
+전문 에이전트는 자기 이름으로만 도구를 부른다. Web 전문가의 이름은 `web_specialist` 하나이고, `[mcp.allowed_tools]`의 키, `[llm.agents]`의 키, C8 `agent` 값에 같은 이름을 쓴다. 요청을 넣은 에이전트(예: `l1`)의 허용 목록은 전문가에게 넘어가지 않는다. 알럿 앞뒤로 볼 흐름의 범위는 `[specialist]` 설정이다.
 
 허용 목록 예시(조직 설정):
 

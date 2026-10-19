@@ -5,6 +5,7 @@ import logging
 
 import pytest
 from evidence_fakes import AGENT, FakeEvidenceQueue, FakeTicketStore, load
+from specialist_fakes import context_for
 
 from soc.config import load_config
 from soc.contracts import AssetInfo, ContractValidationError, UserInfo
@@ -119,7 +120,9 @@ def queue_service(server, settings, lookup=None):
         FakeEvidenceQueue(),
         mcp=settings.mcp,
         max_retries=1,
-        handlers=default_handlers(server, lookup or RecordingLookup(), clock=lambda: NOW),
+        handlers=default_handlers(
+            context_for(settings, server), lookup or RecordingLookup(), clock=lambda: NOW
+        ),
         tickets=TicketService(FakeTicketStore()),
     )
 
@@ -160,10 +163,12 @@ def test_agent_without_query_siem_fails_the_request(tmp_path):
     assert adapter.queries == []
 
 
-def test_default_handlers_cover_siem_mcp_and_lookup(tmp_path):
-    server, _, _ = tool_server(tmp_path, 'l1 = ["query_siem"]')
-    # specialist_agent waits for box 14 (3-4).
-    assert set(default_handlers(server, RecordingLookup())) == {"siem_mcp", "lookup"}
+def test_default_handlers_cover_every_request_type(tmp_path):
+    server, _, settings = tool_server(tmp_path, 'l1 = ["query_siem"]')
+    handlers = default_handlers(context_for(settings, server), RecordingLookup())
+
+    # The specialist handler itself is box 14's (tests/l1/specialists).
+    assert set(handlers) == {"siem_mcp", "lookup", "specialist_agent"}
 
 
 @pytest.mark.parametrize(
@@ -251,7 +256,7 @@ def test_enricher_and_queue_handler_use_the_same_provider(tmp_path):
     server = ToolServer(settings.mcp, siem_tools(RecordingAdapter()))
 
     LookupEnricher(provider).enrich(None, "192.0.2.80", None, T)
-    default_handlers(server, provider, clock=lambda: NOW)["lookup"](
+    default_handlers(context_for(settings, server), provider, clock=lambda: NOW)["lookup"](
         lookup_request("user", "alice@example.com"), agent=AGENT
     )
 

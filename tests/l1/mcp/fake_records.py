@@ -47,6 +47,10 @@ class FakeReadOnlyRecords:
         self.queries.append(("get_alert_record", alert_id))
         return next((record for record in self.alerts if record.alert_id == alert_id), None)
 
+    def get_event_record(self, event_id):
+        self.queries.append(("get_event_record", event_id))
+        return next((record for record in self.events if record.event_id == event_id), None)
+
     def _find(self, records, id_field, field, value, time_from, time_to, limit):
         self.queries.append((id_field, field, value, time_from, time_to, limit))
         check_entity_field(field)
