@@ -139,10 +139,14 @@ SIEM 어댑터가 낸 알럿 또는 이벤트. 시나리오마다 필드명이 �
 | severity_map | dict[str, int] | 선택 | 원본 심각도 값 → `severity_id`(0~6). `alert`면 필수 |
 | default_techniques | list[str] | 선택 | 원본에 기법 정보가 없을 때 쓸 ATT&CK 기법 ID |
 | extensions_map | dict[str, str] | 선택 | 원본 필드 → `extensions` 키. 조직이 보존하고 싶은 값 |
+| parse | object | 선택 | 원본이 텍스트 한 줄일 때 필드로 나누는 규칙. `field`(str, 나눌 원본 필드)와 `pattern`(str, 이름 붙은 그룹이 있는 정규식) 둘 다 필수. 그룹 값은 `<field>.<그룹 이름>`으로 `fields`에서 가리킨다. 예: `message.client_ip` |
 
 규칙
-- `fields`에 없는 원본 필드는 `unmapped`로 간다.
-- C2의 `scenario`에 맞는 표가 없으면 C12(`unknown_scenario`), 필수 필드를 못 찾으면 C12(`missing_required`), 시간·심각도 변환에 실패하면 C12(`bad_value`)를 만든다.
+- `fields`에 없는 원본 필드는 `unmapped`로 간다. 쓴 값만 빼고 원래 중첩 구조를 그대로 둔다. `extensions_map`으로 옮긴 값과 `parse`로 나눈 원본 필드는 `unmapped`에 넣지 않고, 나눈 그룹 중 쓰지 않은 값은 `unmapped`의 `<field>` 아래에 남는다.
+- 빈 문자열과 없는 값은 "없음"이다. 정수 필드는 정수나 숫자 문자열, 문자열 필드는 문자열이나 정수, 목록 필드는 목록이나 문자열 하나를 받는다.
+- 시간대가 없는 시간은 추측하지 않고 실패(`bad_value`)로 둔다.
+- `parse` 정규식은 공격자가 만든 문자열에 적용되므로 역추적이 폭발하지 않게 쓴다(중첩 반복 금지). 대상 값이 설정 `normalize.max_parse_length`보다 길면 정규식을 적용하지 않고 C12(`bad_value`)를 만든다. 정규식이 맞지 않으면 필수 필드를 못 찾은 것으로 본다(`missing_required`).
+- C2의 `scenario`에 맞는 표가 없거나 표의 `kind`가 C2와 다르면 C12(`unknown_scenario`), 필수 필드를 못 찾으면 C12(`missing_required`), 시간·심각도·형 변환에 실패하면 C12(`bad_value`)를 만든다.
 - C12는 저장소에 남기고, 운영자가 별칭 표를 고칠 때 근거로 본다.
 
 ## C3 · NormalizedAlert
@@ -171,6 +175,8 @@ SIEM 어댑터가 낸 알럿 또는 이벤트. 시나리오마다 필드명이 �
 
 규칙: `src_ip`, `dst_ip`, `host` 중 하나 이상은 있어야 한다. 필수 필드가 비면 이 객체를 만들지 않고 C12 NormalizeFailure를 만든다.
 
+OCSF 1.9.0 Detection Finding에는 최상위 `src_endpoint`, `dst_endpoint`, `http_request`, `http_response`, `actor`가 없다. 내보낼 때(박스 4) 이 값들은 `evidences[0]`의 `src_endpoint`, `dst_endpoint`, `http_request.url.url_string`, `http_response.code`, `user.name`에 넣는다. `host`는 최상위 `device.hostname`이다.
+
 ## C12 · NormalizeFailure
 
 정규화하지 못한 알럿 또는 이벤트. 버리지 않고 모아서 사람이 별칭 표를 고칠 근거로 쓴다.
@@ -179,7 +185,7 @@ SIEM 어댑터가 낸 알럿 또는 이벤트. 시나리오마다 필드명이 �
 |---|---|---|---|
 | scenario | str | ✅ | C2에서 그대로 |
 | raw_ids | list[str] | ✅ | C2에서 그대로 |
-| reason | enum | ✅ | `unknown_scenario`(별칭 표 없음), `missing_required`(필수 필드 없음), `bad_value`(시간·심각도 변환 실패) |
+| reason | enum | ✅ | `unknown_scenario`(별칭 표 없음), `missing_required`(필수 필드 없음), `bad_value`(시간·심각도·형 변환 실패, `parse` 대상 길이 초과) |
 | missing_fields | list[str] | ✅ | 비어 있던 C3·C13 필수 필드 이름. 없으면 `[]` |
 | detail | str | 선택 | 실패 내용 한 줄 |
 | failed_at | int | ✅ | |
