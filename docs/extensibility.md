@@ -82,7 +82,7 @@ model = "my-larger-model"
 | 원본 저장소 | 2 (외부) | `raw_stores` | 로컬 파일 (`direct` 재생용) | 운영 원본 로그 보관은 외부 SIEM 소관 |
 | SIEM 커넥터 | 3 | `siem` (기존 그룹을 그대로 쓰는 것을 제안) | Wazuh (초기 구현 대상, D-037), `direct`(SIEM 없이 데이터셋을 재생해 C1을 C2로 넘김. 개발·테스트·데모용, 운영 대상 아님). 운영에서는 외부 SIEM 하나를 설정으로 선택 | ELK, Splunk |
 | 별칭 표 | 4 | (파일) | 기본 시나리오 별칭 표 `src/soc/normalize/aliases/<scenario>.toml`. 조직 폴더는 `[normalize] alias_dir`이고, 같은 이름 파일이 기본 표를 통째로 바꾼다. 텍스트 한 줄 원본은 `parse`(이름 붙은 그룹 정규식)로 나눈다. parse 정규식은 공격자가 만든 문자열에 적용되므로 역추적이 폭발하지 않게 쓴다(중첩 반복 금지). 대상 값이 `normalize.max_parse_length`보다 길면 적용하지 않는다 | 자사 SIEM 시나리오, 새 로그 형식 |
-| 룩업 제공자 | 5 | `lookups` | CSV 자산·계정 표(박스 5에서 추가). 그전 기본값은 `none`(항상 찾지 못함). 인터페이스 `src/soc/normalize/lookup/base.py`의 `find_asset(value, at)`, `find_user(user, at)`. `[lookup] provider`로 고르고 코어는 `soc.normalize.lookup.open_lookup`으로 연다. 정규화 결합(`LookupEnricher`)과 증거 요청 큐의 lookup 처리자가 같은 제공자를 쓴다 | CMDB, 디렉터리 서비스, 위협 인텔 평판 서비스 |
+| 룩업 제공자 | 5 | `lookups` | `csv`: CSV로 적재한 자산·계정 표(RDB, `postgresql.lookups`)를 읽는다(#60). `none`(항상 찾지 못함)도 설정으로 고를 수 있다. 인터페이스 `src/soc/normalize/lookup/base.py`의 `find_asset(value, at)`, `find_user(user, at)`. `[lookup] provider`로 고르고 코어는 `soc.normalize.lookup.open_lookup`으로 연다. 정규화 결합(`LookupEnricher`)과 증거 요청 큐의 lookup 처리자가 같은 제공자를 쓴다 | CMDB, 디렉터리 서비스, 위협 인텔 평판 서비스 |
 | 저장소 백엔드 | 5, 6, 7, 10, 12, 18, 20, 22, 24 | `stores` | PostgreSQL (D-002). Event도 RDB. 구현체 이름은 `<백엔드>.<저장소 종류>`(예: `postgresql.records`, `postgresql.tickets`)이고, `[store] backend` 하나로 고르며 코어는 `soc.store.open_store(<종류>, ...)`에 종류만 넘긴다 | 다른 RDB, 별도 로그 저장소(이벤트) |
 | 벡터 저장소 | 8 | `vector_stores` | Qdrant (D-003). Ticket, Case만 | 다른 벡터 DB |
 | 임베딩 제공자 | 8 | `embedders` | bge-m3, 로컬 실행 (D-010) | 상용 임베딩 API |
