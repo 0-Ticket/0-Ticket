@@ -160,22 +160,22 @@ SIEM 어댑터가 낸 알럿 또는 이벤트. 시나리오마다 필드명이 �
 | severity_id | int | ✅ | 0~6 (0 Unknown ~ 6 Fatal) | `severity_id` |
 | rule_id | str | ✅ | 탐지 룰 ID | `finding_info.analytic.uid` |
 | rule_name | str | ✅ | 탐지 룰 이름 | `finding_info.analytic.name` |
-| src_ip | str | 선택 | 출발지 IP | `src_endpoint.ip` |
-| src_port | int | 선택 | | `src_endpoint.port` |
-| dst_ip | str | 선택 | 목적지 IP | `dst_endpoint.ip` |
-| dst_port | int | 선택 | | `dst_endpoint.port` |
-| host | str | 선택 | 대상 호스트명 | `device.hostname` |
-| user | str | 선택 | 관련 계정 | `actor.user.name` |
-| http_url | str | 선택 | 웹 알럿의 요청 URL (원문, 데이터로만 취급) | `http_request.url.url_string` |
-| http_status | int | 선택 | 웹 알럿의 응답 코드 | `http_response.code` |
-| techniques | list[str] | ✅ | ATT&CK 기법 ID. 예: `T1190`. 원본에 없으면 C20의 `default_techniques`, 그것도 없으면 `[]` | `attacks[].technique.uid` |
+| src_ip | str | 선택 | 출발지 IP | `evidences[0].src_endpoint.ip` |
+| src_port | int | 선택 | | `evidences[0].src_endpoint.port` |
+| dst_ip | str | 선택 | 목적지 IP | `evidences[0].dst_endpoint.ip` |
+| dst_port | int | 선택 | | `evidences[0].dst_endpoint.port` |
+| host | str | 선택 | 대상 호스트명 | `device.hostname`, `evidences[0].device.hostname` |
+| user | str | 선택 | 관련 계정 | `evidences[0].user.name` |
+| http_url | str | 선택 | 웹 알럿의 요청 URL (원문, 데이터로만 취급) | `evidences[0].http_request.url.url_string` |
+| http_status | int | 선택 | 웹 알럿의 응답 코드 | `evidences[0].http_response.code` |
+| techniques | list[str] | ✅ | ATT&CK 기법 ID. 예: `T1190`. 원본에 없으면 C20의 `default_techniques`, 그것도 없으면 `[]` | `finding_info.attacks[].technique.uid` |
 | raw_ids | list[str] | ✅ | C2에서 그대로 | |
 | unmapped | dict | ✅ | 별칭 표에 없는 원본 필드 | `unmapped` |
 | extensions | dict | ✅ | 조직·플러그인 추가 필드. 없으면 `{}` | |
 
 규칙: `src_ip`, `dst_ip`, `host` 중 하나 이상은 있어야 한다. 필수 필드가 비면 이 객체를 만들지 않고 C12 NormalizeFailure를 만든다.
 
-OCSF 1.9.0 Detection Finding에는 최상위 `src_endpoint`, `dst_endpoint`, `http_request`, `http_response`, `actor`가 없다. 내보낼 때(박스 4) 이 값들은 `evidences[0]`의 `src_endpoint`, `dst_endpoint`, `http_request.url.url_string`, `http_response.code`, `user.name`에 넣는다. `host`는 최상위 `device.hostname`이고, `techniques`는 `finding_info.attacks[].technique.uid`다.
+OCSF 경로는 OCSF 1.9.0 Detection Finding, 프로필 없음 기준이다.
 
 ## C12 · NormalizeFailure
 
