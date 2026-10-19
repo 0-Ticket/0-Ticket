@@ -1,0 +1,116 @@
+[
+  {
+    "kind": "alert",
+    "scenario": "ait_wazuh_alert",
+    "raw_ids": [
+      "raw_wazuh_alert.jsonl_3"
+    ],
+    "fields": {
+      "@timestamp": "2022-01-18T10:03:00.000000Z",
+      "agent": {
+        "ip": "192.0.2.80",
+        "name": "wazuh-client",
+        "id": "7"
+      },
+      "rule": {
+        "id": "31101",
+        "level": 5,
+        "description": "Web server 400 error code."
+      },
+      "data": {
+        "srcip": "198.51.100.23",
+        "id": "404",
+        "url": "/backup",
+        "protocol": "GET"
+      },
+      "location": "/var/log/apache2/intranet-access.log"
+    }
+  },
+  {
+    "kind": "alert",
+    "scenario": "ait_wazuh_alert",
+    "raw_ids": [
+      "raw_wazuh_alert.jsonl_5"
+    ],
+    "fields": {
+      "@timestamp": "2022-01-18T10:05:00.000000Z",
+      "agent": {
+        "ip": "192.0.2.1",
+        "name": "wazuh-client",
+        "id": "3"
+      },
+      "rule": {
+        "id": "86601",
+        "level": 3,
+        "description": "Suricata: Alert - ET SCAN Possible Nmap User-Agent Observed"
+      },
+      "data": {
+        "src_ip": "198.51.100.23",
+        "dest_ip": "192.0.2.80",
+        "dest_port": "80",
+        "event_type": "alert"
+      },
+      "location": "/var/log/suricata/eve.json"
+    }
+  },
+  {
+    "kind": "alert",
+    "scenario": "ait_wazuh_alert",
+    "raw_ids": [
+      "raw_wazuh_alert.jsonl_6"
+    ],
+    "fields": {
+      "@timestamp": "2022-01-18T10:06:00.000000Z",
+      "agent": {
+        "ip": "192.0.2.80",
+        "name": "wazuh-client",
+        "id": "7"
+      },
+      "rule": {
+        "id": "31104",
+        "level": 6,
+        "description": "Common web attack.",
+        "mitre": {
+          "id": [
+            "T1055",
+            "T1083",
+            "T1190"
+          ]
+        }
+      },
+      "data": {
+        "srcip": "198.51.100.23",
+        "id": "404",
+        "url": "/_mem_bin",
+        "protocol": "GET"
+      },
+      "location": "/var/log/apache2/intranet-access.log"
+    }
+  },
+  {
+    "kind": "alert",
+    "scenario": "ait_wazuh_alert",
+    "raw_ids": [
+      "raw_wazuh_alert.jsonl_7"
+    ],
+    "fields": {
+      "@timestamp": "2022-01-18T10:07:00.000000Z",
+      "agent": {
+        "ip": "192.0.2.80",
+        "name": "wazuh-client",
+        "id": "7"
+      },
+      "rule": {
+        "id": "30305",
+        "level": 5,
+        "description": "Apache: Attempt to access forbidden file or directory."
+      },
+      "data": {
+        "srcip": "198.51.100.23",
+        "srcport": "40000",
+        "id": "AH01630"
+      },
+      "location": "/var/log/apache2/intranet-error.log"
+    }
+  }
+]

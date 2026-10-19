@@ -50,6 +50,33 @@ def test_ait_events_normalize_to_expected_c13(normalizer):
     assert [dump(result) for result in results] == expected
 
 
+def test_wazuh_alerts_normalize_to_expected_c3(normalizer):
+    """#79: AIT-ADS Wazuh alerts. dst_ip falls back to agent.ip, and data.id (a status code
+    or an Apache error code such as AH01630) stays in unmapped instead of failing."""
+    items = read_json(NORMALIZE / "wazuh_c2.json")
+    expected = read_json(NORMALIZE / "wazuh_expected_c3.json")
+    results = [
+        normalizer.normalize(make_c2(i["kind"], i["scenario"], i["fields"], i["raw_ids"]), NOW)
+        for i in items
+    ]
+    assert all(isinstance(result, NormalizedAlert) for result in results)
+    assert [dump(result) for result in results] == expected
+
+
+@pytest.mark.parametrize(
+    ("level", "severity_id"), [(0, 1), (5, 2), (7, 3), (10, 3), (12, 4), (15, 5)]
+)
+def test_wazuh_rule_level_maps_to_severity_id(normalizer, level, severity_id):
+    fields = {
+        "@timestamp": "2022-01-18T10:00:00.000000Z",
+        "agent": {"ip": "192.0.2.80"},
+        "rule": {"id": "31101", "level": level, "description": "Web server 400 error code."},
+        "data": {"srcip": "198.51.100.23"},
+    }
+    result = normalizer.normalize(make_c2("alert", "ait_wazuh_alert", fields), NOW)
+    assert result.severity_id == severity_id
+
+
 def test_injected_text_stays_data_in_unmapped(normalizer):
     event = [item for item in load_ait_c2() if item.kind == "event"][-1]
     result = normalizer.normalize(event, NOW)
