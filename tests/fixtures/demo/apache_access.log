@@ -1,5 +1,6 @@
 198.51.100.23 - - [18/Jan/2022:09:59:59 +0000] "GET / HTTP/1.1" 200 1534 "-" "WPScan v3.8.20"
 198.51.100.23 - - [18/Jan/2022:10:00:00 +0000] "GET /wp-login.php HTTP/1.1" 200 812 "-" "WPScan v3.8.20"
 broken line without a time
+198.51.100.23 - - [18/Jan/2022:10:10:00 +0000] "GET /missing HTTP/1.1" 404 196 "-" "dirb"
 198.51.100.23 - - [18/Jan/2022:10:29:59 +0000] "POST /wp-admin/admin-ajax.php HTTP/1.1" 200 64 "-" "Mozilla/5.0"
 198.51.100.23 - - [18/Jan/2022:10:30:00 +0000] "GET /wp-content/uploads/x.php HTTP/1.1" 200 10 "-" "Mozilla/5.0"
