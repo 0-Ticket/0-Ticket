@@ -1,0 +1,38 @@
+[
+  {
+    "decision_id": "ld_sample_alert_held",
+    "subject_type": "alert",
+    "subject_id": "al_sample_wpscan",
+    "decision": "held",
+    "confidence": 0.42,
+    "reason": "below_threshold",
+    "created_at": 1791849600000
+  },
+  {
+    "decision_id": "ld_sample_alert_escalated",
+    "subject_type": "alert",
+    "subject_id": "al_sample_scan_other",
+    "decision": "l1_escalated",
+    "confidence": 0.91,
+    "reason": null,
+    "created_at": 1791849601000
+  },
+  {
+    "decision_id": "ld_sample_ticket_closed",
+    "subject_type": "ticket",
+    "subject_id": "tk_sample_closed",
+    "decision": "closed_fp",
+    "confidence": 0.88,
+    "reason": null,
+    "created_at": 1791849602000
+  },
+  {
+    "decision_id": "ld_sample_ticket_held",
+    "subject_type": "ticket",
+    "subject_id": "tk_sample_held",
+    "decision": "held",
+    "confidence": null,
+    "reason": "evidence_request_failure",
+    "created_at": 1791849602000
+  }
+]
