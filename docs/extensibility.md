@@ -39,6 +39,7 @@ entry point 그룹 이름은 `zero_ticket_soc.<확장 지점>`이다. 아래 "�
 
 - 기본 설정: `config/default.toml` (레포에 커밋, 비밀 값 없음)
 - 조직 설정: 환경변수 `ZT_CONFIG`가 가리키는 파일. 기본 설정 위에 덮어쓴다. 레포에 커밋하지 않는다.
+- 시연 설정: `config/demo/settings.toml`. 형식은 조직 설정과 같고 `ZT_CONFIG`로 고른다. 내부 주소가 없는 시연 샘플이라 예외로 커밋한다(`docs/security-policy.md` 1항).
 - 비밀 값은 설정에 직접 쓰지 않는다. **환경변수 이름**만 적고, 값은 `.env`에 둔다.
 - 설정 파일 형식은 TOML이다(D-015). 표준 라이브러리 `tomllib`로 읽는다.
 
