@@ -85,6 +85,7 @@ uv run python -m soc.normalize.lookup.load assets tests/fixtures/lookup/assets.c
 uv run python -m soc.normalize.lookup.load users tests/fixtures/lookup/users.csv     # 계정 표 적재
 uv run python -m soc.ingest --all       # 새로 가져올 것이 없을 때까지 수집 (옵션 없으면 한 번)
 uv run python -m soc.normalize --all    # 남은 원본이 없을 때까지 정규화 (옵션 없으면 종류별 한 번)
+uv run python -m soc.l1 --all           # After configuring SIEM MCP and the l1 tool allowlist
 ```
 
 정규화된 알럿의 `dst_asset`에 `web-01`(중요도 5)이 붙고, 프록시 `192.0.2.10`에서 나온 이벤트의 `src_asset`은 `shared=true`입니다. 표에 없는 IP는 `null`입니다. CSV 형식과 매칭 규칙은 [docs/architecture.md](docs/architecture.md) "5 · Lookup"에 있습니다.
