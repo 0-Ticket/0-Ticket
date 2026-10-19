@@ -16,6 +16,30 @@ export const badges: Record<string, { label: string; tone: Tone }> = {
   closed_benign: { label: '정상 종결', tone: 'success' },
   closed_fp: { label: '오탐 종결', tone: 'neutral' },
   escalated: { label: '상위 분석', tone: 'critical' },
+  // C6 status and C23 decision of the v2 L1 flow; `l1_escalated` is also a C6 origin.
+  on_hold: { label: '보류', tone: 'warning' },
+  l2_escalated: { label: 'L2 승격', tone: 'critical' },
+  l1_escalated: { label: 'L1 승격', tone: 'info' },
+  held: { label: '보류', tone: 'warning' },
+  // C6 origin (D-038).
+  l3_escalated: { label: 'L3 승격', tone: 'purple' },
+  scenario: { label: '시나리오', tone: 'neutral' },
+  // C23 hold reason (D-036, D-034).
+  below_threshold: { label: '확신도 미만', tone: 'warning' },
+  llm_failure: { label: 'LLM 실패', tone: 'critical' },
+  evidence_request_failure: { label: '증거 요청 실패', tone: 'critical' },
+  // C21 branch path (box 25).
+  deduplicated: { label: '중복 제거', tone: 'neutral' },
+  excluded_shared_entity: { label: '공용 엔티티 제외', tone: 'neutral' },
+  scenario_ticket: { label: '시나리오 티켓', tone: 'info' },
+  l1_entity_lookup: { label: 'L1 엔티티 조회', tone: 'info' },
+  existing_incident: { label: '기존 Incident 추가', tone: 'warning' },
+  new_incident: { label: '새 Incident', tone: 'critical' },
+  // C22 evidence request status (box 26).
+  pending: { label: '대기', tone: 'neutral' },
+  in_progress: { label: '진행 중', tone: 'info' },
+  completed: { label: '완료', tone: 'success' },
+  failed: { label: '실패', tone: 'critical' },
   tp: { label: 'TP', tone: 'critical' },
   fp: { label: 'FP', tone: 'neutral' },
   unknown: { label: '불명', tone: 'neutral' },
@@ -53,6 +77,12 @@ export const reviewStateBadges: Record<string, { label: string; tone: Tone }> = 
   awaiting_review: { label: 'L2 검토 대기', tone: 'warning' },
   approved: { label: 'L2 승인', tone: 'success' },
   human_handling: { label: '사람 직접 처리', tone: 'purple' },
+};
+// C22 request_type (box 26). The specialist `domain` stays a registered value.
+export const requestTypeLabels: Record<string, string> = {
+  specialist_agent: '전문가 Agent',
+  siem_mcp: 'SIEM MCP',
+  lookup: 'Lookup',
 };
 export const riskLabels: Record<string, string> = { low: '낮음', medium: '중간', high: '높음' };
 export const riskTones: Record<string, Tone> = {

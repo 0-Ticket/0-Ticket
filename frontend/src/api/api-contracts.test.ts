@@ -3,6 +3,21 @@ import { api } from './endpoints';
 import { data } from '../mocks/data';
 import { request } from './client';
 
+// The order GET /api/tickets guarantees: priority DESC, created_at ASC, ticket_id ASC.
+const TICKET_ORDER = [
+  'tk_scenario_l2',
+  'tk_sample',
+  'tk_l1_closed',
+  'tk_cloud',
+  'tk_l1_hold',
+  'tk_evidence_fail',
+  'tk_custom',
+  'tk_tie_a',
+  'tk_tie_z',
+  'tk_later',
+];
+const ticketOf = (id: string) => data.tickets.find((item) => item.ticket_id === id);
+
 describe('documented API contracts', () => {
   it('rejects non-string enum values instead of coercing them into contract outputs', async () => {
     await expect(
@@ -31,17 +46,23 @@ describe('documented API contracts', () => {
     const first = await api.tickets({ status: 'awaiting_human', limit: 1 });
     expect(first).toEqual({ items: [data.tickets[0]], next_cursor: '1' });
     const next = await api.tickets({ cursor: first.next_cursor!, limit: 1 });
-    expect(next.items[0].ticket_id).toBe('tk_cloud');
+    expect(next.items[0].ticket_id).toBe(TICKET_ORDER[1]);
     expect(await api.tickets({ cursor: '2', limit: 1 })).toEqual({
-      items: [data.tickets[2]],
+      items: [ticketOf(TICKET_ORDER[2])],
       next_cursor: '3',
     });
-    expect((await api.tickets({ limit: 200 })).items).toHaveLength(6);
+    expect((await api.tickets({ limit: 200 })).items).toHaveLength(data.tickets.length);
     expect(await api.tickets({ handling_type: 'missing' })).toEqual({
       items: [],
       next_cursor: null,
     });
-    expect((await api.tickets({ min_priority: 15 })).items).toHaveLength(1);
+    expect((await api.tickets({ min_priority: 15 })).items.map((item) => item.ticket_id)).toEqual([
+      'tk_scenario_l2',
+      'tk_sample',
+    ]);
+    expect(
+      (await api.tickets({ origin: 'l1_escalated' })).items.map((item) => item.origin),
+    ).toEqual(['l1_escalated', 'l1_escalated']);
     await expect(api.tickets({ limit: 201 })).rejects.toMatchObject({ code: 'invalid_input' });
     await expect(api.tickets({ cursor: 'invalid' })).rejects.toMatchObject({
       code: 'invalid_input',
@@ -72,7 +93,9 @@ describe('documented API contracts', () => {
     expect(await api.ticket('tk_sample')).toEqual({
       ticket: data.tickets[0],
       alerts: [data.alerts[0]],
-      findings: data.findings,
+      findings: data.findings.filter((item) => item.ticket_id === 'tk_sample'),
+      decisions: [],
+      evidence_requests: [],
       steps: data.steps.filter((step) => step.subject_id === 'tk_sample'),
       reviews: data.reviews,
       incident_ids: ['in_sample', 'in_web_campaign'],
@@ -108,6 +131,50 @@ describe('documented API contracts', () => {
       to: 2,
       tickets_total: 3,
     });
+  });
+
+  it('serves the L1 decision list and the alert L1 detail of box 27', async () => {
+    const alerts = data.decisions.filter((item) => item.subject_type === 'alert');
+    // Newest first, filters applied before the page is cut (docs/api-contracts.md).
+    expect((await api.l1Decisions({ subject_type: 'alert' })).items).toEqual(alerts);
+    expect(
+      (await api.l1Decisions({ decision: 'held', reason: 'llm_failure' })).items.map(
+        (item) => item.decision_id,
+      ),
+    ).toEqual(['ld_ticket_hold_llm', 'ld_alert_held_llm']);
+    const first = await api.l1Decisions({ limit: 1 });
+    expect(first.items.map((item) => item.decision_id)).toEqual([data.decisions[0].decision_id]);
+    expect(first.next_cursor).toBe('1');
+    expect((await api.l1Decisions({ cursor: first.next_cursor!, limit: 1 })).items).toEqual([
+      data.decisions[1],
+    ]);
+    for (const query of [
+      { subject_type: 'incident' },
+      { decision: 'approved' },
+      { reason: 'unknown_reason' },
+      { limit: 0 },
+      { limit: 201 },
+      { cursor: 'not-a-cursor' },
+    ])
+      await expect(request('l1/decisions', { query })).rejects.toMatchObject({
+        code: 'invalid_input',
+      });
+    expect(await api.alertL1('al_held')).toEqual({
+      alert: data.alerts.find((item) => item.alert_id === 'al_held'),
+      branch: data.branches.find((item) => item.subject_id === 'al_held'),
+      decisions: alerts.filter((item) => item.subject_id === 'al_held'),
+      evidence_requests: data.evidence_requests.filter((item) => item.requester_id === 'al_held'),
+      steps: data.steps.filter((item) => item.subject_id === 'al_held'),
+    });
+    // An alert with no branch or decision yet is an empty result, not an error.
+    expect(await api.alertL1('al_sample')).toEqual({
+      alert: data.alerts[0],
+      branch: null,
+      decisions: [],
+      evidence_requests: [],
+      steps: [],
+    });
+    await expect(api.alertL1('al_missing')).rejects.toMatchObject({ code: 'not_found' });
   });
 
   it('accepts documented writes and returns contract objects without deploying rules', async () => {
@@ -350,7 +417,7 @@ it('orders every cursor page by priority DESC, created_at ASC, ticket_id ASC', a
     ids.push(...page.items.map((ticket) => ticket.ticket_id));
     cursor = page.next_cursor ?? undefined;
   } while (cursor);
-  expect(ids).toEqual(['tk_sample', 'tk_cloud', 'tk_custom', 'tk_tie_a', 'tk_tie_z', 'tk_later']);
+  expect(ids).toEqual(TICKET_ORDER);
   expect(new Set(ids).size).toBe(data.tickets.length);
 });
 

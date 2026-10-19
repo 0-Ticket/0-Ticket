@@ -26,6 +26,19 @@ const oneOf = (value: unknown, values: string[]): value is string =>
 const object = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === 'object' && !Array.isArray(value);
 
+// C23 enum values (docs/data-contracts.md C23); the registered values stay unchecked.
+const decisionFilters: Record<string, string[]> = {
+  subject_type: ['alert', 'ticket'],
+  decision: ['l1_escalated', 'held', 'closed_fp', 'l2_escalated'],
+  reason: ['below_threshold', 'llm_failure', 'evidence_request_failure'],
+};
+// Newest first, as box 27 serves them.
+const sortedDecisions = () => [...state.decisions].sort((a, b) => b.created_at - a.created_at);
+const decisionsOf = (subject_type: string, subject_id: string) =>
+  sortedDecisions().filter(
+    (item) => item.subject_type === subject_type && item.subject_id === subject_id,
+  );
+
 function page<T extends object>(items: T[], request: Request, filters: string[]) {
   const query = new URL(request.url).searchParams;
   const limitText = query.get('limit') ?? '50';
@@ -94,7 +107,7 @@ export const handlers = [
           (a.ticket_id < b.ticket_id ? -1 : a.ticket_id > b.ticket_id ? 1 : 0),
       ),
       request,
-      ['status', 'handling_type', 'min_priority'],
+      ['status', 'origin', 'handling_type', 'min_priority'],
     ),
   ),
   http.get(route('incidents'), ({ request }) =>
@@ -113,9 +126,18 @@ export const handlers = [
       ticket,
       alerts: state.alerts.filter((item) => ticket.alert_ids.includes(item.alert_id)),
       findings: state.findings.filter((item) => item.ticket_id === params.id),
-      steps: state.steps.filter(
-        (item) => item.subject_type === 'ticket' && item.subject_id === params.id,
+      decisions: decisionsOf('ticket', String(params.id)),
+      evidence_requests: state.evidence_requests.filter(
+        (item) => item.requester_type === 'ticket' && item.requester_id === params.id,
       ),
+      // Ticket steps and the steps of its alerts, in time order (docs/api-contracts.md).
+      steps: state.steps
+        .filter(
+          (item) =>
+            (item.subject_type === 'ticket' && item.subject_id === params.id) ||
+            (item.subject_type === 'alert' && ticket.alert_ids.includes(item.subject_id)),
+        )
+        .sort((a, b) => a.created_at - b.created_at),
       reviews: state.reviews.filter((item) => item.ticket_id === params.id),
       incident_ids: state.incidents
         .filter((item) => item.members.some((member) => member.ticket_id === params.id))
@@ -125,6 +147,34 @@ export const handlers = [
   http.get(route('alerts/:id'), ({ params }) => {
     const item = state.alerts.find((item) => item.alert_id === params.id);
     return item ? json(item) : error('not_found');
+  }),
+  http.get(route('alerts/:id/l1'), ({ params }) => {
+    const alert = state.alerts.find((item) => item.alert_id === params.id);
+    if (!alert) return error('not_found');
+    return json({
+      alert,
+      // No branch or decision yet is an empty result, not an error.
+      branch:
+        state.branches.find(
+          (item) => item.subject_type === 'alert' && item.subject_id === params.id,
+        ) ?? null,
+      decisions: decisionsOf('alert', String(params.id)),
+      evidence_requests: state.evidence_requests.filter(
+        (item) => item.requester_type === 'alert' && item.requester_id === params.id,
+      ),
+      steps: state.steps.filter(
+        (item) => item.subject_type === 'alert' && item.subject_id === params.id,
+      ),
+    });
+  }),
+  http.get(route('l1/decisions'), ({ request }) => {
+    const query = new URL(request.url).searchParams;
+    // C23 enum filters, like the real API: an unknown value is invalid_input, not an empty page.
+    for (const [key, values] of Object.entries(decisionFilters)) {
+      const value = query.get(key);
+      if (value !== null && !values.includes(value)) return error('invalid_input');
+    }
+    return page(sortedDecisions(), request, ['subject_type', 'decision', 'reason']);
   }),
   http.get(route('events/:id'), ({ params }) => {
     const item = state.events.find((item) => item.event_id === params.id);

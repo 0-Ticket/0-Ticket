@@ -108,11 +108,22 @@ def test_f1_fixture_sort_boundaries():
 
 def test_ticket_detail_fixture_contracts_and_references():
     detail = json.loads((FIXTURES / "ticket-detail.json").read_text())
-    assert set(detail) == {"ticket", "alerts", "findings", "steps", "reviews", "incident_ids"}
+    assert set(detail) == {
+        "ticket",
+        "alerts",
+        "findings",
+        "decisions",
+        "evidence_requests",
+        "steps",
+        "reviews",
+        "incident_ids",
+    }
     validate_contract("Ticket", detail["ticket"])
     for key, name in {
         "alerts": "AlertRecord",
         "findings": "SpecialistFinding",
+        "decisions": "L1DecisionRecord",
+        "evidence_requests": "EvidenceRequest",
         "steps": "AgentStep",
         "reviews": "HumanReview",
     }.items():

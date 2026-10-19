@@ -7,7 +7,7 @@ import { cn } from '../lib/utils';
 
 const menu: { to: string; label: string; icon: IconName }[] = [
   { to: '/', label: '대시보드', icon: 'dashboard' },
-  { to: '/review', label: '검토 대기함', icon: 'inbox' },
+  { to: '/review', label: 'L1 결과', icon: 'inbox' },
   { to: '/tickets', label: '전체 티켓', icon: 'ticket' },
   { to: '/incidents', label: 'Incident', icon: 'incident' },
   { to: '/cases', label: 'Case', icon: 'case' },

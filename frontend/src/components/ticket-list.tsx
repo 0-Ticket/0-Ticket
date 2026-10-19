@@ -36,7 +36,7 @@ function AlertLookup({ id }: { id: string }) {
       className="min-w-0 space-y-3 rounded-md border border-border bg-muted p-3 text-sm"
     >
       <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-        <ObjectId value={id} />
+        <ObjectId value={id} href={`/alerts/${encodeURIComponent(id)}`} />
         {query.data && (
           <p className="flex min-w-0 flex-wrap items-center gap-2 text-muted-foreground">
             <Icon name="alert" size={14} />

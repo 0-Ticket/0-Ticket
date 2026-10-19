@@ -12,7 +12,7 @@ import { Breadcrumbs } from '../components/page-header';
 import { MetaLabel, Section } from '../components/ui/card';
 import { EvidenceList, ContractFields } from '../components/evidence-list';
 import { AgentLog } from '../components/agent-log';
-import { TicketReview } from '../components/ticket-review';
+import { DecisionList, EvidenceRequestList } from '../components/l1-records';
 import { registeredLabel } from '../lib/display';
 
 export function TicketDetailPage() {
@@ -37,6 +37,7 @@ export function TicketDetailPage() {
           <header className="min-w-0 space-y-3 rounded-lg border border-border bg-card p-4 shadow-card">
             <div className="flex flex-wrap items-center gap-2">
               <Badge value={ticket.status} />
+              <Badge value={ticket.origin} />
               <span className="rounded bg-inset px-2 py-0.5 text-xs font-semibold">
                 우선순위 {ticket.priority}
               </span>
@@ -190,6 +191,8 @@ export function TicketDetailPage() {
                 )}
                 <Extensions value={ticket.extensions} />
               </Section>
+              <DecisionList decisions={detail.decisions} description="이 티켓의 판정·보류 기록" />
+              <EvidenceRequestList requests={detail.evidence_requests} />
               <AgentLog steps={detail.steps} />
               <Section label="검토 기록" description="이 티켓에 남은 L1 검토">
                 {!detail.reviews.length && <p className="text-sm text-muted-foreground">없음</p>}
@@ -214,7 +217,6 @@ export function TicketDetailPage() {
               </Section>
             </div>
             <aside className="min-w-0 space-y-4 lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto">
-              <TicketReview key={ticket.ticket_id} ticket={ticket} refreshFailed={query.isError} />
               <Section label="연결된 Incident">
                 {detail.incident_ids.length ? (
                   <ul className="space-y-1">

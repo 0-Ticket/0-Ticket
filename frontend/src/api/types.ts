@@ -1,11 +1,14 @@
 import type {
   AgentStep,
   AlertRecord,
+  BranchResult,
   Case,
+  EvidenceRequest,
   HumanReview,
   HuntFinding,
   Incident,
   IncidentArtifact,
+  L1DecisionRecord,
   L2Review,
   RuleProposal,
   SpecialistFinding,
@@ -20,9 +23,20 @@ export type TicketDetail = {
   ticket: Ticket;
   alerts: AlertRecord[];
   findings: SpecialistFinding[];
+  decisions: L1DecisionRecord[];
+  evidence_requests: EvidenceRequest[];
   steps: AgentStep[];
+  // v2 L1 leaves both empty: people do not review L1 verdicts and grouping belongs to L2.
   reviews: HumanReview[];
   incident_ids: string[];
+};
+// Box 27: the L1 result of an alert that was held before a Ticket existed.
+export type AlertL1Detail = {
+  alert: AlertRecord;
+  branch: BranchResult | null;
+  decisions: L1DecisionRecord[];
+  evidence_requests: EvidenceRequest[];
+  steps: AgentStep[];
 };
 export type IncidentDetail = {
   incident: Incident;
