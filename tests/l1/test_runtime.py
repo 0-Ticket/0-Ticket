@@ -20,6 +20,7 @@ from soc.l1.runtime import build_runtime as assemble_runtime
 from soc.l1.tickets import TicketService
 from soc.llm import CallContext, CallFailure, LLMCallResult
 from soc.plugins import PluginRegistry
+from soc.store.paging import DEFAULT_PAGE_LIMIT
 
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURES = ROOT / "tests" / "fixtures"
@@ -342,6 +343,22 @@ def test_rerun_does_not_process_or_promote_the_alert_twice(tmp_path):
     assert len(state["llm"].calls) == 1
     assert len(state["ticket_store"].tickets) == 1
     assert len(state["decisions"].list(subject_type="alert").items) == 1
+
+
+def test_runtime_runs_ticket_triage_after_entity_lookup(tmp_path):
+    runtime, state = build_runtime(tmp_path, verdict=read_json(L1_FIXTURES / "promote.json"))
+    calls = []
+
+    class TicketTriageStub:
+        def run(self, *, all_tickets, limit):
+            assert state["ticket_store"].get("tk_l1_test") is not None
+            calls.append((all_tickets, limit))
+            return 2
+
+    runtime.ticket_triage = TicketTriageStub()
+
+    assert runtime.run(all_alerts=True) == 3
+    assert calls == [(True, DEFAULT_PAGE_LIMIT)]
 
 
 def test_vector_store_failure_warns_and_continues_without_similar_tickets(tmp_path, caplog):
