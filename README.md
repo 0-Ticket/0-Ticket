@@ -91,6 +91,16 @@ uv run python -m soc.l1 --all           # After configuring SIEM MCP and the l1 
 
 정규화된 알럿의 `dst_asset`에 `web-01`(중요도 5)이 붙고, 프록시 `192.0.2.10`에서 나온 이벤트의 `src_asset`은 `shared=true`입니다. 표에 없는 IP는 `null`입니다. CSV 형식과 매칭 규칙은 [docs/architecture.md](docs/architecture.md) "5 · Lookup"에 있습니다.
 
+### AIT 시연 데이터 (`config/demo/`)
+
+발표 시연은 AIT 데이터셋의 웹셸 공격 3분을 같은 명령으로 재생합니다. 위 예시의 `ZT_CONFIG`와 CSV 경로를 `config/demo/`의 것으로 바꿔 실행합니다. 데이터셋을 받아 `data/demo/`로 잘라내는 방법, 고른 구간, 기대 결과표는 [docs/milestone-l1.md](docs/milestone-l1.md) "시연 데이터"에 있습니다.
+
+```bash
+export ZT_CONFIG=config/demo/settings.toml
+uv run python -m soc.normalize.lookup.load assets config/demo/assets.csv
+uv run python -m soc.normalize.lookup.load users config/demo/users.csv
+```
+
 ### L1 결과 조회 API (박스 27)
 
 사람이 L1 결과(승격·보류된 Alert, Ticket 판정, 증거 요청 실패)를 읽는 읽기 전용 API입니다. 저장소를

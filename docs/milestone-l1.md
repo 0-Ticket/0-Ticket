@@ -69,6 +69,96 @@ SIEM (시연에서는 direct)
 | 주의 | 필수 필드를 추가하면 fixture와 화면 영향을 계획에 적는다 |
 | 발표 후 | 발표 후로 미루는 계약 정리: C9 HumanReview와 awaiting_human 삭제, Incident 묶음 필드(correlation 기반) 정리, 탐지 룰 제안을 Incident 기준으로 변경, VectorDoc 기본 컬렉션 정리 |
 
+## 시연 데이터 (#79)
+
+시연은 AIT 데이터셋의 russellmitchell 시나리오에서 웹셸 공격 3분을 잘라 `direct`로 재생한다. 설정은 `config/demo/`(설명: `config/demo/README.md`)에 있다.
+
+### 출처와 라이선스
+
+| 데이터 | 쓰는 것 | 라이선스 |
+|---|---|---|
+| AIT Log Data Set V2.0 (Zenodo) | russellmitchell `gather/intranet_server/logs/apache2/intranet.smith.russellmitchell.com-access.log.2` (이벤트), `labels/` (공격 시각 확인) | CC BY-NC-SA 4.0 |
+| AIT Alert Data Set (AIT-ADS, Zenodo) | `russellmitchell_wazuh.json` (Wazuh 알럿, JSON Lines) | CC BY 4.0 |
+
+원본은 커밋하지 않는다. 받은 파일은 `data/ait/`(LDS는 `data/ait/russellmitchell/`, ADS는 `data/ait/ads/`)에 두고, 잘라낸 재생 파일은 `data/demo/`에 둔다. 둘 다 `.gitignore`의 `data/` 아래다. `config/demo/`의 사설 IP·호스트명·계정은 이 데이터셋의 가상 회사 값이다.
+
+### 구간과 고른 이유
+
+- 구간: 2022-01-24 03:56:40 ~ 03:59:50 UTC (시작 포함, 끝 제외).
+- 레이블(LDS `labels/`, ADS `ait_ads_labels.csv`) 기준 공격 단계: service_scans 03:56:46, dirb 03:57:25, wpscan 03:57:48, webshell 03:58:19 ~ 03:59:22(업로드 POST 03:58:20, 웹셸 명령 03:58:23부터). 이 흐름 전체가 들어가는 가장 짧은 구간이다.
+- 알럿은 Wazuh(AIT-ADS)를 쓴다. LDS의 Suricata(`inet-firewall`)는 공격자가 VPN 안쪽으로 들어와 웹 공격 단계를 보지 못한다. 이 구간의 Suricata 알럿은 Nmap User-Agent 3건과 SMTP·TLS 이상 4건뿐이다.
+- 공격자는 VPN을 거쳐 들어와 인트라넷 서버의 로그에는 VPN 서버 IP `172.19.131.174`로 남는다. 외부 스캔은 `192.168.230.122`에서 온다.
+
+| 시연 경로 | 알럿 | 근거 |
+|---|---|---|
+| 시나리오 티켓 | 31104 Common web attack (dirb 요청, 03:57:26) | 시나리오 규칙 `demo_web_attack`. 웹셸 단계에는 Wazuh 웹 알럿이 없어서, 업로드는 Web 전문가가 흐름 조회로 찾아야 한다 |
+| L1 엔티티 조회 | 31516 Suspicious URL access, 31151, 30305, 30306, 31122, 5706, 86601 등 | 31516은 L1 승격 사례로 쓰려고 시나리오에서 뺐다 |
+| 중복 제거 | 31101 Web server 400 error code 7,105건 → 대표 7건 | 같은 rule_id·같은 엔티티가 10분(`branch.dedup_window_minutes`) 안에 반복된다 |
+
+### 잘라내기
+
+받는 파일과 위치:
+
+- LDS: Zenodo의 russellmitchell에서 `gather/intranet_server/logs/apache2/`와 `labels/`만 받아 `data/ait/russellmitchell/` 아래에 같은 경로로 둔다.
+- ADS: Zenodo에서 `russellmitchell_wazuh.json`을 받아 `data/ait/ads/`에, 공격 단계 시각이 적힌 레이블 CSV를 `data/ait/ait_ads_labels.csv`로 둔다.
+
+```bash
+uv run python scripts/demo_slice_ait.py slice \
+  --wazuh data/ait/ads/russellmitchell_wazuh.json --drop-rule 20100,20101,20151,20152 \
+  --apache data/ait/russellmitchell/gather/intranet_server/logs/apache2/intranet.smith.russellmitchell.com-access.log.2 \
+  --drop-status 404 \
+  --window 2022-01-24T03:56:40+00:00/2022-01-24T03:59:50+00:00 --out data/demo
+# data/demo/wazuh_alert.jsonl: kept 7754 / intranet...access.log.2: kept 79
+uv run python scripts/demo_slice_ait.py summary --wazuh data/demo/wazuh_alert.jsonl   # rule.id별 건수·중복 수
+```
+
+자를 때 빼는 것과 영향:
+
+- **IDS 중복 알럿(20100, 20101, 20151, 20152 "IDS event")**: Suricata `fast.log`를 Wazuh가 다시 올린 것이다. 같은 내용이 eve.json 경유 86601로 이미 있다. 또 `data.dstip`가 `IP:포트` 형식이라 IP로 쓸 수 없다.
+- **Apache 404 줄 (창 안 전부)**: Web 전문가의 흐름 조회(`query_http_flow`)는 오래된 줄부터 최대 500건(`mcp.max_query_limit`)만 읽는다. 업로드 전까지 공격자의 줄이 7,660건(대부분 dirb·wpscan의 404)이라, 404를 두면 업로드와 웹셸 명령 줄이 조회 결과에 들어가지 않는다. 404를 빼면 공격자 줄은 76건이다. `specialist.flow_window_minutes`를 줄여도 창 시작이 스캔 이전이라 해결되지 않는다.
+  - 영향: 31101(400 오류) 알럿 대부분에 대응하는 Apache 줄이 재생 데이터에 없다. 알럿이 가리키는 요청을 이벤트에서 찾을 수 없고, 31101 판정 근거는 알럿 자체와 SIEM 조회뿐이다.
+
+### 실행 순서
+
+PostgreSQL을 띄우고 레포 루트에서 실행한다. `soc.l1`은 Ollama(`granite4:micro`, `bge-m3`)와 Qdrant도 필요하다.
+
+```bash
+export ZT_CONFIG=config/demo/settings.toml
+uv run python -m soc.db.migrate
+uv run python -m soc.normalize.lookup.load assets config/demo/assets.csv
+uv run python -m soc.normalize.lookup.load users config/demo/users.csv
+uv run python -m soc.ingest --all
+uv run python -m soc.normalize --all
+uv run python -m soc.branch --all
+uv run python -m soc.l1 --all
+```
+
+### 기대 결과표
+
+`config/demo/expected.csv`는 중복 제거 뒤 남는 대표 알럿 34건의 기대 경로(C21 `path`)와 판정이다. `config/demo/expected_counts.csv`는 rule_id별 알럿·대표·중복 수다. 키 `raw_id`는 재생 파일 이름과 줄 번호라 다시 재생해도 같다. 시연 러너(#81)가 두 표와 비교한다.
+
+판정 기대값은 참고값이다. L1 임계값·프롬프트 점검(#80)에서 실제 결과를 보고 조정한다.
+
+| 그룹 | 알럿 | 알럿 결정 | 티켓 판정 | 이유 |
+|---|---|---|---|---|
+| A (9건) | 공격자 → 인트라넷 서버(`10.143.2.4`), 시나리오 티켓 포함 | `l1_escalated` (시나리오는 `-`) | `l2_escalated` | Web 전문가 흐름에 업로드·웹셸 명령이 있다 |
+| B (22건) | 공격자의 다른 호스트 스캔 (5706, 31101, 31151, 30305, Nmap 86601) | `l1_escalated` | `held` | 다른 호스트의 Apache 로그는 재생하지 않아 흐름 증거가 없다 |
+| C (3건) | 서버 → 공격자 SMTP 이상 응답(86601) | `held` | `-` | 공격 근거가 아닌 프로토콜 이상 |
+
+### 실행 결과 (2026-10-19, 노트북 로컬, 새 DB)
+
+| 단계 | 결과 | 걸린 시간 |
+|---|---|---|
+| ingest | 원본 7,833건 (알럿 7,754, 이벤트 79) | 6초 |
+| normalize | 알럿 7,754 · 이벤트 79, 실패(C12) 0 | 33초 |
+| branch | scenario_ticket 1, l1_entity_lookup 37, deduplicated 7,716 | 1,519초 |
+| soc.l1 --all | 38건 처리. 전부 보류(`llm_failure`) | 2,335초 |
+
+- **분기**: 기대 대표 34건은 모두 기대 경로와 같다. 대표 알럿의 `count` 합은 7,754로 빠진 알럿이 없다. 86601에서 대표가 4건 더 나왔다(줄 31, 40, 58, 73). 중복 비교는 방향 없는 엔티티 집합인데, 이전 알럿 후보를 새 알럿의 `src_ip`로만 찾아서 방향이 반대인 같은 두 IP 쌍(7↔31, 8↔40, 41↔58, 67↔73)을 찾지 못한다. 기대 결과표는 규칙대로(34건) 두고, 대표 알럿 표로 바꾸는 작업(H3)에서 맞춘다.
+- **분기 속도**: 알럿마다 같은 출발지 후보를 최대 500건 읽고 나서 `rule_id`로 거른다. 공격자 알럿이 수천 건이라 뒤로 갈수록 느려진다(초당 5건 → 1~2건). H3의 비교 기준이다.
+- **Web 전문가 흐름 조회**: 시나리오 티켓의 `query_http_flow`(공격자 IP, 알럿 앞뒤 30분)가 76건을 돌려줬다. 업로드 POST(03:58:20, 200)와 웹셸 명령 32건(03:58:23 ~ 03:59:48)이 모두 들어 있다. Agent Log의 출력 발췌는 2,000자에서 잘려 같은 조회를 읽기 전용으로 다시 실행해 확인했다.
+- **LLM**: `granite4:micro` 호출 대부분이 제공자 제한 시간 60초에 걸렸다(`provider_unavailable`). 끝난 2건은 입력이 약 4,300 ~ 4,500 토큰으로 모델 문맥 4,096을 넘어 `verdict` 없이 돌아왔다(`required`). 그래서 L1 판정은 모두 보류, Web 전문가 finding은 대체값(`succeeded` = `unknown`, `confidence` 0)이다. 판정 기대값과 맞는 것은 그룹 C(3건)뿐이다. 입력 크기와 모델은 #80에서 다룬다.
+
 ## 시연 완료 기준
 
 - [ ] `direct`(또는 가짜 SIEM)로 데이터가 들어오고, SIEM을 바꿔도 코어 코드가 바뀌지 않는다는 것을 가짜 SIEM 교체 테스트로 보인다
