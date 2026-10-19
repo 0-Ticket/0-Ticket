@@ -5,7 +5,9 @@ as they arrived and never changed (K8, K9). Normalized results (C5 AlertRecord,
 C13 EventRecord) live apart and point at their source row by
 ``source_record_id`` (K67). Later boxes may update C5 and C13; the source never.
 Normalization (box 4) saves its results, its C12 failures and how far it has
-read in one batch, so a source record gets exactly one outcome.
+read in one batch, so a source record gets exactly one outcome. Entity branching
+(box 25) reads C5 in arrival order, keeps its own position, and merges a
+duplicate alert into its first alert (C5 ``count`` and ``last_seen``).
 
 Implementations are registered in the ``stores`` registry as
 ``<backend>.records`` and opened with ``soc.store.open_store("records", ...)``.
@@ -39,6 +41,10 @@ class DuplicateRecordError(ValueError):
     """A normalized record with this ID, or another outcome for its source, is already stored."""
 
 
+class UnknownRecordError(LookupError):
+    """A normalized record with this ID is not stored."""
+
+
 @dataclass(frozen=True)
 class SaveResult:
     """How many source records a save added, and how many were already stored."""
@@ -54,6 +60,14 @@ class StoredSource:
     seq: int
     ingested_at: int
     record: SiemAlert
+
+
+@dataclass(frozen=True)
+class StoredAlert:
+    """A C5 with the ``seq`` of its source record, so alerts can be read in arrival order."""
+
+    seq: int
+    record: AlertRecord
 
 
 @dataclass(frozen=True)
@@ -144,6 +158,34 @@ class RecordStore(Protocol):
         ...
 
     def get_normalize_failure(self, source_record_id: str) -> NormalizeFailure | None: ...
+
+    # Entity branching (box 25)
+
+    def list_alert_records(self, after_seq: int | None, limit: int) -> tuple[StoredAlert, ...]:
+        """At most ``limit`` (>= 1) C5 whose source ``seq`` is after ``after_seq``, oldest first.
+
+        ``seq`` is the source record's arrival position, the order box 25 reads in.
+        """
+        ...
+
+    def load_branch_position(self) -> int | None:
+        """The source ``seq`` of the last alert branched; None before the first."""
+        ...
+
+    def save_branch_position(self, last_seq: int) -> None:
+        """Move the branch position to ``last_seq``. It never moves back (ValueError)."""
+        ...
+
+    def merge_duplicate(self, target_alert_id: str, duplicate_alert_id: str, seen_at: int) -> bool:
+        """Count a duplicate alert on its first alert, once.
+
+        Raises the target C5's ``count`` by 1 and sets its ``last_seen`` to the
+        later of ``last_seen`` and ``seen_at``, and remembers the duplicate. A
+        duplicate already merged changes nothing and returns False, so running
+        branching again gives the same counts. Both alerts must be stored
+        (UnknownRecordError) and differ (ValueError).
+        """
+        ...
 
     def purge_expired(self, now: int) -> PurgeResult:
         """Delete source records stored longer than the retention setting before ``now``.

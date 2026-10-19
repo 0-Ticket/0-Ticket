@@ -1,4 +1,4 @@
-"""PostgreSQL Alert/Event store (boxes 4, 6, 7, D-002). Tables: migrations 0010, 0011, 0050.
+"""PostgreSQL Alert/Event store (boxes 4, 6, 7, 25, D-002). Migrations 0010, 0011, 0050, 0093.
 
 Every call runs in its own transaction, so a failed batch leaves neither rows
 nor a moved cursor. Rows hold C2, C5 and C13 as json and are turned back into
@@ -24,7 +24,9 @@ from .base import (
     SaveResult,
     SourceFailure,
     SourceKind,
+    StoredAlert,
     StoredSource,
+    UnknownRecordError,
     UnknownSourceError,
 )
 from .checks import (
@@ -32,10 +34,12 @@ from .checks import (
     check_entity_field,
     check_event_record,
     check_limit,
+    check_merge,
     check_normalize_batch,
     check_position,
     check_source_records,
     lookup_value,
+    merged_alert,
     retention_cutoff,
 )
 
@@ -254,6 +258,62 @@ class PostgresRecordStore:
             (source_record_id,),
         )
         return validate_contract("NormalizeFailure", row[0]) if row else None
+
+    # Entity branching (box 25)
+
+    def list_alert_records(self, after_seq: int | None, limit: int) -> tuple[StoredAlert, ...]:
+        check_limit(limit)
+        rows = self._all(
+            "SELECT s.seq, a.record FROM alert_records a"
+            " JOIN source_records s ON s.source_record_id = a.source_record_id"
+            " WHERE s.seq > %s ORDER BY s.seq LIMIT %s",
+            (after_seq or 0, limit),
+        )
+        return tuple(StoredAlert(seq, validate_contract("AlertRecord", rec)) for seq, rec in rows)
+
+    def load_branch_position(self) -> int | None:
+        row = self._one("SELECT last_seq FROM branch_position WHERE id = 1", ())
+        return row[0] if row else None
+
+    def save_branch_position(self, last_seq: int) -> None:
+        with self._conn.transaction():
+            row = self._conn.execute(
+                "SELECT last_seq FROM branch_position WHERE id = 1 FOR UPDATE"
+            ).fetchone()
+            check_position(row[0] if row else None, last_seq, "branch")
+            self._conn.execute(
+                "INSERT INTO branch_position (id, last_seq, updated_at) VALUES (1, %s, %s)"
+                " ON CONFLICT (id)"
+                " DO UPDATE SET last_seq = EXCLUDED.last_seq, updated_at = EXCLUDED.updated_at",
+                (last_seq, self._clock()),
+            )
+
+    def merge_duplicate(self, target_alert_id: str, duplicate_alert_id: str, seen_at: int) -> bool:
+        check_merge(target_alert_id, duplicate_alert_id)
+        try:
+            with self._conn.transaction():
+                row = self._conn.execute(
+                    "SELECT record FROM alert_records WHERE alert_id = %s FOR UPDATE",
+                    (target_alert_id,),
+                ).fetchone()
+                if row is None:
+                    raise UnknownRecordError("both alerts must be stored")
+                inserted = self._conn.execute(
+                    "INSERT INTO alert_dedup_merges"
+                    " (duplicate_alert_id, target_alert_id, merged_at) VALUES (%s, %s, %s)"
+                    " ON CONFLICT (duplicate_alert_id) DO NOTHING",
+                    (duplicate_alert_id, target_alert_id, self._clock()),
+                ).rowcount
+                if not inserted:
+                    return False
+                merged = merged_alert(validate_contract("AlertRecord", row[0]), seen_at)
+                self._conn.execute(
+                    "UPDATE alert_records SET record = %s WHERE alert_id = %s",
+                    (Json(merged.model_dump(mode="json")), target_alert_id),
+                )
+        except errors.ForeignKeyViolation:
+            raise UnknownRecordError("both alerts must be stored") from None
+        return True
 
     # Retention
 

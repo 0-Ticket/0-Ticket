@@ -4,7 +4,9 @@ from soc.store.records.base import (
     DuplicateRecordError,
     PurgeResult,
     SaveResult,
+    StoredAlert,
     StoredSource,
+    UnknownRecordError,
     UnknownSourceError,
 )
 from soc.store.records.checks import (
@@ -12,10 +14,12 @@ from soc.store.records.checks import (
     check_entity_field,
     check_event_record,
     check_limit,
+    check_merge,
     check_normalize_batch,
     check_position,
     check_source_records,
     lookup_value,
+    merged_alert,
     retention_cutoff,
 )
 
@@ -30,6 +34,8 @@ class FakeRecordStore:
         self._events = {}
         self._failures = {}  # source_record_id -> NormalizeFailure
         self._positions = {}
+        self._branch_position = None
+        self._merges = {}  # duplicate_alert_id -> target_alert_id
         self._seq = 0
         self.closed = False
 
@@ -110,6 +116,33 @@ class FakeRecordStore:
 
     def get_normalize_failure(self, source_record_id):
         return self._failures.get(source_record_id)
+
+    def list_alert_records(self, after_seq, limit):
+        check_limit(limit)
+        after = after_seq or 0
+        found = [
+            StoredAlert(self._sources[r.source_record_id].seq, r) for r in self._alerts.values()
+        ]
+        found = [s for s in found if s.seq > after]
+        return tuple(sorted(found, key=lambda s: s.seq)[:limit])
+
+    def load_branch_position(self):
+        return self._branch_position
+
+    def save_branch_position(self, last_seq):
+        check_position(self._branch_position, last_seq, "branch")
+        self._branch_position = last_seq
+
+    def merge_duplicate(self, target_alert_id, duplicate_alert_id, seen_at):
+        check_merge(target_alert_id, duplicate_alert_id)
+        target = self._alerts.get(target_alert_id)
+        if target is None or duplicate_alert_id not in self._alerts:
+            raise UnknownRecordError("both alerts must be stored")
+        if duplicate_alert_id in self._merges:
+            return False
+        self._alerts[target_alert_id] = merged_alert(target, seen_at)
+        self._merges[duplicate_alert_id] = target_alert_id
+        return True
 
     @staticmethod
     def _find(table, id_field, field, value, time_from, time_to, limit):

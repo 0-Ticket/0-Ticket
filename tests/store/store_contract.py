@@ -17,6 +17,7 @@ from soc.store.records.base import (
     PurgeResult,
     SaveResult,
     SourceFailure,
+    UnknownRecordError,
     UnknownSourceError,
 )
 
@@ -374,3 +375,78 @@ class RecordStoreContract:
         store.save_normalize_batch("alert", [], [SourceFailure(kept, failure())], 1)
         assert store.purge_expired(NOW) == PurgeResult(deleted=5, skipped=1)
         assert store.get_source_record(kept) is not None
+
+    # Entity branching (box 25): alerts in arrival order, a position, duplicate merges.
+
+    def _stored_alerts(self, store):
+        """Both sample C5 saved, in the order their sources arrived."""
+        items = load_c2()
+        store.save_source_records(items, CURSOR_KEY, "c1")
+        by_source = {r.source_record_id: r for r in load_alert_records()}
+        alerts = [
+            by_source[s.record.source_record_id]
+            for s in store.list_source_records("alert", None, 100)
+        ]
+        for alert in reversed(alerts):  # saved out of order: listing follows the source
+            store.save_alert_record(alert)
+        return alerts
+
+    def test_list_alert_records_follows_source_arrival_order(self, store):
+        alerts = self._stored_alerts(store)
+        listed = store.list_alert_records(None, 100)
+        assert [a.record.alert_id for a in listed] == [a.alert_id for a in alerts]
+        sources = store.list_source_records("alert", None, 100)
+        assert [a.seq for a in listed] == [s.seq for s in sources]
+        assert [dump(a.record) for a in listed] == [dump(a) for a in alerts]
+
+    def test_list_alert_records_pages_after_seq(self, store):
+        alerts = self._stored_alerts(store)
+        first = store.list_alert_records(None, 1)
+        rest = store.list_alert_records(first[-1].seq, 5)
+        assert [a.record.alert_id for a in first + rest] == [a.alert_id for a in alerts]
+        assert store.list_alert_records(rest[-1].seq, 5) == ()
+        with pytest.raises(ValueError, match="limit"):
+            store.list_alert_records(None, 0)
+
+    def test_branch_position_starts_empty_and_does_not_move_back(self, store):
+        assert store.load_branch_position() is None
+        store.save_branch_position(5)
+        store.save_branch_position(5)
+        assert store.load_branch_position() == 5
+        with pytest.raises(ValueError, match="position"):
+            store.save_branch_position(4)
+        assert store.load_branch_position() == 5
+        # Branching and normalization keep separate positions.
+        assert store.load_normalize_position("alert") is None
+
+    def test_merge_duplicate_raises_count_and_last_seen_once(self, store):
+        target, duplicate = self._stored_alerts(store)
+        later = target.last_seen + 60_000
+        assert store.merge_duplicate(target.alert_id, duplicate.alert_id, later) is True
+        merged = store.get_alert_record(target.alert_id)
+        assert (merged.count, merged.first_seen, merged.last_seen) == (
+            target.count + 1,
+            target.first_seen,
+            later,
+        )
+        # The same duplicate again changes nothing.
+        assert store.merge_duplicate(target.alert_id, duplicate.alert_id, later + 1) is False
+        assert dump(store.get_alert_record(target.alert_id)) == dump(merged)
+        # The duplicate itself is not changed.
+        assert dump(store.get_alert_record(duplicate.alert_id)) == dump(duplicate)
+
+    def test_merge_duplicate_keeps_the_later_last_seen(self, store):
+        target, duplicate = self._stored_alerts(store)
+        store.merge_duplicate(target.alert_id, duplicate.alert_id, target.last_seen - 1)
+        merged = store.get_alert_record(target.alert_id)
+        assert (merged.count, merged.last_seen) == (target.count + 1, target.last_seen)
+
+    def test_merge_duplicate_needs_two_stored_alerts(self, store):
+        target, duplicate = self._stored_alerts(store)
+        with pytest.raises(UnknownRecordError):
+            store.merge_duplicate("al_missing", duplicate.alert_id, NOW)
+        with pytest.raises(UnknownRecordError):
+            store.merge_duplicate(target.alert_id, "al_missing", NOW)
+        with pytest.raises(ValueError, match="itself"):
+            store.merge_duplicate(target.alert_id, target.alert_id, NOW)
+        assert dump(store.get_alert_record(target.alert_id)) == dump(target)

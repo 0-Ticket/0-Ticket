@@ -75,9 +75,22 @@ def check_normalize_batch(
     return tuple(checked_records), checked_failures
 
 
-def check_position(current: int | None, last_seq: int) -> None:
+def check_position(current: int | None, last_seq: int, name: str = "normalize") -> None:
     if current is not None and last_seq < current:
-        raise ValueError("normalize position cannot move back")
+        raise ValueError(f"{name} position cannot move back")
+
+
+def check_merge(target_alert_id: str, duplicate_alert_id: str) -> None:
+    if target_alert_id == duplicate_alert_id:
+        raise ValueError("an alert cannot be merged into itself")
+
+
+def merged_alert(target: AlertRecord, seen_at: int) -> AlertRecord:
+    """The target C5 after one more duplicate: ``count`` + 1, ``last_seen`` the later time."""
+    data = target.model_dump(mode="json")
+    data["count"] += 1
+    data["last_seen"] = max(data["last_seen"], seen_at)
+    return validate_contract("AlertRecord", data)
 
 
 def check_limit(limit: int) -> None:

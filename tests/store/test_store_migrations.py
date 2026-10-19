@@ -15,6 +15,7 @@ RANGES = {
     "create_branch_results": (90, 99),
     "create_l1_decisions": (90, 99),
     "index_ticket_list": (90, 99),
+    "create_branch_state": (90, 99),
 }
 
 
