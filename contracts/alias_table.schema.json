@@ -66,6 +66,31 @@
       "additionalProperties": {
         "type": "string"
       }
+    },
+    "parse": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "field": {
+              "type": "string",
+              "minLength": 1
+            },
+            "pattern": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "field",
+            "pattern"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
     }
   },
   "required": [
@@ -77,7 +102,8 @@
     "time_format",
     "severity_map",
     "default_techniques",
-    "extensions_map"
+    "extensions_map",
+    "parse"
   ],
   "additionalProperties": false,
   "allOf": [
@@ -104,5 +130,5 @@
       }
     }
   ],
-  "description": "Core follow-up: scenario lookup, alias mapping, time/severity conversion and NormalizeFailure creation. Empty optional list uses []."
+  "description": "Core follow-up: scenario lookup, alias mapping, text parsing, time/severity conversion and NormalizeFailure creation. Empty optional list uses []."
 }

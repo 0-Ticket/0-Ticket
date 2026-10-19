@@ -4,7 +4,15 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, StrictInt, StrictStr
+from pydantic import BaseModel, ConfigDict, StrictInt, StrictStr, constr
+
+
+class Parse(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    field: constr(min_length=1, strict=True)
+    pattern: constr(min_length=1, strict=True)
 
 
 class AliasTable(BaseModel):
@@ -20,3 +28,4 @@ class AliasTable(BaseModel):
     severity_map: dict[str, Any] | None
     default_techniques: list[StrictStr] | None
     extensions_map: dict[str, Any] | None
+    parse: Parse | None

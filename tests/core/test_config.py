@@ -28,6 +28,29 @@ def test_default_config_loads_without_org_file():
     assert settings.llm.temperature == 0
 
 
+def test_default_normalize_and_lookup_settings():
+    settings = load_config(environ={})
+    assert settings.normalize.alias_dir == ""
+    assert settings.normalize.batch_size == 500
+    assert settings.normalize.max_parse_length == 16384
+    assert settings.lookup.provider == "none"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "[normalize]\nbatch_size = 0\n",
+        "[normalize]\nmax_parse_length = 0\n",
+        '[lookup]\nprovider = "No.Dots"\n',
+    ],
+)
+def test_invalid_normalize_and_lookup_settings_fail(tmp_path, text):
+    org = tmp_path / "org.toml"
+    org.write_text(text, encoding="utf-8")
+    with pytest.raises(ConfigError):
+        load_config(org, environ={})
+
+
 def test_empty_zt_config_means_no_org_file():
     assert load_config(environ={"ZT_CONFIG": ""}) == load_config(environ={})
 
@@ -183,6 +206,8 @@ def test_wheel_contains_and_uses_default_config(tmp_path):
     installed = tmp_path / "installed"
     with ZipFile(wheel) as archive:
         assert "soc/default.toml" in archive.namelist()
+        assert "soc/normalize/aliases/ait_suricata_alert.toml" in archive.namelist()
+        assert "soc/normalize/aliases/ait_apache_access.toml" in archive.namelist()
         archive.extractall(installed)
     code = "\n".join(
         [

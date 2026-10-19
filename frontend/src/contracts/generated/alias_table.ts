@@ -16,4 +16,8 @@ export interface AliasTable {
   extensions_map: {
     [k: string]: string;
   } | null;
+  parse: {
+    field: string;
+    pattern: string;
+  } | null;
 }

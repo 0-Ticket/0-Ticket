@@ -12,6 +12,8 @@ from soc.store.records.checks import (
     check_entity_field,
     check_event_record,
     check_limit,
+    check_normalize_batch,
+    check_position,
     check_source_records,
     lookup_value,
     retention_cutoff,
@@ -26,6 +28,8 @@ class FakeRecordStore:
         self._cursors = {}
         self._alerts = {}
         self._events = {}
+        self._failures = {}  # source_record_id -> NormalizeFailure
+        self._positions = {}
         self._seq = 0
         self.closed = False
 
@@ -62,6 +66,8 @@ class FakeRecordStore:
             raise UnknownSourceError(f"no {kind} source record for {record_id}")
         if record_id in table:
             raise DuplicateRecordError(f"{record_id} is already stored")
+        if any(r.source_record_id == record.source_record_id for r in table.values()):
+            raise DuplicateRecordError(f"{record.source_record_id} already has a result")
         table[record_id] = record
 
     def save_alert_record(self, record):
@@ -77,6 +83,33 @@ class FakeRecordStore:
 
     def get_event_record(self, event_id):
         return self._events.get(event_id)
+
+    def load_normalize_position(self, kind):
+        return self._positions.get(kind)
+
+    def save_normalize_batch(self, kind, records, failures, last_seq):
+        records, failures = check_normalize_batch(kind, records, failures)
+        check_position(self._positions.get(kind), last_seq)
+        table, id_field = (
+            (self._alerts, "alert_id") if kind == "alert" else (self._events, "event_id")
+        )
+        done = {r.source_record_id for r in table.values()} | set(self._failures)
+        for item in (*records, *failures):
+            source = self._sources.get(item.source_record_id)
+            if source is None or source.record.kind != kind:
+                raise UnknownSourceError(f"a {kind} batch points at a missing {kind} source")
+            if item.source_record_id in done:
+                raise DuplicateRecordError("a source record in the batch already has an outcome")
+        if any(getattr(r, id_field) in table for r in records):
+            raise DuplicateRecordError("a record ID in the batch is already stored")
+        for record in records:
+            table[getattr(record, id_field)] = record
+        for item in failures:
+            self._failures[item.source_record_id] = item.failure
+        self._positions[kind] = last_seq
+
+    def get_normalize_failure(self, source_record_id):
+        return self._failures.get(source_record_id)
 
     @staticmethod
     def _find(table, id_field, field, value, time_from, time_to, limit):
@@ -101,6 +134,7 @@ class FakeRecordStore:
         if cutoff is None:
             return PurgeResult(0, 0)
         referenced = {r.source_record_id for r in (*self._alerts.values(), *self._events.values())}
+        referenced |= set(self._failures)
         deleted = skipped = 0
         for source_id, stored in list(self._sources.items()):
             if stored.ingested_at >= cutoff:
