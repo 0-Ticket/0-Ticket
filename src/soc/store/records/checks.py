@@ -16,7 +16,7 @@ from soc.contracts import (
 )
 from soc.ingest.connector import source_record_id
 
-from .base import ENTITY_FIELDS
+from .base import ENTITY_FIELDS, DuplicateRecordError, SourceFailure
 
 DAY_MS = 86_400_000
 
@@ -39,6 +39,45 @@ def check_alert_record(record: AlertRecord) -> AlertRecord:
 
 def check_event_record(record: EventRecord) -> EventRecord:
     return validate_contract("EventRecord", record.model_dump(mode="json"))
+
+
+def check_normalize_batch(
+    kind: str,
+    records: Sequence[AlertRecord] | Sequence[EventRecord],
+    failures: Sequence[SourceFailure],
+) -> tuple[tuple[AlertRecord | EventRecord, ...], tuple[SourceFailure, ...]]:
+    """Validate a whole normalization batch before any of it is written.
+
+    Each record must be the contract of ``kind`` (C5 for alert, C13 for event)
+    and no two items may claim the same source record.
+    """
+    checks = {"alert": check_alert_record, "event": check_event_record}
+    if kind not in checks:
+        raise ValueError("kind must be alert or event")
+    expected = AlertRecord if kind == "alert" else EventRecord
+    checked_records = []
+    for record in records:
+        if not isinstance(record, expected):
+            raise ValueError(f"{kind} batch: records must be {expected.__name__} (kind mismatch)")
+        checked_records.append(checks[kind](record))
+    checked_failures = tuple(
+        SourceFailure(
+            item.source_record_id,
+            validate_contract("NormalizeFailure", item.failure.model_dump(mode="json")),
+        )
+        for item in failures
+    )
+    sources = [r.source_record_id for r in checked_records] + [
+        f.source_record_id for f in checked_failures
+    ]
+    if len(sources) != len(set(sources)):
+        raise DuplicateRecordError("a source record has more than one outcome in the batch")
+    return tuple(checked_records), checked_failures
+
+
+def check_position(current: int | None, last_seq: int) -> None:
+    if current is not None and last_seq < current:
+        raise ValueError("normalize position cannot move back")
 
 
 def check_limit(limit: int) -> None:

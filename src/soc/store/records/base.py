@@ -4,6 +4,8 @@ Source records are the C2 SiemAlert items the core SIEM entry produced, stored
 as they arrived and never changed (K8, K9). Normalized results (C5 AlertRecord,
 C13 EventRecord) live apart and point at their source row by
 ``source_record_id`` (K67). Later boxes may update C5 and C13; the source never.
+Normalization (box 4) saves its results, its C12 failures and how far it has
+read in one batch, so a source record gets exactly one outcome.
 
 Implementations are registered in the ``stores`` registry as
 ``<backend>.records`` and opened with ``soc.store.open_store("records", ...)``.
@@ -16,9 +18,11 @@ from dataclasses import dataclass
 from typing import Literal, Protocol
 
 from soc.config import Settings
-from soc.contracts import AlertRecord, EventRecord, SiemAlert
+from soc.contracts import AlertRecord, EventRecord, NormalizeFailure, SiemAlert
 
 STORE_KIND = "records"
+
+SourceKind = Literal["alert", "event"]
 
 # Normalized fields a record can be looked up by, each with time (the indexed pairs).
 EntityField = Literal["src_ip", "dst_ip", "host"]
@@ -30,7 +34,7 @@ class UnknownSourceError(LookupError):
 
 
 class DuplicateRecordError(ValueError):
-    """A normalized record with this ID is already stored."""
+    """A normalized record with this ID, or another outcome for its source, is already stored."""
 
 
 @dataclass(frozen=True)
@@ -48,6 +52,14 @@ class StoredSource:
     seq: int
     ingested_at: int
     record: SiemAlert
+
+
+@dataclass(frozen=True)
+class SourceFailure:
+    """A C12 and the source record it is about. C12 itself does not carry the ID."""
+
+    source_record_id: str
+    failure: NormalizeFailure
 
 
 @dataclass(frozen=True)
@@ -109,10 +121,32 @@ class RecordStore(Protocol):
         """C13 whose ``field`` equals ``value`` and ``time_from <= time < time_to``, by time."""
         ...
 
+    def load_normalize_position(self, kind: SourceKind) -> int | None:
+        """The ``seq`` of the last source record of ``kind`` normalized; None before the first."""
+        ...
+
+    def save_normalize_batch(
+        self,
+        kind: SourceKind,
+        records: Sequence[AlertRecord] | Sequence[EventRecord],
+        failures: Sequence[SourceFailure],
+        last_seq: int,
+    ) -> None:
+        """Store one normalization batch of ``kind`` and move its position to ``last_seq``.
+
+        All or nothing. ``records`` are C5 for ``alert`` and C13 for ``event``;
+        every record and failure must point at a stored source of ``kind``
+        (UnknownSourceError) that has no outcome yet (DuplicateRecordError).
+        The position never moves back (ValueError).
+        """
+        ...
+
+    def get_normalize_failure(self, source_record_id: str) -> NormalizeFailure | None: ...
+
     def purge_expired(self, now: int) -> PurgeResult:
         """Delete source records stored longer than the retention setting before ``now``.
 
-        A source a normalized result still points at is kept and counted as
+        A source a normalized result or a C12 failure still points at is kept and counted as
         skipped. With retention 0 (forever) nothing is deleted.
         """
         ...

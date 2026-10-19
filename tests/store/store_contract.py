@@ -16,6 +16,7 @@ from soc.store.records.base import (
     DuplicateRecordError,
     PurgeResult,
     SaveResult,
+    SourceFailure,
     UnknownSourceError,
 )
 
@@ -44,6 +45,20 @@ def c2(kind, scenario, fields):
     content = {"kind": kind, "scenario": scenario, "raw_ids": [], "fields": fields}
     return validate_contract(
         "SiemAlert", {**content, "source_record_id": source_record_id(content)}
+    )
+
+
+def failure(reason="unknown_scenario", raw_ids=("raw_suricata_eve.jsonl_1",)):
+    return validate_contract(
+        "NormalizeFailure",
+        {
+            "scenario": "ait_suricata_alert",
+            "raw_ids": list(raw_ids),
+            "reason": reason,
+            "missing_fields": [],
+            "detail": "no alias table for this scenario",
+            "failed_at": NOW,
+        },
     )
 
 
@@ -272,3 +287,90 @@ class RecordStoreContract:
             new.source_record_id,
         }
         assert store.purge_expired(NOW) == PurgeResult(deleted=0, skipped=2)
+
+    # Normalization batches (box 4): results, failures and position, together or not at all.
+
+    def test_normalize_position_starts_empty(self, store):
+        assert store.load_normalize_position("alert") is None
+        assert store.load_normalize_position("event") is None
+
+    def test_normalize_batch_saves_results_failures_and_position(self, store):
+        items = load_c2()
+        store.save_source_records(items, CURSOR_KEY, "c1")
+        alert = load_alert_records()[0]
+        failed_source = items[1].source_record_id
+        store.save_normalize_batch("alert", [alert], [SourceFailure(failed_source, failure())], 7)
+        assert dump(store.get_alert_record(alert.alert_id)) == dump(alert)
+        assert dump(store.get_normalize_failure(failed_source)) == dump(failure())
+        assert store.load_normalize_position("alert") == 7
+        assert store.load_normalize_position("event") is None
+        store.save_normalize_batch("event", load_event_records(), [], 9)
+        assert store.load_normalize_position("event") == 9
+        assert store.get_event_record(load_event_records()[0].event_id) is not None
+
+    def test_unknown_failure_is_none(self, store):
+        assert store.get_normalize_failure("src_" + "0" * 64) is None
+
+    def test_failed_normalize_batch_saves_nothing(self, store):
+        store.save_source_records(load_c2(), CURSOR_KEY, "c1")
+        good, _ = load_alert_records()
+        orphan = good.model_copy(
+            update={"alert_id": "al_orphan", "source_record_id": "src_" + "f" * 64}
+        )
+        with pytest.raises(UnknownSourceError):
+            store.save_normalize_batch("alert", [good, orphan], [], 5)
+        assert store.get_alert_record(good.alert_id) is None
+        assert store.load_normalize_position("alert") is None
+
+    def test_failure_for_unknown_or_other_kind_source_is_rejected(self, store):
+        store.save_source_records(load_c2(), CURSOR_KEY, "c1")
+        event_source = load_event_records()[0].source_record_id
+        with pytest.raises(UnknownSourceError):
+            store.save_normalize_batch("alert", [], [SourceFailure(event_source, failure())], 1)
+        with pytest.raises(UnknownSourceError):
+            store.save_normalize_batch(
+                "alert", [], [SourceFailure("src_" + "e" * 64, failure())], 1
+            )
+        assert store.get_normalize_failure(event_source) is None
+        assert store.load_normalize_position("alert") is None
+
+    def test_second_result_for_one_source_is_rejected(self, store):
+        store.save_source_records(load_c2(), CURSOR_KEY, "c1")
+        alert = load_alert_records()[0]
+        store.save_normalize_batch("alert", [alert], [], 1)
+        twin = alert.model_copy(update={"alert_id": "al_twin"})
+        with pytest.raises(DuplicateRecordError):
+            store.save_normalize_batch("alert", [twin], [], 2)
+        with pytest.raises(DuplicateRecordError):
+            store.save_normalize_batch(
+                "alert", [], [SourceFailure(alert.source_record_id, failure())], 2
+            )
+        assert store.get_alert_record("al_twin") is None
+        assert store.load_normalize_position("alert") == 1
+
+    def test_normalize_position_does_not_move_back(self, store):
+        store.save_normalize_batch("alert", [], [], 5)
+        with pytest.raises(ValueError, match="position"):
+            store.save_normalize_batch("alert", [], [], 4)
+        assert store.load_normalize_position("alert") == 5
+
+    def test_normalize_batch_checks_kind_and_contracts(self, store):
+        store.save_source_records(load_c2(), CURSOR_KEY, "c1")
+        with pytest.raises(ValueError, match="kind"):
+            store.save_normalize_batch("event", [load_alert_records()[0]], [], 1)
+        with pytest.raises(ValueError, match="kind"):
+            store.save_normalize_batch("other", [], [], 1)
+        broken = load_alert_records()[0].model_copy(update={"severity_id": 9})
+        with pytest.raises(ContractValidationError):
+            store.save_normalize_batch("alert", [broken], [], 1)
+        assert store.load_normalize_position("alert") is None
+
+    def test_source_with_failure_is_not_purged(self, make_store):
+        clock = Clock(NOW - 31 * DAY_MS)
+        store = make_store(retention_days=30, clock=clock)
+        items = load_c2()
+        store.save_source_records(items, CURSOR_KEY, "c1")
+        kept = items[0].source_record_id
+        store.save_normalize_batch("alert", [], [SourceFailure(kept, failure())], 1)
+        assert store.purge_expired(NOW) == PurgeResult(deleted=5, skipped=1)
+        assert store.get_source_record(kept) is not None

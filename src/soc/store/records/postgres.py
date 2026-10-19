@@ -1,4 +1,4 @@
-"""PostgreSQL Alert/Event store (boxes 6, 7, D-002). Tables: migrations 0010, 0011.
+"""PostgreSQL Alert/Event store (boxes 4, 6, 7, D-002). Tables: migrations 0010, 0011, 0050.
 
 Every call runs in its own transaction, so a failed batch leaves neither rows
 nor a moved cursor. Rows hold C2, C5 and C13 as json and are turned back into
@@ -14,7 +14,7 @@ from psycopg import errors, sql
 from psycopg.types.json import Json
 
 from soc.config import Settings
-from soc.contracts import AlertRecord, EventRecord, SiemAlert, validate_contract
+from soc.contracts import AlertRecord, EventRecord, NormalizeFailure, SiemAlert, validate_contract
 from soc.db import connect
 
 from .base import (
@@ -22,6 +22,8 @@ from .base import (
     EntityField,
     PurgeResult,
     SaveResult,
+    SourceFailure,
+    SourceKind,
     StoredSource,
     UnknownSourceError,
 )
@@ -30,6 +32,8 @@ from .checks import (
     check_entity_field,
     check_event_record,
     check_limit,
+    check_normalize_batch,
+    check_position,
     check_source_records,
     lookup_value,
     retention_cutoff,
@@ -117,6 +121,15 @@ class PostgresRecordStore:
         self._save("event", record.event_id, record)
 
     def _save(self, kind: str, record_id: str, record: AlertRecord | EventRecord) -> None:
+        try:
+            with self._conn.transaction():
+                self._insert(kind, record_id, record)
+        except errors.ForeignKeyViolation:
+            raise UnknownSourceError(f"no {kind} source record for {record_id}") from None
+        except errors.UniqueViolation:
+            raise DuplicateRecordError(f"{record_id} is already stored") from None
+
+    def _insert(self, kind: str, record_id: str, record: AlertRecord | EventRecord) -> None:
         table, id_column, _ = _TABLES[kind]
         query = sql.SQL(
             "INSERT INTO {} ({}, source_record_id, time, src_ip, dst_ip, host, record)"
@@ -131,13 +144,7 @@ class PostgresRecordStore:
             lookup_value(record.host),
             Json(record.model_dump(mode="json")),
         )
-        try:
-            with self._conn.transaction():
-                self._conn.execute(query, values)
-        except errors.ForeignKeyViolation:
-            raise UnknownSourceError(f"no {kind} source record for {record_id}") from None
-        except errors.UniqueViolation:
-            raise DuplicateRecordError(f"{record_id} is already stored") from None
+        self._conn.execute(query, values)
 
     def get_alert_record(self, alert_id: str) -> AlertRecord | None:
         return self._get("alert", alert_id)
@@ -176,6 +183,78 @@ class PostgresRecordStore:
         rows = self._all(query, (lookup_value(value), time_from, time_to, limit))
         return tuple(validate_contract(contract, row[0]) for row in rows)
 
+    # Normalization batches (box 4)
+
+    def load_normalize_position(self, kind: SourceKind) -> int | None:
+        row = self._one("SELECT last_seq FROM normalize_positions WHERE kind = %s", (kind,))
+        return row[0] if row else None
+
+    def save_normalize_batch(
+        self,
+        kind: SourceKind,
+        records: Sequence[AlertRecord] | Sequence[EventRecord],
+        failures: Sequence[SourceFailure],
+        last_seq: int,
+    ) -> None:
+        records, failures = check_normalize_batch(kind, records, failures)
+        table, id_column, _ = _TABLES[kind]
+        now = self._clock()
+        try:
+            with self._conn.transaction():
+                row = self._conn.execute(
+                    "SELECT last_seq FROM normalize_positions WHERE kind = %s FOR UPDATE", (kind,)
+                ).fetchone()
+                check_position(row[0] if row else None, last_seq)
+                self._reject_other_outcomes(table, records, failures)
+                for record in records:
+                    self._insert(kind, getattr(record, id_column), record)
+                for item in failures:
+                    self._conn.execute(
+                        "INSERT INTO normalize_failures"
+                        " (source_record_id, source_kind, reason, failed_at, record)"
+                        " VALUES (%s, %s, %s, %s, %s)",
+                        (
+                            item.source_record_id,
+                            kind,
+                            item.failure.reason,
+                            item.failure.failed_at,
+                            Json(item.failure.model_dump(mode="json")),
+                        ),
+                    )
+                self._conn.execute(
+                    "INSERT INTO normalize_positions (kind, last_seq, updated_at)"
+                    " VALUES (%s, %s, %s) ON CONFLICT (kind)"
+                    " DO UPDATE SET last_seq = EXCLUDED.last_seq, updated_at = EXCLUDED.updated_at",
+                    (kind, last_seq, now),
+                )
+        except errors.ForeignKeyViolation:
+            raise UnknownSourceError(f"a {kind} batch points at a missing {kind} source") from None
+        except errors.UniqueViolation:
+            raise DuplicateRecordError(
+                "a source record in the batch already has an outcome"
+            ) from None
+
+    def _reject_other_outcomes(self, table, records, failures) -> None:
+        """A failure for a source with a result, or a result for a failed source, is a duplicate."""
+        failed = [item.source_record_id for item in failures]
+        normalized = [record.source_record_id for record in records]
+        clash = self._conn.execute(
+            sql.SQL(
+                "SELECT EXISTS (SELECT 1 FROM {} WHERE source_record_id = ANY(%s))"
+                " OR EXISTS (SELECT 1 FROM normalize_failures WHERE source_record_id = ANY(%s))"
+            ).format(sql.Identifier(table)),
+            (failed, normalized),
+        ).fetchone()[0]
+        if clash:
+            raise DuplicateRecordError("a source record in the batch already has an outcome")
+
+    def get_normalize_failure(self, source_record_id: str) -> NormalizeFailure | None:
+        row = self._one(
+            "SELECT record FROM normalize_failures WHERE source_record_id = %s",
+            (source_record_id,),
+        )
+        return validate_contract("NormalizeFailure", row[0]) if row else None
+
     # Retention
 
     def purge_expired(self, now: int) -> PurgeResult:
@@ -185,7 +264,9 @@ class PostgresRecordStore:
         referenced = (
             "(EXISTS (SELECT 1 FROM alert_records a WHERE a.source_record_id = s.source_record_id)"
             " OR EXISTS (SELECT 1 FROM event_records e"
-            " WHERE e.source_record_id = s.source_record_id))"
+            " WHERE e.source_record_id = s.source_record_id)"
+            " OR EXISTS (SELECT 1 FROM normalize_failures f"
+            " WHERE f.source_record_id = s.source_record_id))"
         )
         with self._conn.transaction():
             deleted = self._conn.execute(

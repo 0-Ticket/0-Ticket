@@ -87,3 +87,15 @@ def test_direct_replay_is_stored_and_resumed(conn, tmp_path, monkeypatch):
     assert sorted(stored_sources(store), key=lambda c: c["source_record_id"]) == sorted(
         (dump(item) for item in load_c2()), key=lambda c: c["source_record_id"]
     )
+
+
+@pytest.mark.parametrize("table", ["alert_records", "event_records"])
+def test_one_normalized_result_per_source(conn, table):
+    rows = conn.execute(
+        "SELECT indexdef FROM pg_indexes WHERE schemaname = current_schema() AND tablename = %s",
+        (table,),
+    ).fetchall()
+    assert any(
+        row[0].startswith("CREATE UNIQUE INDEX") and row[0].endswith("(source_record_id)")
+        for row in rows
+    )
