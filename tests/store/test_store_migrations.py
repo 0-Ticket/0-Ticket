@@ -1,4 +1,7 @@
-"""Store migrations use only the numbers their issues were given: #50 0010-0019, #59 0050-0059."""
+"""Store migrations use only the numbers their issues were given.
+
+#50 0010-0019, #59 0050-0059, #60 0060-0069.
+"""
 
 import pytest
 
@@ -8,6 +11,7 @@ RANGES = {
     "create_source_records": (10, 19),
     "create_normalized_records": (10, 19),
     "create_normalize_state": (50, 59),
+    "create_lookup_tables": (60, 69),
 }
 
 

@@ -75,6 +75,20 @@ docker compose down                   # 중지 (데이터는 볼륨에 남음, �
 
 시드 명령은 설정의 Ollama 주소와 Qdrant 컬렉션에 연결하므로 두 서비스가 실행 중이어야 합니다.
 
+### 수집 → 정규화 시연 (`direct`)
+
+SIEM 없이 손으로 만든 샘플을 `direct` 어댑터로 재생해 수집부터 정규화·Lookup 결합까지 돌립니다. 위 DB 마이그레이션을 먼저 적용합니다. 명령은 레포 루트에서 실행합니다.
+
+```bash
+export ZT_CONFIG=tests/fixtures/ingest/direct.toml                         # direct 시연 설정
+uv run python -m soc.normalize.lookup.load assets tests/fixtures/lookup/assets.csv   # 자산 표 적재 (표 전체 교체)
+uv run python -m soc.normalize.lookup.load users tests/fixtures/lookup/users.csv     # 계정 표 적재
+uv run python -m soc.ingest --all       # 새로 가져올 것이 없을 때까지 수집 (옵션 없으면 한 번)
+uv run python -m soc.normalize --all    # 남은 원본이 없을 때까지 정규화 (옵션 없으면 종류별 한 번)
+```
+
+정규화된 알럿의 `dst_asset`에 `web-01`(중요도 5)이 붙고, 프록시 `192.0.2.10`에서 나온 이벤트의 `src_asset`은 `shared=true`입니다. 표에 없는 IP는 `null`입니다. CSV 형식과 매칭 규칙은 [docs/architecture.md](docs/architecture.md) "5 · Lookup"에 있습니다.
+
 설치·실행 방법은 구성 요소가 구현되는 대로 이 절에 추가합니다.
 
 ## 설정과 확장

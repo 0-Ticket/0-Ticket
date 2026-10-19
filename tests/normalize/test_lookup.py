@@ -17,9 +17,11 @@ def test_none_lookup_finds_nothing():
     assert lookup.find_user("alice", T) is None
 
 
-def test_default_settings_pick_the_none_provider():
-    settings = load_config(environ={})
-    assert settings.lookup.provider == "none"
+def test_none_provider_is_chosen_by_setting(tmp_path):
+    # The default became "csv" in box 5 (#60); "none" stays available by setting.
+    org = tmp_path / "org.toml"
+    org.write_text('[lookup]\nprovider = "none"\n', encoding="utf-8")
+    settings = load_config(org, environ={})
     assert isinstance(open_lookup(settings, environ={}), NoneLookup)
     assert "none" in LOOKUPS.names()
 

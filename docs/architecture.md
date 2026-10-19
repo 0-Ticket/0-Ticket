@@ -211,6 +211,14 @@ flowchart TB
   - 자산 표와 계정 표(C4). CSV로 올리고, 유효 기간(`valid_from`, `valid_to`)을 둔다.
   - **공용 자산 표시**(프록시, DNS, 도메인 컨트롤러)를 꼭 둔다. 25번이 공용 엔티티를 빼는 기준이다.
   - 외부 IP 평판 조회 결과는 캐시한다.
+- **매칭 규칙** (#60):
+  - 유효 구간은 `valid_from ≤ at < valid_to`다. `null`은 열린 끝이다. `at`은 알럿·이벤트의 `time`, 증거 요청이면 C22 `params.at`(없으면 현재 시각)이다.
+  - 자산 `match`는 IP 또는 호스트 비트가 없는 CIDR이다. 값이 IP면 그 IP와 같은 행이나 그 IP를 포함하는 CIDR 행이 후보다. IP가 아니면 호스트명이 대소문자 무시로 같은 행이 후보다.
+  - 후보가 여럿이면 하나의 주소인 행(정확한 IP) → 접두어가 긴 CIDR → `valid_from`이 늦은 행 → `match` 문자열 순으로 하나를 고른다.
+  - 계정은 이름이 정확히 같은 행(대소문자 구분)이다. 계정 표의 유효 기간은 표의 열로만 두고 C4 UserInfo에는 넣지 않는다.
+  - 같은 `match`(같은 네트워크) 또는 같은 계정의 유효 기간이 겹치는 행은 적재할 때 거부한다.
+- **CSV 형식**: 자산 `match, hostname, criticality, shared` 필수, `owner, zone, valid_from, valid_to` 선택. 계정 `user, privileged` 필수, `dept, valid_from, valid_to` 선택. `<조직>.<필드>` 이름의 열은 `extensions`에 문자열로 넣는다. bool은 `true`/`false`, 시각은 epoch ms 정수 또는 시간대가 있는 ISO 8601이다. 표는 통째로 바꾸고, 잘못된 행이 하나라도 있으면 아무것도 바꾸지 않는다. 오류는 줄 번호와 열 이름만 알린다.
+- **코드**: 표는 `stores` 그룹의 `postgresql.lookups`(마이그레이션 0060)에 둔다. `lookups` 그룹의 `csv` 제공자가 이 표를 읽고, 정규화 결합(`LookupEnricher`)과 증거 요청 큐의 lookup 처리자가 같은 제공자를 쓴다. 적재는 `python -m soc.normalize.lookup.load assets|users <파일>`이다. 외부 IP 평판 조회와 CMDB 연동은 아직 없다.
 - **완료 조건**: 자산·계정 표를 CSV로 올리고, 유효 기간과 공용 자산 표시를 반영해 C5에 붙인다.
 
 ### 6 · Alert

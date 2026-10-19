@@ -41,7 +41,7 @@ def test_default_normalize_and_lookup_settings():
     assert settings.normalize.alias_dir == ""
     assert settings.normalize.batch_size == 500
     assert settings.normalize.max_parse_length == 16384
-    assert settings.lookup.provider == "none"
+    assert settings.lookup.provider == "csv"
 
 
 @pytest.mark.parametrize(

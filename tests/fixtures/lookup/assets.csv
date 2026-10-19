@@ -1,0 +1,7 @@
+match,hostname,criticality,owner,zone,shared,valid_from,valid_to,acme.cost_center
+192.0.2.80,web-01,5,web-team@example.com,dmz,false,2021-01-01T00:00:00Z,,cc-100
+192.0.2.80,legacy-web,3,web-team@example.com,dmz,false,2019-01-01T00:00:00Z,2021-01-01T00:00:00Z,cc-100
+192.0.2.10,proxy-01,3,net-team@example.com,dmz,true,,,cc-200
+192.0.2.53,dns-01,4,net-team@example.com,internal,true,,,cc-200
+192.0.2.20,dc-01,5,it-team@example.com,internal,true,,,
+192.0.2.0/24,office-net,2,,internal,false,,,

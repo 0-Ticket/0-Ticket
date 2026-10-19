@@ -1,7 +1,8 @@
 """Stores (boxes 5, 6, 7, 10, 12, ... D-002): one ``stores`` registry for every kind of store.
 
 Implementations are registered as ``<backend>.<kind>``: ``postgresql.records``
-for Alert/Event (boxes 6, 7), ``postgresql.tickets``, and ``postgresql.agent_log``.
+for Alert/Event (boxes 6, 7), ``postgresql.lookups`` (box 5), ``postgresql.tickets``,
+and ``postgresql.agent_log``.
 ``[store] backend`` picks the backend for all of them; the core passes only the
 kind to ``open_store`` and never names a backend.
 """
@@ -12,11 +13,14 @@ from collections.abc import Mapping
 from soc.config import Settings
 from soc.plugins import PluginRegistry
 
+from .lookups.base import STORE_KIND as LOOKUPS
+from .lookups.postgres import create_postgres_lookups
 from .records.base import STORE_KIND as RECORDS
 from .records.postgres import create_postgres_records
 
 STORES = PluginRegistry("stores")
 STORES.register(f"postgresql.{RECORDS}", create_postgres_records)
+STORES.register(f"postgresql.{LOOKUPS}", create_postgres_lookups)
 
 
 def open_store(
