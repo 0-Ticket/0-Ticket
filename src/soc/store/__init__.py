@@ -28,7 +28,6 @@ from .l1_decisions.postgres import (
 )
 from .lookups.base import STORE_KIND as LOOKUPS
 from .lookups.postgres import create_postgres_lookups
-from .postgresql.agent_log import create_postgresql_readonly_agent_log_store
 from .records.base import READONLY_STORE_KIND as READONLY_RECORDS
 from .records.base import STORE_KIND as RECORDS
 from .records.postgres import create_postgres_readonly_records, create_postgres_records
@@ -38,16 +37,23 @@ READONLY_TICKETS = "readonly_tickets"
 READONLY_AGENT_LOG = "readonly_agent_log"
 
 
-def _readonly_ticket_store(settings: Settings, environ: Mapping[str, str]):
-    """Open ``postgresql.readonly_tickets``, importing it only when it is opened.
+# The ``postgresql`` Ticket and Agent Log modules import ``soc.l1``, which imports
+# this package, so they are imported when the store is opened instead of here:
+# at module level, whichever of the two is imported first sees the other half-built.
 
-    ``soc.store.postgresql.tickets`` imports ``soc.l1.tickets``, which imports this
-    package; importing it at module level makes whichever of the two is imported
-    first see the other half-initialized.
-    """
+
+def _readonly_ticket_store(settings: Settings, environ: Mapping[str, str]):
+    """Open ``postgresql.readonly_tickets``."""
     from .postgresql.tickets import create_postgresql_readonly_ticket_store
 
     return create_postgresql_readonly_ticket_store(settings, environ)
+
+
+def _readonly_agent_log_store(settings: Settings, environ: Mapping[str, str]):
+    """Open ``postgresql.readonly_agent_log``."""
+    from .postgresql.agent_log import create_postgresql_readonly_agent_log_store
+
+    return create_postgresql_readonly_agent_log_store(settings, environ)
 
 
 STORES = PluginRegistry("stores")
@@ -59,7 +65,7 @@ STORES.register(f"postgresql.{READONLY_BRANCHES}", create_postgres_readonly_bran
 STORES.register(f"postgresql.{L1_DECISIONS}", create_postgres_l1_decisions)
 STORES.register(f"postgresql.{READONLY_L1_DECISIONS}", create_postgres_readonly_l1_decisions)
 STORES.register(f"postgresql.{READONLY_TICKETS}", _readonly_ticket_store)
-STORES.register(f"postgresql.{READONLY_AGENT_LOG}", create_postgresql_readonly_agent_log_store)
+STORES.register(f"postgresql.{READONLY_AGENT_LOG}", _readonly_agent_log_store)
 
 
 def open_store(

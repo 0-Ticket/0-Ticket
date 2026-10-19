@@ -60,6 +60,8 @@ class TicketStore(Protocol):
 
     def update(self, ticket: Mapping[str, Any], *, expected_status: str) -> dict[str, Any]: ...
 
+    def close(self) -> None: ...
+
     def list(
         self,
         *,

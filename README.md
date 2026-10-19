@@ -89,6 +89,18 @@ uv run python -m soc.normalize --all    # 남은 원본이 없을 때까지 정�
 
 정규화된 알럿의 `dst_asset`에 `web-01`(중요도 5)이 붙고, 프록시 `192.0.2.10`에서 나온 이벤트의 `src_asset`은 `shared=true`입니다. 표에 없는 IP는 `null`입니다. CSV 형식과 매칭 규칙은 [docs/architecture.md](docs/architecture.md) "5 · Lookup"에 있습니다.
 
+### L1 결과 조회 API (박스 27)
+
+사람이 L1 결과(승격·보류된 Alert, Ticket 판정, 증거 요청 실패)를 읽는 읽기 전용 API입니다. 저장소를
+읽기 전용 계정으로만 열기 때문에 `.env`에 `DATABASE_READONLY_URL`이 있어야 합니다.
+
+```bash
+uv run python -m soc.api    # 기본 http://127.0.0.1:8000 (주소는 설정 [api])
+```
+
+경로와 응답 모양은 [docs/api-contracts.md](docs/api-contracts.md)에 있습니다. L1 결과를 바꾸는 경로는
+없습니다.
+
 설치·실행 방법은 구성 요소가 구현되는 대로 이 절에 추가합니다.
 
 ## 설정과 확장

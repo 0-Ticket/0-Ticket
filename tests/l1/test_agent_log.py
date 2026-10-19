@@ -3,15 +3,14 @@ import json
 from pathlib import Path
 
 import pytest
+from agent_log_fakes import FakeAgentLogStore
 
 from soc.config import load_config
 from soc.contracts import validate_contract
 from soc.l1.agent_log import (
     SUBJECT_TYPES,
-    AgentLogEntry,
     AgentLogService,
     ArtifactReference,
-    DuplicateAgentStepError,
 )
 from soc.l1.tickets import TicketNotFoundError
 from soc.plugins import PluginRegistry
@@ -27,31 +26,6 @@ def load_json(path):
 
 def agent_step(**updates):
     return load_json(FIXTURES / "agent_step.json") | updates
-
-
-class FakeAgentLogStore:
-    def __init__(self):
-        self.entries = []
-        self.closed = False
-
-    def save_step(self, step, artifact=None):
-        key = (step.subject_type, step.subject_id, step.step)
-        if any(
-            (entry.step.subject_type, entry.step.subject_id, entry.step.step) == key
-            for entry in self.entries
-        ):
-            raise DuplicateAgentStepError("Agent Log step already exists")
-        self.entries.append(AgentLogEntry(step=step, artifact=artifact))
-
-    def list_steps(self, subject_type, subject_id):
-        return [
-            entry
-            for entry in self.entries
-            if entry.step.subject_type == subject_type and entry.step.subject_id == subject_id
-        ]
-
-    def close(self):
-        self.closed = True
 
 
 class FakeTicketStore:

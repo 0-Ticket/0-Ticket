@@ -15,6 +15,7 @@ from soc.store.paging import DEFAULT_PAGE_LIMIT
 class FakeTicketStore:
     def __init__(self):
         self.tickets = {}
+        self.closed = False
 
     def create(self, ticket):
         self.tickets[ticket["ticket_id"]] = copy.deepcopy(dict(ticket))
@@ -27,6 +28,9 @@ class FakeTicketStore:
     def find_by_entity(self, entity_type, entity_value):
         entity = {"type": entity_type, "value": entity_value}
         return [copy.deepcopy(t) for t in self.tickets.values() if entity in t["entities"]]
+
+    def close(self):
+        self.closed = True
 
     def update(self, ticket, *, expected_status):
         self.tickets[ticket["ticket_id"]] = copy.deepcopy(dict(ticket))
