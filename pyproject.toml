@@ -9,6 +9,7 @@ dependencies = [
     "mcp>=2,<3",
     "psycopg[binary]>=3.3.6",
     "pydantic>=2.14.1",
+    "qdrant-client>=1.19.1",
 ]
 
 [dependency-groups]
@@ -26,12 +27,20 @@ build-backend = "hatchling.build"
 "postgresql.tickets" = "soc.store.postgresql.tickets:create_postgresql_ticket_store"
 "postgresql.agent_log" = "soc.store.postgresql.agent_log:create_postgresql_agent_log_store"
 
+[project.entry-points."zero_ticket_soc.vector_stores"]
+qdrant = "soc.store.vectors.qdrant:create_qdrant_vector_store"
+
+[project.entry-points."zero_ticket_soc.embedders"]
+ollama = "soc.store.embedders.ollama:create_ollama_embedder"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/soc"]
 
 [tool.hatch.build.targets.wheel.force-include]
 "contracts" = "soc/contracts/schemas"
 "config/default.toml" = "soc/default.toml"
+"src/soc/store/vectors/templates/decided_ticket.txt" = "soc/store/vectors/templates/decided_ticket.txt"
+"src/soc/store/vectors/templates/entity_sentence.txt" = "soc/store/vectors/templates/entity_sentence.txt"
 
 [tool.ruff]
 line-length = 100
@@ -46,5 +55,6 @@ testpaths = ["tests"]
 markers = [
     "llm: 실제 LLM을 호출하는 테스트. 기본 실행에서 제외, uv run pytest -m llm 으로 실행",
     "db: PostgreSQL이 필요한 테스트(DATABASE_URL). 기본 실행에서 제외, uv run pytest -m db 으로 실행",
+    "qdrant: Qdrant 서비스가 필요한 통합 테스트. 기본 실행에서 제외, uv run pytest -m qdrant 으로 실행",
 ]
-addopts = "-m 'not llm and not db'"
+addopts = "-m 'not llm and not db and not qdrant'"

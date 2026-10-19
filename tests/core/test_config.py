@@ -26,6 +26,14 @@ def test_default_config_loads_without_org_file():
     assert settings.llm.base_url == "http://localhost:11434/v1"
     assert settings.llm.api_key_env == "LLM_API_KEY"
     assert settings.llm.temperature == 0
+    assert settings.vector_store.backend == "qdrant"
+    assert settings.vector_store.url == "http://localhost:6333"
+    assert settings.vector_store.collection == "closed_tickets"
+    assert settings.embedder.provider == "ollama"
+    assert settings.embedder.base_url == "http://localhost:11434"
+    assert settings.embedder.model == "bge-m3"
+    assert settings.embedder.dimensions == 1024
+    assert settings.vector_search.fusion_method == "rrf"
 
 
 def test_default_normalize_and_lookup_settings():
@@ -96,6 +104,33 @@ def test_mcp_max_query_limit_below_one_fails(tmp_path):
     org = tmp_path / "org.toml"
     org.write_text("[mcp]\nmax_query_limit = 0\n", encoding="utf-8")
     with pytest.raises(ConfigError, match="mcp.max_query_limit"):
+        load_config(org, environ={})
+
+
+@pytest.mark.parametrize(
+    "method", ["keyword_first", "rrf", "weighted_rrf", "dbsf", "weighted_score"]
+)
+def test_vector_fusion_method_can_be_selected_in_org_config(tmp_path, method):
+    org = tmp_path / "org.toml"
+    org.write_text(f'[vector_search]\nfusion_method = "{method}"\n', encoding="utf-8")
+
+    assert load_config(org, environ={}).vector_search.fusion_method == method
+
+
+def test_unknown_vector_fusion_method_fails(tmp_path):
+    org = tmp_path / "org.toml"
+    org.write_text('[vector_search]\nfusion_method = "something_else"\n', encoding="utf-8")
+
+    with pytest.raises(ConfigError, match="vector_search.fusion_method"):
+        load_config(org, environ={})
+
+
+@pytest.mark.parametrize("section,key", [("vector_store", "url"), ("embedder", "base_url")])
+def test_vector_service_urls_reject_credentials(tmp_path, section, key):
+    org = tmp_path / "org.toml"
+    org.write_text(f'[{section}]\n{key} = "http://test-user@localhost:6333"\n')
+
+    with pytest.raises(ConfigError, match=f"{section}.{key}"):
         load_config(org, environ={})
 
 
@@ -208,6 +243,8 @@ def test_wheel_contains_and_uses_default_config(tmp_path):
         assert "soc/default.toml" in archive.namelist()
         assert "soc/normalize/aliases/ait_suricata_alert.toml" in archive.namelist()
         assert "soc/normalize/aliases/ait_apache_access.toml" in archive.namelist()
+        assert "soc/store/vectors/templates/decided_ticket.txt" in archive.namelist()
+        assert "soc/store/vectors/templates/entity_sentence.txt" in archive.namelist()
         archive.extractall(installed)
     code = "\n".join(
         [
