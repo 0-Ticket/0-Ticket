@@ -1,0 +1,11 @@
+{
+  "verdict": "tp",
+  "confidence": 0.9,
+  "summary": "Synthetic event-backed true positive",
+  "evidence": [
+    {"ref_type": "event", "ref_id": "ev_sample", "note": "Synthetic event"}
+  ],
+  "recommended_action": "Escalate",
+  "needs_human": false,
+  "human_reason": null
+}

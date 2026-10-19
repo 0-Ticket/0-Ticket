@@ -1,0 +1,11 @@
+{
+  "verdict": "tp",
+  "confidence": 0.95,
+  "summary": "Synthetic invalid evidence result",
+  "evidence": [
+    {"ref_type": "alert", "ref_id": "al_not_stored", "note": "Synthetic missing alert"}
+  ],
+  "recommended_action": "Escalate",
+  "needs_human": false,
+  "human_reason": null
+}

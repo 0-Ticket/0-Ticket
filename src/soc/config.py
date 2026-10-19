@@ -148,6 +148,14 @@ class EvidenceQueueSettings(_Section):
     max_retries: int = Field(ge=0)
 
 
+class L1Settings(_Section):
+    """Box 11 thresholds and evidence-search windows."""
+
+    confidence_threshold: float = Field(ge=0, le=1, allow_inf_nan=False)
+    siem_window_minutes: int = Field(ge=1)
+    similar_tickets: int = Field(ge=1)
+
+
 class NormalizeSettings(_Section):
     # Organization alias table folder (box 4, C20). Empty: default tables only.
     alias_dir: str
@@ -221,6 +229,7 @@ class Settings(_Section):
     embedder: EmbedderSettings
     llm: LLMSettings
     lookup: LookupSettings
+    l1: L1Settings
     mcp: McpSettings
     normalize: NormalizeSettings
     siem: SiemSettings
