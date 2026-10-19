@@ -139,13 +139,28 @@ class EvidenceQueueSettings(_Section):
     max_retries: int = Field(ge=0)
 
 
+class NormalizeSettings(_Section):
+    # Organization alias table folder (box 4, C20). Empty: default tables only.
+    alias_dir: str
+    batch_size: int = Field(ge=1)
+    # Longest text a parse pattern is applied to. Longer values fail as bad_value.
+    max_parse_length: int = Field(ge=1)
+
+
+class LookupSettings(_Section):
+    # The name registered in the lookups group; same naming rule as store.backend.
+    provider: str = Field(pattern=r"^[a-z0-9_]+$")
+
+
 class Settings(_Section):
     """Typed settings. Each box issue adds its own section here and in default.toml."""
 
     database: DatabaseSettings
     evidence_queue: EvidenceQueueSettings
     llm: LLMSettings
+    lookup: LookupSettings
     mcp: McpSettings
+    normalize: NormalizeSettings
     siem: SiemSettings
     store: StoreSettings
     agent_log: AgentLogSettings

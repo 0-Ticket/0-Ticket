@@ -18,6 +18,20 @@ backend = "postgresql"
 # 정규화 결과가 가리키는 원본은 기간이 지나도 지우지 않는다.
 raw_retention_days = 0
 
+# OCSF 정규화 (박스 4, D-017, D-029). 시나리오별 별칭 표(C20)로 원본 C2를 C3·C13으로 바꾼다.
+[normalize]
+# 조직 별칭 표 폴더. 이 폴더의 <scenario>.toml이 같은 이름의 기본 표를 통째로 바꾼다. 비우면 기본 표만 쓴다.
+alias_dir = ""
+# 한 번에 읽어 정규화하는 원본 건수. 1 이상.
+batch_size = 500
+# 별칭 표 parse 정규식을 적용할 값의 최대 길이(문자). 더 길면 정규식을 돌리지 않고 bad_value로 남긴다. 1 이상.
+max_parse_length = 16384
+
+# Lookup 결합 (박스 4 → 5). 정규화 결과에 자산·계정 정보를 붙이는 조회 제공자.
+[lookup]
+# lookups 그룹에 등록된 조회 제공자 이름. 소문자·숫자·밑줄만. "none"은 아무것도 찾지 않는다(null).
+provider = "none"
+
 # Box 12 large-result artifacts. The directory is ignored by git because it is under data/.
 [agent_log]
 # Directory for the remainder of large tool results; paths stored in PostgreSQL are relative to it.
