@@ -57,8 +57,13 @@ def _connect(
 ) -> psycopg.Connection:
     url = read_secret(env_name, environ)
     try:
+        # Autocommit: a read must not leave a transaction open, or a later
+        # `with connection.transaction()` becomes a savepoint inside it and
+        # close rolls the write back (#83). Multi-statement writes still use
+        # `with connection.transaction()`.
         return psycopg.connect(
             url,
+            autocommit=True,
             connect_timeout=settings.database.connect_timeout_seconds,
             **({"options": options} if options else {}),
         )
