@@ -18,7 +18,7 @@ it('marks the active menu item in the main navigation', () => {
   const nav = within(screen.getByRole('navigation', { name: '주 메뉴' }));
   expect(nav.getAllByRole('link').map((link) => link.textContent)).toEqual([
     '대시보드',
-    '검토 대기함',
+    'L1 결과',
     '전체 티켓',
     'Incident',
     'Case',
@@ -26,7 +26,7 @@ it('marks the active menu item in the main navigation', () => {
     '룰 제안',
   ]);
   expect(nav.getByRole('link', { name: '전체 티켓' })).toHaveAttribute('aria-current', 'page');
-  expect(nav.getByRole('link', { name: '검토 대기함' })).not.toHaveAttribute('aria-current');
+  expect(nav.getByRole('link', { name: 'L1 결과' })).not.toHaveAttribute('aria-current');
   expect(nav.getByRole('link', { name: '대시보드' })).not.toHaveAttribute('aria-current');
 });
 
@@ -82,7 +82,7 @@ it('scrolls the narrow menu strip to a link reached by keyboard', () => {
 });
 
 it.each([
-  ['/review', '검토 대기함', '사람의 판단이 필요한 티켓입니다.'],
+  ['/review', 'L1 결과 조회', '승격·보류·판정 결과를 읽기만 합니다.'],
   ['/tickets', '전체 티켓', '상태와 관계없이 모든 티켓을 조회합니다.'],
 ])('states the purpose of %s in the page header', (path, title, purpose) => {
   mount(path);
@@ -92,6 +92,7 @@ it.each([
 
 it.each([
   ['/tickets/tk_sample', '티켓 tk_sample', '티켓 목록', '/tickets'],
+  ['/alerts/al_held', '알럿 al_held', 'L1 결과 조회', '/review'],
   ['/incidents/in_web_campaign', 'Incident in_web_campaign', 'Incident 목록', '/incidents'],
   ['/cases/cs_web_breach', 'Case cs_web_breach', 'Case 목록', '/cases'],
 ])('links %s back to its list from the breadcrumb', async (path, heading, label, href) => {

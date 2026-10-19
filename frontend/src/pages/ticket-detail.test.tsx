@@ -186,3 +186,50 @@ it('retries an initial detail error and preserves the awaiting timestamp after r
   expect(screen.getByTitle(String(fixture.ticket.awaiting_human_at))).toBeInTheDocument();
   expect(screen.queryByText(/소요 시간|경과 시간/)).not.toBeInTheDocument();
 });
+
+it('shows the L1 decision, evidence requests and merged agent log without a verdict change form', async () => {
+  const user = userEvent.setup();
+  const { container } = mount('/tickets/tk_scenario_l2');
+  await screen.findByText('티켓 tk_scenario_l2', { selector: 'h1' }, { timeout: 3000 });
+  // The ticket status and its C23 decision both read "L2 승격"; the origin badge is its own.
+  expect(screen.getAllByText('L2 승격')).toHaveLength(2);
+  expect(screen.getByText('시나리오')).toBeInTheDocument();
+  // C23 of the ticket itself (the alert's own records stay on the alert screen).
+  const decisions = within(screen.getByRole('region', { name: 'L1 결정' }));
+  expect(decisions.getAllByRole('listitem')).toHaveLength(1);
+  expect(decisions.getByText(/0\.91/)).toBeInTheDocument();
+  // C22 with the completed specialist request behind the C14 finding.
+  const evidence = within(screen.getByRole('region', { name: '증거 요청' }));
+  expect(evidence.getByText('완료')).toBeInTheDocument();
+  expect(evidence.getByText(/전문가/)).toBeInTheDocument();
+  expect(evidence.queryByText(/재시도 [1-9]/)).not.toBeInTheDocument();
+  // The log merges the alert steps with the ticket steps in time order (#44).
+  expect(screen.getAllByTestId('agent-step').map((x) => x.getAttribute('data-step'))).toEqual([
+    '1',
+    '1',
+    '2',
+  ]);
+  expect(screen.getByText('al_scenario', { selector: 'h3' })).toBeInTheDocument();
+  expect(screen.getByText('tk_scenario_l2', { selector: 'h3' })).toBeInTheDocument();
+  // No L1 verdict change: no form, no reviewer input, no POST route in reach.
+  expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /동의|뒤집기/ })).not.toBeInTheDocument();
+  expect(screen.queryByRole('radio')).not.toBeInTheDocument();
+  expect(container.querySelector('form')).toBeNull();
+  expect(screen.getByText('검토 기록')).toBeInTheDocument();
+  for (const summary of screen.getAllByText(/입력·출력 발췌/)) await user.click(summary);
+  expect(container.querySelector('img, script, iframe, b, a[href^="https:"]')).toBeNull();
+});
+
+it('shows a failed evidence request as the evidence collection failure of a held ticket', async () => {
+  mount('/tickets/tk_evidence_fail');
+  await screen.findByText('티켓 tk_evidence_fail', { selector: 'h1' }, { timeout: 3000 });
+  const evidence = within(screen.getByRole('region', { name: '증거 요청' }));
+  expect(evidence.getByText('실패')).toBeInTheDocument();
+  expect(evidence.getByText(/siem connection refused/)).toBeInTheDocument();
+  expect(evidence.getByText(/재시도 3회/)).toBeInTheDocument();
+  const decisions = within(screen.getByRole('region', { name: 'L1 결정' }));
+  expect(decisions.getByText('보류')).toBeInTheDocument();
+  expect(decisions.getByText('증거 요청 실패')).toBeInTheDocument();
+  expect(screen.getAllByText('보류').length).toBeGreaterThan(1);
+});

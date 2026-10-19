@@ -148,8 +148,11 @@ it('shows all statuses and nullable verdicts, multiple alerts, shared assets and
   const user = userEvent.setup();
   mount();
   expect(await screen.findByRole('link', { name: 'tk_tie_a' })).toBeInTheDocument();
-  expect(await screen.findAllByText('공용 자산')).toHaveLength(2);
-  expect(screen.getAllByText('관리자 계정')).toHaveLength(2);
+  // One alert card per ticket row, so the shared asset and privileged account of al_cloud
+  // appear once for every ticket that lists it.
+  const shared = data.tickets.filter((item) => item.alert_ids.includes('al_cloud')).length;
+  expect(await screen.findAllByText('공용 자산')).toHaveLength(shared);
+  expect(screen.getAllByText('관리자 계정')).toHaveLength(shared);
   expect(screen.getAllByText('신규')).toHaveLength(3);
   await user.click(screen.getByRole('button', { name: 'tk_tie_a 복사' }));
   expect(await navigator.clipboard.readText()).toBe('tk_tie_a');
@@ -276,7 +279,8 @@ it('refreshes three loaded pages atomically, retries failed polling, and removes
   }
 });
 
-it.each(['/review', '/tickets'])('uses only the approved GET APIs at %s', async (path) => {
+it('uses only the approved GET APIs at /tickets', async () => {
+  const path = '/tickets';
   const requests: string[] = [];
   const listener = ({ request }: { request: Request }) =>
     requests.push(`${request.method} ${new URL(request.url).pathname}`);

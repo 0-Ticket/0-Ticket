@@ -137,6 +137,8 @@
       "created_at": 1791849600000
     }
   ],
+  "decisions": [],
+  "evidence_requests": [],
   "steps": [
     {
       "subject_type": "ticket",

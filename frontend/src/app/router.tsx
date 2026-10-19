@@ -1,7 +1,8 @@
 import type { RouteObject } from 'react-router';
 import { Shell } from './shell';
 import { TicketsPage } from '../pages/tickets';
-import { ReviewPage } from '../pages/review';
+import { L1ResultsPage } from '../pages/l1-results';
+import { AlertL1Page } from '../pages/alert-l1';
 import { DashboardPage } from '../pages/dashboard';
 import { TicketDetailPage } from '../pages/ticket-detail';
 import { IncidentsPage } from '../pages/incidents';
@@ -13,7 +14,8 @@ import { HuntDetailPage } from '../pages/hunt-detail';
 import { RulesPage } from '../pages/rules';
 import { RuleDetailPage } from '../pages/rule-detail';
 
-// F1~F5 supply ticket, incident, case, hunt and rule pages; F6 is the dashboard at `/`.
+// F1 serves the read-only L1 results at `/review` and one alert at `/alerts/:alert_id` (box 27);
+// F2~F5 supply ticket, incident, case, hunt and rule pages; F6 is the dashboard at `/`.
 export const routes: RouteObject[] = [
   {
     element: <Shell />,
@@ -22,6 +24,7 @@ export const routes: RouteObject[] = [
       '/review',
       '/tickets',
       '/tickets/:ticket_id',
+      '/alerts/:alert_id',
       '/incidents',
       '/incidents/:incident_id',
       '/cases',
@@ -36,11 +39,13 @@ export const routes: RouteObject[] = [
         path === '/' ? (
           <DashboardPage />
         ) : path === '/review' ? (
-          <ReviewPage />
+          <L1ResultsPage />
         ) : path === '/tickets' ? (
           <TicketsPage />
         ) : path === '/tickets/:ticket_id' ? (
           <TicketDetailPage />
+        ) : path === '/alerts/:alert_id' ? (
+          <AlertL1Page />
         ) : path === '/incidents' ? (
           <IncidentsPage />
         ) : path === '/incidents/:incident_id' ? (

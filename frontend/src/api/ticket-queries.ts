@@ -1,8 +1,6 @@
-import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { api } from './endpoints';
-import type { AlertRecord, EventRecord, RawRecord } from '../contracts';
-import type { TicketReviewInput } from './types';
-import { ApiError } from './client';
+import type { AlertRecord, EventRecord, L1DecisionRecord, RawRecord } from '../contracts';
 
 export function useTickets(review: boolean) {
   return useInfiniteQuery({
@@ -58,22 +56,20 @@ export function useEvidence(type: string, id: string, enabled: boolean) {
   });
 }
 
-export function useTicketReview(id: string) {
-  const client = useQueryClient();
-  const refresh = () =>
-    Promise.all([
-      client.invalidateQueries({ queryKey: ['ticket-detail', id] }),
-      client.invalidateQueries({ queryKey: ['tickets'] }),
-      client.invalidateQueries({ queryKey: ['metrics'] }),
-    ]);
-  return useMutation({
-    mutationFn: (body: TicketReviewInput) => api.reviewTicket(id, body),
-    retry: false,
-    onSuccess: async () => {
-      await refresh();
-    },
-    onError: async (error) => {
-      if (error instanceof ApiError && error.code === 'conflict') await refresh();
-    },
+// Box 27 reads C23 one page at a time; the screen never counts or reorders decisions.
+export function useL1Decisions(subject_type: L1DecisionRecord['subject_type']) {
+  return useInfiniteQuery({
+    queryKey: ['l1-decisions', { subject_type }],
+    initialPageParam: undefined as string | undefined,
+    queryFn: ({ pageParam, signal }) =>
+      api.l1Decisions({ cursor: pageParam, subject_type }, signal),
+    getNextPageParam: (page) => page.next_cursor ?? undefined,
+  });
+}
+
+export function useAlertL1(id: string) {
+  return useQuery({
+    queryKey: ['alert-l1', id],
+    queryFn: ({ signal }) => api.alertL1(id, signal),
   });
 }

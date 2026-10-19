@@ -1,6 +1,7 @@
 import type {
   AlertRecord,
   Case,
+  L1DecisionRecord,
   EventRecord,
   HumanReview,
   HuntFinding,
@@ -13,6 +14,7 @@ import type {
 } from '../contracts';
 import { request } from './client';
 import type {
+  AlertL1Detail,
   CaseDetail,
   CasePatch,
   HuntDetail,
@@ -31,6 +33,7 @@ export const api = {
   tickets: (
     query: Pagination & {
       status?: Ticket['status'];
+      origin?: Ticket['origin'];
       handling_type?: string;
       min_priority?: number;
     } = {},
@@ -40,6 +43,16 @@ export const api = {
     request<TicketDetail>(`tickets/${id(value)}`, { signal }),
   alert: (value: string, signal?: AbortSignal) =>
     request<AlertRecord>(`alerts/${id(value)}`, { signal }),
+  alertL1: (value: string, signal?: AbortSignal) =>
+    request<AlertL1Detail>(`alerts/${id(value)}/l1`, { signal }),
+  l1Decisions: (
+    query: Pagination & {
+      subject_type?: L1DecisionRecord['subject_type'];
+      decision?: L1DecisionRecord['decision'];
+      reason?: NonNullable<L1DecisionRecord['reason']>;
+    } = {},
+    signal?: AbortSignal,
+  ) => request<Page<L1DecisionRecord>>('l1/decisions', { query, signal }),
   event: (value: string, signal?: AbortSignal) =>
     request<EventRecord>(`events/${id(value)}`, { signal }),
   raw: (value: string, signal?: AbortSignal) => request<RawRecord>(`raw/${id(value)}`, { signal }),

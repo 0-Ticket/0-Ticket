@@ -10,6 +10,7 @@ it.each([
   '/review',
   '/tickets',
   '/tickets/tk_sample',
+  '/alerts/al_held',
   '/incidents',
   '/incidents/in_sample',
   '/cases',
