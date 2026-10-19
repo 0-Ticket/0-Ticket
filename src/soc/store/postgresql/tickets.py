@@ -119,16 +119,31 @@ class PostgresTicketStore:
         *,
         status: str | None = None,
         origin: str | None = None,
+        handling_type: str | None = None,
+        min_priority: int | None = None,
         cursor: str | None = None,
         limit: int = DEFAULT_PAGE_LIMIT,
     ) -> TicketPage:
-        check_ticket_list_args(status, origin, limit)
+        check_ticket_list_args(
+            status=status,
+            origin=origin,
+            handling_type=handling_type,
+            min_priority=min_priority,
+            limit=limit,
+        )
         after = decode_ticket_cursor(cursor)
         conditions, params = [], []
-        for key, value in (("status", status), ("origin", origin)):
+        for key, value in (
+            ("status", status),
+            ("origin", origin),
+            ("handling_type", handling_type),
+        ):
             if value is not None:
                 conditions.append(sql.SQL("payload ->> {} = %s").format(sql.Literal(key)))
                 params.append(value)
+        if min_priority is not None:
+            conditions.append(sql.SQL("{} >= %s").format(_PRIORITY))
+            params.append(min_priority)
         if after is not None:
             priority, created_at, ticket_id = after
             conditions.append(

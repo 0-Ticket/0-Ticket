@@ -121,10 +121,33 @@ class L1DecisionStoreContract:
             ({"reason": "below_threshold"}, ["ld_sample_alert_held"]),
             ({"subject_type": "ticket", "decision": "held"}, ["ld_sample_ticket_held"]),
             ({"subject_type": "alert", "decision": "closed_fp"}, []),
+            ({"subject_id": "al_sample_wpscan"}, ["ld_sample_alert_held"]),
+            ({"subject_id": "al_missing"}, []),
+            (
+                {"subject_type": "ticket", "subject_id": "tk_sample_held"},
+                ["ld_sample_ticket_held"],
+            ),
+            ({"subject_type": "alert", "subject_id": "tk_sample_held"}, []),
         ],
     )
     def test_list_filters(self, filled, filters, expected):
         assert ids(filled.list(**filters)) == expected
+
+    def test_subject_id_lists_the_whole_history_newest_first(self, store):
+        # ``get`` keeps only the latest record; box 27 shows every decision of a subject.
+        store.save(decision("ld_a", "tk_one", 10))
+        store.save(decision("ld_b", "tk_one", 30, decision="closed_fp", reason=None))
+        store.save(decision("ld_c", "tk_one", 20))
+        store.save(decision("ld_other", "tk_two", 40))
+        assert ids(store.list(subject_id="tk_one")) == ["ld_b", "ld_c", "ld_a"]
+
+    def test_subject_id_pages_without_gaps_or_repeats(self, store):
+        for index in range(5):
+            store.save(decision(f"ld_{index}", "tk_one", 10 + index))
+        store.save(decision("ld_other", "tk_two", 99))
+        seen, pages = walk(store, 2, subject_id="tk_one")
+        assert seen == ["ld_4", "ld_3", "ld_2", "ld_1", "ld_0"]
+        assert pages == 3
 
     @pytest.mark.parametrize("limit", [1, 2, 3])
     def test_pages_have_no_gaps_or_repeats(self, filled, limit):
@@ -140,6 +163,7 @@ class L1DecisionStoreContract:
         "kwargs",
         [
             {"subject_type": "incident"},
+            {"subject_id": ""},
             {"decision": "closed_benign"},
             {"reason": "timeout"},
             {"limit": 0},

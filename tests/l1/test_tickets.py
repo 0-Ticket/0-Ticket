@@ -229,10 +229,21 @@ def test_ticket_service_lists_through_the_store_and_validates_items():
     ticket = load_fixture("ticket.json")
     store = ListingTicketStore(TicketPage([ticket], "next"))
 
-    page = TicketService(store).list(status="new", origin="scenario", limit=10)
+    page = TicketService(store).list(
+        status="new", origin="scenario", handling_type="web_attack", min_priority=5, limit=10
+    )
 
     assert page == TicketPage([ticket], "next")
-    assert store.calls == [{"status": "new", "origin": "scenario", "cursor": None, "limit": 10}]
+    assert store.calls == [
+        {
+            "status": "new",
+            "origin": "scenario",
+            "handling_type": "web_attack",
+            "min_priority": 5,
+            "cursor": None,
+            "limit": 10,
+        }
+    ]
 
 
 def test_ticket_service_list_rejects_an_invalid_stored_ticket():
@@ -243,7 +254,15 @@ def test_ticket_service_list_rejects_an_invalid_stored_ticket():
 
 
 @pytest.mark.parametrize(
-    "kwargs", [{"status": "done"}, {"origin": "manual"}, {"limit": 0}, {"cursor": "%%%"}]
+    "kwargs",
+    [
+        {"status": "done"},
+        {"origin": "manual"},
+        {"handling_type": ""},
+        {"min_priority": -1},
+        {"limit": 0},
+        {"cursor": "%%%"},
+    ],
 )
 def test_ticket_service_list_checks_arguments_before_the_store(kwargs):
     store = ListingTicketStore(TicketPage([], None))

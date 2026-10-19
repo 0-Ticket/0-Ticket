@@ -92,7 +92,7 @@ model = "my-larger-model"
 | 프롬프트 | 11, 13, 14, 19, 23, 24 | (파일) | 기본 프롬프트 | 자사 판정 기준, 언어 |
 | MCP 도구 | 15 | `mcp_servers` | 내부 데이터 조회, Web 도메인. 공식 Python MCP SDK로 구현 (D-041) | 사내 도구 연결 |
 | SIEM MCP 어댑터 | 15 | `siem_mcp_adapters` | Wazuh (초기, D-035). 선택된 SIEM을 따라간다. 읽기 전용 | ELK, Splunk |
-| 증거 요청 큐 | 26 | `evidence_queues` | PostgreSQL 테이블 큐 (D-034). 구현체 이름 `postgresql`, `[evidence_queue] backend`로 고르고 코어는 `soc.l1.evidence.open_evidence_queue`로 연다 | 다른 큐 백엔드 |
+| 증거 요청 큐 | 26, 27 | `evidence_queues` | PostgreSQL 테이블 큐 (D-034). 구현체 이름 `postgresql`, `[evidence_queue] backend`로 고르고 코어는 `soc.l1.evidence.open_evidence_queue`로 연다. 백엔드는 이름 두 개를 등록한다: `<백엔드>`(큐 작업자가 쓰는 연결)와 `<백엔드>.readonly`(같은 행을 읽기 전용으로 읽는 연결). 화면용 API(27)는 `open_evidence_queue(..., readonly=True)`로 뒤쪽만 연다 | 다른 큐 백엔드 |
 | 사람 검토 채널 | 21 | `review_channels` | 웹 화면 (D-013, `docs/frontend.md`) | 메신저, 사내 포털 |
 | 티켓·케이스 시스템 | 10, 22 | `case_systems` | 내부 저장과 내부 UI (D-012) | 외부 티켓·케이스 관리 도구와 동기화 |
 | 알림 채널 | 사용자 접점 | (제안: notification_channels) | Slack (D-033) | 메신저, 메일 |
@@ -102,6 +102,14 @@ model = "my-larger-model"
 
 `stores` 그룹의 이름은 `<백엔드>.<저장소 종류>` 형식이다. Ticket 저장소는 `postgresql.tickets`로 등록하며,
 공통 `open_store("tickets", ...)`가 `[store] backend` 설정에 따라 선택한다.
+
+읽기만 하는 쪽(에이전트 도구 15, 화면용 API 27)이 쓰는 저장소 종류는 **같은 테이블을 읽기 전용 계정으로
+읽는 별도 종류** `readonly_<종류>`로 한 번 더 등록한다. 지금 쓰는 이름은 `readonly_records`,
+`readonly_branches`, `readonly_l1_decisions`, `readonly_tickets`, `readonly_agent_log`이다.
+읽기 전용 팩토리는 `[database] readonly_url_env`가 가리키는 계정으로
+`soc.db.connect_readonly`로 연결하고(연결에 읽기 전용 트랜잭션도 걸린다), 쓰기 메서드는 지우지 않고
+그대로 두어 실수로 호출하면 실패하게 한다(`docs/security-policy.md` 4항). 새 백엔드를 붙이면 코어가 쓰는
+종류와 그 `readonly_` 짝을 함께 등록해야 한다.
 
 "(제안: …)"으로 적은 그룹 이름은 `src/soc/plugins.py`의 기존 규칙(소문자 snake_case 복수형, 예: `review_channels`, `vector_stores`)을 따른 제안이다. 확정되면 코드와 이 표를 함께 고친다.
 
