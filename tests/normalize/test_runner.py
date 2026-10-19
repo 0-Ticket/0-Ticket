@@ -1,9 +1,7 @@
 """Box 4 runner: reads sources in order, normalizes, joins lookups, saves with its position."""
 
-import sys
-from pathlib import Path
-
 import pytest
+from fake_store import FakeRecordStore
 from lookup_fakes import WEB_01, FakeLookup
 from normalize_fixtures import NORMALIZE, NOW, dump, fake_waf_c2, load_ait_c2, make_c2, read_json
 
@@ -13,9 +11,6 @@ from soc.normalize.lookup.enricher import LookupEnricher
 from soc.normalize.lookup.none import NoneLookup
 from soc.normalize.normalizer import Normalizer
 from soc.normalize.runner import alert_id_for, event_id_for, normalize_once, normalize_pending
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "store"))
-from fake_store import FakeRecordStore  # noqa: E402
 
 
 def clock():
