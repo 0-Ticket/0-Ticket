@@ -152,6 +152,7 @@ class FakeTicketStore:
         ]
 
     def update(self, ticket, expected_status):
+        assert self.tickets[ticket["ticket_id"]]["status"] == expected_status
         self.updates.append((ticket, expected_status))
         self.tickets[ticket["ticket_id"]] = ticket
         return ticket
@@ -181,6 +182,30 @@ def test_ticket_service_persists_only_valid_transitions():
 
     assert transitioned["status"] == "triaging"
     assert store.updates == [(transitioned, "new")]
+
+
+def test_ticket_service_saves_final_status_and_verdict_in_one_update():
+    store = FakeTicketStore()
+    ticket = load_fixture("ticket.json") | {"status": "triaging"}
+    store.create(ticket)
+    service = TicketService(store, clock=lambda: 1791849601000)
+    verdict = {
+        "verdict": "fp",
+        "confidence": 0.9,
+        "summary": "Synthetic false positive.",
+        "evidence": [
+            {"ref_type": "alert", "ref_id": "al_ticket_priority_dst", "note": "Stored alert."}
+        ],
+        "recommended_action": "Close the ticket.",
+        "needs_human": True,
+        "human_reason": "Ignored by L1 routing.",
+    }
+
+    decided = service.decide(ticket["ticket_id"], "closed_fp", verdict)
+
+    assert decided["status"] == "closed_fp"
+    assert decided["verdict"] == verdict
+    assert store.updates == [(decided, "triaging")]
 
 
 def test_decided_ticket_vector_interface_rejects_unresolved_tickets():

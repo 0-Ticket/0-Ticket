@@ -7,7 +7,7 @@ from soc.l1.runtime import build_runtime
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Run L1 entity lookup for branched Alerts")
+    parser = argparse.ArgumentParser(description="Run L1 entity lookup and Ticket triage")
     parser.add_argument(
         "--all",
         action="store_true",
@@ -17,7 +17,7 @@ def main(argv: list[str] | None = None) -> int:
     runtime = build_runtime(load_config())
     try:
         processed = runtime.run(all_alerts=args.all)
-        print(f"Processed {processed} L1 Alert(s)")
+        print(f"Processed {processed} L1 item(s)")
     finally:
         runtime.close()
     return 0

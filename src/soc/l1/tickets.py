@@ -245,6 +245,24 @@ class TicketService:
             self._store.update(updated, expected_status=current["status"]),
         )
 
+    def decide(
+        self,
+        ticket_id: str,
+        new_status: str,
+        verdict: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        """Save a final L1 status and its C7 Verdict in one expected-status update."""
+        current = self.get(ticket_id)
+        if current is None:
+            raise TicketNotFoundError("Ticket not found")
+        validated_verdict = _contract_dict("Verdict", verdict)
+        updated = transition_ticket(current, new_status, now_ms=self._clock())
+        updated["verdict"] = validated_verdict
+        return _contract_dict(
+            "Ticket",
+            self._store.update(updated, expected_status=current["status"]),
+        )
+
     def index_decided(self, ticket_id: str, sink: TicketVectorSink) -> None:
         ticket = self.get(ticket_id)
         if ticket is None:

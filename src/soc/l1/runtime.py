@@ -25,6 +25,7 @@ from soc.l1.evidence.handlers import default_handlers
 from soc.l1.evidence.service import EvidenceQueueService
 from soc.l1.mcp import build_tool_server
 from soc.l1.specialists import SpecialistContext
+from soc.l1.ticket_triage import L1TicketTriage
 from soc.l1.tickets import DECIDED_TICKET_STATUSES, TicketService
 from soc.llm import CallContext, LLMCallResult, call_llm
 from soc.normalize.lookup import open_lookup
@@ -71,6 +72,7 @@ class L1Runtime:
         evidence: EvidenceQueueService,
         vector_tickets: Any,
         agent_log: AgentLogService,
+        ticket_triage: L1TicketTriage | None = None,
         llm_call: Callable[..., LLMCallResult] = call_llm,
         provider_registry: PluginRegistry | None = None,
         environ: Mapping[str, str] | None = None,
@@ -88,6 +90,7 @@ class L1Runtime:
         self.evidence = evidence
         self.vector_tickets = vector_tickets
         self.agent_log = agent_log
+        self.ticket_triage = ticket_triage
         self.llm_call = llm_call
         self.provider_registry = provider_registry
         self.environ = os.environ if environ is None else environ
@@ -115,6 +118,8 @@ class L1Runtime:
                 processed += 1
             if not all_alerts or len(page) < limit:
                 break
+        if self.ticket_triage is not None:
+            processed += self.ticket_triage.run(all_tickets=all_alerts, limit=limit)
         return processed
 
     def close(self) -> None:
@@ -492,17 +497,34 @@ def build_runtime(
             embedder_registry=embedder_registry,
         )
         resources.append(vector_tickets)
+        branches = store("readonly_branches")
+        decisions = store("l1_decisions")
+        decision_reader = store("readonly_l1_decisions")
+        ticket_triage = L1TicketTriage(
+            settings=settings,
+            tickets=tickets,
+            ticket_reader=ticket_reader,
+            records=records,
+            evidence=evidence,
+            decisions=decisions,
+            vector_tickets=vector_tickets,
+            agent_log=agent_log,
+            llm_call=llm_call,
+            provider_registry=provider_registry,
+            environ=env,
+        )
         return L1Runtime(
             settings=settings,
-            branches=store("readonly_branches"),
-            decisions=store("l1_decisions"),
-            decision_reader=store("readonly_l1_decisions"),
+            branches=branches,
+            decisions=decisions,
+            decision_reader=decision_reader,
             records=records,
             tickets=tickets,
             ticket_reader=ticket_reader,
             evidence=evidence,
             vector_tickets=vector_tickets,
             agent_log=agent_log,
+            ticket_triage=ticket_triage,
             llm_call=llm_call,
             provider_registry=provider_registry,
             environ=env,
