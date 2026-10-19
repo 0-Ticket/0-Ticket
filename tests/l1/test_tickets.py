@@ -7,6 +7,7 @@ from soc.contracts import ContractValidationError, validate_contract
 from soc.l1.tickets import (
     InvalidTicketTransition,
     TicketNotDecidedError,
+    TicketPage,
     TicketService,
     create_ticket,
     index_decided_ticket,
@@ -209,3 +210,43 @@ class FakeTicketVectorSink:
 
     def add_decided_ticket(self, ticket):
         self.tickets.append(ticket)
+
+
+class ListingTicketStore(FakeTicketStore):
+    """Records the list arguments the service passes on."""
+
+    def __init__(self, page):
+        super().__init__()
+        self.page = page
+        self.calls = []
+
+    def list(self, **kwargs):
+        self.calls.append(kwargs)
+        return self.page
+
+
+def test_ticket_service_lists_through_the_store_and_validates_items():
+    ticket = load_fixture("ticket.json")
+    store = ListingTicketStore(TicketPage([ticket], "next"))
+
+    page = TicketService(store).list(status="new", origin="scenario", limit=10)
+
+    assert page == TicketPage([ticket], "next")
+    assert store.calls == [{"status": "new", "origin": "scenario", "cursor": None, "limit": 10}]
+
+
+def test_ticket_service_list_rejects_an_invalid_stored_ticket():
+    broken = load_fixture("ticket.json") | {"origin": "manual"}
+    store = ListingTicketStore(TicketPage([broken], None))
+    with pytest.raises(ContractValidationError):
+        TicketService(store).list()
+
+
+@pytest.mark.parametrize(
+    "kwargs", [{"status": "done"}, {"origin": "manual"}, {"limit": 0}, {"cursor": "%%%"}]
+)
+def test_ticket_service_list_checks_arguments_before_the_store(kwargs):
+    store = ListingTicketStore(TicketPage([], None))
+    with pytest.raises(ValueError):
+        TicketService(store).list(**kwargs)
+    assert store.calls == []

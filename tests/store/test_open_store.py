@@ -4,9 +4,11 @@ import ast
 from pathlib import Path
 
 import pytest
+from fake_branch_store import FakeBranchStore, fake_branches_factory
+from fake_l1_decision_store import FakeL1DecisionStore, fake_l1_decisions_factory
 from fake_store import FakeRecordStore, fake_records_factory
 
-from soc.config import ConfigError, load_config
+from soc.config import ConfigError, MissingSecretError, load_config
 from soc.plugins import PluginNotFoundError, PluginRegistry
 from soc.store import STORES, open_store
 
@@ -67,6 +69,8 @@ def test_core_store_code_has_no_backend_name_branch():
     allowed = {
         STORE / "__init__.py",
         STORE / "records" / "postgres.py",
+        STORE / "branches" / "postgres.py",
+        STORE / "l1_decisions" / "postgres.py",
         STORE / "lookups" / "postgres.py",
         STORE / "postgresql" / "tickets.py",
         STORE / "postgresql" / "agent_log.py",
@@ -77,3 +81,38 @@ def test_core_store_code_has_no_backend_name_branch():
         for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
             if isinstance(node, ast.Constant) and isinstance(node.value, str):
                 assert "postgresql" not in node.value.lower(), f"{path.name} names a backend"
+
+
+L1_RECORD_KINDS = (
+    "branches",
+    "readonly_branches",
+    "l1_decisions",
+    "readonly_l1_decisions",
+    "readonly_tickets",
+)
+
+
+@pytest.mark.parametrize("kind", L1_RECORD_KINDS)
+def test_l1_record_stores_are_registered_in_the_repo(kind):
+    assert f"postgresql.{kind}" in STORES.names()
+
+
+@pytest.mark.parametrize(
+    ("kind", "factory", "expected"),
+    [
+        ("branches", fake_branches_factory, FakeBranchStore),
+        ("l1_decisions", fake_l1_decisions_factory, FakeL1DecisionStore),
+    ],
+)
+def test_fake_l1_record_store_replaces_postgresql_by_setting(tmp_path, kind, factory, expected):
+    registry = PluginRegistry("stores")
+    registry.register(f"fake.{kind}", factory)
+    settings = org_settings(tmp_path, '[store]\nbackend = "fake"\n')
+    assert isinstance(open_store(kind, settings, environ={}, registry=registry), expected)
+
+
+@pytest.mark.parametrize("kind", [k for k in L1_RECORD_KINDS if k.startswith("readonly_")])
+def test_readonly_l1_record_stores_refuse_to_use_the_writable_url(kind):
+    settings = load_config(environ={})
+    with pytest.raises(MissingSecretError, match="DATABASE_READONLY_URL"):
+        open_store(kind, settings, environ={"DATABASE_URL": "postgresql://localhost/zt"})

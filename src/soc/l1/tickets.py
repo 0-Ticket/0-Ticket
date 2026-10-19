@@ -3,15 +3,26 @@
 import time
 import uuid
 from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass
 from typing import Any, Protocol
 
-from soc.contracts import validate_contract
+from soc.contracts import Ticket, validate_contract
+from soc.store.paging import (
+    DEFAULT_PAGE_LIMIT,
+    check_filter,
+    check_page_limit,
+    decode_cursor,
+    encode_cursor,
+    literal_values,
+)
 
 ALLOWED_TICKET_TRANSITIONS = {
     "new": frozenset({"triaging"}),
     "triaging": frozenset({"on_hold", "closed_benign", "closed_fp", "l2_escalated"}),
 }
 DECIDED_TICKET_STATUSES = frozenset({"closed_benign", "closed_fp", "l2_escalated"})
+TICKET_STATUSES = literal_values(Ticket, "status")
+TICKET_ORIGINS = literal_values(Ticket, "origin")
 
 
 class InvalidTicketTransition(ValueError):
@@ -30,6 +41,14 @@ class TicketNotDecidedError(ValueError):
     """Only completed Ticket decisions can be sent to the vector index boundary."""
 
 
+@dataclass(frozen=True)
+class TicketPage:
+    """One page of C6 in list order. ``next_cursor`` is None on the last page."""
+
+    items: list[dict[str, Any]]
+    next_cursor: str | None
+
+
 class TicketStore(Protocol):
     """Storage operations required by the Ticket lifecycle."""
 
@@ -40,6 +59,22 @@ class TicketStore(Protocol):
     def find_by_entity(self, entity_type: str, entity_value: str) -> list[dict[str, Any]]: ...
 
     def update(self, ticket: Mapping[str, Any], *, expected_status: str) -> dict[str, Any]: ...
+
+    def list(
+        self,
+        *,
+        status: str | None = None,
+        origin: str | None = None,
+        cursor: str | None = None,
+        limit: int = DEFAULT_PAGE_LIMIT,
+    ) -> TicketPage:
+        """C6 matching the filters in ``GET /api/tickets`` order, ``limit`` (1-200) per page.
+
+        Order: ``priority`` descending, then ``created_at``, then ``ticket_id``
+        (docs/api-contracts.md). Check the arguments with ``check_ticket_list_args``
+        and page with ``ticket_cursor`` / ``decode_ticket_cursor``.
+        """
+        ...
 
 
 class TicketVectorSink(Protocol):
@@ -58,6 +93,28 @@ def _new_ticket_id() -> str:
 
 def _contract_dict(name: str, value: Mapping[str, Any]) -> dict[str, Any]:
     return validate_contract(name, dict(value)).model_dump(mode="json")
+
+
+def check_ticket_list_args(status: str | None, origin: str | None, limit: int) -> None:
+    """Filters must be C6 enum values; ``limit`` 1-200. Otherwise ValueError."""
+    check_filter("status", status, TICKET_STATUSES)
+    check_filter("origin", origin, TICKET_ORIGINS)
+    check_page_limit(limit)
+
+
+def ticket_sort_key(ticket: Mapping[str, Any]) -> tuple[int, int, str]:
+    """Ascending key for ``GET /api/tickets`` order: priority desc, created_at, ticket_id."""
+    return (-ticket["priority"], ticket["created_at"], ticket["ticket_id"])
+
+
+def ticket_cursor(ticket: Mapping[str, Any]) -> str:
+    """The cursor of the page that starts after ``ticket``."""
+    return encode_cursor([ticket["priority"], ticket["created_at"], ticket["ticket_id"]])
+
+
+def decode_ticket_cursor(cursor: str | None) -> tuple[int, int, str] | None:
+    """The (priority, created_at, ticket_id) of the last Ticket on the previous page."""
+    return None if cursor is None else decode_cursor(cursor, (int, int, str))
 
 
 def create_ticket(
@@ -193,3 +250,18 @@ class TicketService:
         if ticket is None:
             raise TicketNotFoundError("Ticket not found")
         index_decided_ticket(ticket, sink)
+
+    def list(
+        self,
+        *,
+        status: str | None = None,
+        origin: str | None = None,
+        cursor: str | None = None,
+        limit: int = DEFAULT_PAGE_LIMIT,
+    ) -> TicketPage:
+        """C6 in ``GET /api/tickets`` order (see ``TicketStore.list``)."""
+        check_ticket_list_args(status, origin, limit)
+        decode_ticket_cursor(cursor)
+        page = self._store.list(status=status, origin=origin, cursor=cursor, limit=limit)
+        items = [_contract_dict("Ticket", ticket) for ticket in page.items]
+        return TicketPage(items, page.next_cursor)
