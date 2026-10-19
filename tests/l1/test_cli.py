@@ -25,7 +25,7 @@ def test_cli_passes_all_flag_and_closes_runtime(monkeypatch, capsys):
 
     assert runtime.all_alerts is True
     assert runtime.closed is True
-    assert capsys.readouterr().out == "Processed 3 L1 Alert(s)\n"
+    assert capsys.readouterr().out == "Processed 3 L1 item(s)\n"
 
 
 def test_cli_without_all_processes_one_page(monkeypatch):

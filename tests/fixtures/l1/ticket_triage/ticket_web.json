@@ -1,0 +1,18 @@
+{
+  "ticket_id": "tk_ticket_triage_web",
+  "origin": "scenario",
+  "status": "new",
+  "handling_type": "web_attack",
+  "specialist": "web",
+  "priority": 15,
+  "alert_ids": ["al_sample_wpscan"],
+  "entities": [
+    {"type": "ip", "value": "198.51.100.23"},
+    {"type": "host", "value": "web-01"}
+  ],
+  "verdict": null,
+  "extensions": {},
+  "created_at": 1642500341120,
+  "updated_at": 1642500341120,
+  "awaiting_human_at": null
+}
