@@ -561,6 +561,8 @@ K55는 여전히 일부이며 코어 비즈니스 검증은 해당 박스에서 
   `invalid_input`으로 돌려주고, 실제 API(#71)와 같은 정렬·필터·오류 코드를 쓴다.
 - 검사: `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm test`(24파일 192개), `pnpm build`,
   `uv run pytest`(1193개), `uvx ruff check .`, `uvx ruff format --check .` 통과.
+- 전체 suite 4회 중 1회에서 `cases.test.tsx`(F4, 이번 범위 밖) 한 건이 1초 `findBy` 대기를 넘겼다.
+  그 파일만 3회 돌리면 모두 통과한다. #31 기록(539줄)과 같은 부하 민감성이며 이번 변경과 무관하다.
 - 기존 테스트 기대값 갱신(동작 변경 아님): 메뉴 라벨 "L1 결과", `/review` 화면 제목·설명,
   티켓 정렬 기대값(새 샘플 4건 추가), al_cloud를 쓰는 행 수 기준의 공용 자산·관리자 계정 개수.
 - 하지 않은 것: F6 대시보드의 "검토 대기함으로 이동" 문구·대기 건수 패널 정리, C9·`awaiting_human` 계약 삭제,
