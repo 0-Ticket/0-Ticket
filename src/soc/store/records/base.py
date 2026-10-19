@@ -21,6 +21,8 @@ from soc.config import Settings
 from soc.contracts import AlertRecord, EventRecord, NormalizeFailure, SiemAlert
 
 STORE_KIND = "records"
+# The same records through the read-only account, for the tools agents call (box 15).
+READONLY_STORE_KIND = "readonly_records"
 
 SourceKind = Literal["alert", "event"]
 

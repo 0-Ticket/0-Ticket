@@ -107,6 +107,16 @@ model = "my-larger-model"
 
 SIEM 커넥터와 SIEM MCP 어댑터는 설정의 `[siem] adapter` 값 하나로 함께 선택된다(D-037). 두 확장 지점의 그룹은 따로지만 이름은 같은 것을 쓴다. 에이전트가 어떤 MCP 도구를 부를 수 있는지는 설정의 `[mcp.allowed_tools]`에 에이전트 이름별로 적고, 기본값은 비어 있어 모든 호출이 거부된다(박스 15).
 
+`mcp_servers` 그룹의 구현체는 **도구 묶음 함수 하나**다. `ToolContext`(설정, 환경변수, 읽기 전용 Alert·Event 저장소를 처음 쓸 때 여는 함수)를 받아 `ToolSpec` 목록을 돌려주고, 코어가 등록된 모든 묶음을 한 서버에 올린다. 레포 기본 묶음은 `internal_data`(`query_records`, `get_alert`)와 `web`(`query_http_flow`)이고, SIEM 도구(`query_siem`)는 선택된 어댑터에서 온다. 이미 등록된 도구 이름을 다시 쓰는 묶음은 시작할 때 거부된다(허용 목록이 가리키는 도구가 바뀌지 않게). 내부 데이터 조회는 `[database] readonly_url_env`가 가리키는 읽기 전용 계정으로만 하고, 연결에 읽기 전용 트랜잭션도 함께 건다(`docs/security-policy.md` 4항).
+
+허용 목록 예시(조직 설정):
+
+```toml
+[mcp.allowed_tools]
+l1 = ["query_siem", "query_records", "get_alert"]
+web_specialist = ["query_records", "get_alert", "query_http_flow"]
+```
+
 기본 구현체 중 "로컬 파일", "CSV", `direct`는 외부 도구 없이 표준 라이브러리만으로 만드는 기본값이라 결정 대장에 따로 두지 않는다. 외부 도구를 쓰는 기본 구현체는 결정 대장의 ID를 따른다.
 
 웹 화면도 확장 구조를 따른다. 등록형 값과 `extensions`는 화면 코드에 고정하지 않고 받은 그대로 보여 준다. 플러그인이 새 값이나 필드를 더해도 화면을 고치지 않아도 된다(`docs/frontend.md` "공통").

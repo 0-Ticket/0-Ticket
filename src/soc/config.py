@@ -48,6 +48,8 @@ class _Section(BaseModel):
 
 class DatabaseSettings(_Section):
     url_env: EnvName
+    # The account agent tools read with (box 15, docs/security-policy.md 4).
+    readonly_url_env: EnvName
     connect_timeout_seconds: int = Field(ge=1)
 
 

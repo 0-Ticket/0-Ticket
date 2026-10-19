@@ -1,8 +1,9 @@
 """Stores (boxes 5, 6, 7, 10, 12, ... D-002): one ``stores`` registry for every kind of store.
 
 Implementations are registered as ``<backend>.<kind>``: ``postgresql.records``
-for Alert/Event (boxes 6, 7), ``postgresql.lookups`` (box 5), ``postgresql.tickets``,
-and ``postgresql.agent_log``.
+for Alert/Event (boxes 6, 7), ``postgresql.readonly_records`` (the same records through
+the read-only account agent tools use, box 15), ``postgresql.lookups`` (box 5),
+``postgresql.tickets``, and ``postgresql.agent_log``.
 ``[store] backend`` picks the backend for all of them; the core passes only the
 kind to ``open_store`` and never names a backend.
 """
@@ -15,12 +16,14 @@ from soc.plugins import PluginRegistry
 
 from .lookups.base import STORE_KIND as LOOKUPS
 from .lookups.postgres import create_postgres_lookups
+from .records.base import READONLY_STORE_KIND as READONLY_RECORDS
 from .records.base import STORE_KIND as RECORDS
-from .records.postgres import create_postgres_records
+from .records.postgres import create_postgres_readonly_records, create_postgres_records
 
 STORES = PluginRegistry("stores")
 STORES.register(f"postgresql.{RECORDS}", create_postgres_records)
 STORES.register(f"postgresql.{LOOKUPS}", create_postgres_lookups)
+STORES.register(f"postgresql.{READONLY_RECORDS}", create_postgres_readonly_records)
 
 
 def open_store(

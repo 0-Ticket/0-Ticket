@@ -16,7 +16,8 @@ from typing import Any
 from mcp.server import MCPServer
 from mcp.types import ToolAnnotations
 
-from soc.config import McpSettings
+from soc.config import McpSettings, Settings
+from soc.store.records.base import RecordStore
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +51,21 @@ class ToolSpec:
     limit_argument: str | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class ToolContext:
+    """What one bundle of tools is built from (docs/extensibility.md).
+
+    ``records`` opens the read-only Alert/Event store the first time a tool
+    actually reads, so building a server costs no database connection. Options
+    come from ``settings``; secrets are read from ``environ`` through
+    ``soc.config.read_secret``.
+    """
+
+    settings: Settings
+    environ: Mapping[str, str]
+    records: Callable[[], RecordStore]
+
+
 class ToolServer:
     """The tools of this process, and which agent may call which."""
 
@@ -60,7 +76,13 @@ class ToolServer:
         name: str = SERVER_NAME,
     ):
         self._settings = settings
-        self._tools = {spec.name: spec for spec in tools}
+        self._tools: dict[str, ToolSpec] = {}
+        for spec in tools:
+            # Two bundles under one name would let the later one answer for a tool
+            # an allowlist already grants, so a clash fails at startup.
+            if spec.name in self._tools:
+                raise ValueError(f"tool '{spec.name}' is registered twice")
+            self._tools[spec.name] = spec
         self._name = name
 
     @property

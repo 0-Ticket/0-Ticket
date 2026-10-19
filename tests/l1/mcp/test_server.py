@@ -86,13 +86,23 @@ def test_agent_without_allowlist_exposes_no_tools(tmp_path):
 
 
 def test_server_exposes_only_query_siem_as_read_only(tmp_path):
-    """No response tool exists, and the one tool declares itself read-only."""
+    """No response tool exists, and the one tool this agent has declares itself read-only."""
     server, _ = server_with(tmp_path)
     [tool] = tools_through_protocol(server.as_mcp_server("l1"))
     assert tool.name == "query_siem"
     assert tool.annotations.read_only_hint is True
     assert tool.annotations.destructive_hint is False
-    assert server.tool_names == ("query_siem",)
+
+
+def test_every_registered_tool_is_read_only(tmp_path):
+    """Whatever bundles are registered, the server carries no tool that changes anything."""
+    tools = ", ".join(f'"{name}"' for name in server_with(tmp_path)[0].tool_names)
+    body = f"{NO_TOOLS_CONFIG}\n[mcp.allowed_tools]\nl1 = [{tools}]\n"
+    server, _ = server_with(tmp_path, body)
+    listed = tools_through_protocol(server.as_mcp_server("l1"))
+    assert {tool.name for tool in listed} == set(server.tool_names)
+    assert all(tool.annotations.read_only_hint is True for tool in listed)
+    assert all(tool.annotations.destructive_hint is False for tool in listed)
 
 
 def test_allowlist_is_per_agent(tmp_path):

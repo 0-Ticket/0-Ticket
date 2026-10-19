@@ -15,7 +15,7 @@ from psycopg.types.json import Json
 
 from soc.config import Settings
 from soc.contracts import AlertRecord, EventRecord, NormalizeFailure, SiemAlert, validate_contract
-from soc.db import connect
+from soc.db import connect, connect_readonly
 
 from .base import (
     DuplicateRecordError,
@@ -294,3 +294,16 @@ class PostgresRecordStore:
 def create_postgres_records(settings: Settings, environ: Mapping[str, str]) -> PostgresRecordStore:
     """The ``postgresql.records`` factory: connects with ``[database]`` settings."""
     return PostgresRecordStore(connect(settings, environ), settings.store.raw_retention_days)
+
+
+def create_postgres_readonly_records(
+    settings: Settings, environ: Mapping[str, str]
+) -> PostgresRecordStore:
+    """The ``postgresql.readonly_records`` factory: the same store on a read-only connection.
+
+    Reads are identical; every write method fails on the connection, so the tools
+    agents call cannot change a record (docs/security-policy.md 4).
+    """
+    return PostgresRecordStore(
+        connect_readonly(settings, environ), settings.store.raw_retention_days
+    )
