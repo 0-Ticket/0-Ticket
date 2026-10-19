@@ -1,11 +1,10 @@
-"""Built-in evidence handlers (box 26 -> boxes 15 and 5).
+"""Built-in evidence handlers (box 26 -> boxes 15, 14 and 5).
 
 - ``siem_mcp``: reads the SIEM through the MCP tool server.
 - ``lookup``: asks the configured lookup provider (the same one the
   normalization join uses) through ``LookupEnricher``, so its output is checked as C4.
-
-``specialist_agent`` waits for box 14 (issue 3-4); until then such a request
-fails as unhandled, so no made-up result can reach an L1 decision.
+- ``specialist_agent``: hands the question to the specialist registered for the
+  request's domain (boxes 13, 14), which answers with a C14.
 """
 
 import logging
@@ -15,8 +14,10 @@ from typing import Any
 
 from soc.l1.mcp.server import ToolServer
 from soc.l1.mcp.siem.tools import QUERY_SIEM
+from soc.l1.specialists import DEFAULT_DOMAIN, SpecialistContext, open_specialist
 from soc.normalize.lookup.base import LookupProvider
 from soc.normalize.lookup.enricher import LookupEnricher
+from soc.plugins import PluginRegistry
 
 from .base import EvidenceHandler
 
@@ -77,16 +78,35 @@ def lookup_handler(enricher: LookupEnricher, clock: Callable[[], int] = _now_ms)
     return handle
 
 
+def specialist_agent_handler(
+    context: SpecialistContext, registry: PluginRegistry | None = None
+) -> EvidenceHandler:
+    """C22 ``specialist_agent`` -> ``{finding}`` from the specialist of the request's domain.
+
+    The requesting agent is not passed on: a specialist reads tools under its own
+    allowlist, so who asked cannot widen what it may read.
+    """
+
+    def handle(request: Mapping[str, Any], *, agent: str) -> dict[str, Any]:
+        domain = request["domain"] or DEFAULT_DOMAIN
+        return {"finding": open_specialist(domain, context, registry)(request)}
+
+    return handle
+
+
 def default_handlers(
-    tools: ToolServer, lookup: LookupProvider, clock: Callable[[], int] = _now_ms
+    context: SpecialistContext, lookup: LookupProvider, clock: Callable[[], int] = _now_ms
 ) -> dict[str, EvidenceHandler]:
     """The handlers the queue worker runs with, keyed by C22 ``request_type``.
 
-    ``lookup`` is the provider ``open_lookup`` gave, shared with the normalization join.
+    ``context`` is what a specialist is built from (box 14); its tool server is
+    the one the SIEM handler reads through too. ``lookup`` is the provider
+    ``open_lookup`` gave, shared with the normalization join.
     """
     return {
-        "siem_mcp": siem_mcp_handler(tools),
+        "siem_mcp": siem_mcp_handler(context.tools),
         "lookup": lookup_handler(LookupEnricher(lookup), clock),
+        "specialist_agent": specialist_agent_handler(context),
     }
 
 
