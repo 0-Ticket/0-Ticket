@@ -175,7 +175,7 @@ SIEM 어댑터가 낸 알럿 또는 이벤트. 시나리오마다 필드명이 �
 
 규칙: `src_ip`, `dst_ip`, `host` 중 하나 이상은 있어야 한다. 필수 필드가 비면 이 객체를 만들지 않고 C12 NormalizeFailure를 만든다.
 
-OCSF 1.9.0 Detection Finding에는 최상위 `src_endpoint`, `dst_endpoint`, `http_request`, `http_response`, `actor`가 없다. 내보낼 때(박스 4) 이 값들은 `evidences[0]`의 `src_endpoint`, `dst_endpoint`, `http_request.url.url_string`, `http_response.code`, `user.name`에 넣는다. `host`는 최상위 `device.hostname`이다.
+OCSF 1.9.0 Detection Finding에는 최상위 `src_endpoint`, `dst_endpoint`, `http_request`, `http_response`, `actor`가 없다. 내보낼 때(박스 4) 이 값들은 `evidences[0]`의 `src_endpoint`, `dst_endpoint`, `http_request.url.url_string`, `http_response.code`, `user.name`에 넣는다. `host`는 최상위 `device.hostname`이고, `techniques`는 `finding_info.attacks[].technique.uid`다.
 
 ## C12 · NormalizeFailure
 
