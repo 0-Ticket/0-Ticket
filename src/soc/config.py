@@ -87,6 +87,13 @@ ToolName = Annotated[str, Field(min_length=1)]
 AgentTools = Annotated[tuple[ToolName, ...], AfterValidator(_without_repeats)]
 
 
+class SpecialistSettings(_Section):
+    """Box 14: how much of a source's flow a specialist reads around the alerts."""
+
+    flow_window_minutes: int = Field(ge=1)
+    flow_limit: int = Field(ge=1)
+
+
 class McpSettings(_Section):
     max_query_limit: int = Field(ge=1)
     allowed_tools: dict[str, AgentTools] = Field(default_factory=dict)
@@ -217,6 +224,7 @@ class Settings(_Section):
     mcp: McpSettings
     normalize: NormalizeSettings
     siem: SiemSettings
+    specialist: SpecialistSettings
     store: StoreSettings
     agent_log: AgentLogSettings
     vector_search: VectorSearchSettings

@@ -1,0 +1,25 @@
+{
+  "ticket_id": "tk_web_sample",
+  "specialist": "web",
+  "question": "Did the SQL injection attempt from 203.0.113.25 succeed?",
+  "summary": "The injected UNION SELECT request answered 200, and the same source then asked for an uploaded script.",
+  "attack_type": "sqli",
+  "succeeded": "unknown",
+  "confidence": 0.55,
+  "evidence": [
+    {
+      "ref_type": "alert",
+      "ref_id": "al_flow_sqli",
+      "note": "Alert on the injected search request"
+    },
+    {
+      "ref_type": "event",
+      "ref_id": "ev_flow_index",
+      "note": "The injected request answered 200"
+    }
+  ],
+  "details": {"status_codes": [200]},
+  "needs_human": false,
+  "human_reason": null,
+  "created_at": 1770001800000
+}
