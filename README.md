@@ -85,6 +85,7 @@ uv run python -m soc.normalize.lookup.load assets tests/fixtures/lookup/assets.c
 uv run python -m soc.normalize.lookup.load users tests/fixtures/lookup/users.csv     # 계정 표 적재
 uv run python -m soc.ingest --all       # 새로 가져올 것이 없을 때까지 수집 (옵션 없으면 한 번)
 uv run python -m soc.normalize --all    # 남은 원본이 없을 때까지 정규화 (옵션 없으면 종류별 한 번)
+uv run python -m soc.branch --all       # 남은 알럿이 없을 때까지 분기: 중복 제거 → 시나리오 티켓 / L1 엔티티 조회 (옵션 없으면 한 번)
 uv run python -m soc.l1 --all           # After configuring SIEM MCP and the l1 tool allowlist
 ```
 

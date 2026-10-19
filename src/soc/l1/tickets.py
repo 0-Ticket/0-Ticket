@@ -242,14 +242,16 @@ class TicketService:
         entities: Sequence[Mapping[str, Any]],
         handling_type: str = "other",
         specialist: str = "none",
+        ticket_id: str | None = None,
     ) -> dict[str, Any]:
+        """Create a C6. ``ticket_id`` is for callers that need a fixed ID (box 25 reruns)."""
         ticket = create_ticket(
             alert,
             origin=origin,
             entities=entities,
             handling_type=handling_type,
             specialist=specialist,
-            ticket_id=self._id_factory(),
+            ticket_id=self._id_factory() if ticket_id is None else ticket_id,
             now_ms=self._clock(),
         )
         return _contract_dict("Ticket", self._store.create(ticket))
