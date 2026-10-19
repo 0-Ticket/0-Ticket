@@ -33,17 +33,19 @@ class FakeL1DecisionStore:
         self,
         *,
         subject_type=None,
+        subject_id=None,
         decision=None,
         reason=None,
         cursor=None,
         limit=DEFAULT_PAGE_LIMIT,
     ):
-        check_list_args(subject_type, decision, reason, limit)
+        check_list_args(subject_type, decision, reason, limit, subject_id)
         after = decode_decision_cursor(cursor)
         found = [
             (seq, row)
             for seq, row in self._newest_first()
             if (subject_type is None or row.subject_type == subject_type)
+            and (subject_id is None or row.subject_id == subject_id)
             and (decision is None or row.decision == decision)
             and (reason is None or row.reason == reason)
             and (after is None or (row.created_at, seq) < after)

@@ -28,13 +28,25 @@ from .l1_decisions.postgres import (
 )
 from .lookups.base import STORE_KIND as LOOKUPS
 from .lookups.postgres import create_postgres_lookups
-from .postgresql.tickets import create_postgresql_readonly_ticket_store
 from .records.base import READONLY_STORE_KIND as READONLY_RECORDS
 from .records.base import STORE_KIND as RECORDS
 from .records.postgres import create_postgres_readonly_records, create_postgres_records
 
 # The read-only Ticket kind; ``tickets`` itself is registered by entry point (pyproject.toml).
 READONLY_TICKETS = "readonly_tickets"
+
+
+def _readonly_ticket_store(settings: Settings, environ: Mapping[str, str]):
+    """Open ``postgresql.readonly_tickets``, importing it only when it is opened.
+
+    ``soc.store.postgresql.tickets`` imports ``soc.l1.tickets``, which imports this
+    package; importing it at module level makes whichever of the two is imported
+    first see the other half-initialized.
+    """
+    from .postgresql.tickets import create_postgresql_readonly_ticket_store
+
+    return create_postgresql_readonly_ticket_store(settings, environ)
+
 
 STORES = PluginRegistry("stores")
 STORES.register(f"postgresql.{RECORDS}", create_postgres_records)
@@ -44,7 +56,7 @@ STORES.register(f"postgresql.{BRANCHES}", create_postgres_branches)
 STORES.register(f"postgresql.{READONLY_BRANCHES}", create_postgres_readonly_branches)
 STORES.register(f"postgresql.{L1_DECISIONS}", create_postgres_l1_decisions)
 STORES.register(f"postgresql.{READONLY_L1_DECISIONS}", create_postgres_readonly_l1_decisions)
-STORES.register(f"postgresql.{READONLY_TICKETS}", create_postgresql_readonly_ticket_store)
+STORES.register(f"postgresql.{READONLY_TICKETS}", _readonly_ticket_store)
 
 
 def open_store(

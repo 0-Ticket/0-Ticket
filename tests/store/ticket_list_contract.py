@@ -62,10 +62,32 @@ class TicketListContract:
             ({"origin": "scenario"}, ["tk_list_a", "tk_list_d"]),
             ({"status": "new", "origin": "l1_escalated"}, ["tk_list_c"]),
             ({"status": "l2_escalated"}, []),
+            ({"handling_type": "web_attack"}, ["tk_list_c", "tk_list_a"]),
+            # A plugin-registered value is a filter value like any other.
+            ({"handling_type": "example.custom"}, ["tk_list_e"]),
+            ({"handling_type": "cloud"}, []),
+            ({"min_priority": 15}, ["tk_list_c", "tk_list_a", "tk_list_b", "tk_list_e"]),
+            ({"min_priority": 25}, ["tk_list_c", "tk_list_a", "tk_list_b"]),
+            ({"min_priority": 0}, EXPECTED_ORDER),
+            ({"min_priority": 26}, []),
+            ({"handling_type": "web_attack", "min_priority": 25}, ["tk_list_c", "tk_list_a"]),
+            ({"status": "new", "min_priority": 20}, ["tk_list_c", "tk_list_a"]),
         ],
     )
     def test_list_filters(self, filled, filters, expected):
         assert ids(filled.list(**filters)) == expected
+
+    @pytest.mark.parametrize(
+        ("filters", "expected"),
+        [
+            ({"min_priority": 15}, ["tk_list_c", "tk_list_a", "tk_list_b", "tk_list_e"]),
+            ({"handling_type": "web_attack"}, ["tk_list_c", "tk_list_a"]),
+        ],
+    )
+    def test_filters_apply_before_paging(self, filled, filters, expected):
+        # Filtering a page after reading it would leave gaps and empty pages.
+        assert walk(filled, 1, **filters) == expected
+        assert walk(filled, 2, **filters) == expected
 
     @pytest.mark.parametrize("limit", [1, 2, 4])
     def test_pages_have_no_gaps_or_repeats(self, filled, limit):
@@ -83,6 +105,11 @@ class TicketListContract:
         [
             {"status": "done"},
             {"origin": "manual"},
+            {"handling_type": ""},
+            {"min_priority": -1},
+            {"min_priority": 1.5},
+            {"min_priority": "15"},
+            {"min_priority": True},
             {"limit": 0},
             {"limit": 201},
             {"cursor": "%%%"},

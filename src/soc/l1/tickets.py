@@ -65,6 +65,8 @@ class TicketStore(Protocol):
         *,
         status: str | None = None,
         origin: str | None = None,
+        handling_type: str | None = None,
+        min_priority: int | None = None,
         cursor: str | None = None,
         limit: int = DEFAULT_PAGE_LIMIT,
     ) -> TicketPage:
@@ -73,6 +75,9 @@ class TicketStore(Protocol):
         Order: ``priority`` descending, then ``created_at``, then ``ticket_id``
         (docs/api-contracts.md). Check the arguments with ``check_ticket_list_args``
         and page with ``ticket_cursor`` / ``decode_ticket_cursor``.
+
+        Every filter is applied before the page is cut: filtering a page after
+        reading it would leave gaps and empty pages (docs/api-contracts.md).
         """
         ...
 
@@ -95,10 +100,31 @@ def _contract_dict(name: str, value: Mapping[str, Any]) -> dict[str, Any]:
     return validate_contract(name, dict(value)).model_dump(mode="json")
 
 
-def check_ticket_list_args(status: str | None, origin: str | None, limit: int) -> None:
-    """Filters must be C6 enum values; ``limit`` 1-200. Otherwise ValueError."""
+def check_ticket_list_args(
+    *,
+    status: str | None = None,
+    origin: str | None = None,
+    handling_type: str | None = None,
+    min_priority: int | None = None,
+    limit: int = DEFAULT_PAGE_LIMIT,
+) -> None:
+    """Check the ``GET /api/tickets`` filters and ``limit``; otherwise ValueError.
+
+    ``status`` and ``origin`` are C6 enums. ``handling_type`` is a registered
+    value, so it is compared as the string it arrives as instead of being
+    limited to a fixed list (``docs/extensibility.md``). ``min_priority`` keeps
+    Tickets whose C6 ``priority`` is at least that value.
+    """
     check_filter("status", status, TICKET_STATUSES)
     check_filter("origin", origin, TICKET_ORIGINS)
+    if handling_type is not None and not handling_type:
+        raise ValueError("handling_type must not be empty")
+    if min_priority is not None:
+        # bool is an int in Python; it is not a priority.
+        if isinstance(min_priority, bool) or not isinstance(min_priority, int):
+            raise ValueError("min_priority must be an integer")
+        if min_priority < 0:
+            raise ValueError("min_priority must be 0 or more")
     check_page_limit(limit)
 
 
@@ -256,12 +282,27 @@ class TicketService:
         *,
         status: str | None = None,
         origin: str | None = None,
+        handling_type: str | None = None,
+        min_priority: int | None = None,
         cursor: str | None = None,
         limit: int = DEFAULT_PAGE_LIMIT,
     ) -> TicketPage:
         """C6 in ``GET /api/tickets`` order (see ``TicketStore.list``)."""
-        check_ticket_list_args(status, origin, limit)
+        check_ticket_list_args(
+            status=status,
+            origin=origin,
+            handling_type=handling_type,
+            min_priority=min_priority,
+            limit=limit,
+        )
         decode_ticket_cursor(cursor)
-        page = self._store.list(status=status, origin=origin, cursor=cursor, limit=limit)
+        page = self._store.list(
+            status=status,
+            origin=origin,
+            handling_type=handling_type,
+            min_priority=min_priority,
+            cursor=cursor,
+            limit=limit,
+        )
         items = [_contract_dict("Ticket", ticket) for ticket in page.items]
         return TicketPage(items, page.next_cursor)

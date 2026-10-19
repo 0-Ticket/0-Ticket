@@ -3,7 +3,7 @@
     "ticket_id": "tk_list_a",
     "origin": "scenario",
     "status": "new",
-    "handling_type": "other",
+    "handling_type": "web_attack",
     "specialist": "none",
     "priority": 25,
     "alert_ids": [
@@ -25,7 +25,7 @@
     "ticket_id": "tk_list_b",
     "origin": "l1_escalated",
     "status": "on_hold",
-    "handling_type": "other",
+    "handling_type": "scan",
     "specialist": "none",
     "priority": 25,
     "alert_ids": [
@@ -47,7 +47,7 @@
     "ticket_id": "tk_list_c",
     "origin": "l1_escalated",
     "status": "new",
-    "handling_type": "other",
+    "handling_type": "web_attack",
     "specialist": "none",
     "priority": 25,
     "alert_ids": [
@@ -91,7 +91,7 @@
     "ticket_id": "tk_list_e",
     "origin": "l3_escalated",
     "status": "new",
-    "handling_type": "other",
+    "handling_type": "example.custom",
     "specialist": "none",
     "priority": 15,
     "alert_ids": [
