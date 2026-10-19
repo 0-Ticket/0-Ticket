@@ -1,6 +1,6 @@
 """Store migrations use only the numbers their issues were given.
 
-#50 0010-0019, #59 0050-0059, #60 0060-0069.
+#50 0010-0019, #59 0050-0059, #60 0060-0069, #69 0090-0099.
 """
 
 import pytest
@@ -12,6 +12,9 @@ RANGES = {
     "create_normalized_records": (10, 19),
     "create_normalize_state": (50, 59),
     "create_lookup_tables": (60, 69),
+    "create_branch_results": (90, 99),
+    "create_l1_decisions": (90, 99),
+    "index_ticket_list": (90, 99),
 }
 
 
