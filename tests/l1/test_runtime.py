@@ -393,11 +393,8 @@ def test_ticket_created_before_a_missing_c23_is_reused(tmp_path):
     assert existing["ticket_id"] in state["ticket_store"].tickets
 
 
-def test_build_runtime_uses_registered_readonly_and_writable_stores(tmp_path):
-    settings_path = tmp_path / "organization.toml"
-    settings_path.write_text('[store]\nbackend = "fake"\n', encoding="utf-8")
-    settings = load_config(settings_path, environ={})
-    opened = []
+def fake_store_registry(opened):
+    """Every store L1 opens, registered under the "fake" backend."""
     branch_store = FakeBranchStore()
     decision_store = FakeL1DecisionStore()
     records, _ = make_records()
@@ -416,6 +413,15 @@ def test_build_runtime_uses_registered_readonly_and_writable_stores(tmp_path):
         stores.register(
             f"fake.{kind}", lambda _settings, _env, k=kind, v=value: opened.append(k) or v
         )
+    return stores
+
+
+def test_build_runtime_uses_registered_readonly_and_writable_stores(tmp_path):
+    settings_path = tmp_path / "organization.toml"
+    settings_path.write_text('[store]\nbackend = "fake"\n', encoding="utf-8")
+    settings = load_config(settings_path, environ={})
+    opened = []
+    stores = fake_store_registry(opened)
 
     runtime = assemble_runtime(
         settings,
@@ -436,4 +442,27 @@ def test_build_runtime_uses_registered_readonly_and_writable_stores(tmp_path):
         "l1_decisions",
         "readonly_l1_decisions",
     ]
+    runtime.close()
+
+
+def test_direct_demo_settings_start_l1_runtime(tmp_path, monkeypatch):
+    """#84: with the demo settings, L1 assembles its real tool server instead of stopping
+    with "siem_mcp_adapters plugin 'direct' is not registered". Stores stay fake."""
+    monkeypatch.chdir(ROOT)  # Relative paths in the demo file are read from the repo root.
+    settings_path = tmp_path / "organization.toml"
+    settings_path.write_text(
+        (FIXTURES / "ingest" / "direct.toml").read_text(encoding="utf-8")
+        + '\n[store]\nbackend = "fake"\n',
+        encoding="utf-8",
+    )
+    settings = load_config(settings_path, environ={})
+
+    runtime = assemble_runtime(
+        settings,
+        environ={},
+        store_registry=fake_store_registry([]),
+        lookup_factory=lambda *_args: object(),
+        evidence_queue_factory=lambda *_args: FakeEvidenceQueue(),
+        vector_ticket_factory=lambda *_args, **_kwargs: FakeVectorTickets(),
+    )
     runtime.close()

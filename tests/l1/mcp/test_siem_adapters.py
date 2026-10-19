@@ -62,10 +62,10 @@ class TestFakeSiemMcp(SiemMcpAdapterContract):
         return query()
 
 
-def test_group_is_an_extension_point_with_no_builtin_adapter():
-    """The Wazuh adapter arrives with the SIEM environment; nothing ships yet."""
+def test_group_is_an_extension_point_with_only_the_direct_adapter_built_in():
+    """Only direct (development and demo) ships; the Wazuh adapter arrives with its SIEM."""
     assert "siem_mcp_adapters" in EXTENSION_POINT_GROUPS
-    assert SIEM_MCP_ADAPTERS.names() == ()
+    assert SIEM_MCP_ADAPTERS.names() == ("direct",)
 
 
 def test_fake_filters_by_kind():
