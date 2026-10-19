@@ -86,6 +86,7 @@ model = "my-larger-model"
 | 저장소 백엔드 | 5, 6, 7, 10, 12, 18, 20, 22, 24 | `stores` | PostgreSQL (D-002). Event도 RDB. 구현체 이름은 `<백엔드>.<저장소 종류>`(예: `postgresql.records`, `postgresql.tickets`)이고, `[store] backend` 하나로 고르며 코어는 `soc.store.open_store(<종류>, ...)`에 종류만 넘긴다 | 다른 RDB, 별도 로그 저장소(이벤트) |
 | 벡터 저장소 | 8 | `vector_stores` | Qdrant (D-003). Ticket, Case만 | 다른 벡터 DB |
 | 임베딩 제공자 | 8 | `embedders` | bge-m3, 로컬 실행 (D-010) | 상용 임베딩 API |
+| 검색 결과 융합 | 8 | `FUSION_FUNCTIONS` 함수 맵 | RRF (`[vector_search] fusion_method`) | `keyword_first`, `weighted_rrf`, `dbsf`, `weighted_score` 중 선택하거나 함수를 추가 |
 | LLM 제공자 | 11, 13, 14, 19, 23, 24 | `llm_providers` | OpenAI 호환 제공자. 데모 기본값: 서빙 도구 Ollama, 모델 `granite4:micro` (로컬 서빙, D-009) | 상용 모델, 사내 모델, 로컬 모델 |
 | 전문 에이전트 | 13, 14 | `specialists` | Web (Cloud는 보류) | Cloud, 엔드포인트, 메일, 네트워크 전문 에이전트 추가 |
 | 프롬프트 | 11, 13, 14, 19, 23, 24 | (파일) | 기본 프롬프트 | 자사 판정 기준, 언어 |

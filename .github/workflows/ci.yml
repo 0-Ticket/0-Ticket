@@ -58,6 +58,10 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
+      qdrant:
+        image: qdrant/qdrant:v1.19.2
+        ports:
+          - 6333:6333
     steps:
       - uses: actions/checkout@v5
 
@@ -94,6 +98,9 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres@localhost:5432/postgres
         run: uv run pytest -m db
+
+      - name: 벡터 저장소 테스트 (Qdrant 서비스)
+        run: uv run pytest -m qdrant
 
   frontend:
     needs: changes

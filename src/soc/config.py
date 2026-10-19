@@ -152,11 +152,64 @@ class LookupSettings(_Section):
     provider: str = Field(pattern=r"^[a-z0-9_]+$")
 
 
+def _validate_http_base_url(value: str) -> str:
+    parsed = urlsplit(value)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise ValueError("must be an HTTP or HTTPS URL")
+    if parsed.query or parsed.fragment:
+        raise ValueError("must not include a query or fragment")
+    if parsed.username is not None or parsed.password is not None:
+        raise ValueError("must not include credentials")
+    return value.rstrip("/")
+
+
+class VectorStoreSettings(_Section):
+    backend: str = Field(pattern=r"^[a-z0-9_]+$")
+    url: str = Field(min_length=1)
+    collection: str = Field(min_length=1)
+    timeout_seconds: int = Field(ge=1)
+
+    @field_validator("url")
+    @classmethod
+    def validate_url(cls, value: str) -> str:
+        return _validate_http_base_url(value)
+
+
+class EmbedderSettings(_Section):
+    provider: str = Field(pattern=r"^[a-z0-9_]+$")
+    base_url: str = Field(min_length=1)
+    model: str = Field(min_length=1)
+    dimensions: int = Field(ge=1)
+    timeout_seconds: int = Field(ge=1)
+
+    @field_validator("base_url")
+    @classmethod
+    def validate_base_url(cls, value: str) -> str:
+        return _validate_http_base_url(value)
+
+
+FusionMethod = Literal[
+    "keyword_first",
+    "rrf",
+    "weighted_rrf",
+    "dbsf",
+    "weighted_score",
+]
+
+
+class VectorSearchSettings(_Section):
+    fusion_method: FusionMethod
+    keyword_weight: float = Field(gt=0, allow_inf_nan=False)
+    vector_weight: float = Field(gt=0, allow_inf_nan=False)
+    rrf_rank_constant: int = Field(ge=1)
+
+
 class Settings(_Section):
     """Typed settings. Each box issue adds its own section here and in default.toml."""
 
     database: DatabaseSettings
     evidence_queue: EvidenceQueueSettings
+    embedder: EmbedderSettings
     llm: LLMSettings
     lookup: LookupSettings
     mcp: McpSettings
@@ -164,6 +217,8 @@ class Settings(_Section):
     siem: SiemSettings
     store: StoreSettings
     agent_log: AgentLogSettings
+    vector_search: VectorSearchSettings
+    vector_store: VectorStoreSettings
 
 
 def _default_config_text() -> str:

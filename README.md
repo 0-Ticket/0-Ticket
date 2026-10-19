@@ -67,8 +67,13 @@ uv run pytest           # 테스트
 docker compose up -d                  # PostgreSQL(5432), Qdrant(6333) 실행
 uv run python -m soc.db.migrate       # DB 마이그레이션 적용
 uv run pytest -m db                   # DB가 필요한 테스트
+uv run pytest -m qdrant               # Qdrant가 필요한 통합 테스트
+ollama pull bge-m3                    # Ollama에서 기본 임베딩 모델 준비
+uv run python scripts/seed_vector_tickets.py  # 손으로 만든 종결 Ticket 샘플 색인
 docker compose down                   # 중지 (데이터는 볼륨에 남음, 지우려면 -v)
 ```
+
+시드 명령은 설정의 Ollama 주소와 Qdrant 컬렉션에 연결하므로 두 서비스가 실행 중이어야 합니다.
 
 설치·실행 방법은 구성 요소가 구현되는 대로 이 절에 추가합니다.
 

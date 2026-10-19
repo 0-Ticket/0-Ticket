@@ -90,3 +90,38 @@ max_query_limit = 500
 backend = "postgresql"
 # 첫 시도가 실패한 뒤 다시 시도하는 횟수 N(L1·L2 공통). 0 이상. 다 실패하면 요청은 failed가 된다.
 max_retries = 3
+
+# 벡터 저장소 (박스 8, D-003). 구현체는 vector_stores 그룹에서 고른다.
+[vector_store]
+# 등록된 벡터 저장소 구현체 이름.
+backend = "qdrant"
+# Qdrant HTTP 주소. 주소에 비밀 값이나 API 키를 넣지 않는다.
+url = "http://localhost:6333"
+# C19에서 종결 Ticket만 넣는 컬렉션.
+collection = "closed_tickets"
+# Qdrant 요청 제한 시간(초).
+timeout_seconds = 10
+
+# 임베딩 제공자 (박스 8, D-010). 모델은 로컬 Ollama에서 실행한다.
+[embedder]
+# embedders 그룹에 등록된 제공자 이름.
+provider = "ollama"
+# Ollama 서버의 기본 주소. 임베딩 경로는 코드에서 /api/embed를 붙인다.
+base_url = "http://localhost:11434"
+# 등록된 로컬 임베딩 모델 이름.
+model = "bge-m3"
+# BGE-M3가 돌려주는 벡터 차원.
+dimensions = 1024
+# 임베딩 요청 제한 시간(초).
+timeout_seconds = 60
+
+# Ticket 유사 검색 결과를 합치는 방식. 기본값은 Reciprocal Rank Fusion.
+[vector_search]
+# keyword_first, rrf, weighted_rrf, dbsf, weighted_score 중 하나.
+fusion_method = "rrf"
+# 가중 결합 방식에서 정확 키워드 검색 결과에 적용할 비중.
+keyword_weight = 1.0
+# 가중 결합 방식에서 의미 벡터 검색 결과에 적용할 비중.
+vector_weight = 1.0
+# RRF 역순위 점수의 평활 상수.
+rrf_rank_constant = 60

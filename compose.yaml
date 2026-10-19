@@ -21,7 +21,7 @@ services:
       retries: 10
 
   qdrant:
-    image: qdrant/qdrant:v1.15.4
+    image: qdrant/qdrant:v1.19.2
     ports:
       - "127.0.0.1:6333:6333" # HTTP
       - "127.0.0.1:6334:6334" # gRPC
