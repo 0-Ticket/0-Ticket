@@ -33,7 +33,7 @@ def test_generation_reproducible(tmp_path):
 
     # Check mode must detect modified, missing AND untracked stale outputs without writing.
     changed = first / "src/soc/contracts/generated/__init__.py"
-    changed.write_text(changed.read_text() + "# stale\n")
+    changed.write_text(changed.read_text(encoding="utf-8") + "# stale\n", encoding="utf-8")
     missing = first / "frontend/src/contracts/generated/raw_record.ts"
     missing.unlink()
     extra = first / "frontend/src/contracts/generated/stale.ts"
