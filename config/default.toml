@@ -46,8 +46,6 @@ max_parse_length = 16384
 dedup_window_minutes = 10
 # 한 번에 읽어 분기하는 알럿 건수. 1 이상.
 batch_size = 500
-# 처음 알럿을 찾을 때 시간 창 안에서 시간 오름차순으로 읽는 최대 건수. 1 이상.
-dedup_scan_limit = 500
 # 조직 시나리오 규칙 폴더. 이 폴더의 <이름>.toml이 같은 이름의 기본 규칙 파일을 통째로 바꾼다.
 # 비우면 기본 규칙(src/soc/branch/rules/)만 쓴다. 형식은 기본 파일 scenarios.toml의 주석을 본다.
 rules_dir = ""

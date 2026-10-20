@@ -3,19 +3,21 @@
 Each run reads one page of alerts after the saved position. For each alert:
 
 1. An alert that already has a C21 is done and skipped.
-2. A duplicate (``dedup.find_first_alert``) is counted on its first alert and
-   gets C21 ``deduplicated``. Duplicates are checked before scenarios, so a
+2. A duplicate (``dedup.find_first_alert_id``) is counted on its first alert
+   and gets C21 ``deduplicated``. Duplicates are checked before scenarios, so a
    repeat of a scenario alert makes no second Ticket.
-3. An alert a scenario rule matches gets a ``scenario`` Ticket, then C21
-   ``scenario_ticket``.
-4. Any other alert gets C21 ``l1_entity_lookup`` only. L1 (box 11) reads these
+3. Any other alert is saved as a duplicate representative first (if it has
+   entities). Then an alert a scenario rule matches gets a ``scenario``
+   Ticket and C21 ``scenario_ticket``.
+4. The rest get C21 ``l1_entity_lookup`` only. L1 (box 11) reads these
    records itself; this run never calls L1 or an LLM.
 
-The side effect (merge, Ticket) comes first and the C21 last, so "a C21 exists"
-means "this alert is done". A run stopped in between is finished by the next
-one: a merge already made is not repeated, and the Ticket ID comes from the
-alert ID, so the Ticket already made is reused. The position is saved at the
-end of the page. This assumes one branching worker at a time.
+The side effects (merge, representative, Ticket) come first and the C21 last,
+so "a C21 exists" means "this alert is done". A run stopped in between is
+finished by the next one: a merge or representative already saved is not
+repeated, the representative lookup leaves the alert itself out, and the Ticket
+ID comes from the alert ID, so the Ticket already made is reused. The position
+is saved at the end of the page. This assumes one branching worker at a time.
 
 C21 ``reason.entity`` is the alert's representative entity (the first of
 ``alert_entities``). ``reason.rule_id`` is the alert's ``rule_id`` for
@@ -34,7 +36,7 @@ from soc.l1.tickets import TicketService
 from soc.store.branches.base import BranchStore
 from soc.store.records.base import RecordStore
 
-from .dedup import find_first_alert
+from .dedup import dedup_key, find_first_alert_id
 from .ids import branch_id_for, scenario_ticket_id_for
 from .rules import ScenarioRules
 
@@ -93,16 +95,13 @@ class Brancher:
             return None
         entities = alert_entities(alert)
         entity = entities[0] if entities else None
-        first = find_first_alert(
-            alert,
-            self.records,
-            self.branches,
-            self.settings.dedup_window_minutes,
-            self.settings.dedup_scan_limit,
-        )
-        if first is not None:
-            self.records.merge_duplicate(first.alert_id, alert.alert_id, alert.last_seen)
+        key = dedup_key(alert)
+        first_id = find_first_alert_id(alert, key, self.records, self.settings.dedup_window_minutes)
+        if first_id is not None:
+            self.records.merge_duplicate(first_id, alert.alert_id, alert.last_seen)
             return self._save(alert, "deduplicated", alert.rule_id, entity)
+        if key is not None:
+            self.records.save_dedup_representative(alert.alert_id, key, alert.first_seen)
         rule = self.rules.match(alert)
         if rule is not None:
             ticket_id = scenario_ticket_id_for(alert.alert_id)
