@@ -9,7 +9,7 @@
 | D-001 | 언어 · 패키지 관리 (백엔드) | 전체 | Python 3.12 + uv | 확정 | 린트 ruff, 테스트 pytest 포함 (CI와 같음). 웹 화면(`frontend/`)은 D-018 ~ D-026으로 따로 정한다 |
 | D-002 | RDB | 5, 6, 7, 10, 12, 18, 20, 22, 24 | PostgreSQL | 확정 | v2: Alert, Event, Lookup, Incident, Incident Artifact, Ticket, Case 모두 RDB. Event(7)도 RDB (D-028 폐기). 정규화 결과는 원본 Alert·Event와 별도 테이블에 두고 FK로 연결한다. 원본은 불변이고 보관 기간은 설정 값(기본 무기한) |
 | D-003 | Vector DB | 8, 10, 22 | Qdrant | 확정 | v2: VDB에는 Ticket, Case만 넣는다 |
-| D-004 | 데이터셋 (웹) | 3 | AIT Log Data Set V2 | 확정 | 데모에 활용. `direct` 어댑터로 재생한다(D-037) |
+| D-004 | 데이터셋 (웹) | 3 | AIT Log Data Set V2 | 확정 | 데모에 활용. `direct` 어댑터로 재생한다(D-037). 알럿은 같은 데이터에서 만든 AIT Alert Data Set(AIT-ADS)의 russellmitchell Wazuh 알럿을 함께 쓴다(#79). 출처 표시: LDS V2.0 CC BY-NC-SA 4.0, ADS CC BY 4.0 |
 | D-005 | 데이터셋 (클라우드) | 3, 13 | flaws.cloud / Invictus Sigma-AWS / BOTSv3 | 보류 | Cloud 소스는 보류. 구조는 확장 가능하게 둔다 |
 | D-006 | SIEM | 3, 15 | Wazuh (초기 구현 대상) | 확정 | 한 번에 하나의 외부 SIEM에 연결한다(초기 Wazuh, 확장 ELK·Splunk). 연결 구조는 D-037 |
 | D-007 | 정규화 스키마 | 4 | OCSF | 확정 | 교수님 강조 항목. 버전은 D-017 |
@@ -88,3 +88,4 @@
 - 2026-10-18 · D-041 신규 확정: MCP 구현은 공식 Python MCP SDK(`mcp`). 중간 발표 준비를 위해 확정.
 - 2026-10-18 · D-035 보완 (#41): SIEM MCP 어댑터 확장 지점 그룹 이름을 `siem_mcp_adapters`로 확정했다. 커넥터와 같은 `[siem] adapter` 값으로 함께 고른다(D-037).
 - 2026-10-18 · D-034 보완 (#53): L1 Alert 증거 요청 실패도 보류(D-036을 Alert에 적용, 보류 기록은 박스 11). 재시도 N 기본값 3. 확장 지점 그룹 이름을 `evidence_queues`로 확정했다.
+- 2026-10-20 · D-004 보완 (#79): 시연 알럿은 AIT-ADS(russellmitchell Wazuh 알럿, CC BY 4.0)를 함께 쓴다. LDS의 Suricata가 VPN 안쪽 웹 공격을 보지 못해 웹셸 단계 알럿이 없기 때문이다. 이벤트는 LDS V2.0(CC BY-NC-SA 4.0) Apache 로그. 라이선스는 Zenodo에서 확인했다.

@@ -31,8 +31,9 @@ def write(directory, name, text):
 
 def test_default_tables_cover_the_ait_scenarios():
     tables = load_alias_tables(None)
-    assert {"ait_suricata_alert", "ait_apache_access"} <= set(tables)
+    assert {"ait_suricata_alert", "ait_apache_access", "ait_wazuh_alert"} <= set(tables)
     assert tables["ait_suricata_alert"].table.kind == "alert"
+    assert tables["ait_wazuh_alert"].table.kind == "alert"
     assert tables["ait_apache_access"].table.kind == "event"
 
 
