@@ -7,6 +7,7 @@ import pytest
 from evidence_fakes import FakeEvidenceQueue
 from fake_l1_decision_store import FakeL1DecisionStore
 from fake_ticket_store import FakeTicketStore
+from llm_input_fakes import siem_alerts
 
 from soc.config import load_config
 from soc.contracts import validate_contract
@@ -15,6 +16,7 @@ from soc.l1.evidence.service import EvidenceQueueService
 from soc.l1.ticket_triage import L1TicketTriage
 from soc.l1.tickets import TicketService
 from soc.llm import CallFailure, LLMCallResult
+from soc.llm.prompts import format_untrusted_data, load_prompt
 
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURES = ROOT / "tests" / "fixtures"
@@ -82,7 +84,7 @@ class FakeLLM:
                 "agent": context.agent,
                 "action": "llm_call",
                 "tool": None,
-                "prompt_version": "l1-ticket-triage-v1",
+                "prompt_version": "l1-ticket-triage-v2",
                 "input_excerpt": "synthetic ticket triage input",
                 "output_excerpt": json.dumps(self.verdict),
                 "model": "fake-model",
@@ -132,8 +134,14 @@ def build_triage(
     vector=None,
     confidence_threshold=None,
     finding_evidence=None,
+    siem=None,
+    ticket_alerts=None,
+    l1=None,
 ):
+    """``siem`` is what the SIEM MCP returns; ``ticket_alerts`` replaces the Ticket's alerts."""
     settings = load_config(environ={})
+    if l1 is not None:
+        settings = settings.model_copy(update={"l1": settings.l1.model_copy(update=l1)})
     if confidence_threshold is not None:
         settings = settings.model_copy(
             update={
@@ -142,9 +150,16 @@ def build_triage(
         )
     ticket_store = FakeTicketStore()
     ticket_data = read_json(TRIAGE_FIXTURES / ticket_name)
+    records = FakeRecords()
+    siem_contents = []
+    if siem is not None:
+        siem_contents, _sources, siem_records = siem
+        records.alerts.update({alert.alert_id: alert for alert in siem_records})
+    if ticket_alerts is not None:
+        records.alerts.update({alert.alert_id: alert for alert in ticket_alerts})
+        ticket_data["alert_ids"] = [alert.alert_id for alert in ticket_alerts]
     ticket_store.create(ticket_data)
     tickets = TicketService(ticket_store, clock=lambda: NOW)
-    records = FakeRecords()
     queue = FakeEvidenceQueue()
 
     def specialist_handler(request, *, agent):
@@ -171,7 +186,7 @@ def build_triage(
         assert agent == "l1"
         if queue_failure:
             raise RuntimeError("synthetic evidence failure")
-        return {"records": []}
+        return {"records": siem_contents}
 
     evidence = EvidenceQueueService(
         queue,
@@ -365,7 +380,11 @@ def test_ticket_without_specialist_queues_only_lookup_and_siem_context(tmp_path)
     ]
     assert all(item["domain"] is None for item in requests)
     assert state["llm"].calls[0]["data"]["finding"] is None
-    assert state["llm"].calls[0]["data"]["evidence_requests"] == requests
+    shown = state["llm"].calls[0]["data"]["evidence_requests"]
+    assert [item["request_id"] for item in shown] == [item["request_id"] for item in requests]
+    assert [item["result"] for item in shown if item["request_type"] == "lookup"] == [
+        item["result"] for item in requests if item["request_type"] == "lookup"
+    ]
 
 
 def test_invalid_evidence_reference_holds_instead_of_saving_verdict(tmp_path):
@@ -425,3 +444,71 @@ def test_l3_escalated_ticket_is_not_processed(tmp_path):
     assert triage.run(all_tickets=True) == 0
     assert state["ticket_store"].get(TICKET_ID)["status"] == "new"
     assert state["llm"].calls == []
+
+
+# --- #91: summarized evidence and the input limit -------------------------------------
+
+NO_SPECIALIST = "tk_ticket_triage_no_specialist"
+
+
+def llm_input_size(call):
+    return len(load_prompt(call["prompt_path"]).text) + len(format_untrusted_data(call["data"]))
+
+
+def test_demo_sized_ticket_input_stays_under_the_limit(tmp_path):
+    """Two SIEM queries of 500 alerts each still make one call under max_input_chars."""
+    triage, state = build_triage(
+        tmp_path,
+        ticket_name="ticket_without_specialist.json",
+        verdict_name="verdict_tp.json",
+        siem=siem_alerts(),
+    )
+
+    triage.run(all_tickets=True)
+
+    call = state["llm"].calls[0]
+    assert llm_input_size(call) <= state["settings"].l1.max_input_chars
+    summaries = [
+        item["result"]
+        for item in call["data"]["evidence_requests"]
+        if item["request_type"] == "siem_mcp"
+    ]
+    assert [summary["total"] for summary in summaries] == [500, 500]
+    assert state["ticket_store"].get(NO_SPECIALIST)["status"] == "l2_escalated"
+
+
+def test_many_ticket_alerts_are_summarized_and_hidden_ones_cannot_be_cited(tmp_path):
+    _contents, _sources, alerts = siem_alerts(count=40)
+    triage, state = build_triage(tmp_path, ticket_alerts=alerts, l1={"summary_records": 3})
+    shown_ids = set()
+
+    def remember_shown(**kwargs):
+        shown_ids.update(item["alert_id"] for item in kwargs["data"]["alerts"]["records"])
+        hidden = next(alert.alert_id for alert in alerts if alert.alert_id not in shown_ids)
+        llm.verdict["evidence"] = [{"ref_type": "alert", "ref_id": hidden, "note": "Hidden."}]
+        return original(**kwargs)
+
+    llm = state["llm"]
+    original = llm.__call__
+    triage.llm_call = remember_shown
+
+    triage.run(all_tickets=True)
+
+    data = llm.calls[0]["data"]
+    assert data["alerts"]["total"] == 40
+    assert len(data["alerts"]["records"]) == 3
+    assert data["ticket"]["alert_count"] == 40
+    assert "alert_ids" not in data["ticket"]
+    assert state["ticket_store"].get(TICKET_ID)["status"] == "on_hold"
+    assert state["decisions"].get("ticket", TICKET_ID).reason == "llm_failure"
+
+
+def test_ticket_input_still_over_the_limit_is_held_without_calling_the_llm(tmp_path):
+    triage, state = build_triage(tmp_path, l1={"max_input_chars": 1000})
+
+    triage.run(all_tickets=True)
+
+    assert state["llm"].calls == []
+    assert state["ticket_store"].get(TICKET_ID)["status"] == "on_hold"
+    decision = state["decisions"].get("ticket", TICKET_ID)
+    assert (decision.decision, decision.reason) == ("held", "llm_failure")
