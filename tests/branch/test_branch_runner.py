@@ -21,7 +21,6 @@ def settings(**changes):
     values = {
         "dedup_window_minutes": 10,
         "batch_size": 500,
-        "dedup_scan_limit": 500,
         "rules_dir": "",
         **changes,
     }
@@ -137,15 +136,55 @@ def test_other_entity_set_or_rule_is_not_a_duplicate():
     assert s.alert(first["alert_id"]).count == 1
 
 
-def test_scan_limit_keeps_the_earliest_first_alert():
+def test_first_alert_is_found_behind_many_alerts_of_the_same_ip():
     first = alert_data()[0]
-    items = [first] + [at(first, f"al_repeat_{m}", m) for m in (1, 2, 3)]
-    s = Setup(items, dedup_scan_limit=1)
+    # Before #87 candidates were read by src_ip up to dedup_scan_limit; now the
+    # representative table is looked up by key, however many alerts share the IP.
+    others = [at(first, f"al_other_{n}", 0.01 * n, rule_id=f"other_{n}") for n in range(1, 30)]
+    repeats = [at(first, f"al_repeat_{m}", m) for m in (1, 2, 3)]
+    items = [first, *others, *repeats]
+    s = Setup(items)
     s.brancher.branch_pending()
 
-    # Candidates are read oldest first, so a limit of 1 still reads the first alert.
-    assert [s.path(i["alert_id"]) for i in items[1:]] == ["deduplicated"] * 3
+    assert [s.path(i["alert_id"]) for i in repeats] == ["deduplicated"] * 3
+    assert {s.path(i["alert_id"]) for i in others} == {"l1_entity_lookup"}
     assert s.alert(first["alert_id"]).count == 4
+
+
+def test_reversed_pair_is_a_duplicate():
+    first = alert_data()[0]
+    reversed_pair = at(first, "al_reversed", 2, src_ip=first["dst_ip"], dst_ip=first["src_ip"])
+    s = Setup([first, reversed_pair])
+    s.brancher.branch_pending()
+
+    # The entity set has no direction: the same two IPs swapped are the same entities.
+    assert s.path("al_reversed") == "deduplicated"
+    assert s.alert(first["alert_id"]).count == 2
+    assert s.reason("al_reversed")["entity"] == {"type": "ip", "value": first["dst_ip"]}
+
+
+def test_alerts_with_only_the_same_user_are_duplicates():
+    first = at(alert_data()[5], "al_user", 0, src_ip=None, dst_ip=None, host="  ", user="alice")
+    repeat = at(first, "al_user_repeat", 3)
+    other = at(first, "al_user_other", 4, user="bob")
+    s = Setup([first, repeat, other])
+    s.brancher.branch_pending()
+
+    assert [s.path(a) for a in ("al_user", "al_user_repeat", "al_user_other")] == [
+        "l1_entity_lookup",
+        "deduplicated",
+        "l1_entity_lookup",
+    ]
+
+
+def test_alerts_without_entities_are_never_duplicates():
+    bare = at(alert_data()[5], "al_bare", 0, src_ip=None, dst_ip=None, host="  ", user=None)
+    again = at(bare, "al_bare_again", 1)
+    s = Setup([bare, again])
+    s.brancher.branch_pending()
+
+    assert s.path("al_bare_again") == "l1_entity_lookup"
+    assert s.alert("al_bare").count == 1
 
 
 def test_scenario_creates_ticket():
@@ -233,7 +272,9 @@ class FailOnce(FakeBranchStore):
         return super().save(record)
 
 
-@pytest.mark.parametrize("stopped_at", ["al_web_repeat", "al_sqli", "al_sqli_repeat"])
+@pytest.mark.parametrize(
+    "stopped_at", ["al_web_first", "al_web_repeat", "al_sqli", "al_sqli_repeat"]
+)
 def test_rerun_after_a_stop_gives_the_clean_result(stopped_at):
     clean = Setup()
     clean.brancher.branch_pending()

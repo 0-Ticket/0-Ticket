@@ -6,8 +6,9 @@ C13 EventRecord) live apart and point at their source row by
 ``source_record_id`` (K67). Later boxes may update C5 and C13; the source never.
 Normalization (box 4) saves its results, its C12 failures and how far it has
 read in one batch, so a source record gets exactly one outcome. Entity branching
-(box 25) reads C5 in arrival order, keeps its own position, and merges a
-duplicate alert into its first alert (C5 ``count`` and ``last_seen``).
+(box 25) reads C5 in arrival order, keeps its own position, keeps a table of
+duplicate representatives, and merges a duplicate alert into its first alert
+(C5 ``count`` and ``last_seen``).
 
 Implementations are registered in the ``stores`` registry as
 ``<backend>.records`` and opened with ``soc.store.open_store("records", ...)``.
@@ -184,6 +185,28 @@ class RecordStore(Protocol):
         duplicate already merged changes nothing and returns False, so running
         branching again gives the same counts. Both alerts must be stored
         (UnknownRecordError) and differ (ValueError).
+        """
+        ...
+
+    def save_dedup_representative(self, alert_id: str, dedup_key: str, first_seen: int) -> bool:
+        """Remember a stored alert as a duplicate representative, once.
+
+        ``dedup_key`` is opaque to the store (box 25 makes it from the rule and
+        entities); ``first_seen`` starts the representative's window. An alert
+        already saved changes nothing and returns False, so running branching
+        again is safe. The alert must be stored (UnknownRecordError).
+        """
+        ...
+
+    def find_dedup_representative(
+        self, dedup_key: str, at: int, window_ms: int, exclude_alert_id: str | None = None
+    ) -> str | None:
+        """The earliest representative of ``dedup_key`` whose window holds ``at``; None if none.
+
+        A window holds ``at`` when ``first_seen <= at < first_seen + window_ms``.
+        Ties on ``first_seen`` go to the smaller alert ID. ``exclude_alert_id``
+        is left out, so an alert is never its own duplicate. ``window_ms`` must
+        be at least 1 (ValueError). One indexed lookup, however many alerts there are.
         """
         ...
 

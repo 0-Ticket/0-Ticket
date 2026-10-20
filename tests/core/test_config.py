@@ -51,7 +51,8 @@ def test_default_branch_settings():
     settings = load_config(environ={})
     assert settings.branch.dedup_window_minutes == 10
     assert settings.branch.batch_size == 500
-    assert settings.branch.dedup_scan_limit == 500
+    # #87: duplicates are found in the representative table, so there is no scan limit.
+    assert "dedup_scan_limit" not in type(settings.branch).model_fields
     assert settings.branch.rules_dir == ""
 
 
@@ -60,7 +61,8 @@ def test_default_branch_settings():
     [
         "[branch]\ndedup_window_minutes = 0\n",
         "[branch]\nbatch_size = 0\n",
-        "[branch]\ndedup_scan_limit = 0\n",
+        # Removed in #87: an organization file that still sets it fails loudly.
+        "[branch]\ndedup_scan_limit = 500\n",
     ],
 )
 def test_invalid_branch_settings_fail(tmp_path, text):

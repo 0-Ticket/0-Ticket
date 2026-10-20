@@ -18,6 +18,7 @@ from soc.store.records.checks import (
     check_normalize_batch,
     check_position,
     check_source_records,
+    check_window,
     lookup_value,
     merged_alert,
     retention_cutoff,
@@ -36,6 +37,7 @@ class FakeRecordStore:
         self._positions = {}
         self._branch_position = None
         self._merges = {}  # duplicate_alert_id -> target_alert_id
+        self._representatives = {}  # alert_id -> (dedup_key, first_seen)
         self._seq = 0
         self.closed = False
 
@@ -143,6 +145,25 @@ class FakeRecordStore:
         self._alerts[target_alert_id] = merged_alert(target, seen_at)
         self._merges[duplicate_alert_id] = target_alert_id
         return True
+
+    def save_dedup_representative(self, alert_id, dedup_key, first_seen):
+        if alert_id not in self._alerts:
+            raise UnknownRecordError("the representative alert must be stored")
+        if alert_id in self._representatives:
+            return False
+        self._representatives[alert_id] = (dedup_key, first_seen)
+        return True
+
+    def find_dedup_representative(self, dedup_key, at, window_ms, exclude_alert_id=None):
+        check_window(window_ms)
+        found = sorted(
+            (first_seen, alert_id)
+            for alert_id, (key, first_seen) in self._representatives.items()
+            if key == dedup_key
+            and alert_id != exclude_alert_id
+            and first_seen <= at < first_seen + window_ms
+        )
+        return found[0][1] if found else None
 
     @staticmethod
     def _find(table, id_field, field, value, time_from, time_to, limit):

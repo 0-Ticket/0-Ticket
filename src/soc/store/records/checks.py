@@ -93,6 +93,11 @@ def merged_alert(target: AlertRecord, seen_at: int) -> AlertRecord:
     return validate_contract("AlertRecord", data)
 
 
+def check_window(window_ms: int) -> None:
+    if window_ms < 1:
+        raise ValueError("window must be at least 1 ms")
+
+
 def check_limit(limit: int) -> None:
     if limit < 1:
         raise ValueError("limit must be at least 1")

@@ -171,8 +171,6 @@ class BranchSettings(_Section):
     # alert's first_seen is merged into it.
     dedup_window_minutes: int = Field(ge=1)
     batch_size: int = Field(ge=1)
-    # Most alerts read when looking for an alert's first alert.
-    dedup_scan_limit: int = Field(ge=1)
     # Organization scenario rule folder. Empty: default rules only.
     rules_dir: str
 
