@@ -54,7 +54,9 @@ class DatabaseSettings(_Section):
 
 
 class AgentModelSettings(_Section):
-    model: str = Field(min_length=1)
+    # Each key is optional; a missing one falls back to the [llm] value.
+    model: str | None = Field(default=None, min_length=1)
+    timeout_seconds: int | None = Field(default=None, ge=1)
 
 
 class LLMSettings(_Section):
@@ -63,6 +65,10 @@ class LLMSettings(_Section):
     base_url: str = Field(min_length=1)
     api_key_env: EnvName
     temperature: float = Field(ge=0, le=2)
+    timeout_seconds: int = Field(ge=1)
+    rate_limit_retries: int = Field(ge=0)
+    rate_limit_wait_seconds: int = Field(ge=0)
+    rate_limit_max_wait_seconds: int = Field(ge=0)
     agents: dict[str, AgentModelSettings] = Field(default_factory=dict)
 
     @field_validator("base_url")

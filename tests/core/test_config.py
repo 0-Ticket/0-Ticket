@@ -120,6 +120,40 @@ def test_org_config_adds_agent_model_overrides():
     assert settings.llm.agents["new_agent"].model == "new-agent-model"
 
 
+def test_default_llm_timeout_and_rate_limit_settings():
+    settings = load_config(environ={}).llm
+    assert settings.timeout_seconds == 300
+    assert settings.rate_limit_retries == 3
+    assert settings.rate_limit_wait_seconds == 5
+    assert settings.rate_limit_max_wait_seconds == 60
+
+
+def test_org_config_overrides_agent_timeout_without_model():
+    settings = load_config(FIXTURES / "llm_agent_timeout_override.toml", environ={}).llm
+    assert settings.timeout_seconds == 120
+    assert settings.agents["web_specialist"].model is None
+    assert settings.agents["web_specialist"].timeout_seconds == 240
+    assert settings.agents["l1"].model == "l1-special-model"
+    assert settings.agents["l1"].timeout_seconds is None
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "[llm]\ntimeout_seconds = 0\n",
+        "[llm]\nrate_limit_retries = -1\n",
+        "[llm]\nrate_limit_wait_seconds = -1\n",
+        "[llm]\nrate_limit_max_wait_seconds = -1\n",
+        "[llm.agents.l1]\ntimeout_seconds = 0\n",
+    ],
+)
+def test_invalid_llm_timeout_settings_fail(tmp_path, text):
+    org = tmp_path / "org.toml"
+    org.write_text(text, encoding="utf-8")
+    with pytest.raises(ConfigError):
+        load_config(org, environ={})
+
+
 def test_default_config_denies_every_mcp_tool():
     settings = load_config(environ={})
     assert settings.mcp.max_query_limit == 500

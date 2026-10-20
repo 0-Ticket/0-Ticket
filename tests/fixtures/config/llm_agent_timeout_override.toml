@@ -1,0 +1,9 @@
+# Synthetic org override: an agent may change only its timeout and keep the default model.
+[llm]
+timeout_seconds = 120
+
+[llm.agents.web_specialist]
+timeout_seconds = 240
+
+[llm.agents.l1]
+model = "l1-special-model"

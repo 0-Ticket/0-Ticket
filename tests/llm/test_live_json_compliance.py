@@ -34,6 +34,7 @@ def test_configured_model_json_compliance_rate():
                 system_prompt=prompt.text,
                 user_prompt=format_untrusted_data(sample),
                 temperature=settings.temperature,
+                timeout_seconds=settings.timeout_seconds,
             )
         )
         try:

@@ -1,16 +1,43 @@
 """OpenAI Chat Completions-compatible LLM provider."""
 
 import json
+import math
+import time
+from email.utils import parsedate_to_datetime
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from soc.llm.base import ProviderError, ProviderRequest, ProviderResponse
 
+_TOO_MANY_REQUESTS = 429
+
+
+def _retry_after_seconds(value: str | None) -> float | None:
+    """Seconds from a Retry-After header (delay or HTTP date); None if unusable."""
+    if not value:
+        return None
+    value = value.strip()
+    try:
+        seconds = float(value)
+    except ValueError:
+        try:
+            seconds = parsedate_to_datetime(value).timestamp() - time.time()
+        except (TypeError, ValueError, IndexError, OverflowError):
+            return None
+        seconds = max(0.0, seconds)
+    if not math.isfinite(seconds) or seconds < 0:
+        return None
+    return seconds
+
+
+def _is_timeout(error: BaseException) -> bool:
+    if isinstance(error, TimeoutError):
+        return True
+    return isinstance(error, URLError) and isinstance(error.reason, TimeoutError)
+
 
 class OpenAICompatibleProvider:
     """Call a configured OpenAI-compatible Chat Completions endpoint."""
-
-    timeout_seconds = 60
 
     def complete(self, request: ProviderRequest) -> ProviderResponse:
         endpoint = f"{request.base_url.rstrip('/')}/chat/completions"
@@ -33,10 +60,21 @@ class OpenAICompatibleProvider:
             method="POST",
         )
         try:
-            with urlopen(http_request, timeout=self.timeout_seconds) as response:
+            with urlopen(http_request, timeout=request.timeout_seconds) as response:
                 decoded = json.loads(response.read())
-        except (HTTPError, URLError, TimeoutError, OSError):
+        except HTTPError as error:
+            # Only the status and Retry-After are read; the body may echo the request.
+            code, headers = error.code, error.headers
+            error.close()
+            if code == _TOO_MANY_REQUESTS:
+                retry_after = _retry_after_seconds(headers.get("Retry-After") if headers else None)
+                raise ProviderError(
+                    "provider_rate_limited", retry_after_seconds=retry_after
+                ) from None
             raise ProviderError("provider_unavailable") from None
+        except (URLError, TimeoutError, OSError) as error:
+            code = "provider_timeout" if _is_timeout(error) else "provider_unavailable"
+            raise ProviderError(code) from None
         except (UnicodeDecodeError, json.JSONDecodeError, TypeError, ValueError):
             raise ProviderError("provider_invalid_response") from None
 

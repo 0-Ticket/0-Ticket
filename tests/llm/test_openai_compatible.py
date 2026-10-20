@@ -1,6 +1,9 @@
 """OpenAI-compatible HTTP request tests use a local fake transport."""
 
+import io
 import json
+from email.message import Message
+from urllib.error import HTTPError, URLError
 
 import pytest
 
@@ -22,7 +25,7 @@ class FakeHTTPResponse:
         return False
 
 
-def _request(api_key=None):
+def _request(api_key=None, **updates):
     return ProviderRequest(
         base_url="http://localhost:11434/v1",
         api_key=api_key,
@@ -30,7 +33,28 @@ def _request(api_key=None):
         system_prompt="Return JSON only.",
         user_prompt="<untrusted_data>{}</untrusted_data>",
         temperature=0,
+        **updates,
     )
+
+
+def _http_error(code, headers=None):
+    message = Message()
+    for name, value in (headers or {}).items():
+        message[name] = value
+    return HTTPError(
+        "http://localhost:11434/v1/chat/completions",
+        code,
+        "synthetic reason",
+        message,
+        io.BytesIO(b"secret response body"),
+    )
+
+
+def _raise(error):
+    def fail(*_, **__):
+        raise error
+
+    return fail
 
 
 def test_provider_sends_openai_chat_completion_and_extracts_usage(monkeypatch):
@@ -84,3 +108,83 @@ def test_provider_failure_does_not_echo_transport_details(monkeypatch):
         OpenAICompatibleProvider().complete(_request())
     assert "secret transport detail" not in str(caught.value)
     assert caught.value.__cause__ is None
+
+
+def test_provider_uses_the_request_timeout(monkeypatch):
+    captured = {}
+
+    def fake_urlopen(request, timeout):
+        captured["timeout"] = timeout
+        return FakeHTTPResponse({"choices": [{"message": {"content": "{}"}}]})
+
+    monkeypatch.setattr("soc.llm.providers.openai_compatible.urlopen", fake_urlopen)
+    OpenAICompatibleProvider().complete(_request(timeout_seconds=123))
+
+    assert captured["timeout"] == 123
+    assert not hasattr(OpenAICompatibleProvider, "timeout_seconds")
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        TimeoutError("timed out"),
+        URLError(TimeoutError("timed out")),
+    ],
+)
+def test_timeout_is_reported_as_provider_timeout(monkeypatch, error):
+    monkeypatch.setattr("soc.llm.providers.openai_compatible.urlopen", _raise(error))
+    with pytest.raises(ProviderError) as caught:
+        OpenAICompatibleProvider().complete(_request())
+    assert caught.value.code == "provider_timeout"
+    assert caught.value.__cause__ is None
+
+
+@pytest.mark.parametrize(
+    "error",
+    [URLError(ConnectionRefusedError("refused")), ConnectionResetError("reset"), None],
+)
+def test_other_connection_failures_stay_provider_unavailable(monkeypatch, error):
+    error = _http_error(503) if error is None else error
+    monkeypatch.setattr("soc.llm.providers.openai_compatible.urlopen", _raise(error))
+    with pytest.raises(ProviderError) as caught:
+        OpenAICompatibleProvider().complete(_request())
+    assert caught.value.code == "provider_unavailable"
+
+
+@pytest.mark.parametrize(
+    ("headers", "retry_after"),
+    [({"Retry-After": "7"}, 7.0), ({"Retry-After": "1.5"}, 1.5), ({}, None)],
+)
+def test_429_is_rate_limited_with_retry_after(monkeypatch, headers, retry_after):
+    error = _http_error(429, headers)
+    monkeypatch.setattr("soc.llm.providers.openai_compatible.urlopen", _raise(error))
+    with pytest.raises(ProviderError) as caught:
+        OpenAICompatibleProvider().complete(_request())
+    assert caught.value.code == "provider_rate_limited"
+    assert caught.value.retry_after_seconds == retry_after
+    assert "secret response body" not in str(caught.value)
+    assert "synthetic reason" not in str(caught.value)
+
+
+@pytest.mark.parametrize("value", ["soon", "-3", "nan", "inf"])
+def test_unusable_retry_after_is_ignored(monkeypatch, value):
+    error = _http_error(429, {"Retry-After": value})
+    monkeypatch.setattr("soc.llm.providers.openai_compatible.urlopen", _raise(error))
+    with pytest.raises(ProviderError) as caught:
+        OpenAICompatibleProvider().complete(_request())
+    assert caught.value.retry_after_seconds is None
+
+
+def test_retry_after_http_date_becomes_seconds(monkeypatch):
+    error = _http_error(429, {"Retry-After": "Wed, 21 Oct 2026 07:28:00 GMT"})
+    monkeypatch.setattr("soc.llm.providers.openai_compatible.urlopen", _raise(error))
+    monkeypatch.setattr("soc.llm.providers.openai_compatible.time.time", lambda: 1792567670.0)
+    with pytest.raises(ProviderError) as caught:
+        OpenAICompatibleProvider().complete(_request())
+    assert caught.value.retry_after_seconds == 10.0
+
+
+def test_unknown_error_codes_stay_safe():
+    error = ProviderError("raw upstream text")
+    assert error.code == "provider_error"
+    assert error.retry_after_seconds is None
