@@ -13,7 +13,8 @@ AIT 데이터셋의 russellmitchell 웹셸 공격 3분(2022-01-24 03:56:40 ~ 03:
 
 | 파일 | 내용 |
 |---|---|
-| `settings.toml` | `ZT_CONFIG`로 고르는 덮어쓰기 설정: `direct` 재생 파일, 규칙 폴더, 에이전트 허용 도구 |
+| `settings.toml` | `ZT_CONFIG`로 고르는 덮어쓰기 설정: `direct` 재생 파일, 시연 LLM 모델, 규칙 폴더, 에이전트 허용 도구 |
+| `Modelfile` | Ollama 시연 모델 `granite4-micro-16k`: `granite4:micro`에 문맥 길이(`num_ctx`) 16,384만 준다 |
 | `rules/scenarios.toml` | 공격 대상 시나리오 규칙. 기본 샘플 규칙을 대체한다. Wazuh 31104만 시나리오 티켓 |
 | `assets.csv`, `users.csv` | Lookup 자산·계정 표. 인트라넷 서버 중요도 5, 방화벽·프록시·DNS는 공용 자산(`shared=true`) |
 | `expected.csv` | 대표 알럿 34건의 기대 경로(C21 `path`)와 알럿 결정·티켓 판정 기대값 |

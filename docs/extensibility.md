@@ -149,6 +149,7 @@ web_specialist = ["query_records", "get_alert", "query_http_flow"]
 
 - OpenAI 호환 API를 제공하는 모델: 설정의 `provider`, `model`, `base_url`, `api_key_env`만 바꾼다. 코드는 바꾸지 않는다.
 - 호환되지 않는 API: `src/soc/llm/base.py`의 인터페이스를 구현한 제공자를 추가하고 `zero_ticket_soc.llm_providers`로 등록한다.
+- 제공자는 `ProviderRequest.timeout_seconds`(설정 `llm.timeout_seconds`) 안에 끝내고, 시간 초과는 `provider_timeout`, 429는 `provider_rate_limited`(`retry_after_seconds` 포함)로 알린다. 429 재시도는 공통 호출 함수가 한다(`docs/llm-policy.md` "모델과 설정").
 
 ### 새 로그 소스 붙이기
 

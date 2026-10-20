@@ -108,12 +108,22 @@ model = "granite4:micro"           # 데모 기본값 예시 (Ollama 서빙 이�
 base_url = "http://localhost:11434/v1"  # 데모 기본값 예시 (Ollama의 OpenAI 호환 주소)
 api_key_env = "LLM_API_KEY"         # 키 값이 아니라 환경변수 이름
 temperature = 0
+timeout_seconds = 300               # 호출 하나의 제한 시간(초). 넘으면 provider_timeout
+rate_limit_retries = 3              # 429 응답 뒤 다시 부르는 최대 횟수
+rate_limit_wait_seconds = 5         # Retry-After가 없을 때 기다리는 시간(초)
+rate_limit_max_wait_seconds = 60    # Retry-After가 이보다 길면 기다리지 않고 실패
 max_steps_per_task = 20
 max_tokens_per_task = 50000
 
 [llm.agents.l2]                      # 에이전트별 덮어쓰기 (선택)
 model = "larger-model-name"
+timeout_seconds = 600                # 적지 않은 키는 [llm] 값을 쓴다
 ```
+
+- 제공자는 `ProviderRequest.timeout_seconds`를 지켜야 한다. 실패는 안전한 코드로만 알린다: `provider_timeout`(제한 시간 초과), `provider_rate_limited`(429), `provider_unavailable`(그 밖의 연결·HTTP 실패), `provider_invalid_response`, `provider_error`. 응답 본문이나 예외 메시지는 담지 않는다.
+- 429 재시도는 호출 함수가 맡는다. 요청 하나마다 `rate_limit_retries`번까지 `Retry-After`(없으면 `rate_limit_wait_seconds`)만큼 기다린다. 형식 오류 재시도 1회와는 따로 센다.
+- Agent Log의 `tokens`는 제공자 응답의 `usage.total_tokens`다. 응답이 없는 실패(시간 초과 등)는 토큰이 없으므로, 실패 코드·에이전트·입력 문자 수만 경고 로그 한 줄로 남긴다. 입력 내용은 남기지 않는다.
+- Ollama 기본 문맥 길이(4,096)는 모델의 한계가 아니라 서버 설정이다. 늘릴 때는 Modelfile(`PARAMETER num_ctx`)로 새 이름의 모델을 만들고 `model`이 그 이름을 가리키게 한다(시연: `config/demo/Modelfile`).
 
 - 키는 `.env`의 환경변수로만 읽는다. 로컬 Ollama처럼 키가 필요 없어도 `api_key_env` 항목은 둔다(OpenAI 호환 클라이언트가 값을 요구할 수 있다).
 - 호환되지 않는 API를 쓰려면 제공자를 새로 구현해 `zero_ticket_soc.llm_providers` entry point로 등록한다(`docs/extensibility.md`).
