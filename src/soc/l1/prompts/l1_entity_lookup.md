@@ -1,4 +1,4 @@
-version: l1-entity-lookup-v6
+version: l1-entity-lookup-v7
 
 # L1 alert entity lookup
 
@@ -29,3 +29,19 @@ exactly these seven fields and no others:
 - `recommended_action`: one short sentence.
 - `needs_human`: `true` or `false`, not a string.
 - `human_reason`: a string when `needs_human` is true, otherwise `null`.
+
+Example shape only. Its blank `ref_id` is not a usable value: replace it with an exact ID displayed in the supplied data. Never return a blank ID or copy an example ID.
+
+```json
+{
+  "verdict": "unknown",
+  "confidence": 0.4,
+  "summary": "The alert has no corroborating context in the supplied evidence.",
+  "evidence": [
+    {"ref_type": "alert", "ref_id": "", "note": "Observed alert; no independent corroboration is shown"}
+  ],
+  "recommended_action": "Hold for additional evidence.",
+  "needs_human": false,
+  "human_reason": null
+}
+```

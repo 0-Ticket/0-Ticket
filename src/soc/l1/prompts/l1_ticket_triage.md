@@ -1,4 +1,4 @@
-version: l1-ticket-triage-v6
+version: l1-ticket-triage-v7
 
 # L1 Ticket triage
 
@@ -33,3 +33,19 @@ exactly these seven fields and no others:
 - `recommended_action`: one short sentence.
 - `needs_human`: `true` or `false`, not a string.
 - `human_reason`: a string when `needs_human` is true, otherwise `null`.
+
+Example shape only. Its blank `ref_id` is not a usable value: replace it with an exact ID displayed in the supplied data. Never return a blank ID or copy an example ID.
+
+```json
+{
+  "verdict": "unknown",
+  "confidence": 0.4,
+  "summary": "No direct evidence of a successful attack is shown.",
+  "evidence": [
+    {"ref_type": "alert", "ref_id": "", "note": "Observed alert; impact is not confirmed"}
+  ],
+  "recommended_action": "Hold for additional evidence.",
+  "needs_human": false,
+  "human_reason": null
+}
+```
