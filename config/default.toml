@@ -144,6 +144,16 @@ confidence_threshold = 0.8
 siem_window_minutes = 5
 # Maximum number of similar decided Tickets included in the L1 context.
 similar_tickets = 5
+# Largest input of one LLM call by L1 or the Web specialist, in characters: the
+# system prompt plus the delimited data (#91). 16,000 characters is about 5,000
+# tokens, which fits a 16k-context local model and the Groq free plan. Evidence is
+# summarized first; over the limit, shown records are dropped and counted as
+# omitted, and an input that still does not fit is not sent (the work is held).
+max_input_chars = 16000
+# Rule IDs listed with their counts in one evidence summary (most frequent first).
+summary_top_rules = 5
+# Records shown with their fields in one evidence summary (per entity and kind).
+summary_records = 5
 
 # 벡터 저장소 (박스 8, D-003). 구현체는 vector_stores 그룹에서 고른다.
 [vector_store]

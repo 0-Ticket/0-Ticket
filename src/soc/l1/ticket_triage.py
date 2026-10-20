@@ -14,6 +14,16 @@ from soc.config import Settings
 from soc.contracts import L1DecisionRecord, validate_contract
 from soc.l1.agent_log import AgentLogService
 from soc.l1.evidence.service import EvidenceQueueService
+from soc.l1.llm_input import (
+    Visible,
+    cut,
+    evidence_request_view,
+    fit_to_limit,
+    record_pool,
+    similar_ticket_view,
+    summarize_alerts,
+    ticket_view,
+)
 from soc.l1.tickets import (
     DECIDED_TICKET_STATUSES,
     ConcurrentTicketUpdateError,
@@ -32,6 +42,16 @@ TICKET_ORIGINS = ("l1_escalated", "scenario")
 PROMPT = files("soc.l1.prompts").joinpath("l1_ticket_triage.md")
 MINUTE_MS = 60_000
 EXCERPT_LIMIT = 2_000
+# The Ticket fields shown to the model; its alert list is shown as a summary.
+TICKET_FIELDS = (
+    "ticket_id",
+    "origin",
+    "status",
+    "handling_type",
+    "specialist",
+    "priority",
+    "entities",
+)
 _SPECIALIST_QUESTION = re.compile(r"^Specialist question:\s*(.+)$", re.MULTILINE)
 
 
@@ -155,14 +175,24 @@ class L1TicketTriage:
             return True
 
         similar_tickets = self._similar_tickets(triaging, ticket_id)
-        data = {
-            "ticket": triaging,
-            "alerts": alerts,
-            "evidence_requests": requests,
-            "finding": finding,
-            "similar_tickets": similar_tickets,
-            "confidence_threshold": self.settings.l1.confidence_threshold,
-        }
+        try:
+            data, visible = self._llm_input(triaging, alerts, requests, finding, similar_tickets)
+        except Exception as error:
+            logger.warning("L1 Ticket evidence summary failed (%s)", type(error).__name__)
+            self._hold(ticket_id, "evidence_request_failure", None)
+            return True
+        if data is None:
+            # docs/llm-policy.md 5: an input over the limit is not sent (D-036 budget).
+            logger.warning("L1 Ticket triage input exceeds l1.max_input_chars; not sent")
+            self._record_step(
+                ticket_id,
+                action="tool_call",
+                tool="llm_input",
+                input_value={"max_input_chars": self.settings.l1.max_input_chars},
+                output_value={"input_too_large": True},
+            )
+            self._hold(ticket_id, "llm_failure", None)
+            return True
         step = self._next_step(ticket_id)
         try:
             result = self.llm_call(
@@ -190,7 +220,7 @@ class L1TicketTriage:
 
         verdict = result.value.model_dump(mode="json")
         try:
-            evidence_is_stored = self._evidence_is_stored(verdict["evidence"], alerts, finding)
+            evidence_is_stored = self._evidence_is_shown(verdict["evidence"], visible)
         except Exception as error:
             logger.warning("L1 Verdict evidence check failed (%s)", type(error).__name__)
             self._hold(ticket_id, "llm_failure", None)
@@ -339,44 +369,53 @@ class L1TicketTriage:
             )
             return []
 
-    def _evidence_is_stored(
+    def _llm_input(
         self,
-        evidence: list[Mapping[str, Any]],
+        ticket: Mapping[str, Any],
         alerts: list[dict[str, Any]],
+        requests: list[dict[str, Any]],
         finding: Mapping[str, Any] | None,
-    ) -> bool:
-        allowed_alerts = {alert["alert_id"] for alert in alerts}
-        allowed_events: set[str] = set()
-        if finding is not None:
-            for reference in finding["evidence"]:
-                if reference["ref_type"] == "alert":
-                    allowed_alerts.add(reference["ref_id"])
-                elif reference["ref_type"] == "event":
-                    allowed_events.add(reference["ref_id"])
+        similar_tickets: list[dict[str, Any]],
+    ) -> tuple[dict[str, Any] | None, Visible]:
+        """The summarized input inside ``l1.max_input_chars``, or None, and what it shows."""
+        l1 = self.settings.l1
+        at = [alert["time"] for alert in alerts]
+        summary = {"top_rules": l1.summary_top_rules, "max_records": l1.summary_records, "at": at}
+        data: dict[str, Any] = {
+            "ticket": ticket_view(ticket, TICKET_FIELDS),
+            "alerts": summarize_alerts(alerts, **summary),
+            "evidence_requests": [
+                evidence_request_view(request, self.records, **summary) for request in requests
+            ],
+            "finding": cut(finding),
+            "similar_tickets": [similar_ticket_view(item) for item in similar_tickets],
+            "confidence_threshold": l1.confidence_threshold,
+        }
+        # SIEM records go first; at least one of the Ticket's own alerts stays.
+        siem = record_pool(at)
+        for request in data["evidence_requests"]:
+            if request["request_type"] == "siem_mcp" and isinstance(request["result"], dict):
+                siem.add(request["result"]["records"], request["result"])
+        own = record_pool(at, keep=1)
+        own.add(data["alerts"]["records"], data["alerts"])
+        visible = Visible()
+        if not fit_to_limit(PROMPT, data, l1.max_input_chars, [siem, own]):
+            return None, visible
+        visible.add_summary(data["alerts"])
+        for request in data["evidence_requests"]:
+            visible.add_summary(request["result"])
+        visible.add_finding(data["finding"])
+        return data, visible
 
-        known_raw = {raw_id for alert in alerts for raw_id in alert["raw_ids"]}
-        for ref_id in allowed_alerts:
-            record = self.records.get_alert_record(ref_id)
-            if record is None:
-                continue
-            known_raw.update(record.raw_ids)
-        for ref_id in allowed_events:
-            record = self.records.get_event_record(ref_id)
-            if record is not None:
-                known_raw.update(record.raw_ids)
-
+    def _evidence_is_shown(self, evidence: list[Mapping[str, Any]], visible: Visible) -> bool:
+        """Every cited ID was in the input and, for alerts and events, is stored."""
         for reference in evidence:
             ref_type, ref_id = reference["ref_type"], reference["ref_id"]
-            if ref_type == "alert":
-                if ref_id not in allowed_alerts or self.records.get_alert_record(ref_id) is None:
-                    return False
-            elif ref_type == "event":
-                if ref_id not in allowed_events or self.records.get_event_record(ref_id) is None:
-                    return False
-            elif ref_type == "raw":
-                if ref_id not in known_raw:
-                    return False
-            else:
+            if not visible.allows(ref_type, ref_id):
+                return False
+            if ref_type == "alert" and self.records.get_alert_record(ref_id) is None:
+                return False
+            if ref_type == "event" and self.records.get_event_record(ref_id) is None:
                 return False
         return True
 

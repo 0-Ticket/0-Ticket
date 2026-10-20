@@ -9,13 +9,14 @@ import json
 
 import pytest
 from evidence_fakes import AGENT, FakeEvidenceQueue, default_settings
-from fake_records import FakeReadOnlyRecords
+from fake_records import FakeReadOnlyRecords, fixture_alerts
+from llm_input_fakes import web_flow_events
 from specialist_fakes import ALLOWED_TOOLS, FakeAgentLog, build_context, load, response
 
 from soc.l1.evidence.handlers import default_handlers
 from soc.l1.evidence.service import EvidenceQueueService
 from soc.l1.specialists import SPECIALISTS, open_specialist
-from soc.l1.specialists.web import WEB_AGENT, web_specialist
+from soc.l1.specialists.web import INPUT_TOO_LARGE, WEB_AGENT, web_specialist
 from soc.l1.tickets import TicketNotFoundError
 from soc.plugins import PluginRegistry
 
@@ -228,6 +229,68 @@ def test_default_settings_hold_the_specialist_section():
 
     assert specialist.flow_window_minutes >= 1
     assert specialist.flow_limit >= 1
+
+
+# --- #91: flow rows and the input limit ------------------------------------------------
+
+SCAN_ALERT_TIME = 1770000600000  # al_flow_scan in tests/fixtures/l1/mcp/internal_records.json
+
+
+def run_on_flow(tmp_path, *, extra_4xx=0, body=ALLOWED_TOOLS):
+    """The specialist over the demo-shaped flow; returns (finding, sent request, attack IDs)."""
+    events, attack_ids = web_flow_events(SCAN_ALERT_TIME, extra_4xx=extra_4xx)
+    records = FakeReadOnlyRecords(alerts=fixture_alerts(), events=events)
+    finding, context = analyze(tmp_path, VALID, tickets=(TICKET,), records=records, body=body)
+    requests = context.providers.get("fake").requests
+    return finding, (requests[0] if requests else None), attack_ids
+
+
+def sent_size(request):
+    return len(request.system_prompt) + len(request.user_prompt)
+
+
+def test_demo_shaped_flow_fits_and_keeps_the_upload_and_web_shell_lines(tmp_path):
+    _finding, request, attack_ids = run_on_flow(tmp_path)
+
+    assert sent_size(request) <= default_settings().l1.max_input_chars
+    assert len(attack_ids) == 33
+    assert all(event_id in request.user_prompt for event_id in attack_ids)
+    assert '"columns":["event_id","time","http_url","http_status"]' in request.user_prompt
+
+
+def test_a_long_flow_of_4xx_lines_still_keeps_the_upload_and_web_shell_lines(tmp_path):
+    """4xx lines go first, so many scan errors near the alert cannot push the attack out."""
+    _finding, request, attack_ids = run_on_flow(tmp_path, extra_4xx=110)
+
+    assert sent_size(request) <= default_settings().l1.max_input_chars
+    assert all(event_id in request.user_prompt for event_id in attack_ids)
+    assert '"input_trimmed":true' in request.user_prompt
+
+
+def test_flow_lines_leave_out_unmapped_method_agent_and_size(tmp_path):
+    _finding, request, _ids = run_on_flow(tmp_path)
+
+    assert "python-requests" not in request.user_prompt
+    assert "unmapped" not in request.user_prompt
+
+
+def test_input_over_the_limit_falls_back_without_calling_the_model(tmp_path):
+    body = f"{ALLOWED_TOOLS}\n[l1]\nmax_input_chars = 1000\n"
+    finding, request, _ids = run_on_flow(tmp_path, body=body)
+
+    assert request is None
+    assert finding["succeeded"] == "unknown"
+    assert finding["confidence"] == 0
+    assert finding["human_reason"] == INPUT_TOO_LARGE
+
+
+def test_a_stored_event_outside_the_shown_flow_cannot_be_cited(tmp_path):
+    """The prepared answer cites ev_flow_index: stored, but not in this flow (#91)."""
+    finding, request, _ids = run_on_flow(tmp_path)
+
+    assert request is not None
+    assert finding["succeeded"] == "unknown"
+    assert finding["confidence"] == 0
 
 
 class _NoLookup:
