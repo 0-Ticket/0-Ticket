@@ -23,6 +23,14 @@ from soc.l1.entities import alert_entities
 from soc.l1.evidence import open_evidence_queue
 from soc.l1.evidence.handlers import default_handlers
 from soc.l1.evidence.service import EvidenceQueueService
+from soc.l1.llm_input import (
+    Visible,
+    alert_view,
+    evidence_request_view,
+    fit_to_limit,
+    record_pool,
+    similar_ticket_view,
+)
 from soc.l1.mcp import build_tool_server
 from soc.l1.specialists import SpecialistContext
 from soc.l1.ticket_triage import L1TicketTriage
@@ -159,13 +167,24 @@ class L1Runtime:
             return
 
         similar_tickets = self._similar_tickets(alert, entities)
-        data = {
-            "alert": alert.model_dump(mode="json"),
-            "entities": entities,
-            "representative_entity": entities[0],
-            "evidence_requests": requests,
-            "similar_tickets": similar_tickets,
-        }
+        try:
+            data, visible = self._llm_input(alert, entities, requests, similar_tickets)
+        except Exception as error:
+            logger.warning("L1 evidence summary failed (%s)", type(error).__name__)
+            self._save_decision(alert_id, "held", None, "evidence_request_failure", step=True)
+            return
+        if data is None:
+            # docs/llm-policy.md 5: an input over the limit is not sent (D-036 budget).
+            logger.warning("L1 LLM input exceeds l1.max_input_chars; not sent")
+            self._record_step(
+                alert_id,
+                action="tool_call",
+                tool="llm_input",
+                input_value={"max_input_chars": self.settings.l1.max_input_chars},
+                output_value={"input_too_large": True},
+            )
+            self._save_decision(alert_id, "held", None, "llm_failure", step=True)
+            return
         step = self._next_step(alert_id)
         try:
             result = self.llm_call(
@@ -192,7 +211,7 @@ class L1Runtime:
             return
 
         verdict = result.value.model_dump(mode="json")
-        if not self._evidence_is_stored(verdict["evidence"], alert):
+        if not self._evidence_is_shown(verdict["evidence"], visible):
             logger.warning("L1 Verdict cited evidence that is not stored")
             self._save_decision(alert_id, "held", None, "llm_failure", step=True)
             return
@@ -307,37 +326,56 @@ class L1Runtime:
             )
             return []
 
-    def _evidence_is_stored(
+    def _llm_input(
         self,
-        evidence: Sequence[Mapping[str, Any]],
         alert: AlertRecord,
-    ) -> bool:
-        shown_raw = set(alert.raw_ids)
-        raw_references = []
+        entities: Sequence[Mapping[str, str]],
+        requests: Sequence[Mapping[str, Any]],
+        similar_tickets: Sequence[Mapping[str, Any]],
+    ) -> tuple[dict[str, Any] | None, Visible]:
+        """The summarized input inside ``l1.max_input_chars``, or None, and what it shows."""
+        l1 = self.settings.l1
+        at = [alert.time]
+        data: dict[str, Any] = {
+            "alert": alert_view(alert),
+            "entities": list(entities),
+            "representative_entity": entities[0],
+            "evidence_requests": [
+                evidence_request_view(
+                    request,
+                    self.records,
+                    top_rules=l1.summary_top_rules,
+                    max_records=l1.summary_records,
+                    at=at,
+                )
+                for request in requests
+            ],
+            "similar_tickets": [similar_ticket_view(item) for item in similar_tickets],
+        }
+        pool = record_pool(at)
+        for request in data["evidence_requests"]:
+            if request["request_type"] == "siem_mcp" and isinstance(request["result"], dict):
+                pool.add(request["result"]["records"], request["result"])
+        visible = Visible()
+        if not fit_to_limit(PROMPT, data, l1.max_input_chars, [pool]):
+            return None, visible
+        visible.add_records([data["alert"]])
+        for request in data["evidence_requests"]:
+            visible.add_summary(request["result"])
+        return data, visible
+
+    def _evidence_is_shown(self, evidence: Sequence[Mapping[str, Any]], visible: Visible) -> bool:
+        """Every cited ID was in the input and, for alerts and events, is stored."""
         for reference in evidence:
             ref_type, ref_id = reference["ref_type"], reference["ref_id"]
-            if ref_type == "alert":
-                record = self.records.get_alert_record(ref_id)
-                if record is None:
-                    logger.warning("L1 Verdict cited an unstored %r evidence reference", ref_type)
-                    return False
-                shown_raw.update(record.raw_ids)
-                continue
-            if ref_type == "event":
-                record = self.records.get_event_record(ref_id)
-                if record is None:
-                    logger.warning("L1 Verdict cited an unstored %r evidence reference", ref_type)
-                    return False
-                shown_raw.update(record.raw_ids)
-                continue
-            if ref_type == "raw":
-                raw_references.append(ref_id)
-                continue
-            logger.warning("L1 Verdict cited an unstored %r evidence reference", ref_type)
-            return False
-        if any(ref_id not in shown_raw for ref_id in raw_references):
-            logger.warning("L1 Verdict cited an unstored %r evidence reference", "raw")
-            return False
+            stored = visible.allows(ref_type, ref_id) and (
+                (ref_type == "alert" and self.records.get_alert_record(ref_id) is not None)
+                or (ref_type == "event" and self.records.get_event_record(ref_id) is not None)
+                or ref_type == "raw"
+            )
+            if not stored:
+                logger.warning("L1 Verdict cited a %r reference that was not shown", ref_type)
+                return False
         return True
 
     def _promote(self, alert: AlertRecord, entities: Sequence[Mapping[str, str]]) -> dict[str, Any]:

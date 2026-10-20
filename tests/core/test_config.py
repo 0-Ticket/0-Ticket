@@ -32,6 +32,9 @@ def test_default_config_loads_without_org_file():
     assert settings.l1.confidence_threshold == 0.8
     assert settings.l1.siem_window_minutes == 5
     assert settings.l1.similar_tickets == 5
+    assert settings.l1.max_input_chars == 16000
+    assert settings.l1.summary_top_rules == 5
+    assert settings.l1.summary_records == 5
     assert settings.embedder.provider == "ollama"
     assert settings.embedder.base_url == "http://localhost:11434"
     assert settings.embedder.model == "bge-m3"
@@ -79,6 +82,9 @@ def test_invalid_branch_settings_fail(tmp_path, text):
         "[l1]\nconfidence_threshold = -0.1\n",
         "[l1]\nsiem_window_minutes = 0\n",
         "[l1]\nsimilar_tickets = 0\n",
+        "[l1]\nmax_input_chars = 0\n",
+        "[l1]\nsummary_top_rules = 0\n",
+        "[l1]\nsummary_records = 0\n",
     ],
 )
 def test_invalid_l1_settings_fail(tmp_path, text):

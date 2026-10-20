@@ -160,6 +160,12 @@ class L1Settings(_Section):
     confidence_threshold: float = Field(ge=0, le=1, allow_inf_nan=False)
     siem_window_minutes: int = Field(ge=1)
     similar_tickets: int = Field(ge=1)
+    # Largest LLM input of one L1 or Web specialist call, in characters (#91).
+    max_input_chars: int = Field(ge=1)
+    # Rule IDs counted by name in one evidence summary.
+    summary_top_rules: int = Field(ge=1)
+    # Records shown in full in one evidence summary.
+    summary_records: int = Field(ge=1)
 
 
 class NormalizeSettings(_Section):
