@@ -84,7 +84,7 @@ class FakeLLM:
                 "agent": context.agent,
                 "action": "llm_call",
                 "tool": None,
-                "prompt_version": "l1-ticket-triage-v2",
+                "prompt_version": "l1-ticket-triage-v3",
                 "input_excerpt": "synthetic ticket triage input",
                 "output_excerpt": json.dumps(self.verdict),
                 "model": "fake-model",

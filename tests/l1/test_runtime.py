@@ -101,7 +101,7 @@ class FakeLLM:
                 "agent": context.agent,
                 "action": "llm_call",
                 "tool": None,
-                "prompt_version": "l1-entity-lookup-v2",
+                "prompt_version": "l1-entity-lookup-v3",
                 "input_excerpt": "synthetic L1 input",
                 "output_excerpt": json.dumps(output),
                 "model": "fake-model",
