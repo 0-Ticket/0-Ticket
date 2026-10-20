@@ -450,3 +450,45 @@ class RecordStoreContract:
         with pytest.raises(ValueError, match="itself"):
             store.merge_duplicate(target.alert_id, target.alert_id, NOW)
         assert dump(store.get_alert_record(target.alert_id)) == dump(target)
+
+    # Duplicate representatives (box 25, #87): one row per representative alert.
+
+    def test_dedup_representative_is_found_inside_its_window(self, store):
+        first, _ = self._stored_alerts(store)
+        assert store.save_dedup_representative(first.alert_id, "key_a", 1_000) is True
+        assert store.find_dedup_representative("key_a", 1_000, 600) == first.alert_id
+        assert store.find_dedup_representative("key_a", 1_599, 600) == first.alert_id
+        # The window ends before first_seen + window and does not start before first_seen.
+        assert store.find_dedup_representative("key_a", 1_600, 600) is None
+        assert store.find_dedup_representative("key_a", 999, 600) is None
+        assert store.find_dedup_representative("key_b", 1_000, 600) is None
+
+    def test_dedup_representative_is_saved_once(self, store):
+        first, _ = self._stored_alerts(store)
+        assert store.save_dedup_representative(first.alert_id, "key_a", 1_000) is True
+        # Saving it again (a rerun after a stop) changes nothing.
+        assert store.save_dedup_representative(first.alert_id, "key_a", 1_000) is False
+        assert store.save_dedup_representative(first.alert_id, "key_b", 5_000) is False
+        assert store.find_dedup_representative("key_a", 1_000, 600) == first.alert_id
+        assert store.find_dedup_representative("key_b", 5_000, 600) is None
+
+    def test_earliest_dedup_representative_wins_and_self_is_left_out(self, store):
+        first, second = self._stored_alerts(store)
+        store.save_dedup_representative(second.alert_id, "key_a", 1_200)
+        store.save_dedup_representative(first.alert_id, "key_a", 1_000)
+        assert store.find_dedup_representative("key_a", 1_300, 600) == first.alert_id
+        # Past the first window, only the later representative still covers the time.
+        assert store.find_dedup_representative("key_a", 1_700, 600) == second.alert_id
+        # An alert is never its own duplicate.
+        assert store.find_dedup_representative("key_a", 1_300, 600, first.alert_id) == (
+            second.alert_id
+        )
+        assert store.find_dedup_representative("key_a", 1_700, 600, second.alert_id) is None
+
+    def test_dedup_representative_needs_a_stored_alert_and_a_window(self, store):
+        self._stored_alerts(store)
+        with pytest.raises(UnknownRecordError):
+            store.save_dedup_representative("al_missing", "key_a", 1_000)
+        assert store.find_dedup_representative("key_a", 1_000, 600) is None
+        with pytest.raises(ValueError, match="window"):
+            store.find_dedup_representative("key_a", 1_000, 0)

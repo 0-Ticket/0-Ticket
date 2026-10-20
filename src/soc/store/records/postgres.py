@@ -1,4 +1,4 @@
-"""PostgreSQL Alert/Event store (boxes 4, 6, 7, 25, D-002). Migrations 0010, 0011, 0050, 0093.
+"""PostgreSQL Alert/Event store (boxes 4, 6, 7, 25, D-002). Migrations 0010, 0011, 0050, 0093, 0094.
 
 Every call runs in its own transaction, so a failed batch leaves neither rows
 nor a moved cursor. Rows hold C2, C5 and C13 as json and are turned back into
@@ -38,6 +38,7 @@ from .checks import (
     check_normalize_batch,
     check_position,
     check_source_records,
+    check_window,
     lookup_value,
     merged_alert,
     retention_cutoff,
@@ -314,6 +315,33 @@ class PostgresRecordStore:
         except errors.ForeignKeyViolation:
             raise UnknownRecordError("both alerts must be stored") from None
         return True
+
+    def save_dedup_representative(self, alert_id: str, dedup_key: str, first_seen: int) -> bool:
+        try:
+            with self._conn.transaction():
+                inserted = self._conn.execute(
+                    "INSERT INTO alert_dedup_representatives"
+                    " (alert_id, dedup_key, first_seen, created_at) VALUES (%s, %s, %s, %s)"
+                    " ON CONFLICT (alert_id) DO NOTHING",
+                    (alert_id, dedup_key, first_seen, self._clock()),
+                ).rowcount
+        except errors.ForeignKeyViolation:
+            raise UnknownRecordError("the representative alert must be stored") from None
+        return bool(inserted)
+
+    def find_dedup_representative(
+        self, dedup_key: str, at: int, window_ms: int, exclude_alert_id: str | None = None
+    ) -> str | None:
+        check_window(window_ms)
+        # first_seen <= at < first_seen + window, written as a range on the index column.
+        row = self._one(
+            "SELECT alert_id FROM alert_dedup_representatives"
+            " WHERE dedup_key = %s AND first_seen <= %s AND first_seen > %s"
+            " AND alert_id IS DISTINCT FROM %s"
+            " ORDER BY first_seen, alert_id LIMIT 1",
+            (dedup_key, at, at - window_ms, exclude_alert_id),
+        )
+        return row[0] if row else None
 
     # Retention
 
