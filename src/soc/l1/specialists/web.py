@@ -22,6 +22,15 @@ from importlib.resources import files
 from typing import Any
 
 from soc.contracts import validate_contract
+from soc.l1.llm_input import (
+    Visible,
+    fit_to_limit,
+    flow_pool,
+    flow_view,
+    record_pool,
+    summarize_alerts,
+    ticket_view,
+)
 from soc.l1.mcp.internal import GET_ALERT
 from soc.l1.mcp.web import QUERY_HTTP_FLOW
 from soc.l1.specialists.base import NoStoredEvidenceError, Specialist, SpecialistContext
@@ -42,6 +51,7 @@ MINUTE_MS = 60_000
 # Fallback reasons. Fixed phrases: a reason must never repeat model or log text.
 LLM_OUTPUT_INVALID = "The model's answer did not satisfy the SpecialistFinding contract."
 EVIDENCE_NOT_STORED = "The answer cited evidence that is not stored."
+INPUT_TOO_LARGE = "The evidence did not fit the configured LLM input limit."
 FALLBACK_SUMMARY = "The Web specialist could not produce a checked finding for this question."
 FALLBACK_NOTE = "Alert of the Ticket this question is about"
 
@@ -76,33 +86,35 @@ def web_specialist(context: SpecialistContext) -> Specialist:
             # can be cited. The queue fails the request and holds the Ticket (D-034).
             raise NoStoredEvidenceError("No alert of this Ticket is stored")
 
-        events = []
+        flows = []
         for source in _sources(ticket, alerts):
-            events.extend(_flow(context, ticket_id, step, source, alerts))
+            flows.append(flow_view(source, _flow(context, ticket_id, step, source, alerts)))
             step += 1
 
-        result = call_llm(
-            prompt_path=PROMPT,
-            data={
-                "question": question,
-                "ticket": {field: ticket[field] for field in TICKET_VIEW},
-                "alerts": alerts,
-                "events": events,
-            },
-            contract_name="SpecialistFinding",
-            context=CallContext(
-                subject_type="ticket", subject_id=ticket_id, step=step, agent=WEB_AGENT
-            ),
-            record_step=context.agent_log,
-            settings=context.settings.llm,
-            provider_registry=context.providers,
-            environ=context.environ,
-        )
-        step += 1
+        data, visible = _llm_input(context, question, ticket, alerts, flows)
+        if data is None:
+            # docs/llm-policy.md 5: an input over the limit is not sent.
+            logger.warning("Web specialist input exceeds l1.max_input_chars; not sent")
+            answer = _fallback(alerts, INPUT_TOO_LARGE)
+        else:
+            result = call_llm(
+                prompt_path=PROMPT,
+                data=data,
+                contract_name="SpecialistFinding",
+                context=CallContext(
+                    subject_type="ticket", subject_id=ticket_id, step=step, agent=WEB_AGENT
+                ),
+                record_step=context.agent_log,
+                settings=context.settings.llm,
+                provider_registry=context.providers,
+                environ=context.environ,
+            )
+            step += 1
+            answer = _answer(context, result, alerts, visible)
 
         finding = validate_contract(
             "SpecialistFinding",
-            _answer(context, result, alerts, events)
+            answer
             | {
                 "ticket_id": ticket_id,
                 "specialist": WEB_DOMAIN,
@@ -116,18 +128,54 @@ def web_specialist(context: SpecialistContext) -> Specialist:
     return analyze
 
 
+def _llm_input(
+    context: SpecialistContext,
+    question: str,
+    ticket: Mapping[str, Any],
+    alerts: Sequence[Mapping[str, Any]],
+    flows: list[dict[str, Any]],
+) -> tuple[dict[str, Any] | None, Visible]:
+    """The input inside ``l1.max_input_chars`` (#91), or None, and the IDs it shows.
+
+    Flow rows are dropped first (4xx, other non-2xx, then 2xx; farthest from the
+    alerts first in each), then alerts down to one.
+    """
+    l1 = context.settings.l1
+    at = [alert["time"] for alert in alerts]
+    data: dict[str, Any] = {
+        "question": question,
+        "ticket": ticket_view(ticket, TICKET_VIEW),
+        "alerts": summarize_alerts(
+            alerts, top_rules=l1.summary_top_rules, max_records=l1.summary_records, at=at
+        ),
+        "flows": flows,
+    }
+    rows = flow_pool(at)
+    for flow in flows:
+        rows.add(flow["rows"], flow)
+    own = record_pool(at, keep=1)
+    own.add(data["alerts"]["records"], data["alerts"])
+    visible = Visible()
+    if not fit_to_limit(PROMPT, data, l1.max_input_chars, [rows, own]):
+        return None, visible
+    visible.add_summary(data["alerts"])
+    for flow in flows:
+        visible.add_flow(flow)
+    return data, visible
+
+
 def _answer(
     context: SpecialistContext,
     result: Any,
     alerts: Sequence[Mapping[str, Any]],
-    events: Sequence[Mapping[str, Any]],
+    visible: Visible,
 ) -> dict[str, Any]:
     """The model's finding if it holds up, otherwise the policy's fallback."""
     if not result.ok:
         logger.warning("Web specialist LLM call failed: %s", result.failure.rule)
         return _fallback(alerts, LLM_OUTPUT_INVALID)
     finding = result.value.model_dump(mode="json")
-    if not _evidence_is_stored(context, finding["evidence"], alerts, events):
+    if not _evidence_is_stored(context, finding["evidence"], visible):
         return _fallback(alerts, EVIDENCE_NOT_STORED)
     return finding
 
@@ -150,26 +198,24 @@ def _fallback(alerts: Sequence[Mapping[str, Any]], reason: str) -> dict[str, Any
 
 
 def _evidence_is_stored(
-    context: SpecialistContext,
-    evidence: Sequence[Mapping[str, Any]],
-    alerts: Sequence[Mapping[str, Any]],
-    events: Sequence[Mapping[str, Any]],
+    context: SpecialistContext, evidence: Sequence[Mapping[str, Any]], visible: Visible
 ) -> bool:
-    """Every cited ID must exist (docs/llm-policy.md 4).
+    """Every cited ID must have been shown to the model and exist (docs/llm-policy.md 4, #91).
 
     Alerts and events are looked up in the store. A raw record lives in the
     external SIEM (boxes 1, 2), so it counts as found when it is one of the
-    ``raw_ids`` of a record the specialist actually read.
+    ``raw_ids`` of an alert in the input.
     """
     store = context.records()
-    shown_raw = {raw for record in (*alerts, *events) for raw in record["raw_ids"]}
     for item in evidence:
         ref_type, ref_id = item["ref_type"], item["ref_id"]
-        if ref_type == "alert" and store.get_alert_record(ref_id) is not None:
+        if not visible.allows(ref_type, ref_id):
+            pass
+        elif ref_type == "alert" and store.get_alert_record(ref_id) is not None:
             continue
-        if ref_type == "event" and store.get_event_record(ref_id) is not None:
+        elif ref_type == "event" and store.get_event_record(ref_id) is not None:
             continue
-        if ref_type == "raw" and ref_id in shown_raw:
+        elif ref_type == "raw":
             continue
         # The ID itself is model output and may repeat log text: log the type only.
         logger.warning("Web specialist cited a %r reference that is not stored", ref_type)
