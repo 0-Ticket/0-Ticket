@@ -1,0 +1,6 @@
+# 시연용 Ollama 모델 (#89). granite4:micro와 같은 모델에 문맥 길이만 16,384로 늘린다.
+# Ollama 기본 문맥 4,096에서는 #79의 L1·Web 전문가 입력(약 4,300 ~ 4,500 토큰)이 잘렸다.
+#   ollama create granite4-micro-16k -f config/demo/Modelfile
+#   ollama run granite4-micro-16k "" && ollama ps    # CONTEXT 열이 16384인지 확인
+FROM granite4:micro
+PARAMETER num_ctx 16384

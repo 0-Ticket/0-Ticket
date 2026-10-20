@@ -40,10 +40,12 @@ def test_configured_model_answers_the_web_prompt_as_a_specialist_finding():
         .complete(
             ProviderRequest(
                 base_url=settings.base_url,
-                model=settings.model if override is None else override.model,
+                model=(override.model if override else None) or settings.model,
                 system_prompt=prompt.text,
                 user_prompt=format_untrusted_data(data),
                 temperature=settings.temperature,
+                timeout_seconds=(override.timeout_seconds if override else None)
+                or settings.timeout_seconds,
             )
         )
     )

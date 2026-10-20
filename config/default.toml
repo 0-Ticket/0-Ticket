@@ -73,8 +73,18 @@ base_url = "http://localhost:11434/v1"
 api_key_env = "LLM_API_KEY"
 # 판정 재현성을 위해 기본 무작위성을 최소화한다.
 temperature = 0
+# 호출 하나의 제한 시간(초). 로컬 CPU 서빙(granite4:micro)은 입력이 길면 60초를 넘긴다(#79).
+# 넘기면 provider_timeout으로 실패한다. [llm.agents.<이름>] timeout_seconds로 에이전트별로 바꿀 수 있다.
+timeout_seconds = 300
+# 429(요청 한도 초과) 응답을 받았을 때 다시 부르는 최대 횟수. 0이면 바로 실패(provider_rate_limited).
+rate_limit_retries = 3
+# 429 응답에 Retry-After가 없을 때 기다리는 시간(초).
+rate_limit_wait_seconds = 5
+# Retry-After가 이 값(초)보다 길면 기다리지 않고 실패한다(일일 한도 등).
+rate_limit_max_wait_seconds = 60
 
-# 에이전트별 모델 덮어쓰기. 새 에이전트 이름을 추가할 수 있다.
+# 에이전트별 덮어쓰기. 새 에이전트 이름을 추가할 수 있다.
+# 키: model, timeout_seconds. 적지 않은 키는 [llm] 값을 쓴다.
 [llm.agents]
 
 # SIEM 커넥터 (박스 3, D-037). 외부 SIEM 하나에만 연결한다.

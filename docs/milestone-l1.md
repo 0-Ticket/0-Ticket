@@ -120,9 +120,10 @@ uv run python scripts/demo_slice_ait.py summary --wazuh data/demo/wazuh_alert.js
 
 ### 실행 순서
 
-PostgreSQL을 띄우고 레포 루트에서 실행한다. `soc.l1`은 Ollama(`granite4:micro`, `bge-m3`)와 Qdrant도 필요하다.
+PostgreSQL을 띄우고 레포 루트에서 실행한다. `soc.l1`은 Ollama(`granite4-micro-16k`, `bge-m3`)와 Qdrant도 필요하다. `granite4-micro-16k`는 `granite4:micro`에 문맥 길이 16,384를 준 시연 모델이다(`config/demo/Modelfile`, #89). Ollama 기본 문맥 4,096에서는 입력이 잘린다.
 
 ```bash
+ollama create granite4-micro-16k -f config/demo/Modelfile
 export ZT_CONFIG=config/demo/settings.toml
 uv run python -m soc.db.migrate
 uv run python -m soc.normalize.lookup.load assets config/demo/assets.csv

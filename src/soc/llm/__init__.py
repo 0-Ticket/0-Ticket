@@ -1,6 +1,7 @@
 """Shared LLM call path with prompt framing, output validation, retry, and logging."""
 
 import json
+import logging
 import os
 import re
 import time
@@ -24,6 +25,9 @@ _SECRET_ASSIGNMENT = re.compile(
     r"(?:\"[^\"]*\"|'[^']*'|[^\r\n,;}]+)"
 )
 _EXCERPT_LIMIT = 2000
+_RATE_LIMITED = "provider_rate_limited"
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, slots=True)
@@ -101,6 +105,20 @@ def _make_agent_step(
     )
 
 
+def _rate_limit_wait(
+    error: ProviderError, settings: LLMSettings, retries_used: int
+) -> float | None:
+    """Seconds to wait before calling again after a 429, or None to give up."""
+    if retries_used >= settings.rate_limit_retries:
+        return None
+    wait = error.retry_after_seconds
+    if wait is None:
+        wait = settings.rate_limit_wait_seconds
+    if wait > settings.rate_limit_max_wait_seconds:
+        return None
+    return wait
+
+
 def call_llm(
     *,
     prompt_path: str | Path,
@@ -111,11 +129,14 @@ def call_llm(
     settings: LLMSettings | None = None,
     provider_registry: PluginRegistry | None = None,
     environ: Mapping[str, str] | None = None,
+    sleep: Callable[[float], None] = time.sleep,
 ) -> LLMCallResult:
     """Call a configured provider, validate JSON, retry one validation failure, and log C8.
 
-    The callback receives one C8 record for the logical call. Persistence is owned
-    by the Agent Log box; this function only constructs and sends the contract.
+    A 429 response is retried after its Retry-After (llm.rate_limit_*) and does not use
+    up the validation retry. The callback receives one C8 record for the logical call.
+    Persistence is owned by the Agent Log box; this function only constructs and sends
+    the contract.
     """
     settings = settings or load_config().llm
     environ = os.environ if environ is None else environ
@@ -123,14 +144,17 @@ def call_llm(
     prompt = load_prompt(prompt_path)
     untrusted_data = format_untrusted_data(data)
     input_text = f"{prompt.text}\n\n{untrusted_data}"
-    model = settings.agents.get(context.agent)
-    selected_model = model.model if model is not None else settings.model
+    override = settings.agents.get(context.agent)
+    selected_model = (override.model if override else None) or settings.model
+    timeout_seconds = (override.timeout_seconds if override else None) or settings.timeout_seconds
     api_key = environ.get(settings.api_key_env) or None
     start = time.perf_counter()
     last_output = ""
     token_values: list[int] = []
     value: BaseModel | None = None
     failure: CallFailure | None = None
+    # Set when the call ended without a provider response (timeout, refused, 429...).
+    unanswered: ProviderRequest | None = None
 
     try:
         provider = instantiate_provider(settings.provider, registry)
@@ -146,14 +170,17 @@ def call_llm(
                 user_prompt=f"{untrusted_data}{retry_feedback}",
                 temperature=settings.temperature,
                 api_key=api_key,
+                timeout_seconds=timeout_seconds,
             )
             try:
-                response = provider.complete(request)
+                response = _complete(provider, request, settings, sleep)
             except ProviderError as error:
                 failure = CallFailure(path="/", rule=error.code)
+                unanswered = request
                 break
             except Exception:
                 failure = CallFailure(path="/", rule="provider_error")
+                unanswered = request
                 break
             if not isinstance(response, ProviderResponse) or not isinstance(response.content, str):
                 failure = CallFailure(path="/", rule="provider_invalid_response")
@@ -171,6 +198,15 @@ def call_llm(
                 f"path: {failure.path}; rule: {failure.rule}."
             )
 
+    if unanswered is not None and failure is not None:
+        # No usage tokens came back, so the input size is only visible here (#89).
+        input_chars = len(unanswered.system_prompt) + len(unanswered.user_prompt)
+        logger.warning(
+            "LLM call failed (%s): agent=%s input_chars=%d",
+            failure.rule,
+            context.agent,
+            input_chars,
+        )
     elapsed_ms = max(0, int((time.perf_counter() - start) * 1000))
     tokens = sum(token_values) if token_values else None
     record = _make_agent_step(
@@ -185,6 +221,27 @@ def call_llm(
     )
     record_step(record)
     return LLMCallResult(value=value, failure=failure)
+
+
+def _complete(
+    provider: object,
+    request: ProviderRequest,
+    settings: LLMSettings,
+    sleep: Callable[[float], None],
+) -> object:
+    """One provider call, repeated after 429 responses within the configured limits."""
+    retries_used = 0
+    while True:
+        try:
+            return provider.complete(request)
+        except ProviderError as error:
+            if error.code != _RATE_LIMITED:
+                raise
+            wait = _rate_limit_wait(error, settings, retries_used)
+            if wait is None:
+                raise
+            retries_used += 1
+            sleep(wait)
 
 
 __all__ = [

@@ -27,6 +27,10 @@ scenario = "ait_apache_access"
 source_type = "web"
 format = "text"
 
+[llm]
+# granite4:micro에 문맥 길이 16,384를 준 시연 모델. 만드는 방법은 config/demo/Modelfile.
+model = "granite4-micro-16k"
+
 [branch]
 # 시연 시나리오 규칙. 같은 이름(scenarios.toml)이라 기본 샘플 규칙을 통째로 바꾼다.
 rules_dir = "config/demo/rules"

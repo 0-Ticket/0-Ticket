@@ -101,6 +101,29 @@ uv run python -m soc.normalize.lookup.load assets config/demo/assets.csv
 uv run python -m soc.normalize.lookup.load users config/demo/users.csv
 ```
 
+시연 설정의 LLM 모델은 `granite4-micro-16k`입니다. `granite4:micro`와 같은 모델이고, Ollama 기본 문맥 길이(4,096 토큰)에서 L1 입력이 잘리지 않도록 문맥 길이만 16,384로 늘렸습니다. 처음 한 번 만들고, 모델을 한 번 부른 뒤 `ollama ps`의 `CONTEXT` 열이 `16384`인지 확인합니다.
+
+```bash
+ollama create granite4-micro-16k -f config/demo/Modelfile
+ollama run granite4-micro-16k "" && ollama ps
+```
+
+LLM 호출 하나의 제한 시간은 `[llm] timeout_seconds`(기본 300초)이고, 429 응답은 `rate_limit_*` 설정만큼 기다렸다 다시 부릅니다([docs/llm-policy.md](docs/llm-policy.md) "모델과 설정").
+
+#### 클라우드 모델과 비교 (설정만)
+
+같은 시연 데이터를 OpenAI 호환 클라우드 모델로 돌려 볼 수 있습니다. 코드는 바꾸지 않고, 커밋하지 않는 `config/local.toml`(`.gitignore`)에 시연 설정을 복사해 `[llm]`의 `base_url`·`model`만 바꿉니다. 키는 파일에 쓰지 않고 `LLM_API_KEY` 환경변수로만 넣습니다. 공개 데이터셋이라도 외부 서비스로 알럿이 나가므로 시연 데이터에만 씁니다.
+
+```bash
+cp config/demo/settings.toml config/local.toml
+# config/local.toml의 [llm]을 바꾼다. 예(Groq):
+#   base_url = "https://api.groq.com/openai/v1"
+#   model = "openai/gpt-oss-120b"   # JSON 모드 확인됨(qwen/qwen3.8-27b도 확인). 계정마다 쓸 수 있는 모델이 다르다
+export LLM_API_KEY=...            # 직접 입력. 셸 기록에 남기지 않으려면 read -s LLM_API_KEY; export LLM_API_KEY
+export ZT_CONFIG=config/local.toml
+uv run python -m soc.l1 --all
+```
+
 ### L1 결과 조회 API (박스 27)
 
 사람이 L1 결과(승격·보류된 Alert, Ticket 판정, 증거 요청 실패)를 읽는 읽기 전용 API입니다. 저장소를
