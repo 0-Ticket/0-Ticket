@@ -140,11 +140,31 @@ def test_timeout_is_reported_as_provider_timeout(monkeypatch, error):
 
 
 @pytest.mark.parametrize(
+    ("status", "code"),
+    [
+        (401, "provider_auth_failed"),
+        (403, "provider_auth_failed"),
+        (404, "provider_model_not_found"),
+        (413, "provider_request_too_large"),
+    ],
+)
+def test_http_status_has_its_own_failure_code(monkeypatch, status, code):
+    error = _http_error(status)
+    monkeypatch.setattr("soc.llm.providers.openai_compatible.urlopen", _raise(error))
+    with pytest.raises(ProviderError) as caught:
+        OpenAICompatibleProvider().complete(_request("test-api-secret"))
+    assert caught.value.code == code
+    assert caught.value.__cause__ is None
+    assert "secret response body" not in str(caught.value)
+    assert "test-api-secret" not in str(caught.value)
+
+
+@pytest.mark.parametrize(
     "error",
-    [URLError(ConnectionRefusedError("refused")), ConnectionResetError("reset"), None],
+    [URLError(ConnectionRefusedError("refused")), ConnectionResetError("reset"), 400, 500, 503],
 )
 def test_other_connection_failures_stay_provider_unavailable(monkeypatch, error):
-    error = _http_error(503) if error is None else error
+    error = _http_error(error) if isinstance(error, int) else error
     monkeypatch.setattr("soc.llm.providers.openai_compatible.urlopen", _raise(error))
     with pytest.raises(ProviderError) as caught:
         OpenAICompatibleProvider().complete(_request())

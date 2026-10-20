@@ -120,7 +120,7 @@ model = "larger-model-name"
 timeout_seconds = 600                # 적지 않은 키는 [llm] 값을 쓴다
 ```
 
-- 제공자는 `ProviderRequest.timeout_seconds`를 지켜야 한다. 실패는 안전한 코드로만 알린다: `provider_timeout`(제한 시간 초과), `provider_rate_limited`(429), `provider_unavailable`(그 밖의 연결·HTTP 실패), `provider_invalid_response`, `provider_error`. 응답 본문이나 예외 메시지는 담지 않는다.
+- 제공자는 `ProviderRequest.timeout_seconds`를 지켜야 한다. 실패는 안전한 코드로만 알린다: `provider_timeout`(제한 시간 초과), `provider_rate_limited`(429), `provider_auth_failed`(401·403, 키 오류), `provider_model_not_found`(404, 없는 모델·주소), `provider_request_too_large`(413), `provider_unavailable`(그 밖의 연결·HTTP 실패), `provider_invalid_response`, `provider_error`. 응답 본문이나 예외 메시지는 담지 않는다.
 - 429 재시도는 호출 함수가 맡는다. 요청 하나마다 `rate_limit_retries`번까지 `Retry-After`(없으면 `rate_limit_wait_seconds`)만큼 기다린다. 형식 오류 재시도 1회와는 따로 센다.
 - Agent Log의 `tokens`는 제공자 응답의 `usage.total_tokens`다. 응답이 없는 실패(시간 초과 등)는 토큰이 없으므로, 실패 코드·에이전트·입력 문자 수만 경고 로그 한 줄로 남긴다. 입력 내용은 남기지 않는다.
 - Ollama 기본 문맥 길이(4,096)는 모델의 한계가 아니라 서버 설정이다. 늘릴 때는 Modelfile(`PARAMETER num_ctx`)로 새 이름의 모델을 만들고 `model`이 그 이름을 가리키게 한다(시연: `config/demo/Modelfile`).

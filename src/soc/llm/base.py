@@ -36,6 +36,9 @@ class ProviderError(RuntimeError):
             "provider_unavailable",
             "provider_timeout",
             "provider_rate_limited",
+            "provider_auth_failed",
+            "provider_model_not_found",
+            "provider_request_too_large",
             "provider_invalid_response",
             "provider_error",
         }

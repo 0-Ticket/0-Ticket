@@ -10,6 +10,13 @@ from urllib.request import Request, urlopen
 from soc.llm.base import ProviderError, ProviderRequest, ProviderResponse
 
 _TOO_MANY_REQUESTS = 429
+# HTTP statuses worth telling apart in logs; any other status is provider_unavailable.
+_STATUS_CODES = {
+    401: "provider_auth_failed",
+    403: "provider_auth_failed",
+    404: "provider_model_not_found",
+    413: "provider_request_too_large",
+}
 
 
 def _retry_after_seconds(value: str | None) -> float | None:
@@ -71,7 +78,7 @@ class OpenAICompatibleProvider:
                 raise ProviderError(
                     "provider_rate_limited", retry_after_seconds=retry_after
                 ) from None
-            raise ProviderError("provider_unavailable") from None
+            raise ProviderError(_STATUS_CODES.get(code, "provider_unavailable")) from None
         except (URLError, TimeoutError, OSError) as error:
             code = "provider_timeout" if _is_timeout(error) else "provider_unavailable"
             raise ProviderError(code) from None

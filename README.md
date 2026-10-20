@@ -118,7 +118,7 @@ LLM 호출 하나의 제한 시간은 `[llm] timeout_seconds`(기본 300초)이�
 cp config/demo/settings.toml config/local.toml
 # config/local.toml의 [llm]을 바꾼다. 예(Groq):
 #   base_url = "https://api.groq.com/openai/v1"
-#   model = "<콘솔에서 JSON 모드를 지원하는 모델>"
+#   model = "openai/gpt-oss-120b"   # JSON 모드 확인됨(qwen/qwen3.8-27b도 확인). 계정마다 쓸 수 있는 모델이 다르다
 export LLM_API_KEY=...            # 직접 입력. 셸 기록에 남기지 않으려면 read -s LLM_API_KEY; export LLM_API_KEY
 export ZT_CONFIG=config/local.toml
 uv run python -m soc.l1 --all
