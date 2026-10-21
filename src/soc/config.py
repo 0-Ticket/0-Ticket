@@ -127,6 +127,18 @@ class DirectSiemSettings(_Section):
         return self
 
 
+# An index name or pattern that stays one path segment and one target: no path,
+# list, query or quote characters, and no leading -, _ or + (exclusion, _all).
+ElasticIndex = Annotated[str, Field(pattern=r'^[^\-_+/,?#"\\\s][^/,?#"\\\s]*$')]
+
+
+class ElasticSiemSettings(_Section):
+    """Indices the elastic adapter reads (#99). Address and key come from [siem]."""
+
+    alert_index: ElasticIndex
+    event_index: ElasticIndex
+
+
 class SiemSettings(_Section):
     adapter: str
     base_url: str
@@ -135,6 +147,7 @@ class SiemSettings(_Section):
     timeout_seconds: int = Field(ge=1)
     batch_size: int = Field(ge=1)
     direct: DirectSiemSettings
+    elastic: ElasticSiemSettings
 
 
 class StoreSettings(_Section):
@@ -192,7 +205,7 @@ class LookupSettings(_Section):
     provider: str = Field(pattern=r"^[a-z0-9_]+$")
 
 
-def _validate_http_base_url(value: str) -> str:
+def validate_http_base_url(value: str) -> str:
     parsed = urlsplit(value)
     if parsed.scheme not in {"http", "https"} or not parsed.netloc:
         raise ValueError("must be an HTTP or HTTPS URL")
@@ -212,7 +225,7 @@ class VectorStoreSettings(_Section):
     @field_validator("url")
     @classmethod
     def validate_url(cls, value: str) -> str:
-        return _validate_http_base_url(value)
+        return validate_http_base_url(value)
 
 
 class EmbedderSettings(_Section):
@@ -225,7 +238,7 @@ class EmbedderSettings(_Section):
     @field_validator("base_url")
     @classmethod
     def validate_base_url(cls, value: str) -> str:
-        return _validate_http_base_url(value)
+        return validate_http_base_url(value)
 
 
 FusionMethod = Literal[
