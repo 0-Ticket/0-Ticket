@@ -1,6 +1,8 @@
 """How the screen API opens its stores (box 27): read-only kinds, closed on shutdown."""
 
 import json
+import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
@@ -129,3 +131,59 @@ def test_bad_api_settings_are_rejected(tmp_path, overrides):
     config.write_text(f"[api]\n{body}\n", encoding="utf-8")
     with pytest.raises(ValueError):
         load_config(path=config, environ={})
+
+
+class OneAtATimeReader(Reader):
+    """Fails if two calls are inside it at once, as a shared psycopg connection would."""
+
+    def __init__(self, kind):
+        super().__init__(kind)
+        self.inside = 0
+        self.overlaps = 0
+
+    def get(self, *args):
+        self.inside += 1
+        if self.inside > 1:
+            self.overlaps += 1
+        time.sleep(0.002)
+        self.inside -= 1
+        return None
+
+
+def test_open_readers_lets_one_request_at_a_time_into_the_stores(monkeypatch):
+    """#97: every store open_readers opens shares one connection, so access is serialized."""
+    opened = {}
+
+    def fake_open_store(kind, settings, environ=None, registry=None):
+        opened[kind] = OneAtATimeReader(kind)
+        return opened[kind]
+
+    def fake_open_queue(settings, environ=None, *, readonly=False):
+        opened["queue"] = OneAtATimeReader("queue")
+        return opened["queue"]
+
+    monkeypatch.setattr("soc.api.readers.open_store", fake_open_store)
+    monkeypatch.setattr("soc.api.readers.open_evidence_queue", fake_open_queue)
+    given = {}
+
+    def agent_log_service(store, *args, **kwargs):
+        given["agent_log"] = store
+        return AgentLogService(store, *args, **kwargs)
+
+    monkeypatch.setattr("soc.api.readers.AgentLogService", agent_log_service)
+    readers = open_readers(load_config(environ={}), environ={})
+    stores = [
+        readers.tickets,
+        readers.records,
+        readers.decisions,
+        readers.branches,
+        readers.evidence_queue,
+        given["agent_log"],
+    ]
+
+    with ThreadPoolExecutor(max_workers=12) as pool:
+        list(pool.map(lambda index: stores[index % len(stores)].get("x"), range(120)))
+
+    assert {kind: reader.overlaps for kind, reader in opened.items()} == dict.fromkeys(opened, 0)
+    readers.close()
+    assert all(reader.closed for reader in opened.values())

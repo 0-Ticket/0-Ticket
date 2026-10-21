@@ -7,6 +7,7 @@ names only store kinds, never a backend: ``[store] backend`` and
 """
 
 import os
+import threading
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any, Protocol
@@ -77,6 +78,32 @@ class SharedTicketReader:
         return self.store.get(ticket_id)
 
 
+class LockedReader:
+    """A store whose every method call holds the API's one reader lock (#97).
+
+    Each store keeps one connection for every request, and FastAPI runs requests
+    in worker threads. Two requests in the same psycopg connection nest their
+    transactions and fail, so the API lets one store call in at a time. The lock is
+    reentrant: the Agent Log service reads the Ticket store inside its own call.
+    A connection pool (psycopg_pool) would replace this after the presentation.
+    """
+
+    def __init__(self, store: Any, lock: threading.RLock) -> None:
+        self._store = store
+        self._lock = lock
+
+    def __getattr__(self, name: str) -> Any:
+        value = getattr(self._store, name)
+        if not callable(value):
+            return value
+
+        def locked(*args: Any, **kwargs: Any) -> Any:
+            with self._lock:
+                return value(*args, **kwargs)
+
+        return locked
+
+
 def open_readers(
     settings: Settings,
     environ: Mapping[str, str] | None = None,
@@ -85,8 +112,10 @@ def open_readers(
     """Open every read-only store the API needs, with the configured backends."""
     environ = os.environ if environ is None else environ
 
+    lock = threading.RLock()
+
     def store(kind: str):
-        return open_store(kind, settings, environ, registry=registry)
+        return LockedReader(open_store(kind, settings, environ, registry=registry), lock)
 
     tickets = store(READONLY_TICKETS)
     agent_log = AgentLogService(
@@ -99,6 +128,6 @@ def open_readers(
         records=store(READONLY_RECORDS),
         decisions=store(READONLY_L1_DECISIONS),
         branches=store(READONLY_BRANCHES),
-        evidence_queue=open_evidence_queue(settings, environ, readonly=True),
+        evidence_queue=LockedReader(open_evidence_queue(settings, environ, readonly=True), lock),
         agent_log=agent_log,
     )
