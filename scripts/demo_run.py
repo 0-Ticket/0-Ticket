@@ -232,7 +232,10 @@ def compare(
     after ``soc.branch``.
     """
     report = Report(rows=len(expected))
-    report.lines.append("raw_id | rule_id | path (expected / got) | decisions (expected / got)")
+    header = "raw_id | rule_id | path (expected / got)"
+    if decisions:
+        header += " | alert, ticket decision (expected / got)"
+    report.lines.append(header + " | result")
     for row in expected:
         got = results.get(row["raw_id"])
         path = None if got is None else got.path
