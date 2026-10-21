@@ -19,7 +19,7 @@ token_env = "SIEM_TOKEN"
 rules_dir = "config/demo-elk/rules"
 
 [mcp.allowed_tools]
-# L1 Agent: SIEM 조회와 내부 데이터 조회. query_siem은 elastic SIEM MCP 어댑터(#99 PR ②)가 들어온 뒤 동작한다.
+# L1 Agent: SIEM 조회(elastic SIEM MCP 어댑터)와 내부 데이터 조회.
 l1 = ["query_siem", "query_records", "get_alert"]
 # Web 전문가 Agent: 내부 데이터와 HTTP 흐름 조회.
 web_specialist = ["query_records", "get_alert", "query_http_flow"]
