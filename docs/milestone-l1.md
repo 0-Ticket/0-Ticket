@@ -228,12 +228,12 @@ uv run python scripts/demo_run.py show --db zt_demo81         # 발표: API와 �
 | `check` | PostgreSQL(`DATABASE_URL`), Qdrant(`[vector_store] url`), LLM 서버(`[llm] base_url`의 `/models`)에 `[llm] model`·`[embedder] model`이 있는지, `[[siem.direct.files]]` 재생 파일과 Lookup·기대 결과 CSV가 있는지 본다. 없는 것을 모두 적고 멈춘다 |
 | `full` | `check` → `CREATE DATABASE <db>` → migrate → 읽기 전용 계정에 `GRANT SELECT ON ALL TABLES IN SCHEMA public` → lookup 적재 → ingest → normalize → branch → C21을 `expected.csv`·`expected_counts.csv`와 비교 출력 → 분기가 끝난 DB를 `<db>_branched`로 복사(템플릿) → l1 → 알럿 결정·티켓 판정까지 다시 비교 출력 → 단계별 소요 시간 |
 | `full --from-template` | 템플릿 DB를 복사해 l1만 돌린다. 이미 판정한 알럿은 다시 돌려도 건너뛰므로, l1을 다시 보려면 이렇게 새 DB를 만든다 |
-| `show` | 그 DB로 `python -m soc.api`와 `pnpm --dir frontend dev`(`VITE_USE_MOCK=false`)를 띄운다. Ctrl+C로 둘 다 끈다. `--api-only`는 API만 |
+| `show` | 그 DB로 `python -m soc.api`와 `pnpm --dir frontend dev`(`VITE_USE_MOCK=false`, `API_PROXY_TARGET`은 `[api]` 주소)를 띄운다. 화면은 `/api`를 개발 서버 프록시로 같은 출처에서 부른다. Ctrl+C로 둘 다 끈다. `--api-only`는 API만 |
 
 - DB 이름은 `--db`로만 받고, 접속 계정·주소는 `DATABASE_URL`·`DATABASE_READONLY_URL`에서 DB 이름만 바꿔 쓴다. 이미 있는 이름이면 멈춘다. 러너는 DB를 지우지 않는다.
 - 두 URL의 사용자가 같으면 GRANT는 건너뛴다. 출력에는 계정 이름까지만 나오고 비밀번호와 URL은 나오지 않는다.
 - 비교 표는 `raw_id`, `rule_id`, 경로, 결정 값과 건수만 출력한다. 로그 값(URL, IP 등)은 출력하지 않는다. 판정 기대값은 참고값이므로 다르면 `DIFF`로 표시만 하고 멈추지 않는다.
-- 화면을 실제 API에 붙이는 일(Vite `/api` 프록시, `/api/metrics`가 없을 때 "지표 없음")은 H6에서 한다. 그 전까지 `show`의 화면은 API에서 데이터를 받지 못할 수 있다.
+- 화면은 개발 서버의 `/api` 프록시로 API에 붙는다(H6, #97). L1 시연 API에 없는 지표·Incident·Case·헌팅·룰은 대시보드에 "지표 없음"·"아직 없음"으로 보인다.
 
 ### 통합 테스트
 

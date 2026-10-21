@@ -189,12 +189,18 @@ Node 24를 사용한다. Node 버전 전환 도구를 쓴다면 `frontend/`에�
 | `VITE_USE_MOCK` | 개발 `true`, 빌드 `false` | `true` 또는 `false` 하나로 MSW 사용 여부를 전환 |
 | `VITE_API_BASE_URL` | `/api` | API 접두어까지 포함한 공개 주소. 실제 API 서버 주소로 바꿀 수 있음 |
 | `VITE_POLL_INTERVAL_MS` | `30000` | Query 목록·상세 조회 기본 폴링 간격, 양의 정수 밀리초 |
+| `API_PROXY_TARGET` | `http://127.0.0.1:8000` | 개발 서버가 `/api`를 넘길 결과 API 주소(http·https). `VITE_` 접두어가 없어 브라우저 번들에 들어가지 않는다. 기본값은 `config/default.toml` `[api]`와 같다 |
 
 `.env.example`에는 이름만 두고 값은 비운다. 로컬 설정은 커밋하지 않는
 `frontend/.env.local`에 쓴다. 빈 값은 기본값을 따른다. Vite 환경변수는 빌드 시 결정되므로
 배포 주소를 바꾸면 다시 빌드한다. 여기에 비밀 값을 넣지 않는다.
-실제 API 개발 연결은 `VITE_USE_MOCK=false`와 공개 API 주소로 설정하며,
-다른 origin을 쓰는 경우 서버의 CORS 설정이 필요하다.
+개발 서버는 두 방법으로 띄운다(#97).
+
+- mock(기본): `pnpm dev`. MSW가 `/api`를 받는다.
+- 실제 API: `uv run python -m soc.api`를 띄우고 `VITE_USE_MOCK=false pnpm dev`. 개발 서버(`vite.config.ts`
+  `server.proxy`)가 `/api`를 경로 그대로 `API_PROXY_TARGET`으로 넘긴다. 화면은 상대 경로 `/api`를 같은 출처로
+  부르므로 API에 CORS를 넣지 않는다. `VITE_API_BASE_URL`은 비워 둔다. 다른 출처 주소를 넣으면 CORS가 필요하다.
+- 배포용 빌드의 프록시·CORS는 정하지 않았다(#97 범위 밖).
 
 F0의 셸은 제목과 테마 전환만 제공하고 업무 경로는 비워 둔다.
 API 함수는 `src/api/endpoints.ts`, HTTP 오류는 `ApiError`로 모은다.
@@ -502,6 +508,18 @@ F1/F2의 시각 표시·대기 시간 계산, 검토 완료 시각·소요 시�
 - 읽기 전용이다. 버튼은 업무 화면 이동 링크와 영역별 "다시 시도"뿐이다.
 - 메뉴 맨 위에 "대시보드"(`/`, NavLink `end`)를 더했다. 다른 경로에서는 활성으로 표시되지 않는다.
   React Router는 `to="/"`를 하위 경로에서 활성으로 보지 않으므로 `end`는 의도를 드러내는 표시다.
+
+### 실제 API 연결과 아직 없는 API (#97)
+
+- 대시보드 목록·지표 API가 404이면(실행 중인 API에 그 경로가 없음, 예: L1 시연 API의 Incident·Case·헌팅·룰·지표)
+  오류가 아니다. 공통 판단 `isMissingApi()`(`src/api/client.ts`, `ApiError`의 HTTP 404)로 목록 영역은 "아직 없음",
+  검토 지표 영역은 "지표 없음", Ticket 영역의 대기 건수는 "검토 대기 건수: 지표 없음"만 보여 준다. 오류 표시와
+  "다시 시도"는 없다.
+- 500 등 실제 실패는 기존대로 영역 안 오류·"다시 시도"를 보여 준다. 지표 영역은 받은 값이 없으면 "지표 없음"을 먼저
+  보이고 그 아래 오류 사유와 "다시 시도"를 둔다. 이전 값이 있으면 기존 "마지막으로 받은 값" 안내를 쓴다.
+- 상세 화면(티켓·알럿 L1 상세)의 404 `not_found` 처리는 바꾸지 않았다. F1 L1 결과·알럿 상세·F2 티켓 상세는
+  지표를 부르지 않으므로 영향이 없다.
+- 지표 API 구현은 발표 후다.
 
 ### F1·F2 v2 전환 (#73)
 
