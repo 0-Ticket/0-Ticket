@@ -504,6 +504,19 @@ def print_problems(problems: Sequence[str]) -> None:
         print(f"  - {problem}", file=sys.stderr)
 
 
+def screen_environ(env: Mapping[str, str], settings: Settings) -> dict[str, str]:
+    """The screen's dev server forwards /api to the result API (#97).
+
+    The screen calls the relative /api from its own origin, so the API needs no CORS.
+    A VITE_API_BASE_URL left in the shell would point it elsewhere, so it is dropped.
+    """
+    screen = {key: value for key, value in env.items() if key != "VITE_API_BASE_URL"}
+    return screen | {
+        "VITE_USE_MOCK": "false",
+        "API_PROXY_TARGET": f"http://{settings.api.host}:{settings.api.port}",
+    }
+
+
 def run_show(args: argparse.Namespace, environ: Mapping[str, str]) -> int:
     settings = load_config(args.config, environ=environ)
     name = check_name(args.db)
@@ -518,11 +531,14 @@ def run_show(args: argparse.Namespace, environ: Mapping[str, str]) -> int:
     processes = [subprocess.Popen([sys.executable, "-m", "soc.api"], cwd=ROOT, env=env)]
     print(f"== API on {api} reading {name}")
     if not args.api_only:
-        screen_env = env | {"VITE_USE_MOCK": "false", "VITE_API_BASE_URL": api}
         processes.append(
-            subprocess.Popen(["pnpm", "--dir", "frontend", "dev"], cwd=ROOT, env=screen_env)
+            subprocess.Popen(
+                ["pnpm", "--dir", "frontend", "dev"],
+                cwd=ROOT,
+                env=screen_environ(env, settings),
+            )
         )
-        print("== screen: pnpm --dir frontend dev (the screen's API connection is issue H6)")
+        print("== screen: pnpm --dir frontend dev, /api forwarded to the API")
     print("== Ctrl+C stops both")
     try:
         while all(process.poll() is None for process in processes):
