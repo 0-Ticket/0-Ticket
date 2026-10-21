@@ -208,3 +208,57 @@ v6 프롬프트 두 개의 실시간 JSON 계약 준수율은 Granite 기준 9/1
 - [ ] L1 결과 조회 화면이 읽기 전용으로 승격·보류·판정을 보여 준다
 
 체크리스트 항목은 `tests/checklist.md` "중간 발표 범위"에 모았다.
+
+## 시연 러너와 시연 순서 (#81)
+
+### 러너
+
+`scripts/demo_run.py`가 위 "실행 순서"의 명령을 새 DB에서 차례로 돌린다. 러너와 명령은 `.env`를 직접 읽지 않으므로 셸에 먼저 올린다. `ZT_CONFIG`는 러너가 `--config`(기본 `config/demo/settings.toml`)로 넘긴다.
+
+```bash
+set -a; source .env; set +a
+uv run python scripts/demo_run.py check                       # 필요한 것만 확인
+uv run python scripts/demo_run.py full --db zt_demo81         # 새 DB에서 전체 실행
+uv run python scripts/demo_run.py full --db zt_demo81b --from-template zt_demo81_branched   # l1만 다시
+uv run python scripts/demo_run.py show --db zt_demo81         # 발표: API와 화면만
+```
+
+| 모드 | 하는 일 |
+|---|---|
+| `check` | PostgreSQL(`DATABASE_URL`), Qdrant(`[vector_store] url`), LLM 서버(`[llm] base_url`의 `/models`)에 `[llm] model`·`[embedder] model`이 있는지, `[[siem.direct.files]]` 재생 파일과 Lookup·기대 결과 CSV가 있는지 본다. 없는 것을 모두 적고 멈춘다 |
+| `full` | `check` → `CREATE DATABASE <db>` → migrate → 읽기 전용 계정에 `GRANT SELECT ON ALL TABLES IN SCHEMA public` → lookup 적재 → ingest → normalize → branch → C21을 `expected.csv`·`expected_counts.csv`와 비교 출력 → 분기가 끝난 DB를 `<db>_branched`로 복사(템플릿) → l1 → 알럿 결정·티켓 판정까지 다시 비교 출력 → 단계별 소요 시간 |
+| `full --from-template` | 템플릿 DB를 복사해 l1만 돌린다. 이미 판정한 알럿은 다시 돌려도 건너뛰므로, l1을 다시 보려면 이렇게 새 DB를 만든다 |
+| `show` | 그 DB로 `python -m soc.api`와 `pnpm --dir frontend dev`(`VITE_USE_MOCK=false`)를 띄운다. Ctrl+C로 둘 다 끈다. `--api-only`는 API만 |
+
+- DB 이름은 `--db`로만 받고, 접속 계정·주소는 `DATABASE_URL`·`DATABASE_READONLY_URL`에서 DB 이름만 바꿔 쓴다. 이미 있는 이름이면 멈춘다. 러너는 DB를 지우지 않는다.
+- 두 URL의 사용자가 같으면 GRANT는 건너뛴다. 출력에는 계정 이름까지만 나오고 비밀번호와 URL은 나오지 않는다.
+- 비교 표는 `raw_id`, `rule_id`, 경로, 결정 값과 건수만 출력한다. 로그 값(URL, IP 등)은 출력하지 않는다. 판정 기대값은 참고값이므로 다르면 `DIFF`로 표시만 하고 멈추지 않는다.
+- 화면을 실제 API에 붙이는 일(Vite `/api` 프록시, `/api/metrics`가 없을 때 "지표 없음")은 H6에서 한다. 그 전까지 `show`의 화면은 API에서 데이터를 받지 못할 수 있다.
+
+### 통합 테스트
+
+같은 순서를 CI에서 데이터셋 없이 확인한다. `tests/fixtures/flow/`의 작은 샘플(알럿 7건, Apache 7줄)을 `direct`로 재생하고, 각 명령의 `main()`을 임시 DB에서 부른다. LLM·벡터 저장소·임베딩은 설정이 이름으로 고르는 가짜(`tests/flow/fakes.py`)다. 가짜 LLM은 프롬프트 문장이 아니라 입력 데이터의 모양과 `rule_id`로 답을 고르므로 프롬프트를 바꿔도 깨지지 않는다.
+
+```bash
+uv run pytest -m db tests/flow
+```
+
+결과는 명령이 연결을 닫은 뒤 새 연결로 다시 읽는다(#83). 같은 DB에서 다시 돌려도, 새 DB에서 처음부터 돌려도 결과가 같은지 확인한다.
+
+### 시연 순서
+
+발표는 `show`로 미리 돌린 DB를 보여 준다. 아래 "시연 완료 기준" 항목마다 보여 줄 곳이다. 화면 경로는 `docs/frontend.md` "화면 목록".
+
+| 시연 완료 기준 | 보여 주는 곳 | 무엇을 |
+|---|---|---|
+| SIEM을 바꿔도 코어가 그대로 | 터미널 | 테스트 설정에서 `[siem] adapter = "direct"`를 `"fake"`로만 바꾼 차이를 보이고 `uv run pytest -m db tests/flow -k fake_siem`을 한 번 돌린다. 가짜 커넥터·가짜 SIEM MCP로 같은 경로·판정이 나온다 |
+| 정규화 결과가 원본과 별도 테이블 | 알럿 L1 상세 `/alerts/:alert_id` | C5 필드와 `source_record_id`(원본 C2 행), `raw_ids` |
+| 중복 제거 | `full` 출력의 비교 표, 알럿 L1 상세 | 31101 7,105건 → 대표 7건. 대표 알럿의 `count` |
+| 시나리오 분기 | 31104 알럿의 알럿 L1 상세 | C21 `path` = `scenario_ticket`, 근거 규칙 `demo_web_attack` |
+| 확신도 0.8 기준 승격·보류 | L1 결과 조회 `/review` | C23 `decision`·`confidence`. 확신도 미달 보류는 `reason` = `below_threshold` |
+| 시나리오 티켓이 큐 → 전문가 + MCP → 종결 또는 L2 승격 | 티켓 목록 `/tickets` → 티켓 상세 `/tickets/:ticket_id` | 핵심 장면(아래) |
+| LLM 실패·큐 실패는 보류 | `/review`의 `reason` 필터 | `llm_failure`, `evidence_request_failure`. 미리 돌린 DB에 없으면 `uv run pytest tests/l1 -k "holds_when_llm_call_fails or holds_on_failed_evidence_request"`로 보인다 |
+| Agent Log | 티켓 상세·알럿 L1 상세의 단계 목록 | C8: 도구 호출(`query_http_flow` 등), LLM 호출, 결정 |
+| 읽기 전용 결과 조회 | `/review`, 티켓 상세 | 판정을 바꾸는 버튼이 없다. API는 GET만 있다 |
+
+**핵심 장면**: dirb 단계의 Common web attack(31104, 03:57:26) 알럿 → 시나리오 티켓 → 티켓 상세의 증거 요청(`specialist_agent`, `completed`) → Web 전문가 finding: 같은 출발지(`172.19.131.174`)의 흐름에서 업로드 POST(03:58:20, 200)와 웹셸 명령 줄을 근거로 `succeeded` = `yes` → L1 판정 `tp` → 티켓 `l2_escalated`. 2026-10-20 실행에서는 명령 줄 32개를 보고 `yes`(0.95)였다.

@@ -101,6 +101,14 @@ uv run python -m soc.normalize.lookup.load assets config/demo/assets.csv
 uv run python -m soc.normalize.lookup.load users config/demo/users.csv
 ```
 
+시연 러너는 같은 순서를 새 DB에서 한 번에 돌리고, 기대 결과표와 비교해 출력합니다. 발표는 미리 돌린 DB를 `show`로 보여 줍니다. 모드와 시연 순서는 [docs/milestone-l1.md](docs/milestone-l1.md) "시연 러너와 시연 순서"에 있습니다.
+
+```bash
+set -a; source .env; set +a
+uv run python scripts/demo_run.py full --db zt_demo81   # check → 새 DB → migrate … branch → l1
+uv run python scripts/demo_run.py show --db zt_demo81   # API와 화면만
+```
+
 시연 설정의 LLM 모델은 `granite4-micro-16k`입니다. `granite4:micro`와 같은 모델이고, Ollama 기본 문맥 길이(4,096 토큰)에서 L1 입력이 잘리지 않도록 문맥 길이만 16,384로 늘렸습니다. 처음 한 번 만들고, 모델을 한 번 부른 뒤 `ollama ps`의 `CONTEXT` 열이 `16384`인지 확인합니다.
 
 ```bash

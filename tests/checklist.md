@@ -62,7 +62,7 @@ v2 박스 기준이다(`docs/architecture.md`). 폐기한 박스(9, 16, 17)의 �
 | K63 | 18, 19 | L2가 찾은 정보는 항상 Incident에 붙는다. 새 엔티티나 새 증거 ID가 늘 때만 L2가 재실행되고, 늘지 않으면 재실행하지 않는다. 최대 재실행 횟수(설정, 초기 5)에 걸리면 정보는 계속 붙고 자동 재실행만 멈추며 표시가 남는다 | ⬜ | |
 | K64 | 21, 사용자 접점 | Slack 알림은 L2 분석이 끝나 사람 승인이 필요할 때만 나가고, L1 단계 이벤트로는 나가지 않는다. HTML·마크다운 조각이 든 값이 알림에서 텍스트로만 보인다 | ⬜ | |
 | K65 | 10, 11, 23, 25 | Ticket 출처가 세 값(L1 승격 / L3 승격 / 시나리오) 중 하나다. L1 승격·시나리오 티켓은 증거 요청 큐 → L1 판정으로, L3 승격 티켓은 L2 입구로 바로 간다 | 🟡 일부 | `test_create_ticket_preserves_each_origin`, `test_ticket_store_persists_each_contract_origin`; #51에서 출처 값의 생성·저장 확인. 시나리오 티켓 생성(#69): `test_scenario_creates_ticket`. 큐·L1·L2 경로는 11·23·25 범위에서 구현 예정 |
-| K66 | 3, 15 | 설정으로 고른 SIEM 하나(초기 Wazuh)로 커넥터와 SIEM MCP가 함께 동작한다. 가짜 SIEM 커넥터·SIEM MCP로 바꿔도 코어와 에이전트 코드가 같은 인터페이스로 동작하고, 코어에 SIEM 이름 분기가 없다 | 🟡 일부 | 커넥터: `test_core_runs_the_fake_siem_chosen_by_setting`, `test_core_has_no_siem_name_branch`, `test_core_rejects_plugin_output_that_is_not_c2`; SIEM MCP: `test_same_siem_setting_selects_connector_and_mcp`, `test_fake_adapter_replaces_the_configured_one`, `test_core_has_no_siem_name_branch`(박스 15), `TestFakeSiemMcp`; direct SIEM MCP(#84): `TestDirectSiemMcp`, `test_query_and_ingest_give_the_same_source_record_id`, `test_direct_demo_settings_build_the_tool_server`, `test_direct_demo_settings_start_l1_runtime`; 실제 SIEM(초기 Wazuh) 어댑터는 SIEM 환경 구축 후 |
+| K66 | 3, 15 | 설정으로 고른 SIEM 하나(초기 Wazuh)로 커넥터와 SIEM MCP가 함께 동작한다. 가짜 SIEM 커넥터·SIEM MCP로 바꿔도 코어와 에이전트 코드가 같은 인터페이스로 동작하고, 코어에 SIEM 이름 분기가 없다 | 🟡 일부 | 커넥터: `test_core_runs_the_fake_siem_chosen_by_setting`, `test_core_has_no_siem_name_branch`, `test_core_rejects_plugin_output_that_is_not_c2`; SIEM MCP: `test_same_siem_setting_selects_connector_and_mcp`, `test_fake_adapter_replaces_the_configured_one`, `test_core_has_no_siem_name_branch`(박스 15), `TestFakeSiemMcp`; direct SIEM MCP(#84): `TestDirectSiemMcp`, `test_query_and_ingest_give_the_same_source_record_id`, `test_direct_demo_settings_build_the_tool_server`, `test_direct_demo_settings_start_l1_runtime`; 실제 SIEM(초기 Wazuh) 어댑터는 SIEM 환경 구축 후; 전체 흐름(#81): `test_fake_siem_runs_the_same_flow_by_setting_only` |
 | K67 | 4, 6, 7 | 정규화 결과가 원본과 별도 테이블에 저장되고 FK로 원본을 가리킨다. 정규화 후에도 원본 행이 바뀌지 않는다. 원본 보관 기간을 설정으로 바꿀 수 있다(기본 무기한) | ✅ 통과 | `test_normalized_records_point_to_their_source`, `test_record_pointing_at_the_other_kind_is_rejected`, `test_record_without_source_is_rejected`, `test_saving_normalized_results_leaves_sources_unchanged`, `test_referenced_source_cannot_be_deleted`, `test_default_retention_keeps_everything`, `test_retention_purges_old_sources_but_keeps_referenced_ones`, `test_default_settings_pick_postgresql_and_keep_sources_forever`; 박스 4(#59): `test_alert_record_gets_id_count_and_seen_times`, `test_one_normalized_result_per_source`, `test_source_with_failure_is_not_purged` |
 
 ## 중간 발표 범위
@@ -70,6 +70,7 @@ v2 박스 기준이다(`docs/architecture.md`). 폐기한 박스(9, 16, 17)의 �
 `docs/milestone-l1.md`의 범위에 해당하는 기존 항목이다. 새 항목을 만들지 않고 위·아래 표의 ID만 모았다. 괄호는 발표에서 확인하는 부분이다.
 
 - 박스: K3, K4, K5, K6, K7, K8, K9, K10, K12, K13, K14, K15, K16, K17, K18, K56(중복 제거·시나리오 분기만), K58, K59, K60, K61, K62(L1 요청만), K65(L1 승격·시나리오 티켓만), K66, K67
+- 전체 흐름: K28(수집 → L1 판정 → L1 결과 API까지, #81)
 - 계약: K53, K54
 - 확장성: K31, K33, K35, K37
 - 웹 화면: K51(27 조회 화면)
@@ -78,7 +79,7 @@ v2 박스 기준이다(`docs/architecture.md`). 폐기한 박스(9, 16, 17)의 �
 
 | ID | 확인할 것 | 상태 | 테스트 |
 |---|---|---|---|
-| K28 | S1·S2 샘플을 넣으면 수집부터 L2 Incident Artifact까지 한 번에 흐른다 (사람 승인은 가짜 입력) | ⬜ | |
+| K28 | S1·S2 샘플을 넣으면 수집부터 L2 Incident Artifact까지 한 번에 흐른다 (사람 승인은 가짜 입력) | 🟡 일부 | 발표 범위(수집 → L1 판정 → L1 결과 API)까지 (#81): `tests/flow/test_demo_flow.py`의 `test_flow_matches_the_expected_tables`, `test_duplicates_are_deduplicated_and_counted`, `test_scenario_alert_ends_with_specialist_finding_and_ticket_verdict`, `test_other_alerts_get_l1_escalated_or_held`, `test_running_again_on_the_same_database_changes_nothing`, `test_running_on_a_new_database_gives_the_same_result`, `test_api_returns_the_flow_results`. L2 이후는 발표 범위 밖 |
 | K29 | S3 샘플이 Cloud 전문가를 거쳐 판정된다 (보류) | ⬜ | |
 | K30 | S4 샘플이 헌팅부터 L3 승격 티켓, L2 Incident까지 흐른다 | ⬜ | |
 
@@ -86,7 +87,7 @@ v2 박스 기준이다(`docs/architecture.md`). 폐기한 박스(9, 16, 17)의 �
 
 | ID | 확인할 것 | 상태 | 테스트 |
 |---|---|---|---|
-| K31 | 확장 지점마다 가짜 구현체를 등록하고 설정만 바꿔 교체할 수 있다 | 🟡 일부 | `test_fake_implementation_replaces_default`, `test_get_returns_registered_implementation`; 룩업 제공자: `test_fake_lookup_replaces_none_by_setting` (#59), `test_fake_lookup_replaces_csv_by_setting`, `test_enricher_and_queue_handler_use_the_same_provider`, Lookup 저장소 `TestFakeLookupStoreContract` (#60); 나머지 확장 지점은 해당 박스에서 |
+| K31 | 확장 지점마다 가짜 구현체를 등록하고 설정만 바꿔 교체할 수 있다 | 🟡 일부 | `test_fake_implementation_replaces_default`, `test_get_returns_registered_implementation`; 룩업 제공자: `test_fake_lookup_replaces_none_by_setting` (#59), `test_fake_lookup_replaces_csv_by_setting`, `test_enricher_and_queue_handler_use_the_same_provider`, Lookup 저장소 `TestFakeLookupStoreContract` (#60); 나머지 확장 지점은 해당 박스에서; 전체 흐름(#81): LLM 제공자·벡터 저장소·임베딩을 설정 이름으로 가짜로 교체 `tests/flow/test_demo_flow.py` |
 | K32 | 외부 패키지의 entry point로 등록한 플러그인을 코어 수정 없이 불러온다 | ✅ 통과 | `test_entry_point_plugin_loads_without_core_import`, `test_broken_entry_point_is_skipped` |
 | K33 | 조직 설정 파일(`ZT_CONFIG`)이 기본 설정을 덮어쓰고, 비밀 값은 환경변수에서만 읽는다 | ✅ 통과 | `test_org_config_overrides_only_given_keys`, `test_unknown_key_fails`, `test_secret_literal_in_env_name_field_fails_without_echoing_it`, `test_secret_read_from_env_only`, `test_missing_secret_names_variable_only` |
 | K34 | `extensions` 필드의 값이 정규화부터 저장·조회까지 그대로 보존된다 | 🟡 일부 | `test_extensions_map_moves_values_to_extensions`, `test_extensions_survive_normalize_and_store` (#59, 정규화 → 저장 → 조회). 이후 박스(Ticket, 화면) 전달은 해당 박스에서 |
