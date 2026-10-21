@@ -2,9 +2,12 @@
 
 It serves ``GET|POST /<index>/_search`` over ``http.server`` for the hits it is
 given and records every request, so tests can check what the adapter sent. It
-understands only the query DSL the adapter writes (``bool``, ``range``,
+understands only the query DSL the adapters write (``bool``, ``range``,
 ``exists``, ``ids``, ``term``, ``match_all``) and answers 400 to anything else,
-including a sort on ``_id`` (Elasticsearch 8+ refuses it by default).
+including a sort on ``_id`` (Elasticsearch 8+ refuses it by default). ``range``
+works on the date fields in ``DATE_FIELDS``. A sort may also use a date runtime
+field whose script is ``FIRST_PRESENT_DATE_SCRIPT`` (the first of
+``params.fields`` a document has), the one runtime script the SIEM MCP sends.
 
 Hits are ``{"_index", "_id", "_source"}`` dicts as in a ``_search`` answer. The
 sort time is ``_source["@timestamp"]``, or a test-only ``_timestamp`` for a hit
@@ -26,6 +29,14 @@ ALERT_INDEX = ".alerts-security.alerts-*"
 EVENT_INDEX = "logs-*"
 API_KEY = "fake-elastic-api-key-not-a-secret"
 TIME_FIELD = "@timestamp"
+ORIGINAL_TIME_FIELD = "kibana.alert.original_time"
+DATE_FIELDS = frozenset({TIME_FIELD, ORIGINAL_TIME_FIELD})
+# A copy, not an import: a change to the adapter's script must be looked at here too.
+FIRST_PRESENT_DATE_SCRIPT = (
+    "for (def field : params.fields) { "
+    "if (doc.containsKey(field) && doc[field].size() > 0) { "
+    "emit(doc[field].value.toInstant().toEpochMilli()); break; } }"
+)
 
 
 def load_hits(name: str) -> list[dict[str, Any]]:
@@ -86,7 +97,10 @@ def _field_values(hit: dict[str, Any], field: str) -> list[Any]:
     if field == TIME_FIELD:
         time = _hit_time(hit)
         return [] if time is None else [time]
-    return _values(hit["_source"], field.split("."))
+    values = _values(hit["_source"], field.split("."))
+    if field in DATE_FIELDS:
+        return [to_ms(value) for value in values if isinstance(value, str)]
+    return values
 
 
 def _matches(hit: dict[str, Any], clause: dict[str, Any]) -> bool:
@@ -108,8 +122,8 @@ def _matches(hit: dict[str, Any], clause: dict[str, Any]) -> bool:
         return any(str(found) == str(value) for found in _field_values(hit, field))
     if kind == "range":
         ((field, bounds),) = spec.items()
-        if field != TIME_FIELD or bounds.get("format") != "epoch_millis":
-            raise _BadQuery("the fake only ranges @timestamp in epoch_millis")
+        if field not in DATE_FIELDS or bounds.get("format") != "epoch_millis":
+            raise _BadQuery("the fake only ranges its date fields in epoch_millis")
         values = _field_values(hit, field)
         return any(
             ("gte" not in bounds or value >= int(bounds["gte"]))
@@ -138,11 +152,41 @@ def _matches_bool(hit: dict[str, Any], spec: dict[str, Any]) -> bool:
     return True
 
 
-def _check_sort(sort: list[Any]) -> None:
-    for entry in sort:
-        field = entry if isinstance(entry, str) else next(iter(entry))
-        if field != TIME_FIELD:
-            raise _BadQuery(f"the fake only sorts on {TIME_FIELD}; {field} is refused")
+def _runtime_fields(body: dict[str, Any]) -> dict[str, list[str]]:
+    """Runtime field name -> the date fields its script tries, in order."""
+    fields: dict[str, list[str]] = {}
+    for name, spec in body.get("runtime_mappings", {}).items():
+        script = spec["script"]
+        if spec.get("type") != "date" or script.get("source") != FIRST_PRESENT_DATE_SCRIPT:
+            raise _BadQuery("the fake only runs the first-present date script")
+        tried = script["params"]["fields"]
+        if not set(tried) <= DATE_FIELDS:
+            raise _BadQuery("the fake only reads its date fields in a script")
+        fields[name] = tried
+    return fields
+
+
+def _sort_field(sort: list[Any], runtime: dict[str, list[str]]) -> list[str] | None:
+    """The date fields the one sort key reads (first present wins), or None without a sort."""
+    if not sort:
+        return None
+    if len(sort) != 1:
+        raise _BadQuery("the fake sorts on one key")
+    entry = sort[0]
+    field = entry if isinstance(entry, str) else next(iter(entry))
+    if field == TIME_FIELD:
+        return [TIME_FIELD]
+    if field in runtime:
+        return runtime[field]
+    raise _BadQuery(f"the fake only sorts on {TIME_FIELD} or a runtime field; {field} is refused")
+
+
+def _sort_time(hit: dict[str, Any], fields: list[str]) -> int:
+    for field in fields:
+        values = _field_values(hit, field)
+        if values:
+            return values[0]
+    return 0
 
 
 class FakeElasticsearch:
@@ -223,18 +267,18 @@ class FakeElasticsearch:
         body = request.body or {}
         size = int(request.query.get("size", [body.get("size", 10)])[0])
         try:
-            _check_sort(body.get("sort", []))
+            sort_fields = _sort_field(body.get("sort", []), _runtime_fields(body))
             query = body.get("query", {"match_all": {}})
             matched = [hit for hit in self.indices[index] if _matches(hit, query)]
         except (_BadQuery, KeyError, TypeError, ValueError) as error:
             return 400, {"error": {"type": "parsing_exception", "reason": str(error)}}
-        if body.get("sort"):
+        if sort_fields is not None:
             # sorted() is stable: same-time hits keep their fixture order.
-            matched = sorted(matched, key=lambda hit: _hit_time(hit) or 0)
+            matched = sorted(matched, key=lambda hit: _sort_time(hit, sort_fields))
         hits = []
         for hit in matched[:size]:
             answer = {key: hit[key] for key in ("_index", "_id", "_source")}
-            if body.get("sort"):
-                answer["sort"] = [_hit_time(hit)]
+            if sort_fields is not None:
+                answer["sort"] = [_sort_time(hit, sort_fields)]
             hits.append(answer)
         return 200, {"hits": {"total": {"value": len(matched), "relation": "eq"}, "hits": hits}}

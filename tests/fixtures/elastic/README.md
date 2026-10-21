@@ -15,6 +15,7 @@
 |---|---|
 | `alert_hits.json` | 알럿 3건. 룰 `a2a-web-attack-juice-shop`. `al-1`·`al-2`는 같은 출발지 |
 | `event_hits.json` | 접근로그 5건 |
+| `alert_hits_no_original_time.json` | `kibana.alert.original_time`이 없는 알럿 1건(`al-4`, 출발지는 `al-1`·`al-2`와 같음). SIEM MCP가 이때 `@timestamp`로 시간 창과 정렬을 거는지 확인한다. `@timestamp`(01:01:30)가 `al-1`·`al-2`의 생성 시각보다 이르고 원본 시각보다 늦어, 정렬 기준이 틀리면 순서가 바뀐다 |
 | `bad_hits.json` | C2로 바꿀 수 없는 문서 2건(`_source`가 배열, 점 키와 중첩 키 충돌) |
 
 `bad_hits.json`의 `_timestamp`는 가짜 ES(`tests/ingest/fake_elasticsearch.py`)만 읽는 정렬 시각이다. `_source`가 객체가

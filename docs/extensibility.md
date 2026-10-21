@@ -92,7 +92,7 @@ model = "my-larger-model"
 | 전문 에이전트 | 13, 14 | `specialists` | `web`: Web 전문가 Agent(#63). 인터페이스 `src/soc/l1/specialists/base.py`의 `SpecialistContext`를 받아 C22 요청 하나를 C14로 답하는 함수. C22 `domain` 값이 구현체 이름이고(도메인이 없으면 `web`), 코어는 `soc.l1.specialists.open_specialist(domain, context)`로 연다. Cloud(13)는 등록 한 줄 (D-005 확정 후) | Cloud, 엔드포인트, 메일, 네트워크 전문 에이전트 추가 |
 | 프롬프트 | 11, 13, 14, 19, 23, 24 | (파일) | 기본 프롬프트 | 자사 판정 기준, 언어 |
 | MCP 도구 | 15 | `mcp_servers` | 내부 데이터 조회, Web 도메인. 공식 Python MCP SDK로 구현 (D-041) | 사내 도구 연결 |
-| SIEM MCP 어댑터 | 15 | `siem_mcp_adapters` | Wazuh (초기, D-035). 선택된 SIEM을 따라간다. 읽기 전용. `direct`(개발·테스트·시연용, 운영 대상 아님): `siem.direct.files`를 수집과 같은 방식으로 읽고 기본 별칭 표로 엔티티·시간을 찾는다 | ELK, Splunk |
+| SIEM MCP 어댑터 | 15 | `siem_mcp_adapters` | Wazuh (초기, D-035). 선택된 SIEM을 따라간다. 읽기 전용. `direct`(개발·테스트·시연용, 운영 대상 아님): `siem.direct.files`를 수집과 같은 방식으로 읽고 기본 별칭 표로 엔티티·시간을 찾는다. `elastic`(ELK, #99): 커넥터와 같은 인덱스를 `_search`로 읽는다. ip는 `source.address`(IP 값이면 `destination.ip`도), host는 `host.name`, user는 `user.name`에 term으로 건다. 시간은 이벤트는 `@timestamp`, 알럿은 `kibana.alert.original_time`(없으면 `@timestamp`)이다 | Splunk |
 | 증거 요청 큐 | 26, 27 | `evidence_queues` | PostgreSQL 테이블 큐 (D-034). 구현체 이름 `postgresql`, `[evidence_queue] backend`로 고르고 코어는 `soc.l1.evidence.open_evidence_queue`로 연다. 백엔드는 이름 두 개를 등록한다: `<백엔드>`(큐 작업자가 쓰는 연결)와 `<백엔드>.readonly`(같은 행을 읽기 전용으로 읽는 연결). 화면용 API(27)는 `open_evidence_queue(..., readonly=True)`로 뒤쪽만 연다 | 다른 큐 백엔드 |
 | 사람 검토 채널 | 21 | `review_channels` | 웹 화면 (D-013, `docs/frontend.md`) | 메신저, 사내 포털 |
 | 티켓·케이스 시스템 | 10, 22 | `case_systems` | 내부 저장과 내부 UI (D-012) | 외부 티켓·케이스 관리 도구와 동기화 |
@@ -145,7 +145,7 @@ web_specialist = ["query_records", "get_alert", "query_http_flow"]
 3. 설정의 `[siem] adapter`를 새 이름으로 바꾼다. 한 번에 하나의 SIEM만 연결한다.
 4. 그 SIEM의 시나리오용 별칭 표를 추가한다(박스 4).
 
-사례: ELK(`elastic`, #99)는 커넥터 `src/soc/ingest/siem/elastic.py`, 설정 `[siem.elastic]`의 인덱스 두 개, 별칭 표 `elastic_security_alert`·`elastic_access_event`만 더했다. 코어 코드는 바꾸지 않았다. 시연 설정은 `config/demo-elk/`.
+사례: ELK(`elastic`, #99)는 커넥터 `src/soc/ingest/siem/elastic.py`, SIEM MCP 어댑터 `src/soc/l1/mcp/siem/elastic.py`, 설정 `[siem.elastic]`의 인덱스 두 개, 별칭 표 `elastic_security_alert`·`elastic_access_event`만 더했다. 코어 코드는 바꾸지 않았다. 시연 설정은 `config/demo-elk/`.
 
 ### 다른 LLM 쓰기
 

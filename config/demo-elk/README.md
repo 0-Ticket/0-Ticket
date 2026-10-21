@@ -79,12 +79,12 @@ uv run python -m soc.branch --all
 
 - Lookup 표(자산·사용자)는 선택이다. 랩의 IP는 환경마다 달라 시연 CSV를 두지 않았다. 필요하면 `uv run python -m soc.normalize.lookup.load assets <CSV>`로 normalize 전에 넣는다.
 - 기대 결과: `a2a-web-attack-juice-shop` 알럿 중 첫 알럿(같은 출발지에서 10분 안의 반복은 중복 제거)이 `scenario_ticket`으로 분기된다. 랩 알럿에는 목적지 IP가 없어 `dst_ip` 없이 엔티티 집합 {출발지 IP}로 중복 제거된다.
+- L1까지 돌리려면 LLM 설정이 필요하다(`docs/milestone-l1.md` 참고: Ollama, 모델, Qdrant).
 - 새 DB에서 돌리려면 `DATABASE_URL`의 DB 이름만 바꾼다. 커서는 어댑터 이름(`elastic`)별로 저장되어 같은 DB에서 다시 돌리면 이어서 가져온다.
 
 ## 한계
 
 - **늦게 색인된 이벤트**: 커서는 인덱스마다 마지막으로 읽은 `@timestamp`를 기억한다. 그보다 이른 `@timestamp`로 나중에 색인된 문서는 가져오지 못한다. 그래서 시연은 attack-sim 뒤 1~2분 기다렸다가 한 번에 돌린다.
-- **SIEM MCP**: elastic SIEM MCP 어댑터(박스 15)는 #99의 두 번째 PR에서 들어온다. 그 전에는 이 설정으로 `soc.l1`을 돌리지 않는다(`query_siem`을 만들 어댑터가 없다).
 - **알럿 상태 필드**: Kibana가 나중에 바꾸는 알럿 필드(`kibana.alert.workflow_status`, `kibana.alert.status`, `kibana.alert.last_detected` 등)는 C2에 넣지 않는다. 같은 알럿을 다시 읽어도 `source_record_id`가 같게 하려는 것이다. 목록은 `src/soc/ingest/siem/elastic.py`의 `MUTABLE_ALERT_FIELDS` 한 곳에 있다.
 - **host**: 랩의 `host.name`은 수집기(Logstash)일 수 있어 별칭 표에 매핑하지 않았다(`unmapped`에 남는다). 랩 확인 후 필요하면 별칭 표에 한 줄 더한다.
 
@@ -95,5 +95,6 @@ uv run python -m soc.branch --all
 3. `host.name`이 무엇을 가리키는지.
 4. `MUTABLE_ALERT_FIELDS`가 실제 알럿에서 바뀌는 필드와 맞는지(Kibana에서 알럿을 acknowledged로 바꾼 뒤 다시 읽어 `source_record_id`가 같은지).
 5. 위 권한으로 health_check가 통과하는지. 403이면 `.internal.alerts-security.alerts-*`를 더한다.
+6. 실제 ES에서 alert `query_siem`이 400 없이 동작하고 오래된 순으로 나온다(런타임 정렬 스크립트, PR ②).
 
 고정 자료 `tests/fixtures/elastic/`은 지금 문서 기준으로 손으로 만든 자료다. 랩 문서를 받으면 같은 파일을 랩 기반(IP는 문서용 대역, 비밀값 삭제)으로 바꾼다.
