@@ -122,7 +122,7 @@ SIEM 어댑터가 낸 알럿 또는 이벤트. 시나리오마다 필드명이 �
 | source_record_id | str | ✅ | `src_` 접두어. 저장되는 C2 원본 행의 고유 ID. 코어가 `src_` + sha256(정규화된 JSON: `kind`, `scenario`, `raw_ids`, `fields`만, 키 정렬, 공백 없음, UTF-8) 16진수 전체로 부여한다(`docs/architecture.md` 박스 3). 어댑터는 이 필드를 채우지 않는다 |
 | scenario | str | ✅ | 탐지 시나리오 또는 이벤트 종류 이름. 정규화 시 C20 별칭 표를 고르는 키. `direct` 어댑터는 설정에서 정한 이름을 쓴다 |
 | raw_ids | list[str] | ✅ | 근거가 된 RawRecord ID |
-| fields | dict | ✅ | SIEM 알럿 JSON 원본 그대로 |
+| fields | dict | ✅ | SIEM 알럿 JSON 원본 그대로. ES 계열 어댑터(`elastic`)는 `_source`의 점 표기 키(`"a.b": 1`)를 중첩 객체(`{"a": {"b": 1}}`)로 펼쳐 넣는다. ES 안에서 두 표기는 같은 뜻이고, 값은 바꾸지 않는다 |
 
 ## C20 · AliasTable
 

@@ -89,3 +89,5 @@
 - 2026-10-18 · D-035 보완 (#41): SIEM MCP 어댑터 확장 지점 그룹 이름을 `siem_mcp_adapters`로 확정했다. 커넥터와 같은 `[siem] adapter` 값으로 함께 고른다(D-037).
 - 2026-10-18 · D-034 보완 (#53): L1 Alert 증거 요청 실패도 보류(D-036을 Alert에 적용, 보류 기록은 박스 11). 재시도 N 기본값 3. 확장 지점 그룹 이름을 `evidence_queues`로 확정했다.
 - 2026-10-20 · D-004 보완 (#79): 시연 알럿은 AIT-ADS(russellmitchell Wazuh 알럿, CC BY 4.0)를 함께 쓴다. LDS의 Suricata가 VPN 안쪽 웹 공격을 보지 못해 웹셸 단계 알럿이 없기 때문이다. 이벤트는 LDS V2.0(CC BY-NC-SA 4.0) Apache 로그. 라이선스는 Zenodo에서 확인했다.
+- 2026-10-21 · D-006 보완 (#99): 초기 구현 대상은 Wazuh 그대로. D-037의 확장 ELK를 첫 사례로 `elastic` 어댑터(커넥터·SIEM MCP)를 추가했다. 랩: attack-to-alert(ELK 9.5.5). 중간 발표 시연 범위 밖의 선택 항목.
+- 2026-10-21 · D-004 보완 (#99): attack-to-alert 랩에서 직접 생성한 Alert·접근로그 문서를 ELK 어댑터 테스트 고정 자료로 쓴다. IP는 문서용 대역으로 바꾸고 비밀값은 지운다. 시연 데이터셋은 AIT 그대로. 랩 문서를 받기 전까지는 Kibana·ECS 문서 형식에 맞춰 손으로 만든 자료를 쓴다.

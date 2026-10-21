@@ -109,6 +109,15 @@ batch_size = 500
 # 파일 이름(raw_id에 쓰임)은 서로 달라야 한다. 예시는 tests/fixtures/ingest/direct.toml.
 files = []
 
+# elastic 어댑터 (Elasticsearch + Kibana Security, #99). 접속은 위 [siem]의 base_url·token_env·verify_tls·timeout_seconds를 쓴다.
+# token_env 환경변수에는 읽기 전용 ES API 키(encoded 값)를 넣는다. 요청 헤더는 "Authorization: ApiKey <값>".
+# 인덱스 이름에는 /, 쉼표, ?, #, 따옴표, 공백을 쓸 수 없고 -, _, +로 시작할 수 없다. 와일드카드(*)는 된다.
+[siem.elastic]
+# Kibana 탐지 룰이 만든 알럿을 읽을 인덱스(별칭·패턴). 시나리오 이름은 elastic_security_alert.
+alert_index = ".alerts-security.alerts-*"
+# 접근로그 이벤트를 읽을 인덱스(데이터 스트림·패턴). 시나리오 이름은 elastic_access_event.
+event_index = "logs-*"
+
 # MCP 도구 (박스 15, D-041). 에이전트가 도구를 부르는 유일한 경로다. SIEM MCP 어댑터는 siem.adapter로 함께 고른다(D-037).
 [mcp]
 # 조회 하나가 돌려줄 수 있는 최대 건수. 수집 배치(siem.batch_size)와 별개 값이다. 1 이상.

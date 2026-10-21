@@ -33,7 +33,7 @@ SIEM (시연에서는 direct)
 | | 13 Cloud, 18 ~ 24, L3(23) |
 | | Slack 알림 (트리거가 L2 승인 필요 시뿐, D-033) |
 | | D-034의 L2 요청 실패 처리 |
-| | 실제 SIEM 어댑터 (초기 Wazuh, 확장 ELK·Splunk): SIEM 환경이 구축되면 추가한다 |
+| | 실제 SIEM 어댑터 (초기 Wazuh, 확장 ELK·Splunk): SIEM 환경이 구축되면 추가한다. ELK는 attack-to-alert 랩을 SIEM 환경으로 보고 선택 항목으로 진행한다(#99, 설정 `config/demo-elk/`). 시연 범위는 L1 그대로다 |
 
 ## SIEM 구조 (SIEM에 묶이지 않기)
 
