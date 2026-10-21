@@ -18,6 +18,7 @@ import importlib.util
 import os
 import sys
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import closing
 from pathlib import Path
 
@@ -307,6 +308,35 @@ def test_api_returns_the_flow_results(new_database, use_database):
     assert alert["branch"]["path"] == "l1_entity_lookup"
     assert [item["decision"] for item in alert["decisions"]] == ["held"]
     assert alert["steps"]
+
+
+def test_api_answers_concurrent_requests_without_internal_errors(new_database, use_database):
+    """#97: the screen sends many requests at once; the API shares one connection per store.
+
+    Before the reader lock, two requests in the same store connection nested their
+    transactions and one of them failed with psycopg OutOfOrderTransactionNesting (500).
+    """
+    use_database(new_database())
+    run_flow(FakeLLMProvider())
+    results = flow_results()
+    paths = ["/api/tickets", "/api/l1/decisions?subject_type=alert"]
+    for row in results.values():
+        paths += [f"/api/alerts/{row.alert_id}", f"/api/alerts/{row.alert_id}/l1"]
+        if row.ticket_id is not None:
+            paths.append(f"/api/tickets/{row.ticket_id}")
+    paths *= 4
+
+    readers = open_readers(load_config())
+    try:
+        with (
+            TestClient(create_app(readers), raise_server_exceptions=False) as client,
+            ThreadPoolExecutor(max_workers=16) as pool,
+        ):
+            statuses = list(pool.map(lambda path: (path, client.get(path).status_code), paths))
+    finally:
+        readers.close()
+
+    assert [item for item in statuses if item[1] != 200] == []
 
 
 def _fake_siem_contents():

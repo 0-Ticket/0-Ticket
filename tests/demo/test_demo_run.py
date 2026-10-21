@@ -285,3 +285,15 @@ def test_show_needs_both_database_urls(capsys):
     code = runner.main(["show", "--db", "zt_demo81"], environ={"DATABASE_URL": URL})
     assert code == 1
     assert "DATABASE_READONLY_URL" in capsys.readouterr().err
+
+
+def test_show_screen_forwards_api_from_the_same_origin():
+    # #97: the screen calls the relative /api and its dev server forwards it to the API.
+    settings = load_config(ROOT / "config" / "demo" / "settings.toml", environ={})
+    env = runner.screen_environ(
+        {"PATH": "/bin", "VITE_API_BASE_URL": "http://elsewhere.example.com/api"}, settings
+    )
+    assert env["VITE_USE_MOCK"] == "false"
+    assert env["API_PROXY_TARGET"] == f"http://{settings.api.host}:{settings.api.port}"
+    assert "VITE_API_BASE_URL" not in env
+    assert env["PATH"] == "/bin"

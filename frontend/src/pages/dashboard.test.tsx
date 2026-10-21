@@ -359,6 +359,44 @@ it.each([
   },
 );
 
+// A route the running API does not have answers with FastAPI's default 404 body.
+const missingRoute = () => HttpResponse.json({ detail: 'Not Found' }, { status: 404 });
+
+it.each([
+  ['tickets', 'Ticket 현황'],
+  ['incidents', 'Incident 현황'],
+  ['cases', 'Case 현황'],
+  ['hunts', '헌팅 현황'],
+  ['rules', '룰 제안 현황'],
+] as const)('shows a neutral "아직 없음" when /api/%s is not there (404)', async (path, name) => {
+  server.use(http.get(`*/api/${path}`, missingRoute));
+  mount();
+  await ready([name]);
+  const missing = region(name);
+  expect(await missing.findByText('아직 없음')).toBeInTheDocument();
+  expect(missing.queryByRole('alert')).toBeNull();
+  expect(missing.queryByRole('button', { name: '다시 시도' })).toBeNull();
+  expect(missing.queryByRole('list', { name: /상단 항목$/ })).toBeNull();
+  expect(screen.queryByRole('alert')).toBeNull();
+  for (const other of regions.slice(0, 5).filter((item) => item !== name))
+    expect(region(other).getByRole('list', { name: /상단 항목$/ })).toBeInTheDocument();
+  expect(region('검토 지표').getByText(/^L1 검토/)).toBeInTheDocument();
+});
+
+it('shows "지표 없음" without an error when /api/metrics is not there (404)', async () => {
+  server.use(http.get('*/api/metrics', missingRoute));
+  mount();
+  await ready(['검토 지표']);
+  const metricsRegion = region('검토 지표');
+  expect(await metricsRegion.findByText('지표 없음')).toBeInTheDocument();
+  expect(metricsRegion.queryByRole('button', { name: '다시 시도' })).toBeNull();
+  expect(screen.queryByRole('alert')).toBeNull();
+  const tickets = region('Ticket 현황');
+  expect(tickets.getByText('검토 대기 건수: 지표 없음')).toBeInTheDocument();
+  expect(tickets.queryByText(/^검토 대기 \d+건$/)).toBeNull();
+  expect(tickets.getByRole('list', { name: 'Ticket 상단 항목' })).toBeInTheDocument();
+});
+
 it('keeps a metrics failure inside the metrics region and never falls back to the list length', async () => {
   let fail = true;
   server.use(
@@ -379,6 +417,8 @@ it('keeps a metrics failure inside the metrics region and never falls back to th
   mount();
   const metricsRegion = region('검토 지표');
   expect(await metricsRegion.findByRole('alert')).toHaveTextContent('metrics down');
+  // A real failure says "지표 없음" and keeps the reason and the retry below it.
+  expect(metricsRegion.getByText('지표 없음')).toBeInTheDocument();
   const tickets = region('Ticket 현황');
   expect(await tickets.findByRole('list', { name: 'Ticket 상단 항목' })).toBeInTheDocument();
   expect(

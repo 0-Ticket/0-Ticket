@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { isMissingApi } from '../api/client';
 import { useCases } from '../api/case-queries';
 import { useHunts } from '../api/hunt-queries';
 import { useIncidents } from '../api/incident-queries';
@@ -44,6 +45,8 @@ function Row({ children }: { children: ReactNode }) {
 // After a failed metrics refresh an older count is not shown as if it were current.
 function WaitingCount() {
   const query = useWaitingCount();
+  if (isMissingApi(query.error))
+    return <p className="text-sm text-muted-foreground">검토 대기 건수: 지표 없음</p>;
   if (query.error)
     return (
       <p className="text-sm text-muted-foreground">
@@ -249,13 +252,18 @@ function RulePanel() {
 }
 
 // Metrics are shown exactly as the API returns them. No ratio or score is computed here.
+// A missing metrics route (404) only says "지표 없음". A real failure says the same and
+// keeps its reason and retry; older values stay only with the stale note.
 function MetricsPanel() {
   const query = useWaitingCount();
-  const data = query.data;
+  const missing = isMissingApi(query.error);
+  const failed = query.error && !missing;
+  const data = missing ? undefined : query.data;
   return (
     <Section label="검토 지표" className="md:col-span-2">
       {query.isPending && <StatusNote busy>지표 불러오는 중…</StatusNote>}
-      {query.error && (
+      {query.error && !data && <StatusNote>지표 없음</StatusNote>}
+      {failed && (
         <QueryError
           error={query.error}
           busy={query.isFetching}
@@ -264,7 +272,7 @@ function MetricsPanel() {
       )}
       {data && (
         <>
-          {query.error && <StaleNote />}
+          {failed && <StaleNote />}
           <p className="text-xs text-muted-foreground">
             집계 기간: <Timestamp value={data.from} /> ~ <Timestamp value={data.to} />. 현재 검토
             대기 건수는 기간과 관계없이 지금 값입니다.

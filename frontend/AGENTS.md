@@ -28,12 +28,16 @@
 ```bash
 pnpm install --frozen-lockfile
 pnpm dev            # 개발 서버 (mock)
+VITE_USE_MOCK=false pnpm dev   # 개발 서버 (실제 API: 먼저 uv run python -m soc.api)
 pnpm typecheck
 pnpm lint
 pnpm format:check   # 고치지 않고 검사만
 pnpm test
 pnpm build
 ```
+
+실제 API 모드에서 개발 서버는 `/api`를 `API_PROXY_TARGET`(기본 `http://127.0.0.1:8000`, `[api]` 기본값과 같음)으로
+넘긴다. 같은 출처로 부르므로 API에 CORS를 넣지 않는다. 자세한 내용은 `docs/frontend.md` "F0 실행 환경과 설정".
 
 ## 완료 기준 (화면 작업)
 

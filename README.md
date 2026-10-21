@@ -144,6 +144,25 @@ uv run python -m soc.api    # 기본 http://127.0.0.1:8000 (주소는 설정 [ap
 경로와 응답 모양은 [docs/api-contracts.md](docs/api-contracts.md)에 있습니다. L1 결과를 바꾸는 경로는
 없습니다.
 
+### 화면 (`frontend/`)
+
+화면은 두 방법으로 띄웁니다. Node 24와 pnpm이 필요합니다([frontend/AGENTS.md](frontend/AGENTS.md)).
+
+```bash
+cd frontend && pnpm install --frozen-lockfile
+
+# 1) mock(기본): 백엔드 없이 MSW가 같은 경로로 응답한다
+pnpm dev
+
+# 2) 실제 API: 다른 터미널에서 uv run python -m soc.api 를 띄운 뒤
+VITE_USE_MOCK=false pnpm dev
+```
+
+실제 API 모드에서 개발 서버는 `/api`를 결과 API(`API_PROXY_TARGET`, 기본 `http://127.0.0.1:8000`)로
+넘깁니다. 화면과 API가 같은 출처라 API에 CORS를 두지 않습니다. 아직 없는 API(지표, Incident, Case, 헌팅,
+룰)는 대시보드에 "지표 없음"·"아직 없음"으로 보입니다. 시연 DB를 보여 줄 때는 `scripts/demo_run.py show`가
+이 설정으로 둘 다 띄웁니다.
+
 설치·실행 방법은 구성 요소가 구현되는 대로 이 절에 추가합니다.
 
 ## 설정과 확장

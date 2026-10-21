@@ -1,6 +1,7 @@
 import type { InfiniteData, UseInfiniteQueryResult } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router';
+import { isMissingApi } from '../api/client';
 import type { Page } from '../api/types';
 import { QueryError, StatusNote } from './contract-display';
 import { Icon } from './icon';
@@ -96,7 +97,10 @@ export function ListPanel<T>({
   intro?: ReactNode;
   children: (items: T[]) => ReactNode;
 }) {
-  const first = query.data?.pages[0];
+  // A missing route is neutral: no error, no retry, no older items.
+  const missing = isMissingApi(query.error);
+  const failed = query.error && !missing;
+  const first = missing ? undefined : query.data?.pages[0];
   return (
     <Section
       label={label}
@@ -105,14 +109,15 @@ export function ListPanel<T>({
     >
       {intro}
       {query.isPending && <StatusNote busy>{`${noun} 불러오는 중…`}</StatusNote>}
-      {query.error && (
+      {missing && <StatusNote>아직 없음</StatusNote>}
+      {failed && (
         <QueryError
           error={query.error}
           busy={query.isFetching}
           retry={() => void query.refetch()}
         />
       )}
-      {query.error && first && <StaleNote />}
+      {failed && first && <StaleNote />}
       {first &&
         (first.items.length ? (
           <>
