@@ -290,7 +290,7 @@ def _sort_time(hit: Mapping[str, Any]) -> int:
     return sort[0]
 
 
-def _hits(answer: Mapping[str, Any]) -> list[Any]:
+def search_hits(answer: Mapping[str, Any]) -> list[Any]:
     hits = answer.get("hits")
     found = hits.get("hits") if isinstance(hits, dict) else None
     if not isinstance(found, list):
@@ -352,7 +352,7 @@ class ElasticSiemConnector:
         answer = self._client.search(source.index, _search_body(source.kind, position, size))
         items: list[dict[str, Any]] = []
         reasons: list[str] = []
-        for hit in _hits(answer):
+        for hit in search_hits(answer):
             if not isinstance(hit, dict) or not isinstance(hit.get("_id"), str) or not hit["_id"]:
                 raise ElasticError("Elasticsearch answer holds a hit without an id")
             position = _advance(position, _sort_time(hit), hit["_id"])
