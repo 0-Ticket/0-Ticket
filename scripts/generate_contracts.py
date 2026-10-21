@@ -49,10 +49,13 @@ def generate(destination):
     source = destination / "schema-input"
     source.mkdir()
     schemas = [
-        json.loads(p.read_text()) for p in sorted((ROOT / "contracts").glob("*.schema.json"))
+        json.loads(p.read_text(encoding="utf-8"))
+        for p in sorted((ROOT / "contracts").glob("*.schema.json"))
     ]
     for schema in schemas:
-        (source / schema["$id"]).write_text(json.dumps(type_projection(schema), indent=2) + "\n")
+        (source / schema["$id"]).write_text(
+            json.dumps(type_projection(schema), indent=2) + "\n", encoding="utf-8"
+        )
     run(
         sys.executable,
         "-m",
@@ -87,13 +90,16 @@ def generate(destination):
     run("node", str(ROOT / "tools/contracts/generate.mjs"), str(ts_dir), str(source))
     # Public exports are generated from schema titles, never a handwritten model list.
     schemas = [
-        json.loads(p.read_text()) for p in sorted((ROOT / "contracts").glob("*.schema.json"))
+        json.loads(p.read_text(encoding="utf-8"))
+        for p in sorted((ROOT / "contracts").glob("*.schema.json"))
     ]
     exports = "\n".join(
         f"from .{s['$id'].removesuffix('.schema.json')}_schema import {s['title']}" for s in schemas
     )
     names = ",\n".join("    " + repr(s["title"]) for s in schemas)
-    (py_dir / "__init__.py").write_text(f"# {HEADER}\n{exports}\n\n__all__ = [\n{names}\n]\n")
+    (py_dir / "__init__.py").write_text(
+        f"# {HEADER}\n{exports}\n\n__all__ = [\n{names}\n]\n", encoding="utf-8"
+    )
     run(
         sys.executable,
         "-m",

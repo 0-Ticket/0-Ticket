@@ -25,19 +25,19 @@ CONTRACTS = {
 
 
 def test_frontend_fixture_contracts():
-    scenarios = json.loads((FIXTURES / "scenarios.json").read_text())
+    scenarios = json.loads((FIXTURES / "scenarios.json").read_text(encoding="utf-8"))
     assert scenarios.keys() == CONTRACTS.keys()
     for collection, name in CONTRACTS.items():
         for item in scenarios[collection]:
             validate_contract(name, item)
-    responses = json.loads((FIXTURES / "api-responses.json").read_text())
+    responses = json.loads((FIXTURES / "api-responses.json").read_text(encoding="utf-8"))
     for page in ("empty", "first_page", "last_page"):
         for ticket in responses[page]["items"]:
             validate_contract("Ticket", ticket)
 
 
 def test_frontend_fixture_references():
-    data = json.loads((FIXTURES / "scenarios.json").read_text())
+    data = json.loads((FIXTURES / "scenarios.json").read_text(encoding="utf-8"))
     ids = {
         key: {row[field] for row in data[key]}
         for key, field in {
@@ -88,7 +88,7 @@ def test_frontend_fixture_references():
 
 
 def test_f1_fixture_sort_boundaries():
-    data = json.loads((FIXTURES / "scenarios.json").read_text())
+    data = json.loads((FIXTURES / "scenarios.json").read_text(encoding="utf-8"))
     ordered = sorted(
         data["tickets"],
         key=lambda ticket: (-ticket["priority"], ticket["created_at"], ticket["ticket_id"]),
@@ -107,7 +107,7 @@ def test_f1_fixture_sort_boundaries():
 
 
 def test_ticket_detail_fixture_contracts_and_references():
-    detail = json.loads((FIXTURES / "ticket-detail.json").read_text())
+    detail = json.loads((FIXTURES / "ticket-detail.json").read_text(encoding="utf-8"))
     assert set(detail) == {
         "ticket",
         "alerts",
@@ -129,7 +129,7 @@ def test_ticket_detail_fixture_contracts_and_references():
     }.items():
         for item in detail[key]:
             validate_contract(name, item)
-    data = json.loads((FIXTURES / "scenarios.json").read_text())
+    data = json.loads((FIXTURES / "scenarios.json").read_text(encoding="utf-8"))
     ids = {
         kind: {row[field] for row in data[key]}
         for kind, key, field in [
@@ -147,12 +147,12 @@ def test_ticket_detail_fixture_contracts_and_references():
 
 
 def test_incident_detail_fixture_contracts_and_references():
-    extra = json.loads((FIXTURES / "incident-detail.json").read_text())
+    extra = json.loads((FIXTURES / "incident-detail.json").read_text(encoding="utf-8"))
     assert set(extra) <= CONTRACTS.keys()
     for collection, items in extra.items():
         for item in items:
             validate_contract(CONTRACTS[collection], item)
-    data = json.loads((FIXTURES / "scenarios.json").read_text())
+    data = json.loads((FIXTURES / "scenarios.json").read_text(encoding="utf-8"))
     ids = {
         kind: {row[field] for row in data[key] + extra.get(key, [])}
         for kind, key, field in [
@@ -191,9 +191,9 @@ def test_incident_detail_fixture_contracts_and_references():
 def test_incident_review_fixtures_follow_box21_flow():
     # Synthetic mock states must tell a consistent box 21 story (#21); the screen never
     # derives them, so this only checks the hand-written fixtures.
-    data = json.loads((FIXTURES / "scenarios.json").read_text())
-    extra = json.loads((FIXTURES / "incident-detail.json").read_text())
-    case_extra = json.loads((FIXTURES / "case-detail.json").read_text())
+    data = json.loads((FIXTURES / "scenarios.json").read_text(encoding="utf-8"))
+    extra = json.loads((FIXTURES / "incident-detail.json").read_text(encoding="utf-8"))
+    case_extra = json.loads((FIXTURES / "case-detail.json").read_text(encoding="utf-8"))
     incidents = data["incidents"] + extra["incidents"] + case_extra["incidents"]
     reviews = data["l2_reviews"] + extra["l2_reviews"] + case_extra["l2_reviews"]
     artifacts = {
@@ -240,13 +240,13 @@ def test_incident_review_fixtures_follow_box21_flow():
 
 
 def test_case_detail_fixture_contracts_and_references():
-    extra = json.loads((FIXTURES / "case-detail.json").read_text())
+    extra = json.loads((FIXTURES / "case-detail.json").read_text(encoding="utf-8"))
     assert set(extra) <= CONTRACTS.keys()
     for collection, items in extra.items():
         for item in items:
             validate_contract(CONTRACTS[collection], item)
-    data = json.loads((FIXTURES / "scenarios.json").read_text())
-    incident_extra = json.loads((FIXTURES / "incident-detail.json").read_text())
+    data = json.loads((FIXTURES / "scenarios.json").read_text(encoding="utf-8"))
+    incident_extra = json.loads((FIXTURES / "incident-detail.json").read_text(encoding="utf-8"))
     incidents = data["incidents"] + incident_extra["incidents"] + extra["incidents"]
     ids = {
         kind: {row[field] for row in data[key] + incident_extra.get(key, [])}
@@ -292,14 +292,14 @@ def test_case_detail_fixture_contracts_and_references():
 
 
 def test_hunt_rule_fixture_contracts_and_references():
-    extra = json.loads((FIXTURES / "hunt-rule-detail.json").read_text())
+    extra = json.loads((FIXTURES / "hunt-rule-detail.json").read_text(encoding="utf-8"))
     assert set(extra) <= CONTRACTS.keys()
     for collection, items in extra.items():
         for item in items:
             validate_contract(CONTRACTS[collection], item)
-    data = json.loads((FIXTURES / "scenarios.json").read_text())
-    incident_extra = json.loads((FIXTURES / "incident-detail.json").read_text())
-    case_extra = json.loads((FIXTURES / "case-detail.json").read_text())
+    data = json.loads((FIXTURES / "scenarios.json").read_text(encoding="utf-8"))
+    incident_extra = json.loads((FIXTURES / "incident-detail.json").read_text(encoding="utf-8"))
+    case_extra = json.loads((FIXTURES / "case-detail.json").read_text(encoding="utf-8"))
     hunts = data["hunts"] + incident_extra["hunts"] + extra["hunts"]
     hunt_ids = [h["hunt_id"] for h in hunts]
     assert len(set(hunt_ids)) == len(hunt_ids)
