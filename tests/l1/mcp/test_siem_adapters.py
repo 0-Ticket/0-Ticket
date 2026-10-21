@@ -62,10 +62,10 @@ class TestFakeSiemMcp(SiemMcpAdapterContract):
         return query()
 
 
-def test_group_is_an_extension_point_with_only_the_direct_adapter_built_in():
-    """Only direct (development and demo) ships; the Wazuh adapter arrives with its SIEM."""
+def test_group_is_an_extension_point_with_direct_and_elastic_built_in():
+    """direct (development and demo) and elastic (#99) ship; Wazuh arrives with its SIEM."""
     assert "siem_mcp_adapters" in EXTENSION_POINT_GROUPS
-    assert SIEM_MCP_ADAPTERS.names() == ("direct",)
+    assert SIEM_MCP_ADAPTERS.names() == ("direct", "elastic")
 
 
 def test_fake_filters_by_kind():
@@ -216,11 +216,19 @@ def _string_literals(path):
 
 
 def test_core_has_no_siem_name_branch():
-    """No module under src/soc/l1/mcp may name a SIEM: the setting picks the adapter."""
-    modules = list(MCP_PACKAGE.rglob("*.py"))
-    assert modules, "no MCP modules found"
-    names = {"wazuh", "elk", "elastic", "splunk", "fake"}
-    for path in modules:
+    """Only adapter modules and the registration in siem/__init__.py may name a SIEM.
+
+    The same rule as box 3 (tests/ingest/test_connector.py): base.py and tools.py
+    are core, like every other module under src/soc/l1/mcp.
+    """
+    siem = MCP_PACKAGE / "siem"
+    core_in_siem = {siem / "base.py", siem / "tools.py"}
+    adapter_modules = {path for path in siem.glob("*.py") if path not in core_in_siem}
+    core = [path for path in MCP_PACKAGE.rglob("*.py") if path not in adapter_modules]
+    assert core, "no MCP modules found"
+    assert core_in_siem <= set(core)
+    names = set(SIEM_MCP_ADAPTERS.names()) | {"wazuh", "elk", "elastic", "splunk", "fake"}
+    for path in core:
         literals = _string_literals(path)
         source = path.read_text(encoding="utf-8").lower()
         for name in names:
