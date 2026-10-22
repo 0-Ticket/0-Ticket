@@ -56,15 +56,16 @@
 | `GET /api/rules` | `status` | 목록: C18 RuleProposal | F5 |
 | `GET /api/rules/{proposal_id}` | | C18 RuleProposal | F5 |
 | `GET /api/normalize-failures` | `reason` | 목록: C12 NormalizeFailure | 현재 없음. API와 응답은 그대로이며, F6은 C12 목록 대신 지표의 `normalize_failures_by_reason`을 표시한다(#31) |
-| `GET /api/metrics` | `from`, `to` (epoch 밀리초) | 아래 "지표" | F1, F6 |
+| `GET /api/metrics` | `from`, `to` (epoch 밀리초) | 아래 "지표" | F6 |
 
 검토 대기함(F1)은 `GET /api/tickets?status=awaiting_human`이다. v2 L1은 `awaiting_human`
 티켓을 새로 만들지 않는다(`docs/data-contracts.md` C6).
 
 **지금 구현된 경로** (박스 27, #71): `GET /api/tickets`, `GET /api/tickets/{ticket_id}`,
-`GET /api/alerts/{alert_id}`, `GET /api/alerts/{alert_id}/l1`, `GET /api/l1/decisions`.
+`GET /api/alerts/{alert_id}`, `GET /api/alerts/{alert_id}/l1`, `GET /api/l1/decisions`,
+`GET /api/metrics`(#103, 집계 없이 `available: false`만 돌려준다).
 나머지 읽기 경로(`/api/events`, `/api/raw`, `/api/incidents`, `/api/cases`, `/api/hunts`,
-`/api/rules`, `/api/normalize-failures`, `/api/metrics`)는 해당 박스가 L1 범위 밖이라
+`/api/rules`, `/api/normalize-failures`)는 해당 박스가 L1 범위 밖이라
 **현재 미구현(발표 후 구현 예정)**이다. 경로와 응답 모양은 이 문서에 그대로 두고 mock도 그대로 쓴다.
 
 `GET /api/tickets`의 필터(`status`, `origin`, `handling_type`, `min_priority`)는 페이지를 나누기
@@ -172,6 +173,7 @@
 |---|---|---|
 | from | int | 집계 시작 |
 | to | int | 집계 끝 |
+| available | bool | 집계 결과가 있는지. `false`면 아래 지표 여덟 개를 담지 않는다 |
 | tickets_total | int | 기간 안에 만들어진 티켓 수 |
 | tickets_awaiting_human | int | 지금 검토 대기 중인 티켓 수 |
 | l1_reviews_total | int | 기간 안의 C9 수 |
@@ -181,7 +183,13 @@
 | incident_members_by_source | dict[str, int] | 묶음 항목 `source`(`l1`, `human_l1`, `l3`)별 수 (v1 Correlation 기준. v2 정리는 후속) |
 | normalize_failures_by_reason | dict[str, int] | `reason`별 C12 수 (박스 4) |
 
-## 쓰기
+`available`로 두 가지 응답을 가른다. 둘 다 200이다. 집계할 것이 없다는 사실은 오류가 아니다.
+
+- `available: false`: `from`, `to`, `available` 세 필드만 담는다. 지표 여덟 개는 **넣지 않는다**.
+  0을 채우면 "세어 봤더니 없음"과 구분되지 않기 때문이다(#103).
+- `available: true`: 위 표의 열한 필드를 모두 담는다.
+
+`from`과 `to`는 정수여야 하고 `from`이 `to`보다 크면 `invalid_input`이다.
 
 **발표 후, L1 결과에는 쓰지 않음.** 아래 쓰기 경로는 모두 L2·Case·룰 단계(박스 21, 22, 24)의 것이고
 **현재 미구현(발표 후 구현 예정)**이다. L1 결과(승격·보류·판정)를 바꾸는 경로는 앞으로도 만들지 않는다.
