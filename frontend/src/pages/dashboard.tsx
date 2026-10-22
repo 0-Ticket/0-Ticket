@@ -43,16 +43,19 @@ function Row({ children }: { children: ReactNode }) {
 
 // The waiting count always comes from metrics. The loaded ticket page is never counted.
 // After a failed metrics refresh an older count is not shown as if it were current.
+// A real failure comes first: an older available=false must not hide it.
 function WaitingCount() {
   const query = useWaitingCount();
-  if (isMissingApi(query.error))
-    return <p className="text-sm text-muted-foreground">검토 대기 건수: 지표 없음</p>;
-  if (query.error)
+  if (query.error && !isMissingApi(query.error))
     return (
       <p className="text-sm text-muted-foreground">
         검토 대기 건수를 확인할 수 없습니다. 검토 지표 영역에서 다시 시도하세요.
       </p>
     );
+  // 404 means the running API has no metrics route yet; available=false means it has
+  // the route and nothing to count. Both say the same thing to the reader.
+  if (isMissingApi(query.error) || query.data?.available === false)
+    return <p className="text-sm text-muted-foreground">검토 대기 건수: 지표 없음</p>;
   if (query.data)
     return (
       <p className="text-2xl font-semibold tracking-tight">
@@ -252,17 +255,19 @@ function RulePanel() {
 }
 
 // Metrics are shown exactly as the API returns them. No ratio or score is computed here.
-// A missing metrics route (404) only says "지표 없음". A real failure says the same and
-// keeps its reason and retry; older values stay only with the stale note.
+// A missing metrics route (404) and an available=false answer both only say "지표 없음".
+// A real failure says the same and keeps its reason and retry; older values stay only
+// with the stale note.
 function MetricsPanel() {
   const query = useWaitingCount();
   const missing = isMissingApi(query.error);
   const failed = query.error && !missing;
-  const data = missing ? undefined : query.data;
+  const answer = missing ? undefined : query.data;
+  const data = answer?.available ? answer : undefined;
   return (
     <Section label="검토 지표" className="md:col-span-2">
       {query.isPending && <StatusNote busy>지표 불러오는 중…</StatusNote>}
-      {query.error && !data && <StatusNote>지표 없음</StatusNote>}
+      {(query.error || answer?.available === false) && !data && <StatusNote>지표 없음</StatusNote>}
       {failed && (
         <QueryError
           error={query.error}

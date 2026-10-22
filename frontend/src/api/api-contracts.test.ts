@@ -129,6 +129,7 @@ describe('documented API contracts', () => {
     expect(await api.metrics({ from: 1, to: 2 })).toMatchObject({
       from: 1,
       to: 2,
+      available: true,
       tickets_total: 3,
     });
   });
@@ -437,5 +438,7 @@ it('keeps detail review history and waiting timestamp consistent with refreshed 
   expect(after.ticket.awaiting_human_at).toBe(before.ticket.awaiting_human_at);
   expect(waiting.items.some((ticket) => ticket.ticket_id === 'tk_sample')).toBe(false);
   expect(all.items.find((ticket) => ticket.ticket_id === 'tk_sample')).toEqual(after.ticket);
+  // The mock serves counts, so both answers are the available=true side of the union.
+  if (!metricBefore.available || !metricAfter.available) throw new Error('metrics are missing');
   expect(metricAfter.tickets_awaiting_human).toBe(metricBefore.tickets_awaiting_human - 1);
 });

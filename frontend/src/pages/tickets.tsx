@@ -30,7 +30,7 @@ function WaitingCount() {
             retry={() => void query.refetch()}
           />
         )}
-        {query.data && (
+        {query.data?.available && (
           <p className="text-2xl font-semibold tracking-tight">
             검토 대기 {query.data.tickets_awaiting_human}건
           </p>

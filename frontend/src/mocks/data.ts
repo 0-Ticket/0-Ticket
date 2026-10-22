@@ -77,4 +77,6 @@ export const data = {
   rules: [...scenarios.rules, ...caseDetail.rules, ...huntRuleDetail.rules],
   l2_reviews: [...scenarios.l2_reviews, ...incidentDetail.l2_reviews, ...caseDetail.l2_reviews],
 } as unknown as MockData;
-export const metrics: Metrics = responses.metrics;
+// JSON widens available to boolean, which no longer fits the Metrics union, so the
+// fixture's answer is narrowed here rather than in the handler.
+export const metrics = responses.metrics as Metrics;

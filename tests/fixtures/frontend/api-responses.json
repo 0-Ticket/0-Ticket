@@ -92,6 +92,7 @@
   "metrics": {
     "from": 1791849600000,
     "to": 1791853200000,
+    "available": true,
     "tickets_total": 3,
     "tickets_awaiting_human": 3,
     "l1_reviews_total": 1,
