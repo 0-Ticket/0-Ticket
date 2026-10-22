@@ -82,6 +82,10 @@ class ElasticError(RuntimeError):
         self.status = status
 
 
+class ElasticUnreachableError(ElasticError):
+    """No answer at all: no connection or no answer in time. ``status`` is None."""
+
+
 class UnusableHitError(ValueError):
     """A hit cannot become C2. The message names the reason, never the content."""
 
@@ -126,13 +130,13 @@ class ElasticClient:
             # The answer body may repeat the query, which holds log values: leave it out.
             raise ElasticError(f"Elasticsearch answered HTTP {status}", status) from None
         except TimeoutError:
-            raise ElasticError("Elasticsearch did not answer in time") from None
+            raise ElasticUnreachableError("Elasticsearch did not answer in time") from None
         except URLError as error:
             if isinstance(error.reason, TimeoutError):
-                raise ElasticError("Elasticsearch did not answer in time") from None
-            raise ElasticError("cannot reach Elasticsearch") from None
+                raise ElasticUnreachableError("Elasticsearch did not answer in time") from None
+            raise ElasticUnreachableError("cannot reach Elasticsearch") from None
         except OSError:
-            raise ElasticError("cannot reach Elasticsearch") from None
+            raise ElasticUnreachableError("cannot reach Elasticsearch") from None
         try:
             answer = json.loads(raw)
         except (ValueError, UnicodeDecodeError):
