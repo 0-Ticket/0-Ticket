@@ -23,6 +23,7 @@ from test_elastic_siem_mcp import lab_indices, siem_settings
 from test_elastic_siem_mcp import query as elastic_query
 
 from soc.config import DirectSiemSettings
+from soc.contracts import ContractValidationError
 from soc.l1.mcp.server import ToolServer
 from soc.l1.mcp.siem.base import SiemAdapterError, SiemUnavailableError
 from soc.l1.mcp.siem.direct import DirectSiemMcp
@@ -92,6 +93,35 @@ class BrokenAdapter:
 
     def health_check(self):
         raise AssertionError("not used")
+
+
+class ReturningAdapter:
+    """Adapter code that answers, but with records that are not C2 content."""
+
+    def __init__(self, records):
+        self.records = records
+
+    def query(self, query):
+        return self.records
+
+    def health_check(self):
+        raise AssertionError("not used")
+
+
+def not_c2_records():
+    """Each breaks C2 its own way, and each carries text that must never leave the tool."""
+    return [
+        # No scenario and no raw_ids.
+        {"kind": "alert", "fields": {"time": 1, "token": SECRET, "url": LOG_TEXT}},
+        # source_record_id is the core's to assign.
+        {
+            "kind": "alert",
+            "scenario": "web_scan",
+            "raw_ids": ["raw_web_access.log_1"],
+            "fields": {"time": 1, "token": SECRET, "url": LOG_TEXT},
+            "source_record_id": "src_" + "0" * 64,
+        },
+    ]
 
 
 @pytest.fixture
@@ -230,6 +260,35 @@ def test_neutral_error_message_stays_out_of_the_mcp_result_and_log(tmp_path, cap
     assert result.is_error is True
     logged = caplog.text + "".join(logged_tracebacks(caplog))
     for text in (SECRET, "UNION SELECT", PATH):
+        assert text not in error_text(result)
+        assert text not in logged
+
+
+@pytest.mark.parametrize("record", not_c2_records())
+def test_records_that_are_not_c2_become_an_adapter_error(tmp_path, record):
+    """#111 [P2]: an answer that cannot become C2 is an answer that cannot be used."""
+    server = tool_server(tmp_path, ReturningAdapter([record]))
+
+    with pytest.raises(SiemAdapterError) as raised:
+        server.call("l1", QUERY_SIEM, **arguments(elastic_query()))
+    assert not isinstance(raised.value, ContractValidationError)
+    assert str(raised.value) == ADAPTER_ERROR_MESSAGE
+    assert raised.value.__cause__ is None
+    for text in (SECRET, LOG_TEXT):
+        assert text not in str(raised.value)
+
+
+@pytest.mark.parametrize("record", not_c2_records())
+def test_records_that_are_not_c2_stay_out_of_the_mcp_result_and_log(tmp_path, caplog, record):
+    server = tool_server(tmp_path, ReturningAdapter([record]))
+
+    with caplog.at_level(logging.DEBUG):
+        result = call_through_protocol(server, arguments(elastic_query()))
+
+    assert result.is_error is True
+    logged = caplog.text + "".join(logged_tracebacks(caplog))
+    assert "ContractValidationError" not in logged
+    for text in (SECRET, "UNION SELECT"):
         assert text not in error_text(result)
         assert text not in logged
 

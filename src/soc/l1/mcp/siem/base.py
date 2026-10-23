@@ -9,7 +9,8 @@ core assigns through ``to_c2_records``, exactly as the ingest entry does (box 3)
 A query that fails raises one of two errors, so a caller (and the evidence queue's
 ``failure_reason``, which keeps the error type name) can tell why without the
 SIEM's name: ``SiemUnavailableError`` when the SIEM cannot be reached,
-``SiemAdapterError`` when it answered but the answer cannot be used. Their
+``SiemAdapterError`` when it answered but the answer cannot be used, which
+includes records the adapter returned that do not convert to C2. Their
 messages name the failure only, never a query value, log content or secret, and
 the ``query_siem`` tool replaces them with fixed messages anyway: only the type
 leaves the tool.
@@ -38,7 +39,9 @@ class SiemUnavailableError(RuntimeError):
 
 
 class SiemAdapterError(RuntimeError):
-    """The SIEM answered, but the adapter cannot turn the answer into records.
+    """The SIEM answered, but the answer cannot be used as C2 records.
+
+    The tool raises it as well when records the adapter returned fail C2 conversion.
 
     The tool also raises this for any other exception from adapter code. Either
     way it carries a fixed message, because adapter messages are plugin text.

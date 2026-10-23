@@ -52,13 +52,13 @@ def siem_tools(adapter: SiemMcpAdapter) -> tuple[ToolSpec, ...]:
         )
         # Remade, never re-raised: the type survives for the queue's failure_reason, the
         # adapter's message and cause do not (they would reach MCP replies and server logs).
+        # Records that cannot become C2 are an answer that cannot be used, too.
         try:
-            records = adapter.query(query)
+            return to_c2_records(adapter.query(query))
         except SiemUnavailableError:
             raise SiemUnavailableError(UNAVAILABLE_MESSAGE) from None
         except Exception:  # Adapters are plugin code: any other failure is an adapter error.
             raise SiemAdapterError(ADAPTER_ERROR_MESSAGE) from None
-        return to_c2_records(records)
 
     return (
         ToolSpec(
