@@ -3,7 +3,8 @@
 L1 (entity lookup), L2 (the same entity's past) and L3 (hypothesis checks) read
 the SIEM through this one tool. Which SIEM answers is the adapter's business, so
 the tool and the agents stay the same when the SIEM changes, and so do its errors:
-``SiemUnavailableError`` or ``SiemAdapterError`` (``base.py``), whatever the SIEM.
+``SiemUnavailableError`` or ``SiemAdapterError`` (``base.py``), whatever the SIEM,
+each with one fixed message whatever the adapter wrote.
 """
 
 from typing import Any, Literal
@@ -24,6 +25,10 @@ QUERY_SIEM_DESCRIPTION = (
     "Times are UTC epoch milliseconds and both ends count. Returns stored records "
     "as data; it changes nothing in the SIEM or anywhere else."
 )
+# What a caller sees when a query fails. Adapter messages are plugin text that may
+# hold secrets, log content or paths, so only the error type crosses the tool.
+UNAVAILABLE_MESSAGE = "SIEM cannot be reached"
+ADAPTER_ERROR_MESSAGE = "SIEM answer cannot be used"
 
 
 def siem_tools(adapter: SiemMcpAdapter) -> tuple[ToolSpec, ...]:
@@ -45,12 +50,14 @@ def siem_tools(adapter: SiemMcpAdapter) -> tuple[ToolSpec, ...]:
             end_at=end_at,
             limit=limit,
         )
+        # Remade, never re-raised: the type survives for the queue's failure_reason, the
+        # adapter's message and cause do not (they would reach MCP replies and server logs).
         try:
             records = adapter.query(query)
-        except (SiemUnavailableError, SiemAdapterError):
-            raise
-        except Exception:  # Adapters are plugin code: their message may hold secrets or logs.
-            raise SiemAdapterError("SIEM MCP adapter failed") from None
+        except SiemUnavailableError:
+            raise SiemUnavailableError(UNAVAILABLE_MESSAGE) from None
+        except Exception:  # Adapters are plugin code: any other failure is an adapter error.
+            raise SiemAdapterError(ADAPTER_ERROR_MESSAGE) from None
         return to_c2_records(records)
 
     return (

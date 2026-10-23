@@ -26,7 +26,6 @@ from soc.ingest.siem.elastic import (
     EVENT_SCENARIO,
     MUTABLE_ALERT_FIELDS,
     ElasticError,
-    ElasticUnreachableError,
     create_elastic,
     hit_to_c2,
 )
@@ -225,23 +224,6 @@ def test_error_message_holds_the_status_but_not_the_answer(fake, elastic):
         elastic.fetch(None, BIG)
     assert "500" in str(error.value)
     assert "forced" not in str(error.value)
-
-
-def test_unreachable_is_still_an_elastic_error_without_a_status():
-    """#111: the SIEM MCP adapter tells this apart; the connector still catches ElasticError."""
-    elastic = create_elastic(siem_settings(unreachable_url()), ENV)
-    with pytest.raises(ElasticUnreachableError) as error:
-        elastic.fetch(None, BIG)
-    assert isinstance(error.value, ElasticError)
-    assert error.value.status is None
-    assert elastic.health_check().ok is False
-
-
-def test_error_answer_is_not_an_unreachable_error(fake, elastic):
-    fake.status_override = 500
-    with pytest.raises(ElasticError) as error:
-        elastic.fetch(None, BIG)
-    assert not isinstance(error.value, ElasticUnreachableError)
 
 
 def test_health_check_names_the_index_on_403(fake, elastic):

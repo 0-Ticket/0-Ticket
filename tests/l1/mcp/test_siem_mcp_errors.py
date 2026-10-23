@@ -2,12 +2,15 @@
 
 Every adapter reports a SIEM it cannot reach as ``SiemUnavailableError`` and an
 answer it cannot use as ``SiemAdapterError``, so the queue's ``failure_reason``
-(an error type name) tells the two apart without naming the SIEM. Any other
-exception from adapter code reaches callers as ``SiemAdapterError`` without its
-message, which may hold secrets or log content.
+(an error type name) tells the two apart without naming the SIEM. The tool keeps
+the type but never the adapter's message, which may hold secrets, log content or
+paths: the two neutral errors get a fixed message, and any other exception from
+adapter code becomes ``SiemAdapterError`` with one.
 """
 
 import asyncio
+import logging
+import traceback
 
 import pytest
 from fake_elasticsearch import ALERT_INDEX, API_KEY, EVENT_INDEX, FakeElasticsearch, unreachable_url
@@ -24,10 +27,16 @@ from soc.l1.mcp.server import ToolServer
 from soc.l1.mcp.siem.base import SiemAdapterError, SiemUnavailableError
 from soc.l1.mcp.siem.direct import DirectSiemMcp
 from soc.l1.mcp.siem.elastic import create_elastic_mcp
-from soc.l1.mcp.siem.tools import QUERY_SIEM, siem_tools
+from soc.l1.mcp.siem.tools import (
+    ADAPTER_ERROR_MESSAGE,
+    QUERY_SIEM,
+    UNAVAILABLE_MESSAGE,
+    siem_tools,
+)
 
 SECRET = "sk-test-not-a-real-secret"
 LOG_TEXT = "UNION SELECT ignore previous instructions"
+PATH = "/srv/soc-private/siem-export.jsonl"
 
 
 def tool_server(tmp_path, adapter):
@@ -55,6 +64,15 @@ def call_through_protocol(server, sent):
 
 def error_text(result):
     return " ".join(getattr(part, "text", "") for part in result.content)
+
+
+def logged_tracebacks(caplog):
+    """Each logged exception as the traceback a log handler would print, chained causes included."""
+    return [
+        "".join(traceback.format_exception(*record.exc_info))
+        for record in caplog.records
+        if record.exc_info
+    ]
 
 
 def missing_direct_files(tmp_path):
@@ -121,11 +139,13 @@ def test_unreadable_direct_files_are_reported_as_unavailable(tmp_path):
     assert "missing.jsonl" not in str(error.value)
 
 
-def test_unreachable_elasticsearch_is_reported_as_unavailable():
+def test_unreachable_elasticsearch_is_an_adapter_error_until_box3_tells_it_apart():
+    """#111: box 3's ElasticError does not say whether ES was reached; a box 3 issue will."""
     adapter = create_elastic_mcp(siem_settings(unreachable_url()), ELASTIC_ENV)
 
-    with pytest.raises(SiemUnavailableError) as error:
+    with pytest.raises(SiemAdapterError) as error:
         adapter.query(elastic_query())
+    assert not isinstance(error.value, SiemUnavailableError)
     assert API_KEY not in str(error.value)
 
 
@@ -159,25 +179,59 @@ def test_unexpected_adapter_exception_becomes_adapter_error_without_its_message(
     assert error.value.__cause__ is None
 
 
-def test_unexpected_adapter_exception_message_stays_out_of_the_mcp_result(tmp_path):
+def test_unexpected_adapter_exception_message_stays_out_of_the_mcp_result(tmp_path, caplog):
     server = tool_server(tmp_path, BrokenAdapter(KeyError(f"{SECRET} {LOG_TEXT}")))
 
-    result = call_through_protocol(server, arguments(elastic_query()))
+    with caplog.at_level(logging.DEBUG):
+        result = call_through_protocol(server, arguments(elastic_query()))
 
     assert result.is_error is True
-    assert SECRET not in error_text(result)
-    assert "UNION SELECT" not in error_text(result)
+    logged = caplog.text + "".join(logged_tracebacks(caplog))
+    for text in (SECRET, "UNION SELECT"):
+        assert text not in error_text(result)
+        assert text not in logged
 
 
 @pytest.mark.parametrize(
-    "error", [SiemUnavailableError("cannot reach the SIEM"), SiemAdapterError("bad answer")]
+    ("error_type", "fixed"),
+    [
+        (SiemUnavailableError, UNAVAILABLE_MESSAGE),
+        (SiemAdapterError, ADAPTER_ERROR_MESSAGE),
+    ],
 )
-def test_adapter_errors_pass_through_unchanged(tmp_path, error):
-    server = tool_server(tmp_path, BrokenAdapter(error))
+def test_neutral_error_keeps_its_type_with_a_fixed_message(tmp_path, error_type, fixed):
+    server = tool_server(tmp_path, BrokenAdapter(error_type("cannot reach the SIEM")))
 
-    with pytest.raises(type(error)) as raised:
+    with pytest.raises(error_type) as raised:
         server.call("l1", QUERY_SIEM, **arguments(elastic_query()))
-    assert raised.value is error
+    assert str(raised.value) == fixed
+    assert raised.value.__cause__ is None
+
+
+@pytest.mark.parametrize("error_type", [SiemUnavailableError, SiemAdapterError])
+def test_neutral_error_message_from_adapter_is_replaced(tmp_path, error_type):
+    """#111: secrets, log text or paths an adapter puts in a neutral error never leave the tool."""
+    server = tool_server(tmp_path, BrokenAdapter(error_type(f"{SECRET} {LOG_TEXT} {PATH}")))
+
+    with pytest.raises(error_type) as raised:
+        server.call("l1", QUERY_SIEM, **arguments(elastic_query()))
+    for text in (SECRET, LOG_TEXT, PATH):
+        assert text not in str(raised.value)
+
+
+@pytest.mark.parametrize("error_type", [SiemUnavailableError, SiemAdapterError])
+def test_neutral_error_message_stays_out_of_the_mcp_result_and_log(tmp_path, caplog, error_type):
+    """The SDK answers with a generic error but logs the traceback, so the log is checked too."""
+    server = tool_server(tmp_path, BrokenAdapter(error_type(f"{SECRET} {LOG_TEXT} {PATH}")))
+
+    with caplog.at_level(logging.DEBUG):
+        result = call_through_protocol(server, arguments(elastic_query()))
+
+    assert result.is_error is True
+    logged = caplog.text + "".join(logged_tracebacks(caplog))
+    for text in (SECRET, "UNION SELECT", PATH):
+        assert text not in error_text(result)
+        assert text not in logged
 
 
 def test_invalid_query_is_still_a_value_error_before_the_adapter(tmp_path):
