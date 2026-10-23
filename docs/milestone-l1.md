@@ -233,7 +233,7 @@ uv run python scripts/demo_run.py show --db zt_demo81         # 발표: API와 �
 - DB 이름은 `--db`로만 받고, 접속 계정·주소는 `DATABASE_URL`·`DATABASE_READONLY_URL`에서 DB 이름만 바꿔 쓴다. 이미 있는 이름이면 멈춘다. 러너는 DB를 지우지 않는다.
 - 두 URL의 사용자가 같으면 GRANT는 건너뛴다. 출력에는 계정 이름까지만 나오고 비밀번호와 URL은 나오지 않는다.
 - 비교 표는 `raw_id`, `rule_id`, 경로, 결정 값과 건수만 출력한다. 로그 값(URL, IP 등)은 출력하지 않는다. 판정 기대값은 참고값이므로 다르면 `DIFF`로 표시만 하고 멈추지 않는다.
-- 화면은 개발 서버의 `/api` 프록시로 API에 붙는다(H6, #97). L1 시연 API에 없는 지표·Incident·Case·헌팅·룰은 대시보드에 "지표 없음"·"아직 없음"으로 보인다.
+- 화면은 개발 서버의 `/api` 프록시로 API에 붙는다(H6, #97). 지표는 경로가 있고 집계할 것이 없어 `available: false`로 답하므로 대시보드에 "지표 없음"으로 보인다(#103). L1 시연 API에 없는 Incident·Case·헌팅·룰은 "아직 없음"으로 보인다.
 
 ### 통합 테스트
 

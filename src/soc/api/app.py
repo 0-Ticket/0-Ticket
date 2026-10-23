@@ -1,15 +1,17 @@
-"""The screen API of box 27: read-only L1 results (D-027, docs/api-contracts.md).
+"""The screen API of the web screens: read-only L1 results (D-027, docs/api-contracts.md).
 
-Five GET paths and nothing else. There is no path that changes an L1 result:
+Six GET paths and nothing else. There is no path that changes an L1 result:
 people read promotions, holds, verdicts and failed evidence requests here, and
-the only human approval in v2 is box 21 (docs/architecture.md).
+the only human approval in v2 is box 21 (docs/architecture.md). Five paths serve
+box 27; ``/api/metrics`` serves the F6 dashboard and has no aggregate to serve yet.
 """
 
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from typing import Annotated
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
@@ -32,7 +34,7 @@ def create_app(readers: ApiReaders) -> FastAPI:
         finally:
             readers.close()
 
-    app = FastAPI(title="0-Ticket SOC L1 results", lifespan=lifespan)
+    app = FastAPI(title="0-Ticket SOC screen API", lifespan=lifespan)
 
     @app.exception_handler(RequestValidationError)
     async def _invalid_request(request: Request, exc: RequestValidationError) -> JSONResponse:
@@ -134,5 +136,15 @@ def create_app(readers: ApiReaders) -> FastAPI:
             limit=limit,
         )
         return page(result.items, result.next_cursor)
+
+    # ``from`` is a Python keyword, so the parameter needs the query alias.
+    @app.get("/api/metrics")
+    def get_metrics(from_: Annotated[int, Query(alias="from")], to: int):
+        if from_ > to:
+            return error("invalid_input", "from must not be later than to")
+        # The stores the aggregate needs do not exist yet (C9, C15, Incident members),
+        # so the window is echoed and available says there is nothing to count. Zeros
+        # would read as "counted, none" instead (docs/api-contracts.md "지표").
+        return {"from": from_, "to": to, "available": False}
 
     return app

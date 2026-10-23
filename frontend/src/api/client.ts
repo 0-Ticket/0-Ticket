@@ -12,9 +12,11 @@ export class ApiError extends Error {
   }
 }
 
-// A 404 on a list or metrics route means the running API does not serve it yet
-// (the L1 demo API has no Incident, Case, Hunt, Rule or metrics route). Screens show
-// it as "not there yet", not as a failure. Detail pages keep their own not_found handling.
+// A 404 on a list route means the running API does not serve it yet (the L1 demo API has
+// no Incident, Case, Hunt or Rule route). Screens show it as "not there yet", not as a
+// failure. Detail pages keep their own not_found handling. The metrics route is served
+// now and says "nothing to count" with available=false (#103), but an older or partly
+// implemented server may still answer 404 there, so that path stays.
 export function isMissingApi(error: unknown): boolean {
   return error instanceof ApiError && error.status === 404;
 }

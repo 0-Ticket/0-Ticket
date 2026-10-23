@@ -119,6 +119,7 @@ it('shows the raw metric values and the period without computing any ratio', asy
       return HttpResponse.json({
         from: Number(query.get('from')),
         to: Number(query.get('to')),
+        available: true,
         tickets_total: 30,
         tickets_awaiting_human: 4,
         l1_reviews_total: 12,
@@ -395,6 +396,59 @@ it('shows "지표 없음" without an error when /api/metrics is not there (404)'
   expect(tickets.getByText('검토 대기 건수: 지표 없음')).toBeInTheDocument();
   expect(tickets.queryByText(/^검토 대기 \d+건$/)).toBeNull();
   expect(tickets.getByRole('list', { name: 'Ticket 상단 항목' })).toBeInTheDocument();
+});
+
+// The implemented route says "nothing to count" with available=false (#103). Unlike the
+// 404 above it is a normal answer, so neither region may show an error or a zero.
+const emptyMetrics = ({ request }: { request: Request }) => {
+  const query = new URL(request.url).searchParams;
+  return HttpResponse.json({
+    from: Number(query.get('from')),
+    to: Number(query.get('to')),
+    available: false,
+  });
+};
+
+it('shows "지표 없음" without an error or a zero when metrics are not available', async () => {
+  server.use(http.get('*/api/metrics', emptyMetrics));
+  mount();
+  await ready(['검토 지표']);
+  const metricsRegion = region('검토 지표');
+  expect(await metricsRegion.findByText('지표 없음')).toBeInTheDocument();
+  expect(metricsRegion.queryByRole('button', { name: '다시 시도' })).toBeNull();
+  expect(metricsRegion.queryByText(/0건/)).toBeNull();
+  expect(metricsRegion.queryByText(/^L1 검토/)).toBeNull();
+  expect(metricsRegion.queryByText(/집계 기간/)).toBeNull();
+  expect(screen.queryByRole('alert')).toBeNull();
+  const tickets = region('Ticket 현황');
+  expect(tickets.getByText('검토 대기 건수: 지표 없음')).toBeInTheDocument();
+  expect(tickets.queryByText(/^검토 대기 \d+건$/)).toBeNull();
+});
+
+it('keeps a real failure visible when the last answer was available=false', async () => {
+  let fail = false;
+  server.use(
+    http.get('*/api/metrics', (info) => {
+      if (!fail) return emptyMetrics(info);
+      return HttpResponse.json(
+        { error: { code: 'internal', message: 'metrics down' } },
+        { status: 500 },
+      );
+    }),
+  );
+  const view = mount();
+  await ready(['검토 지표']);
+  const metricsRegion = region('검토 지표');
+  expect(await metricsRegion.findByText('지표 없음')).toBeInTheDocument();
+  fail = true;
+  await view.client.refetchQueries({ queryKey: ['metrics', 'current-waiting'] });
+  // An older available=false must not hide the failed refresh (docs/frontend.md F6).
+  expect(await metricsRegion.findByRole('alert')).toHaveTextContent('metrics down');
+  expect(
+    region('Ticket 현황').getByText(
+      '검토 대기 건수를 확인할 수 없습니다. 검토 지표 영역에서 다시 시도하세요.',
+    ),
+  ).toBeInTheDocument();
 });
 
 it('keeps a metrics failure inside the metrics region and never falls back to the list length', async () => {

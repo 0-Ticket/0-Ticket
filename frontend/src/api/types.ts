@@ -62,15 +62,20 @@ export type RuleReviewInput = {
   decision: L2Review['decision'];
 };
 export type CasePatch = Partial<Pick<Case, 'status' | 'tasks' | 'lessons'>>;
-export type Metrics = {
-  from: number;
-  to: number;
-  tickets_total: number;
-  tickets_awaiting_human: number;
-  l1_reviews_total: number;
-  l1_overturned: number;
-  l2_reviews_total: number;
-  l2_rejects_by_type: Record<string, number>;
-  incident_members_by_source: Record<string, number>;
-  normalize_failures_by_reason: Record<string, number>;
-};
+type MetricsWindow = { from: number; to: number };
+
+// available tells the two answers apart (docs/api-contracts.md "지표"). A union, not
+// optional fields: optional ones would let available=true arrive with no counts at all.
+export type Metrics =
+  | (MetricsWindow & { available: false })
+  | (MetricsWindow & {
+      available: true;
+      tickets_total: number;
+      tickets_awaiting_human: number;
+      l1_reviews_total: number;
+      l1_overturned: number;
+      l2_reviews_total: number;
+      l2_rejects_by_type: Record<string, number>;
+      incident_members_by_source: Record<string, number>;
+      normalize_failures_by_reason: Record<string, number>;
+    });

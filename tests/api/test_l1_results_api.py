@@ -347,3 +347,32 @@ def test_close_closes_the_agent_log_too(tmp_path):
     )
     readers.close()
     assert agent_log_store.closed and readers.tickets.closed
+
+
+# 지표는 집계를 쌓는 저장소가 아직 없다(C9·C15·Incident 묶음 항목). 경로는 그 사실을
+# available=false로 말하고, 없다는 것을 오류로 돌려주지 않는다(#103).
+def test_metrics_returns_an_empty_state_without_an_error(client):
+    status, body = get(client, "/api/metrics", **{"from": 0, "to": 1})
+    assert status == 200
+    assert body["available"] is False
+    assert set(body) == {"from", "to", "available"}
+
+
+def test_metrics_window_echoes_the_requested_range(client):
+    status, body = get(client, "/api/metrics", **{"from": 1791849600000, "to": 1791853200000})
+    assert status == 200
+    assert (body["from"], body["to"]) == (1791849600000, 1791853200000)
+
+
+@pytest.mark.parametrize(
+    "window",
+    [
+        {"from": "yesterday", "to": 1},
+        {"from": 0, "to": "now"},
+        {"from": 2, "to": 1},
+    ],
+)
+def test_metrics_rejects_a_bad_window(client, window):
+    status, body = get(client, "/api/metrics", **window)
+    assert status == 400
+    assert body["error"]["code"] == "invalid_input"
