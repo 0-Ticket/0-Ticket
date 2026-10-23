@@ -16,7 +16,7 @@ from typing import Any
 
 from soc.config import SiemSettings, load_config, read_secret
 from soc.ingest.siem.base import HealthStatus
-from soc.l1.mcp.siem.base import SiemQuery
+from soc.l1.mcp.siem.base import SiemQuery, SiemUnavailableError
 from soc.plugins import PluginRegistry
 
 FIXTURES = Path(__file__).resolve().parents[2] / "fixtures" / "l1" / "mcp"
@@ -55,6 +55,8 @@ class FakeSiemMcp:
 
     def query(self, query: SiemQuery) -> tuple[Mapping[str, Any], ...]:
         self.queries.append(query)
+        if not self._reachable:
+            raise SiemUnavailableError(f"cannot reach {self.base_url}")
         field = ENTITY_FIELDS.get(query.entity.type)
         if field is None:
             return ()

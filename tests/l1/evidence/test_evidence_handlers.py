@@ -5,6 +5,7 @@ import logging
 
 import pytest
 from evidence_fakes import AGENT, FakeEvidenceQueue, FakeTicketStore, load
+from fake_siem_mcp import BASE_URL, TOKEN, FakeSiemMcp
 from specialist_fakes import context_for
 
 from soc.config import load_config
@@ -161,6 +162,52 @@ def test_agent_without_query_siem_fails_the_request(tmp_path):
     assert failed["status"] == "failed"
     assert failed["failure_reason"] == "ToolNotAllowedError after 1 retries"
     assert adapter.queries == []
+
+
+def test_unreachable_siem_failure_reason_names_the_neutral_error(tmp_path):
+    """#111: the failure reason says the SIEM was unreachable, and not which SIEM it was."""
+    org = tmp_path / "org.toml"
+    org.write_text('[mcp.allowed_tools]\nl1 = ["query_siem"]\n', encoding="utf-8")
+    settings = load_config(org, environ={})
+    adapter = FakeSiemMcp(BASE_URL, TOKEN, reachable=False)
+    server = ToolServer(settings.mcp, siem_tools(adapter))
+    svc = queue_service(server, settings)
+    svc.enqueue(
+        agent=AGENT,
+        requester_type="alert",
+        requester_id="al_sample",
+        request_type="siem_mcp",
+        params=load("siem_mcp_alert_request.json")["params"],
+    )
+
+    failed = svc.process_next()
+
+    assert failed["status"] == "failed"
+    assert failed["failure_reason"] == "SiemUnavailableError after 1 retries"
+    assert len(adapter.queries) == 2
+
+
+def test_records_that_are_not_c2_fail_the_request_as_an_adapter_error(tmp_path):
+    """#111 [P2]: the failure reason is the neutral adapter error, not ContractValidationError."""
+    org = tmp_path / "org.toml"
+    org.write_text('[mcp.allowed_tools]\nl1 = ["query_siem"]\n', encoding="utf-8")
+    settings = load_config(org, environ={})
+    broken = {"kind": "alert", "fields": RECORD["fields"]}  # No scenario, no raw_ids.
+    adapter = FakeSiemMcp(BASE_URL, TOKEN, records=[broken])
+    server = ToolServer(settings.mcp, siem_tools(adapter))
+    svc = queue_service(server, settings)
+    svc.enqueue(
+        agent=AGENT,
+        requester_type="alert",
+        requester_id="al_sample",
+        request_type="siem_mcp",
+        params=load("siem_mcp_alert_request.json")["params"],
+    )
+
+    failed = svc.process_next()
+
+    assert failed["status"] == "failed"
+    assert failed["failure_reason"] == "SiemAdapterError after 1 retries"
 
 
 def test_default_handlers_cover_every_request_type(tmp_path):

@@ -6,6 +6,15 @@ write or response method here, and ``READ_ONLY_METHODS`` is what an adapter may
 expose. Results are C2 SiemAlert content without ``source_record_id``, which the
 core assigns through ``to_c2_records``, exactly as the ingest entry does (box 3).
 
+A query that fails raises one of two errors, so a caller (and the evidence queue's
+``failure_reason``, which keeps the error type name) can tell why without the
+SIEM's name: ``SiemUnavailableError`` when the SIEM cannot be reached,
+``SiemAdapterError`` when it answered but the answer cannot be used, which
+includes records the adapter returned that do not convert to C2. Their
+messages name the failure only, never a query value, log content or secret, and
+the ``query_siem`` tool replaces them with fixed messages anyway: only the type
+leaves the tool.
+
 Changing this interface breaks installed adapters, so it follows the contract
 change procedure (docs/data-contracts.md).
 """
@@ -23,6 +32,20 @@ KINDS = ("alert", "event")
 # What an adapter may expose. A response action (blocking, isolating) belongs to
 # the approval path (docs/security-policy.md 4), never to a tool an agent can call.
 READ_ONLY_METHODS = frozenset({"query", "health_check"})
+
+
+class SiemUnavailableError(RuntimeError):
+    """The SIEM cannot be reached: no connection, no answer in time, files unreadable."""
+
+
+class SiemAdapterError(RuntimeError):
+    """The SIEM answered, but the answer cannot be used as C2 records.
+
+    The tool raises it as well when records the adapter returned fail C2 conversion.
+
+    The tool also raises this for any other exception from adapter code. Either
+    way it carries a fixed message, because adapter messages are plugin text.
+    """
 
 
 @dataclass(frozen=True, slots=True)
@@ -63,6 +86,7 @@ class SiemMcpAdapter(Protocol):
         """Return at most ``query.limit`` C2 contents matching the query.
 
         An entity type this SIEM does not hold is not an error: return nothing.
+        Raises ``SiemUnavailableError`` or ``SiemAdapterError`` when the query fails.
         """
         ...
 

@@ -19,6 +19,8 @@ One query becomes one ``POST /<index>/_search``, written as a structured query
 
 Alert fields Kibana changes later (``MUTABLE_ALERT_FIELDS``) are left out, as at
 ingest. A hit that cannot become C2 is skipped and only counted in the log.
+Any failed request raises ``SiemAdapterError``, even no connection or no answer
+in time: the box 3 client's ``ElasticError`` does not yet tell those apart.
 
 Only reads: ``POST /<index>/_search`` for queries and ``GET /<index>/_search?size=0``
 for the health check. Hit content may be attacker-written: it is returned as
@@ -38,13 +40,14 @@ from soc.ingest.siem.elastic import (
     MUTABLE_ALERT_FIELDS,
     TIME_FIELD,
     ElasticClient,
+    ElasticError,
     ElasticSiemConnector,
     UnusableHitError,
     hit_to_c2,
     open_client,
     search_hits,
 )
-from soc.l1.mcp.siem.base import SiemQuery
+from soc.l1.mcp.siem.base import SiemAdapterError, SiemQuery
 
 logger = logging.getLogger(__name__)
 
@@ -139,10 +142,16 @@ class ElasticSiemMcp:
         if body is None:
             return ()
         index = self._indices[query.kind]
-        answer = self._client.search(index, body)
+        try:
+            answer = self._client.search(index, body)
+            hits = search_hits(answer)
+        except ElasticError as error:
+            # ElasticError does not say whether Elasticsearch was reached, so every
+            # failure is an adapter error until box 3 tells the two apart (#111).
+            raise SiemAdapterError(str(error)) from None
         records: list[dict[str, Any]] = []
         reasons: list[str] = []
-        for hit in search_hits(answer)[: query.limit]:
+        for hit in hits[: query.limit]:
             if not isinstance(hit, dict):
                 reasons.append("is not an object")
                 continue

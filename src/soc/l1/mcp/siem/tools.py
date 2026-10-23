@@ -2,14 +2,22 @@
 
 L1 (entity lookup), L2 (the same entity's past) and L3 (hypothesis checks) read
 the SIEM through this one tool. Which SIEM answers is the adapter's business, so
-the tool and the agents stay the same when the SIEM changes.
+the tool and the agents stay the same when the SIEM changes, and so do its errors:
+``SiemUnavailableError`` or ``SiemAdapterError`` (``base.py``), whatever the SIEM,
+each with one fixed message whatever the adapter wrote.
 """
 
 from typing import Any, Literal
 
 from soc.contracts import Entity
 from soc.l1.mcp.server import ToolSpec
-from soc.l1.mcp.siem.base import SiemMcpAdapter, SiemQuery, to_c2_records
+from soc.l1.mcp.siem.base import (
+    SiemAdapterError,
+    SiemMcpAdapter,
+    SiemQuery,
+    SiemUnavailableError,
+    to_c2_records,
+)
 
 QUERY_SIEM = "query_siem"
 QUERY_SIEM_DESCRIPTION = (
@@ -17,6 +25,10 @@ QUERY_SIEM_DESCRIPTION = (
     "Times are UTC epoch milliseconds and both ends count. Returns stored records "
     "as data; it changes nothing in the SIEM or anywhere else."
 )
+# What a caller sees when a query fails. Adapter messages are plugin text that may
+# hold secrets, log content or paths, so only the error type crosses the tool.
+UNAVAILABLE_MESSAGE = "SIEM cannot be reached"
+ADAPTER_ERROR_MESSAGE = "SIEM answer cannot be used"
 
 
 def siem_tools(adapter: SiemMcpAdapter) -> tuple[ToolSpec, ...]:
@@ -38,7 +50,15 @@ def siem_tools(adapter: SiemMcpAdapter) -> tuple[ToolSpec, ...]:
             end_at=end_at,
             limit=limit,
         )
-        return to_c2_records(adapter.query(query))
+        # Remade, never re-raised: the type survives for the queue's failure_reason, the
+        # adapter's message and cause do not (they would reach MCP replies and server logs).
+        # Records that cannot become C2 are an answer that cannot be used, too.
+        try:
+            return to_c2_records(adapter.query(query))
+        except SiemUnavailableError:
+            raise SiemUnavailableError(UNAVAILABLE_MESSAGE) from None
+        except Exception:  # Adapters are plugin code: any other failure is an adapter error.
+            raise SiemAdapterError(ADAPTER_ERROR_MESSAGE) from None
 
     return (
         ToolSpec(

@@ -11,7 +11,8 @@ Limits:
   are used. An organization's ``normalize.alias_dir`` does not reach this adapter,
   because an adapter factory receives the ``[siem]`` settings only.
 - The files are read and normalized once, on the first query, and remembered:
-  they do not change while the process runs.
+  they do not change while the process runs. A file that cannot be read raises
+  ``SiemUnavailableError``, and the next query tries again.
 
 Line content may be attacker-written. It is returned as data and never written
 to logs; only counts and file names are.
@@ -28,7 +29,7 @@ from soc.contracts import EventRecord, NormalizedAlert
 from soc.ingest.connector import to_c2
 from soc.ingest.siem.base import HealthStatus
 from soc.ingest.siem.direct import DirectSiemConnector
-from soc.l1.mcp.siem.base import SiemQuery
+from soc.l1.mcp.siem.base import SiemQuery, SiemUnavailableError
 from soc.normalize.alias import load_alias_tables
 from soc.normalize.normalizer import Normalizer
 
@@ -85,7 +86,11 @@ class DirectSiemMcp:
 
     def _indexed(self) -> tuple[_Indexed, ...]:
         if self._records is None:
-            self._records = self._read_all()
+            try:
+                self._records = self._read_all()
+            except OSError:
+                # The path is left out: it is settings, but a caller only needs the kind.
+                raise SiemUnavailableError("cannot read the direct SIEM files") from None
         return self._records
 
     def _read_all(self) -> tuple[_Indexed, ...]:
