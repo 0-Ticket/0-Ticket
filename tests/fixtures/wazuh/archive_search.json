@@ -1,0 +1,46 @@
+{
+  "took": 2,
+  "timed_out": false,
+  "_shards": {"total": 1, "successful": 1, "skipped": 0, "failed": 0},
+  "hits": {
+    "total": {"value": 2, "relation": "eq"},
+    "max_score": null,
+    "hits": [
+      {
+        "_index": "wazuh-archives-4.x-2026.10.20",
+        "_id": "fake-archive-0001",
+        "_score": null,
+        "_source": {
+          "@timestamp": "2026-10-20T03:57:25.000Z",
+          "timestamp": "2026-10-20T03:57:25.000+0000",
+          "id": "1760932645.2001",
+          "agent": {"id": "001", "name": "web-01.example.com", "ip": "192.0.2.10"},
+          "manager": {"name": "wazuh-manager.example.com"},
+          "decoder": {"name": "web-accesslog"},
+          "data": {"srcip": "198.51.100.23", "id": "200", "url": "/index.html", "protocol": "GET"},
+          "full_log": "198.51.100.23 - - [20/Oct/2026:03:57:25 +0000] \"GET /index.html HTTP/1.1\" 200 512 \"-\" \"ExampleBrowser/1.0\"",
+          "location": "/var/log/apache2/access.log",
+          "input": {"type": "log"}
+        },
+        "sort": [1760932645000]
+      },
+      {
+        "_index": "wazuh-archives-4.x-2026.10.20",
+        "_id": "fake-archive-0002",
+        "_score": null,
+        "_source": {
+          "@timestamp": "2026-10-20T03:50:00.000Z",
+          "timestamp": "2026-10-20T03:50:00.000+0000",
+          "id": "1760932200.2002",
+          "agent": {"id": "000", "name": "wazuh-manager.example.com"},
+          "manager": {"name": "wazuh-manager.example.com"},
+          "predecoder": {"program_name": "cron", "timestamp": "Oct 20 03:50:00", "hostname": "wazuh-manager"},
+          "full_log": "Oct 20 03:50:00 wazuh-manager cron[880]: (test-user-02) CMD (/usr/local/bin/example-job)",
+          "location": "journald",
+          "input": {"type": "log"}
+        },
+        "sort": [1760932200000]
+      }
+    ]
+  }
+}
