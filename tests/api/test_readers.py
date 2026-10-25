@@ -35,12 +35,18 @@ READ_ONLY_KINDS = {
 class Reader:
     """Stands in for any store the API opens on a borrowed connection."""
 
+    # Set by the concurrency test: a read waits here for the other request's read.
+    barrier = None
+
     def __init__(self, kind, connection=None):
         self.kind = kind
         self.connection = connection
         self.closed = False
 
     def get(self, *args):
+        if type(self).barrier is not None:
+            # Raises BrokenBarrierError unless another request is reading right now.
+            type(self).barrier.wait()
         return None
 
     def close(self):
@@ -168,16 +174,18 @@ def test_the_pool_opens_and_closes_with_the_service(opened, monkeypatch):
 
 def test_concurrent_requests_are_not_serialized(opened, monkeypatch):
     """#104: requests used to queue behind one reader lock. Each has its own
-    connection now, so two of them may be inside the stores at the same time."""
-    overlapped = threading.Barrier(2, timeout=5)
+    connection now, so two of them may be inside the stores at the same time.
+
+    The barrier sits inside the store call, so the test only passes if two reads
+    are in the stores together: under the lock the second one never got in.
+    """
+    monkeypatch.setattr(Reader, "barrier", threading.Barrier(2, timeout=5))
     fake = FakePool()
     pool = reader_pool(fake, monkeypatch)
 
     def request(_):
         with pool.readers() as readers:
             readers.tickets.get("tk_x")
-            # Raises BrokenBarrierError if the other request cannot get in.
-            overlapped.wait()
 
     with ThreadPoolExecutor(max_workers=2) as threads:
         list(threads.map(request, range(2)))
