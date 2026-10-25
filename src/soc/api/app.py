@@ -4,18 +4,22 @@ Six GET paths and nothing else. There is no path that changes an L1 result:
 people read promotions, holds, verdicts and failed evidence requests here, and
 the only human approval in v2 is box 21 (docs/architecture.md). Five paths serve
 box 27; ``/api/metrics`` serves the F6 dashboard and has no aggregate to serve yet.
+
+The five paths that read take their stores from a dependency that borrows one
+connection for the request and gives it back when it ends (#104). ``/api/metrics``
+reads nothing, so it borrows nothing.
 """
 
 import logging
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager
 from typing import Annotated
 
-from fastapi import FastAPI, Query, Request
+from fastapi import Depends, FastAPI, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from soc.api.readers import ApiReaders
+from soc.api.readers import ApiReaderPool, ApiReaders
 from soc.contracts import ContractValidationError
 from soc.store.paging import DEFAULT_PAGE_LIMIT
 
@@ -24,15 +28,26 @@ from .responses import as_json, drain, error, findings_of, not_found, page
 logger = logging.getLogger(__name__)
 
 
-def create_app(readers: ApiReaders) -> FastAPI:
-    """The app reading through ``readers``, which it closes when it shuts down."""
+def create_app(reader_pool: ApiReaderPool) -> FastAPI:
+    """The app serving from ``reader_pool``, which it opens and closes with itself."""
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        # Fails the start if the database cannot be reached, instead of answering
+        # every request with an internal error.
+        reader_pool.open()
         try:
             yield
         finally:
-            readers.close()
+            reader_pool.close()
+
+    def borrow_readers() -> Iterator[ApiReaders]:
+        """One request's stores. FastAPI ends the generator when the request ends,
+        however it ends, and the connection goes back then."""
+        with reader_pool.readers() as readers:
+            yield readers
+
+    Readers = Annotated[ApiReaders, Depends(borrow_readers)]
 
     app = FastAPI(title="0-Ticket SOC screen API", lifespan=lifespan)
 
@@ -61,6 +76,7 @@ def create_app(readers: ApiReaders) -> FastAPI:
 
     @app.get("/api/tickets")
     def list_tickets(
+        readers: Readers,
         status: str | None = None,
         origin: str | None = None,
         handling_type: str | None = None,
@@ -79,7 +95,7 @@ def create_app(readers: ApiReaders) -> FastAPI:
         return page(result.items, result.next_cursor)
 
     @app.get("/api/tickets/{ticket_id}")
-    def get_ticket(ticket_id: str):
+    def get_ticket(ticket_id: str, readers: Readers):
         ticket = readers.tickets.get(ticket_id)
         if ticket is None:
             return not_found("ticket")
@@ -101,12 +117,12 @@ def create_app(readers: ApiReaders) -> FastAPI:
         }
 
     @app.get("/api/alerts/{alert_id}")
-    def get_alert(alert_id: str):
+    def get_alert(alert_id: str, readers: Readers):
         alert = readers.records.get_alert_record(alert_id)
         return not_found("alert") if alert is None else as_json(alert)
 
     @app.get("/api/alerts/{alert_id}/l1")
-    def get_alert_l1(alert_id: str):
+    def get_alert_l1(alert_id: str, readers: Readers):
         alert = readers.records.get_alert_record(alert_id)
         if alert is None:
             return not_found("alert")
@@ -122,6 +138,7 @@ def create_app(readers: ApiReaders) -> FastAPI:
 
     @app.get("/api/l1/decisions")
     def list_decisions(
+        readers: Readers,
         subject_type: str | None = None,
         decision: str | None = None,
         reason: str | None = None,

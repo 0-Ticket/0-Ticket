@@ -1,10 +1,11 @@
 """Screen API (box 27, D-027): read-only L1 results for the web screens.
 
-``create_app(readers)`` builds the FastAPI app, ``open_readers(settings)`` opens
-the read-only stores it serves from, and ``python -m soc.api`` runs it.
+``create_app(reader_pool)`` builds the FastAPI app, ``open_reader_pool(settings)``
+makes the pool of read-only connections it borrows one of per request, and
+``python -m soc.api`` runs it.
 """
 
 from .app import create_app
-from .readers import ApiReaders, open_readers
+from .readers import ApiReaderPool, ApiReaders, open_reader_pool
 
-__all__ = ["ApiReaders", "create_app", "open_readers"]
+__all__ = ["ApiReaderPool", "ApiReaders", "create_app", "open_reader_pool"]

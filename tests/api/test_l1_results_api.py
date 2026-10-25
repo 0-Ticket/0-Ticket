@@ -5,6 +5,7 @@ are the ones docs/api-contracts.md promises the screen and the mock (D-022).
 """
 
 import json
+from contextlib import contextmanager
 from pathlib import Path
 
 import pytest
@@ -38,6 +39,26 @@ class FakeAlertReader:
 
     def close(self):
         self.closed = True
+
+
+class FakeReaderPool:
+    """Stands in for the connection pool: every request gets the same fake stores,
+    the way the real pool gives each request stores on a borrowed connection (#104)."""
+
+    def __init__(self, request_readers):
+        self._readers = request_readers
+        self.opened = 0
+        self.closed = 0
+
+    def open(self):
+        self.opened += 1
+
+    def close(self):
+        self.closed += 1
+
+    @contextmanager
+    def readers(self):
+        yield self._readers
 
 
 def load_fixture():
@@ -95,8 +116,13 @@ def readers(data, tmp_path):
 
 
 @pytest.fixture
-def client(readers):
-    with TestClient(create_app(readers)) as client:
+def reader_pool(readers):
+    return FakeReaderPool(readers)
+
+
+@pytest.fixture
+def client(reader_pool):
+    with TestClient(create_app(reader_pool)) as client:
         yield client
 
 
@@ -105,10 +131,10 @@ def get(client, path, **params):
     return response.status_code, response.json()
 
 
-def test_the_api_has_no_write_routes(readers):
+def test_the_api_has_no_write_routes(reader_pool):
     """Box 27 is read-only: no path may accept a write method (K60)."""
     methods = set()
-    for route in create_app(readers).routes:
+    for route in create_app(reader_pool).routes:
         methods |= set(getattr(route, "methods", ()))
     assert methods <= {"GET", "HEAD"}
 
@@ -321,32 +347,20 @@ def test_an_unexpected_error_is_internal_without_detail(readers):
             pass
 
     readers.tickets = BrokenTickets()
-    with TestClient(create_app(readers), raise_server_exceptions=False) as client:
+    app = create_app(FakeReaderPool(readers))
+    with TestClient(app, raise_server_exceptions=False) as client:
         status, body = get(client, "/api/tickets/tk_api_escalated")
     assert status == 500
     assert body == {"error": {"code": "internal", "message": "internal error"}}
 
 
-def test_readers_are_closed_on_shutdown(readers):
-    with TestClient(create_app(readers)) as client:
+def test_the_pool_is_opened_and_closed_with_the_service(reader_pool):
+    """The stores of a request end with the request; what the service owns is the
+    pool, so it fills it on start and closes it on shutdown (#104)."""
+    with TestClient(create_app(reader_pool)) as client:
         get(client, "/api/tickets")
-    assert readers.records.closed and readers.decisions.closed
-    assert readers.branches.closed and readers.evidence_queue.closed
-    assert readers.tickets.closed
-
-
-def test_close_closes_the_agent_log_too(tmp_path):
-    agent_log_store = FakeAgentLogStore()
-    readers = ApiReaders(
-        tickets=FakeTicketStore(),
-        records=FakeAlertReader(),
-        decisions=FakeL1DecisionStore(),
-        branches=FakeBranchStore(),
-        evidence_queue=FakeEvidenceQueue(),
-        agent_log=AgentLogService(agent_log_store, tmp_path),
-    )
-    readers.close()
-    assert agent_log_store.closed and readers.tickets.closed
+        assert (reader_pool.opened, reader_pool.closed) == (1, 0)
+    assert (reader_pool.opened, reader_pool.closed) == (1, 1)
 
 
 # 지표는 집계를 쌓는 저장소가 아직 없다(C9·C15·Incident 묶음 항목). 경로는 그 사실을

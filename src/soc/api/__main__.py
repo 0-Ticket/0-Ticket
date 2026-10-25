@@ -13,12 +13,12 @@ import uvicorn
 from soc.config import load_config
 
 from .app import create_app
-from .readers import open_readers
+from .readers import open_reader_pool
 
 
 def main(argv: Sequence[str] | None = None, *, environ: Mapping[str, str] | None = None) -> int:
     settings = load_config(environ=environ)
-    app = create_app(open_readers(settings, environ))
+    app = create_app(open_reader_pool(settings, environ))
     uvicorn.run(app, host=settings.api.host, port=settings.api.port)
     return 0
 
