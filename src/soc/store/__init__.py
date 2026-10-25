@@ -73,9 +73,18 @@ def open_store(
     settings: Settings,
     environ: Mapping[str, str] | None = None,
     registry: PluginRegistry | None = None,
+    connection: object | None = None,
 ):
-    """Open the ``kind`` store of the configured backend, e.g. ``open_store("records", ...)``."""
+    """Open the ``kind`` store of the configured backend, e.g. ``open_store("records", ...)``.
+
+    ``connection`` is a connection the caller already borrowed from its backend's
+    pool, which the screen API does once per request (box 27, #104). It is opaque
+    to the core and only passed on when there is one, so a backend that does not
+    take it keeps working.
+    """
     environ = os.environ if environ is None else environ
     registry = STORES if registry is None else registry
     factory = registry.get(f"{settings.store.backend}.{kind}")
-    return factory(settings, environ)
+    if connection is None:
+        return factory(settings, environ)
+    return factory(settings, environ, connection=connection)

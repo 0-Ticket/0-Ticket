@@ -226,6 +226,16 @@ class RecordStoreFactory(Protocol):
 
     Retention comes from ``settings.store.raw_retention_days``; secrets are read
     from ``environ`` through ``soc.config.read_secret``.
+
+    A backend that wants to serve the screen API (box 27) also takes
+    ``connection``: a connection the caller borrowed from this backend's own pool,
+    to be used as it is and not closed by the store (#104). The core passes it
+    only when it has one, so a factory without the argument keeps working.
     """
 
-    def __call__(self, settings: Settings, environ: Mapping[str, str]) -> RecordStore: ...
+    def __call__(
+        self,
+        settings: Settings,
+        environ: Mapping[str, str],
+        connection: object | None = None,
+    ) -> RecordStore: ...

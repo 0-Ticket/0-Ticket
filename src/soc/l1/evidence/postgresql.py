@@ -151,18 +151,33 @@ class PostgresEvidenceQueue:
 
 
 def create_postgresql_evidence_queue(
-    settings: Settings, environ: Mapping[str, str] | None = None
+    settings: Settings,
+    environ: Mapping[str, str] | None = None,
+    connection: psycopg.Connection | None = None,
 ) -> PostgresEvidenceQueue:
-    """Factory registered as ``postgresql`` in the ``evidence_queues`` registry."""
-    return PostgresEvidenceQueue(connect(settings, environ), owns_connection=True)
+    """Factory registered as ``postgresql`` in the ``evidence_queues`` registry.
+
+    With ``connection`` the store reads through a connection the caller borrowed
+    from a pool: it is used as it is and never closed here (#104).
+    """
+    return PostgresEvidenceQueue(
+        connection or connect(settings, environ), owns_connection=connection is None
+    )
 
 
 def create_postgresql_readonly_evidence_queue(
-    settings: Settings, environ: Mapping[str, str] | None = None
+    settings: Settings,
+    environ: Mapping[str, str] | None = None,
+    connection: psycopg.Connection | None = None,
 ) -> PostgresEvidenceQueue:
     """The ``postgresql.readonly`` factory: ``list_by_requester`` works, every write fails.
 
     For the screen API (box 27), which only reads the queue
     (docs/security-policy.md 4).
+
+    With ``connection`` the store reads through a connection the caller borrowed
+    from a pool: it is used as it is and never closed here (#104).
     """
-    return PostgresEvidenceQueue(connect_readonly(settings, environ), owns_connection=True)
+    return PostgresEvidenceQueue(
+        connection or connect_readonly(settings, environ), owns_connection=connection is None
+    )

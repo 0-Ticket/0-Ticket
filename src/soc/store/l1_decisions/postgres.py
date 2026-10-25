@@ -20,8 +20,9 @@ from .checks import check_decision, check_list_args, check_subject_type, decode_
 
 
 class PostgresL1DecisionStore:
-    def __init__(self, conn: psycopg.Connection):
+    def __init__(self, conn: psycopg.Connection, *, owns_connection: bool = False):
         self._conn = conn
+        self._owns_connection = owns_connection
 
     def save(self, record: L1DecisionRecord) -> L1DecisionRecord:
         record = check_decision(record)
@@ -95,18 +96,36 @@ class PostgresL1DecisionStore:
         return DecisionPage(items, next_cursor)
 
     def close(self) -> None:
-        self._conn.close()
+        # A connection the caller handed over goes back to its pool, not here (#104).
+        if self._owns_connection:
+            self._conn.close()
 
 
 def create_postgres_l1_decisions(
-    settings: Settings, environ: Mapping[str, str]
+    settings: Settings,
+    environ: Mapping[str, str],
+    connection: psycopg.Connection | None = None,
 ) -> PostgresL1DecisionStore:
-    """The ``postgresql.l1_decisions`` factory: connects with ``[database]`` settings."""
-    return PostgresL1DecisionStore(connect(settings, environ))
+    """The ``postgresql.l1_decisions`` factory: connects with ``[database]`` settings.
+
+    With ``connection`` the store reads through a connection the caller borrowed
+    from a pool: it is used as it is and never closed here (#104).
+    """
+    return PostgresL1DecisionStore(
+        connection or connect(settings, environ), owns_connection=connection is None
+    )
 
 
 def create_postgres_readonly_l1_decisions(
-    settings: Settings, environ: Mapping[str, str]
+    settings: Settings,
+    environ: Mapping[str, str],
+    connection: psycopg.Connection | None = None,
 ) -> PostgresL1DecisionStore:
-    """The ``postgresql.readonly_l1_decisions`` factory: reads work, every save fails."""
-    return PostgresL1DecisionStore(connect_readonly(settings, environ))
+    """The ``postgresql.readonly_l1_decisions`` factory: reads work, every save fails.
+
+    With ``connection`` the store reads through a connection the caller borrowed
+    from a pool: it is used as it is and never closed here (#104).
+    """
+    return PostgresL1DecisionStore(
+        connection or connect_readonly(settings, environ), owns_connection=connection is None
+    )

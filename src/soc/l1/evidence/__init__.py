@@ -36,13 +36,22 @@ def open_evidence_queue(
     registry: PluginRegistry | None = None,
     *,
     readonly: bool = False,
+    connection: object | None = None,
 ) -> EvidenceQueue:
     """Open the queue backend ``[evidence_queue] backend`` names.
 
     With ``readonly=True`` it opens that backend's ``<backend>.readonly``
     implementation, which reads the same rows and fails on every write.
+
+    ``connection`` is a connection the caller already borrowed from its backend's
+    pool, which the screen API does once per request (box 27, #104). It is opaque
+    to the core and only passed on when there is one, so a backend that does not
+    take it keeps working.
     """
     environ = os.environ if environ is None else environ
     registry = EVIDENCE_QUEUES if registry is None else registry
     name = settings.evidence_queue.backend + (READONLY_SUFFIX if readonly else "")
-    return registry.get(name)(settings, environ)
+    factory = registry.get(name)
+    if connection is None:
+        return factory(settings, environ)
+    return factory(settings, environ, connection=connection)

@@ -19,8 +19,9 @@ from .checks import check_branch, check_limit, check_path, check_subject_type
 
 
 class PostgresBranchStore:
-    def __init__(self, conn: psycopg.Connection):
+    def __init__(self, conn: psycopg.Connection, *, owns_connection: bool = False):
         self._conn = conn
+        self._owns_connection = owns_connection
 
     def save(self, record: BranchResult) -> StoredBranch:
         record = check_branch(record)
@@ -66,16 +67,36 @@ class PostgresBranchStore:
         return tuple(StoredBranch(seq, validate_contract("BranchResult", rec)) for seq, rec in rows)
 
     def close(self) -> None:
-        self._conn.close()
+        # A connection the caller handed over goes back to its pool, not here (#104).
+        if self._owns_connection:
+            self._conn.close()
 
 
-def create_postgres_branches(settings: Settings, environ: Mapping[str, str]) -> PostgresBranchStore:
-    """The ``postgresql.branches`` factory: connects with ``[database]`` settings."""
-    return PostgresBranchStore(connect(settings, environ))
+def create_postgres_branches(
+    settings: Settings,
+    environ: Mapping[str, str],
+    connection: psycopg.Connection | None = None,
+) -> PostgresBranchStore:
+    """The ``postgresql.branches`` factory: connects with ``[database]`` settings.
+
+    With ``connection`` the store reads through a connection the caller borrowed
+    from a pool: it is used as it is and never closed here (#104).
+    """
+    return PostgresBranchStore(
+        connection or connect(settings, environ), owns_connection=connection is None
+    )
 
 
 def create_postgres_readonly_branches(
-    settings: Settings, environ: Mapping[str, str]
+    settings: Settings,
+    environ: Mapping[str, str],
+    connection: psycopg.Connection | None = None,
 ) -> PostgresBranchStore:
-    """The ``postgresql.readonly_branches`` factory: reads work, every save fails."""
-    return PostgresBranchStore(connect_readonly(settings, environ))
+    """The ``postgresql.readonly_branches`` factory: reads work, every save fails.
+
+    With ``connection`` the store reads through a connection the caller borrowed
+    from a pool: it is used as it is and never closed here (#104).
+    """
+    return PostgresBranchStore(
+        connection or connect_readonly(settings, environ), owns_connection=connection is None
+    )

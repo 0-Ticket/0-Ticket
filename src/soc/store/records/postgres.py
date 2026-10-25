@@ -62,10 +62,13 @@ class PostgresRecordStore:
         conn: psycopg.Connection,
         retention_days: int,
         clock: Callable[[], int] = _now_ms,
+        *,
+        owns_connection: bool = False,
     ):
         self._conn = conn
         self._retention_days = retention_days
         self._clock = clock
+        self._owns_connection = owns_connection
 
     # Source records
 
@@ -368,7 +371,9 @@ class PostgresRecordStore:
         return PurgeResult(deleted, skipped)
 
     def close(self) -> None:
-        self._conn.close()
+        # A connection the caller handed over goes back to its pool, not here (#104).
+        if self._owns_connection:
+            self._conn.close()
 
     def _one(self, query, params):
         with self._conn.transaction():
@@ -379,13 +384,27 @@ class PostgresRecordStore:
             return self._conn.execute(query, params).fetchall()
 
 
-def create_postgres_records(settings: Settings, environ: Mapping[str, str]) -> PostgresRecordStore:
-    """The ``postgresql.records`` factory: connects with ``[database]`` settings."""
-    return PostgresRecordStore(connect(settings, environ), settings.store.raw_retention_days)
+def create_postgres_records(
+    settings: Settings,
+    environ: Mapping[str, str],
+    connection: psycopg.Connection | None = None,
+) -> PostgresRecordStore:
+    """The ``postgresql.records`` factory: connects with ``[database]`` settings.
+
+    With ``connection`` the store reads through a connection the caller borrowed
+    from a pool: it is used as it is and never closed here (#104).
+    """
+    return PostgresRecordStore(
+        connection or connect(settings, environ),
+        settings.store.raw_retention_days,
+        owns_connection=connection is None,
+    )
 
 
 def create_postgres_readonly_records(
-    settings: Settings, environ: Mapping[str, str]
+    settings: Settings,
+    environ: Mapping[str, str],
+    connection: psycopg.Connection | None = None,
 ) -> PostgresRecordStore:
     """The ``postgresql.readonly_records`` factory: the same store on a read-only connection.
 
@@ -393,5 +412,7 @@ def create_postgres_readonly_records(
     agents call cannot change a record (docs/security-policy.md 4).
     """
     return PostgresRecordStore(
-        connect_readonly(settings, environ), settings.store.raw_retention_days
+        connection or connect_readonly(settings, environ),
+        settings.store.raw_retention_days,
+        owns_connection=connection is None,
     )
