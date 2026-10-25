@@ -14,6 +14,7 @@ from pathlib import Path
 import psycopg
 import pytest
 from psycopg import sql
+from readonly_schema import grant_readonly, readonly_environ
 
 from soc.config import MissingSecretError, load_config
 from soc.contracts import validate_contract
@@ -65,23 +66,26 @@ def test_the_repo_registers_a_read_only_queue_for_its_backend():
 class TestReadonlyAgainstPostgres:
     @pytest.fixture
     def environ(self):
-        environ = dict(os.environ)
-        environ.setdefault("DATABASE_READONLY_URL", environ["DATABASE_URL"])
-        return environ
+        return readonly_environ()
 
     @pytest.fixture
     def schema(self):
         name = f"zt_test_{uuid.uuid4().hex[:12]}"
-        with connect(load_config(environ=os.environ)) as connection:
-            connection.execute(sql.SQL("CREATE SCHEMA {}").format(sql.Identifier(name)))
-            connection.execute(sql.SQL("SET search_path TO {}").format(sql.Identifier(name)))
-            connection.commit()
-            apply_migrations(connection)
-            connection.commit()
-        yield name
-        with connect(load_config(environ=os.environ)) as connection:
-            connection.execute(sql.SQL("DROP SCHEMA {} CASCADE").format(sql.Identifier(name)))
-            connection.commit()
+        try:
+            with connect(load_config(environ=os.environ)) as connection:
+                connection.execute(sql.SQL("CREATE SCHEMA {}").format(sql.Identifier(name)))
+                connection.execute(sql.SQL("SET search_path TO {}").format(sql.Identifier(name)))
+                connection.commit()
+                apply_migrations(connection)
+                connection.commit()
+                grant_readonly(connection, name)
+            yield name
+        finally:
+            with connect(load_config(environ=os.environ)) as connection:
+                connection.execute(
+                    sql.SQL("DROP SCHEMA IF EXISTS {} CASCADE").format(sql.Identifier(name))
+                )
+                connection.commit()
 
     @pytest.fixture
     def opened(self, schema, environ):

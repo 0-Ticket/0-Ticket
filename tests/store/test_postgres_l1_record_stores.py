@@ -12,6 +12,7 @@ import pytest
 from branch_store_contract import BranchStoreContract, load_branches
 from l1_decision_store_contract import L1DecisionStoreContract, load_decisions
 from psycopg import sql
+from readonly_schema import grant_readonly, readonly_environ
 from ticket_list_contract import EXPECTED_ORDER, TicketListContract, load_ticket_list
 
 from soc.config import load_config
@@ -23,30 +24,29 @@ from soc.store.postgresql.tickets import PostgresTicketStore
 pytestmark = pytest.mark.db
 
 
-def _environ():
-    environ = dict(os.environ)
-    environ.setdefault("DATABASE_READONLY_URL", environ["DATABASE_URL"])
-    return environ
-
-
 @pytest.fixture
 def schema():
     """A fresh schema with every migration applied, dropped afterwards."""
     name = f"zt_test_{uuid.uuid4().hex[:12]}"
-    with connect(load_config(environ=os.environ)) as connection:
-        connection.execute(sql.SQL("CREATE SCHEMA {}").format(sql.Identifier(name)))
-        connection.execute(sql.SQL("SET search_path TO {}").format(sql.Identifier(name)))
-        connection.commit()
-        apply_migrations(connection)
-        connection.commit()
-    yield name
-    with connect(load_config(environ=os.environ)) as connection:
-        connection.execute(sql.SQL("DROP SCHEMA {} CASCADE").format(sql.Identifier(name)))
-        connection.commit()
+    try:
+        with connect(load_config(environ=os.environ)) as connection:
+            connection.execute(sql.SQL("CREATE SCHEMA {}").format(sql.Identifier(name)))
+            connection.execute(sql.SQL("SET search_path TO {}").format(sql.Identifier(name)))
+            connection.commit()
+            apply_migrations(connection)
+            connection.commit()
+            grant_readonly(connection, name)
+        yield name
+    finally:
+        with connect(load_config(environ=os.environ)) as connection:
+            connection.execute(
+                sql.SQL("DROP SCHEMA IF EXISTS {} CASCADE").format(sql.Identifier(name))
+            )
+            connection.commit()
 
 
 def _open(schema, readonly=False):
-    environ = _environ()
+    environ = readonly_environ()
     settings = load_config(environ=environ)
     conn = (connect_readonly if readonly else connect)(settings, environ)
     conn.execute(sql.SQL("SET search_path TO {}").format(sql.Identifier(schema)))
