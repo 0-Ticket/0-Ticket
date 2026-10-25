@@ -182,3 +182,32 @@ def test_a_store_does_not_close_a_connection_it_was_handed():
     for store in postgres_stores(conn):
         store.close()
     assert conn.closes == 0
+
+
+READONLY_KINDS = (
+    "readonly_records",
+    "readonly_branches",
+    "readonly_l1_decisions",
+    "readonly_tickets",
+    "readonly_agent_log",
+)
+
+
+@pytest.mark.parametrize("kind", READONLY_KINDS)
+def test_every_read_only_factory_of_this_repo_takes_a_borrowed_connection(kind):
+    """The screen API opens these with a connection it borrowed, so the factory
+    must use it instead of connecting: with no URL in the environment it would
+    otherwise fail (#104)."""
+    conn = StubConnection()
+    store = open_store(kind, load_config(environ={}), environ={}, connection=conn)
+    store.close()
+    assert conn.closes == 0
+
+
+def test_the_read_only_evidence_queue_takes_a_borrowed_connection():
+    from soc.l1.evidence import open_evidence_queue
+
+    conn = StubConnection()
+    queue = open_evidence_queue(load_config(environ={}), environ={}, readonly=True, connection=conn)
+    queue.close()
+    assert conn.closes == 0

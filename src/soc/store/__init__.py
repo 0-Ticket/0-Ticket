@@ -42,18 +42,22 @@ READONLY_AGENT_LOG = "readonly_agent_log"
 # at module level, whichever of the two is imported first sees the other half-built.
 
 
-def _readonly_ticket_store(settings: Settings, environ: Mapping[str, str]):
+def _readonly_ticket_store(
+    settings: Settings, environ: Mapping[str, str], connection: object | None = None
+):
     """Open ``postgresql.readonly_tickets``."""
     from .postgresql.tickets import create_postgresql_readonly_ticket_store
 
-    return create_postgresql_readonly_ticket_store(settings, environ)
+    return create_postgresql_readonly_ticket_store(settings, environ, connection)
 
 
-def _readonly_agent_log_store(settings: Settings, environ: Mapping[str, str]):
+def _readonly_agent_log_store(
+    settings: Settings, environ: Mapping[str, str], connection: object | None = None
+):
     """Open ``postgresql.readonly_agent_log``."""
     from .postgresql.agent_log import create_postgresql_readonly_agent_log_store
 
-    return create_postgresql_readonly_agent_log_store(settings, environ)
+    return create_postgresql_readonly_agent_log_store(settings, environ, connection)
 
 
 STORES = PluginRegistry("stores")
