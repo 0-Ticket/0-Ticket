@@ -20,6 +20,13 @@ url_env = "DATABASE_URL"
 readonly_url_env = "DATABASE_READONLY_URL"
 # 연결을 기다리는 최대 시간(초). 1 이상.
 connect_timeout_seconds = 5
+# 화면용 API(박스 27)는 요청마다 연결 풀에서 연결 하나를 빌려 쓴다.
+# 풀이 한 번에 들고 있을 연결 수의 최대값. 1 이상. 읽기 전용 조회라 크게 둘 이유가
+# 없고, PostgreSQL은 연결마다 프로세스를 띄운다.
+pool_max_size = 8
+# 빈 연결이 날 때까지 요청이 기다리는 최대 시간(초). 1 이상. 서비스가 시작할 때
+# 풀이 채워지기를 기다리는 시간으로도 쓴다.
+pool_timeout_seconds = 5
 
 # 저장소 (D-002). 모든 저장소는 stores 그룹에 "<backend>.<저장소 종류>" 이름으로 등록된다.
 [store]

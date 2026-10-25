@@ -8,6 +8,7 @@ dependencies = [
     "fastapi>=0.120.4",
     "jsonschema>=4.26.0",
     "mcp>=2,<3",
+    "psycopg-pool>=3.3.3",
     "psycopg[binary]>=3.3.6",
     "pydantic>=2.14.1",
     "qdrant-client>=1.19.1",
