@@ -90,7 +90,8 @@ def use_database(monkeypatch, tmp_path):
         org = tmp_path / f"settings_{uuid.uuid4().hex[:8]}.toml"
         text = settings_text or SETTINGS.read_text(encoding="utf-8")
         artifacts = tmp_path / "agent_log"
-        org.write_text(f'{text}\n[agent_log]\nartifact_dir = "{artifacts}"\n', encoding="utf-8")
+        # A TOML literal string: the backslashes of a Windows path are not escapes in it.
+        org.write_text(f"{text}\n[agent_log]\nartifact_dir = '{artifacts}'\n", encoding="utf-8")
         monkeypatch.setenv("ZT_CONFIG", str(org))
         monkeypatch.setenv("DATABASE_URL", url)
         # The same account reads; the read-only connection still refuses writes.
