@@ -306,3 +306,47 @@ def test_redirects_are_not_followed_and_get_no_authorization(capsys, where):
     assert not any(r.path.startswith("/moved") for r in fake.requests)
     assert elsewhere.requests == []
     assert "/moved" not in out
+
+
+def _nested(depth, leaf):
+    value = leaf
+    for level in range(depth):
+        value = {f"deepkey{level}": value}
+    return value
+
+
+def test_too_deep_source_is_bad_response_without_crash_or_leak(capsys):
+    answer = load("alert_search.json")
+    answer["hits"]["hits"][0]["_source"] = _nested(probe.MAX_DEPTH + 10, "deep-secret-value")
+    with FakeWazuh() as fake:
+        fake.body["alerts"] = answer
+        code, report, out, _ = _run(capsys, fake.url)
+    assert code == 1
+    assert report["targets"]["alerts"] == {"outcome": "bad_response", "http_status": 200}
+    assert report["targets"]["events"]["outcome"] == "ok"
+    assert "deep-secret-value" not in out
+    assert "deepkey" not in out
+
+
+def test_depth_cap_fires_long_before_the_recursion_limit():
+    assert probe.MAX_DEPTH * 4 < sys.getrecursionlimit()
+    assert probe.source_shape([_nested(probe.MAX_DEPTH - 1, 1)])
+    with pytest.raises(probe.ShapeTooDeepError):
+        probe.source_shape([_nested(probe.MAX_DEPTH + 1, 1)])
+
+
+def test_json_too_deep_to_parse_is_bad_response(capsys):
+    # Deeper than json.loads can parse: the parser itself gives up (RecursionError).
+    deep = "[" * 100_000 + "]" * 100_000
+    with FakeWazuh() as fake:
+        fake.body["alerts"] = deep.encode()
+        _, report, _, _ = _run(capsys, fake.url)
+    assert report["targets"]["alerts"]["outcome"] == "bad_response"
+
+
+@pytest.mark.parametrize("data", [{"token": ""}, {"token": 123}, {"token": None}, {}, "x"])
+def test_api_outcome_depends_only_on_whether_a_token_string_is_issued(capsys, data):
+    with FakeWazuh() as fake:
+        fake.body["auth"] = {"data": data, "error": 0}
+        _, report, _, _ = _run(capsys, fake.url)
+    assert report["targets"]["api"] == {"outcome": "bad_response", "http_status": 200}

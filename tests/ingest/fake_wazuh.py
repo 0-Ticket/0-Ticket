@@ -4,7 +4,8 @@ One ``http.server`` plays both the indexer (``GET /``, ``GET|POST /<pattern>/_se
 with Basic auth) and the server API (``POST /security/user/authenticate`` with
 Basic auth, answering a fake JWT). Answers come from ``tests/fixtures/wazuh/``.
 A test picks a failure per target with ``status``, slows every answer with
-``delay``, makes a target answer a body that is not JSON with ``not_json``, or
+``delay``, makes a target answer a body that is not JSON with ``not_json``, gives
+a target any JSON answer with ``body``, or
 answers 302 to another ``Location`` with ``redirect``. Every request is recorded
 so tests can check what the probe sent.
 
@@ -72,6 +73,7 @@ class FakeWazuh:
         self.archives = archives
         self.status: dict[str, int] = {}
         self.not_json: set[str] = set()
+        self.body: dict[str, Any] = {}
         self.delay = 0.0
         self.redirect: dict[str, str] = {}
         self.requests: list[Request] = []
@@ -166,6 +168,8 @@ class FakeWazuh:
             return status, load(ERROR_BODIES.get(status, "error_401.json"))
         if target in self.not_json:
             return 200, b"<html>not json</html>"
+        if target in self.body:
+            return 200, self.body[target]
         if target == "root":
             return 200, load("indexer_root.json")
         if target == "auth":

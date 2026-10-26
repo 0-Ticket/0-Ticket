@@ -31,6 +31,9 @@ uv run python scripts/probe_wazuh.py --indexer-url https://<indexer>:9200 --api-
   평문 http는 Basic 자격증명을 그대로 보내기 때문이다. http를 허용하는 옵션은 없다(TLS 끄기 금지와 같은 원칙).
 - 리다이렉트 비추종(Authorization 미전달): 3xx 응답을 따라가지 않고 `bad_response`로 분류한다. urllib 기본 동작은
   `Location`(다른 호스트 포함)으로 Authorization 헤더를 다시 보내므로, 리다이렉트를 막는 핸들러로 이 경로를 없앴다.
+- 중첩 깊이 상한: `_source`는 `MAX_DEPTH`(64)단계까지만 읽는다. 더 깊으면 그 대상은 `bad_response`다. 파이썬 재귀 한도에 닿기 전에
+  멈추고, `json.loads` 자체가 깊이 때문에 포기하는 경우(`RecursionError`)도 `bad_response`로 잡는다. 키·값은 보고서에 남지 않는다.
+- JWT 미보유: API 응답에서는 토큰 문자열이 있는지만 bool로 계산하고 응답 참조를 바로 지운다. 토큰은 반환값·보고서·로그 어디에도 없다.
 - 비밀: 환경변수 `WAZUH_INDEXER_USER`, `WAZUH_INDEXER_PASSWORD`, `WAZUH_API_USER`, `WAZUH_API_PASSWORD`
   (이름은 `--*-env` 인자로 바꿀 수 있다). 값이 비어 있으면 요청을 보내기 전에 멈춘다(종료 코드 2).
 - TLS: 항상 검증한다. 검증을 끄는 옵션은 없다. Wazuh 기본 자체 서명 인증서는 `--ca`로 루트 CA를 넘긴다.
@@ -48,7 +51,7 @@ uv run python scripts/probe_wazuh.py --indexer-url https://<indexer>:9200 --api-
 | `auth_failed` | 인증 실패 | HTTP 401 |
 | `forbidden` | 권한 없음 | HTTP 403 (읽기 role에 없는 인덱스) |
 | `index_missing` | 인덱스·문서 없음 | HTTP 404, 또는 와일드카드 패턴이 문서를 하나도 찾지 못함(200, 0건) |
-| `bad_response` | 쓸 수 없는 응답 | 그 밖의 HTTP 상태(3xx 리다이렉트 포함, 따라가지 않음), JSON 아님, 기대한 키 없음, 5 MiB 초과 |
+| `bad_response` | 쓸 수 없는 응답 | 그 밖의 HTTP 상태(3xx 리다이렉트 포함, 따라가지 않음), JSON 아님, 중첩 깊이 상한 초과, 기대한 키 없음, 5 MiB 초과 |
 
 연결 성공·실패와 인증 오류는 `unreachable`·`timeout`·`tls_error` / `auth_failed`·`forbidden`으로 갈린다(완료 기준 #1).
 예외 메시지와 응답 본문은 분류에 쓰지 않고 출력하지도 않는다.

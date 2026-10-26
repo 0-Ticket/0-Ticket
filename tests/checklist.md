@@ -622,7 +622,8 @@ K55는 여전히 일부이며 코어 비즈니스 검증은 해당 박스에서 
   `tls_error` 판정(단위 테스트만, 실제 핸드셰이크는 수동 실행), API는 JWT 발급만 확인, 읽기 요청만 보냄,
   비밀번호·JWT가 출력·로그·보고서 파일에 없음, 보고서에 값 없이 키 경로·타입만 있음, 위험한 키 이름 정리,
   archives가 비면 설정 변경 필요 표시, 환경변수가 없으면 요청 전에 멈춤, `--out`은 `data/` 밖 거부, TLS 끄는 옵션 없음,
-  http URL은 요청 전에 거부(https 전용), 302 리다이렉트를 따라가지 않고 Authorization을 보내지 않음(`bad_response`).
+  http URL은 요청 전에 거부(https 전용), 302 리다이렉트를 따라가지 않고 Authorization을 보내지 않음(`bad_response`),
+  중첩 깊이 상한(`MAX_DEPTH` 64) 초과·파싱 불가한 깊은 JSON은 크래시 없이 `bad_response`, API는 토큰 문자열 유무(bool)만으로 판정.
 - 실제 Wazuh 실행: 미기록. 사람이 실행해 형태 보고서를 공유하면 결과 문서 3절을 채운다.
 - 하지 않은 것: 박스 3 Wazuh 커넥터(C-02b), 박스 4 정규화 매핑(C-02c, 조건부), Wazuh SIEM MCP(C-01b),
   `config/default.toml` 설정 키 추가, SIEM 구축·설정 변경, DB 저장, OCSF 정규화.

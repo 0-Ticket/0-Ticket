@@ -65,6 +65,8 @@ MAX_BODY_BYTES = 5 * 1024 * 1024
 MAX_KEY_LENGTH = 64
 MAX_PATH_LENGTH = 200
 MAX_PATHS = 500
+# Nesting depth read for the shape, far below sys.getrecursionlimit(). Deeper is bad_response.
+MAX_DEPTH = 64
 _UNSAFE_KEY_CHARS = re.compile(r"[^A-Za-z0-9_@\-]")
 _INDEX_DATE = re.compile(r"\d{4}\.\d{2}\.\d{2}")
 _VERSION_CHARS = re.compile(r"[^A-Za-z0-9.\-]")
@@ -134,7 +136,13 @@ def _type_name(value: Any) -> str:
     return type(value).__name__
 
 
-def _walk(value: Any, path: str, seen: dict[str, set[str]]) -> None:
+class ShapeTooDeepError(ValueError):
+    """A document nests deeper than ``MAX_DEPTH``. Names no key or value."""
+
+
+def _walk(value: Any, path: str, seen: dict[str, set[str]], depth: int = 0) -> None:
+    if depth > MAX_DEPTH:
+        raise ShapeTooDeepError("document nests too deep")
     if path:
         seen.setdefault(path, set()).add(_type_name(value))
     if isinstance(value, dict):
@@ -142,10 +150,10 @@ def _walk(value: Any, path: str, seen: dict[str, set[str]]) -> None:
             child_path = f"{path}.{safe_key(key)}" if path else safe_key(key)
             if len(child_path) > MAX_PATH_LENGTH:
                 child_path = child_path[:MAX_PATH_LENGTH]
-            _walk(child, child_path, seen)
+            _walk(child, child_path, seen, depth + 1)
     elif isinstance(value, list):
         for item in value:
-            _walk(item, f"{path}[]"[:MAX_PATH_LENGTH], seen)
+            _walk(item, f"{path}[]"[:MAX_PATH_LENGTH], seen, depth + 1)
 
 
 def source_shape(sources: Sequence[Any]) -> dict[str, dict[str, Any]]:
@@ -248,7 +256,7 @@ def _attempt(client: _Client, method: str, url: str, auth: str, body: Any = None
     except (HTTPError, URLError, OSError) as error:
         outcome, status = classify_error(error)
         return outcome, status, None
-    except ValueError:  # JSON that does not parse, or an oversized answer
+    except (ValueError, RecursionError):  # JSON that does not parse, too deep, or oversized
         return "bad_response", 200, None
     return "ok", status, answer
 
@@ -286,6 +294,10 @@ def probe_search(client: _Client, base: str, pattern: str, auth: str, size: int)
     if not isinstance(total, int):
         total = len(items)
     sources = [item.get("_source") for item in items if isinstance(item, dict)]
+    try:
+        shape = source_shape(sources)
+    except (ShapeTooDeepError, RecursionError):  # the depth cap fires first; kept as a backstop
+        return {"outcome": "bad_response", "http_status": status}
     return {
         "outcome": "ok" if items else "index_missing",
         "http_status": status,
@@ -293,7 +305,7 @@ def probe_search(client: _Client, base: str, pattern: str, auth: str, size: int)
         "read": len(items),
         "index_names": index_names(items),
         "envelope": envelope_shape(answer),
-        "source_shape": source_shape(sources),
+        "source_shape": shape,
     }
 
 
@@ -302,7 +314,10 @@ def probe_api(client: _Client, base: str, auth: str) -> dict[str, Any]:
     if outcome != "ok":
         return {"outcome": outcome, "http_status": status}
     data = answer.get("data") if isinstance(answer, dict) else None
-    issued = isinstance(data, dict) and isinstance(data.get("token"), str) and data["token"]
+    # A plain bool: nothing here keeps a reference to the token string.
+    issued = (
+        isinstance(data, dict) and isinstance(data.get("token"), str) and len(data["token"]) > 0
+    )
     del answer, data  # drop the token now
     return {"outcome": "ok" if issued else "bad_response", "http_status": status}
 
