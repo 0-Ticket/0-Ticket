@@ -202,6 +202,18 @@ def fake_siem_registries(
     return connectors, adapters, mcp
 
 
+def toml_string(value: str) -> str:
+    """Quote ``value`` as a TOML basic string, for the settings file a test writes.
+
+    TOML takes the same escapes as JSON, so this covers a Windows path's
+    backslashes, a quote in a folder name and control characters such as a
+    newline. ``ensure_ascii=False`` is what keeps a character outside the BMP
+    (an emoji in a path) working: escaped, it becomes a surrogate pair, which
+    TOML rejects as not a Unicode scalar value.
+    """
+    return json.dumps(value, ensure_ascii=False)
+
+
 __all__ = [
     "FAKE",
     "FakeLLMProvider",
@@ -212,4 +224,5 @@ __all__ = [
     "fake_siem_registries",
     "input_data",
     "l1_registries",
+    "toml_string",
 ]

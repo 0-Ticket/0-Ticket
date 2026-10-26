@@ -15,7 +15,6 @@ account are.
 """
 
 import importlib.util
-import json
 import os
 import sys
 import uuid
@@ -24,7 +23,7 @@ from contextlib import closing
 from pathlib import Path
 
 import pytest
-from fakes import FakeLLMProvider, fake_siem_registries, l1_registries
+from fakes import FakeLLMProvider, fake_siem_registries, l1_registries, toml_string
 from fastapi.testclient import TestClient
 from psycopg import sql
 
@@ -91,10 +90,7 @@ def use_database(monkeypatch, tmp_path):
         org = tmp_path / f"settings_{uuid.uuid4().hex[:8]}.toml"
         text = settings_text or SETTINGS.read_text(encoding="utf-8")
         artifacts = tmp_path / "agent_log"
-        # A TOML basic string, quoted by json.dumps: TOML takes the same escapes, so a
-        # Windows path's backslashes and any quote or control character in the path all
-        # survive. A literal string would break on a quote, an unescaped one on "\Users".
-        quoted = json.dumps(str(artifacts))
+        quoted = toml_string(str(artifacts))
         org.write_text(f"{text}\n[agent_log]\nartifact_dir = {quoted}\n", encoding="utf-8")
         monkeypatch.setenv("ZT_CONFIG", str(org))
         monkeypatch.setenv("DATABASE_URL", url)
