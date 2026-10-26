@@ -11,6 +11,8 @@
 
 - probe: `scripts/probe_wazuh.py` (읽기 전용. 표준 라이브러리 `urllib`·`ssl`만 쓴다)
 - 테스트: `tests/ingest/test_probe_wazuh.py`, 가짜 Wazuh `tests/ingest/fake_wazuh.py`, 손 자료 `tests/fixtures/wazuh/`
+  - 가짜 Wazuh는 TLS 없이 뜬다. 테스트는 `https://` URL을 쓰고, 테스트 전용 `PlainHttpsHandler`를 `main(https_handler=...)`로 넘겨 TLS 층만 바꾼다.
+    CLI에는 이 인자가 없고 항상 `--ca`로 검증하는 `HTTPSHandler`를 쓴다. https 검사와 리다이렉트 차단은 테스트에서도 그대로 돈다.
 
 ```bash
 uv run python scripts/probe_wazuh.py --indexer-url https://<indexer>:9200 --api-url https://<manager>:55000 --ca <root-ca.pem> --out wazuh/probe.json
@@ -23,6 +25,12 @@ uv run python scripts/probe_wazuh.py --indexer-url https://<indexer>:9200 --api-
 | `events` | `POST /wazuh-archives-*/_search` (Basic, 최신 N건) | 위와 같음. 문서가 없으면 archives 꺼짐 가능 표시 |
 | `api` | `POST /security/user/authenticate` (Basic) | JWT 발급 여부만. 토큰은 바로 버리고 다른 호출에 쓰지 않는다 |
 
+### 안전장치
+
+- https 전용(http 거부): `--indexer-url`·`--api-url`이 `https://`가 아니면 요청을 하나도 보내지 않고 고정 문구로 멈춘다(종료 코드 2).
+  평문 http는 Basic 자격증명을 그대로 보내기 때문이다. http를 허용하는 옵션은 없다(TLS 끄기 금지와 같은 원칙).
+- 리다이렉트 비추종(Authorization 미전달): 3xx 응답을 따라가지 않고 `bad_response`로 분류한다. urllib 기본 동작은
+  `Location`(다른 호스트 포함)으로 Authorization 헤더를 다시 보내므로, 리다이렉트를 막는 핸들러로 이 경로를 없앴다.
 - 비밀: 환경변수 `WAZUH_INDEXER_USER`, `WAZUH_INDEXER_PASSWORD`, `WAZUH_API_USER`, `WAZUH_API_PASSWORD`
   (이름은 `--*-env` 인자로 바꿀 수 있다). 값이 비어 있으면 요청을 보내기 전에 멈춘다(종료 코드 2).
 - TLS: 항상 검증한다. 검증을 끄는 옵션은 없다. Wazuh 기본 자체 서명 인증서는 `--ca`로 루트 CA를 넘긴다.
@@ -40,7 +48,7 @@ uv run python scripts/probe_wazuh.py --indexer-url https://<indexer>:9200 --api-
 | `auth_failed` | 인증 실패 | HTTP 401 |
 | `forbidden` | 권한 없음 | HTTP 403 (읽기 role에 없는 인덱스) |
 | `index_missing` | 인덱스·문서 없음 | HTTP 404, 또는 와일드카드 패턴이 문서를 하나도 찾지 못함(200, 0건) |
-| `bad_response` | 쓸 수 없는 응답 | 그 밖의 HTTP 상태, JSON 아님, 기대한 키 없음, 5 MiB 초과 |
+| `bad_response` | 쓸 수 없는 응답 | 그 밖의 HTTP 상태(3xx 리다이렉트 포함, 따라가지 않음), JSON 아님, 기대한 키 없음, 5 MiB 초과 |
 
 연결 성공·실패와 인증 오류는 `unreachable`·`timeout`·`tls_error` / `auth_failed`·`forbidden`으로 갈린다(완료 기준 #1).
 예외 메시지와 응답 본문은 분류에 쓰지 않고 출력하지도 않는다.

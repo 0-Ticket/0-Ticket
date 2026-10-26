@@ -4,11 +4,17 @@ One ``http.server`` plays both the indexer (``GET /``, ``GET|POST /<pattern>/_se
 with Basic auth) and the server API (``POST /security/user/authenticate`` with
 Basic auth, answering a fake JWT). Answers come from ``tests/fixtures/wazuh/``.
 A test picks a failure per target with ``status``, slows every answer with
-``delay``, or makes a target answer a body that is not JSON with ``not_json``.
-Every request is recorded so tests can check what the probe sent.
+``delay``, makes a target answer a body that is not JSON with ``not_json``, or
+answers 302 to another ``Location`` with ``redirect``. Every request is recorded
+so tests can check what the probe sent.
+
+The probe accepts ``https://`` URLs only. The fake speaks plain HTTP, so ``url``
+is an ``https://`` URL and tests hand the probe ``PlainHttpsHandler``, which opens
+it without TLS. ``plain_url`` is the same server as ``http://``.
 """
 
 import base64
+import http.client
 import json
 import socket
 import threading
@@ -17,6 +23,7 @@ from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
+from urllib.request import HTTPSHandler
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "wazuh"
 INDEXER_USER = "test-reader-01"
@@ -32,12 +39,19 @@ def load(name: str) -> Any:
     return json.loads((FIXTURES / name).read_text(encoding="utf-8"))
 
 
+class PlainHttpsHandler(HTTPSHandler):
+    """Tests only: open an ``https://`` URL over plain HTTP, to reach the fake."""
+
+    def https_open(self, req):
+        return self.do_open(http.client.HTTPConnection, req)
+
+
 def unreachable_url() -> str:
-    """An http URL nothing listens on."""
+    """An https URL nothing listens on."""
     with socket.socket() as sock:
         sock.bind(("127.0.0.1", 0))
         port = sock.getsockname()[1]
-    return f"http://127.0.0.1:{port}"
+    return f"https://127.0.0.1:{port}"
 
 
 def basic(user: str, password: str) -> str:
@@ -59,6 +73,7 @@ class FakeWazuh:
         self.status: dict[str, int] = {}
         self.not_json: set[str] = set()
         self.delay = 0.0
+        self.redirect: dict[str, str] = {}
         self.requests: list[Request] = []
         self._server: ThreadingHTTPServer | None = None
 
@@ -83,7 +98,9 @@ class FakeWazuh:
 
         self._server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
         self._server.daemon_threads = True
-        self.url = f"http://127.0.0.1:{self._server.server_address[1]}"
+        port = self._server.server_address[1]
+        self.url = f"https://127.0.0.1:{port}"
+        self.plain_url = f"http://127.0.0.1:{port}"
         threading.Thread(
             target=self._server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True
         ).start()
@@ -103,6 +120,16 @@ class FakeWazuh:
         self.requests.append(Request(handler.command, path, authorization is not None))
         if self.delay:
             time.sleep(self.delay)
+        target = self._target(handler.command, path)
+        if target in self.redirect:
+            try:
+                handler.send_response(302)
+                handler.send_header("Location", self.redirect[target])
+                handler.send_header("Content-Length", "0")
+                handler.end_headers()
+            except OSError:
+                pass
+            return
         status, body = self._answer(handler.command, path, authorization)
         data = body if isinstance(body, bytes) else json.dumps(body).encode()
         try:

@@ -19,8 +19,12 @@ answer: document content may be attacker-written (docs/security-policy.md 3).
 Key names are reduced to a safe character set because Wazuh's JSON decoder can
 take them from log content.
 
-Secrets come only from environment variables (names below, overridable). TLS is
+Secrets come only from environment variables (names below, overridable). Both
+URLs must be ``https://``: plain http would send the Basic credentials in clear,
+so the probe stops before any request, and there is no flag to allow it. TLS is
 always checked; a self-signed Wazuh certificate is trusted with ``--ca``.
+Redirects are never followed (a 3xx is ``bad_response``), so the Authorization
+header never reaches a redirect target.
 
     uv run python scripts/probe_wazuh.py --indexer-url https://<indexer>:9200 \\
         --api-url https://<manager>:55000 --ca <root-ca.pem> --out wazuh/probe.json
@@ -40,7 +44,7 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
+from urllib.request import HTTPRedirectHandler, HTTPSHandler, Request, build_opener
 
 from soc.config import MissingSecretError, read_secret
 
@@ -70,10 +74,10 @@ _UNSAFE_INDEX_CHARS = re.compile(r"[^A-Za-z0-9_.*,\-]")
 def parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Read-only Wazuh connection probe (#112).")
     parser.add_argument(
-        "--indexer-url", required=True, help="Wazuh indexer, e.g. https://host:9200"
+        "--indexer-url", required=True, help="Wazuh indexer, https only, e.g. https://host:9200"
     )
     parser.add_argument(
-        "--api-url", help="Wazuh server API, e.g. https://host:55000. Skipped if empty"
+        "--api-url", help="Wazuh server API, https only, e.g. https://host:55000. Skipped if empty"
     )
     parser.add_argument("--alert-index", default="wazuh-alerts-*")
     parser.add_argument("--event-index", default="wazuh-archives-*")
@@ -186,12 +190,32 @@ def index_names(items: Sequence[Any]) -> list[str]:
     return sorted(names)
 
 
-class _Client:
-    """Sends the probe's read requests. Holds the Basic credentials; never shows them."""
+class _NoRedirect(HTTPRedirectHandler):
+    """Never follow a redirect: the 3xx comes back as an ``HTTPError`` (``bad_response``).
 
-    def __init__(self, timeout: float, context: ssl.SSLContext):
+    urllib would otherwise send the request again, Authorization header included,
+    to whatever ``Location`` names, another host too.
+    """
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+class _Client:
+    """Sends the probe's read requests. Holds the Basic credentials; never shows them.
+
+    ``https_handler`` is for tests only (a fake Wazuh without TLS behind an
+    ``https://`` URL); the CLI always uses ``HTTPSHandler`` with the checked context.
+    """
+
+    def __init__(
+        self,
+        timeout: float,
+        context: ssl.SSLContext,
+        https_handler: HTTPSHandler | None = None,
+    ):
         self._timeout = timeout
-        self._context = context
+        self._opener = build_opener(_NoRedirect(), https_handler or HTTPSHandler(context=context))
 
     def __repr__(self) -> str:
         return "_Client()"
@@ -205,7 +229,7 @@ class _Client:
         request.add_header("Accept", "application/json")
         if data is not None:
             request.add_header("Content-Type", "application/json")
-        with urlopen(request, timeout=self._timeout, context=self._context) as response:
+        with self._opener.open(request, timeout=self._timeout) as response:
             status = response.status
             raw = response.read(MAX_BODY_BYTES + 1)
         if len(raw) > MAX_BODY_BYTES:
@@ -295,11 +319,27 @@ def _notes(targets: Mapping[str, Mapping[str, Any]]) -> list[str]:
     return notes
 
 
-def run(args: argparse.Namespace, environ: Mapping[str, str]) -> dict[str, Any]:
+def plain_http_urls(args: argparse.Namespace) -> list[str]:
+    """Names of the URL options that are not https. Their values are never shown."""
+    urls = {"--indexer-url": args.indexer_url, "--api-url": args.api_url}
+    return [
+        name
+        for name, url in urls.items()
+        if url is not None and not url.lower().startswith("https://")
+    ]
+
+
+def run(
+    args: argparse.Namespace,
+    environ: Mapping[str, str],
+    https_handler: HTTPSHandler | None = None,
+) -> dict[str, Any]:
+    if plain_http_urls(args):
+        raise ValueError("the probe sends credentials over https only")
     context = (
         ssl.create_default_context(cafile=args.ca) if args.ca else ssl.create_default_context()
     )
-    client = _Client(args.timeout, context)
+    client = _Client(args.timeout, context, https_handler)
     indexer = args.indexer_url.rstrip("/")
     indexer_auth = _basic(
         read_secret(args.indexer_user_env, environ), read_secret(args.indexer_password_env, environ)
@@ -324,7 +364,6 @@ def run(args: argparse.Namespace, environ: Mapping[str, str]) -> dict[str, Any]:
             "event_index": safe_index(args.event_index),
             "size": args.size,
             "ca_given": bool(args.ca),
-            "tls": args.indexer_url.lower().startswith("https://"),
         },
         "targets": targets,
         "notes": _notes(targets),
@@ -341,9 +380,18 @@ def main(
     argv: Sequence[str] | None = None,
     environ: Mapping[str, str] | None = None,
     data_dir: Path | None = None,
+    https_handler: HTTPSHandler | None = None,
 ) -> int:
     args = parse_args(argv)
     environ = os.environ if environ is None else environ
+    plain = plain_http_urls(args)
+    if plain:
+        print(
+            f"{' and '.join(plain)} must start with https:// "
+            "(plain http would send the credentials unencrypted)",
+            file=sys.stderr,
+        )
+        return 2
     out_path = None
     if args.out:
         out_path = _out_path(args.out, data_dir or DATA_DIR)
@@ -364,7 +412,7 @@ def main(
         )
         return 2
     try:
-        report = run(args, environ)
+        report = run(args, environ, https_handler)
     except MissingSecretError:  # checked above; kept so a race never prints a secret
         print("Environment variables not set (see .env.example)", file=sys.stderr)
         return 2

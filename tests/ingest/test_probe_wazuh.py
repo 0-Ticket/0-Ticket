@@ -18,6 +18,7 @@ from fake_wazuh import (
     INDEXER_PASSWORD,
     INDEXER_USER,
     FakeWazuh,
+    PlainHttpsHandler,
     load,
     unreachable_url,
 )
@@ -50,7 +51,7 @@ def _run(capsys, fake_url, *extra, environ=ENVIRON, data_dir=None, api=True, tim
     argv = ["--indexer-url", fake_url, "--timeout", timeout, *extra]
     if api:
         argv += ["--api-url", fake_url]
-    code = probe.main(argv, environ=environ, data_dir=data_dir)
+    code = probe.main(argv, environ=environ, data_dir=data_dir, https_handler=PlainHttpsHandler())
     out, err = capsys.readouterr()
     return code, json.loads(out) if out.strip() else None, out, err
 
@@ -264,3 +265,44 @@ def test_out_path_outside_data_is_refused(capsys, tmp_path, out):
 def test_disabling_tls_checks_is_not_offered():
     with pytest.raises(SystemExit):
         probe.parse_args(["--indexer-url", "https://indexer.example.com:9200", "--insecure"])
+
+
+@pytest.mark.parametrize("plain", ["indexer", "api", "both"])
+def test_plain_http_url_stops_before_any_request(capsys, caplog, plain):
+    caplog.set_level(logging.DEBUG)
+    with FakeWazuh() as fake:
+        indexer = fake.plain_url if plain in {"indexer", "both"} else fake.url
+        api = fake.plain_url if plain in {"api", "both"} else fake.url
+        argv = ["--indexer-url", indexer, "--api-url", api, "--timeout", "1"]
+        code = probe.main(argv, environ=ENVIRON, https_handler=PlainHttpsHandler())
+        out, err = capsys.readouterr()
+    assert code == 2
+    assert out == ""
+    assert fake.requests == []
+    assert "https://" in err
+    for text in (err, caplog.text):
+        for secret in (INDEXER_USER, INDEXER_PASSWORD, API_USER, API_PASSWORD, JWT):
+            assert secret not in text
+
+
+def test_run_refuses_plain_http_even_when_called_directly():
+    args = probe.parse_args(["--indexer-url", "http://127.0.0.1:9"])
+    with pytest.raises(ValueError):
+        probe.run(args, ENVIRON)
+
+
+@pytest.mark.parametrize("where", ["other_host", "same_host"])
+def test_redirects_are_not_followed_and_get_no_authorization(capsys, where):
+    with FakeWazuh() as fake, FakeWazuh() as elsewhere:
+        base = elsewhere.url if where == "other_host" else fake.url
+        for target in ("root", "alerts", "events", "auth"):
+            fake.redirect[target] = f"{base}/moved/{target}"
+        code, report, out, _ = _run(capsys, fake.url)
+    assert code == 1
+    for name in ("indexer", "alerts", "events", "api"):
+        assert report["targets"][name] == {"outcome": "bad_response", "http_status": 302}
+    # One request per target, none to the Location: the Authorization header never went there.
+    assert len(fake.requests) == 4
+    assert not any(r.path.startswith("/moved") for r in fake.requests)
+    assert elsewhere.requests == []
+    assert "/moved" not in out
