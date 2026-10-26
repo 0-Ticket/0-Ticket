@@ -10,6 +10,7 @@
   "user": null,
   "http_url": "https://example.com/",
   "http_status": 200,
+  "http_bytes": 0,
   "api_operation": null,
   "status": null,
   "src_asset": null,

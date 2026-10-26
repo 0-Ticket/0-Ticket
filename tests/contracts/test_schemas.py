@@ -67,6 +67,7 @@ def test_structural_conditions(case):
     [
         ("normalized_alert", "severity_id", 7),
         ("normalized_alert", "class_uid", 1),
+        ("event_record", "http_bytes", -1),
         ("asset_info", "criticality", 0),
         ("verdict", "confidence", 1.1),
         ("verdict", "evidence", []),

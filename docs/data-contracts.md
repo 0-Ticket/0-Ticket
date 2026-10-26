@@ -208,6 +208,7 @@ OCSF 경로는 OCSF 1.9.0 Detection Finding, 프로필 없음 기준이다.
 | user | str | 선택 | | `actor.user.name` |
 | http_url | str | 선택 | 원문, 데이터로만 취급 | `http_request.url.url_string` |
 | http_status | int | 선택 | | `http_response.code` |
+| http_bytes | int | 선택 | HTTP 응답 본문 크기(헤더 제외), 바이트 단위. 음수는 허용하지 않으며, 크기를 알 수 없거나 HTTP 응답이 아니면 `null`; 본문이 비어 있으면 `0` | |
 | api_operation | str | 선택 | 클라우드 API 이름 | `api.operation` |
 | status | str | 선택 | 성공·실패 | `status` |
 | src_asset | AssetInfo | 선택 | | |

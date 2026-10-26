@@ -47,6 +47,7 @@ def test_ait_events_normalize_to_expected_c13(normalizer):
     events = [item for item in load_ait_c2() if item.kind == "event"]
     results = [normalizer.normalize(item, NOW) for item in events]
     assert all(isinstance(result, EventRecord) for result in results)
+    assert [result.http_bytes for result in results] == [None] * len(events)
     assert [dump(result) for result in results] == expected
 
 

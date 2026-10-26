@@ -46,6 +46,19 @@ def test_runtime_extensions():
     assert validate_contract("AssetInfo", value).model_dump(mode="json") == value
 
 
+@pytest.mark.parametrize("value", [None, 0, 512])
+def test_event_record_http_bytes_values(value):
+    result = validate_contract("EventRecord", fixture("event_record") | {"http_bytes": value})
+    assert result.http_bytes == value
+
+
+@pytest.mark.parametrize("value", [-1, True, 1.5, "512"])
+def test_event_record_http_bytes_rejects_invalid_values(value):
+    with pytest.raises(ContractValidationError) as caught:
+        validate_contract("EventRecord", fixture("event_record") | {"http_bytes": value})
+    assert caught.value.path == "/http_bytes"
+
+
 @pytest.mark.parametrize(
     "name,changes,path,rule",
     [

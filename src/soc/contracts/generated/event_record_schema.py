@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, StrictInt, StrictStr, constr
+from pydantic import BaseModel, ConfigDict, StrictInt, StrictStr, conint, constr
 
 from . import asset_info_schema, user_info_schema
 
@@ -24,6 +24,7 @@ class EventRecord(BaseModel):
     user: StrictStr | None
     http_url: StrictStr | None
     http_status: StrictInt | None
+    http_bytes: conint(ge=0, strict=True) | None
     api_operation: StrictStr | None
     status: StrictStr | None
     src_asset: asset_info_schema.AssetInfo | None

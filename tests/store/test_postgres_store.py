@@ -4,13 +4,22 @@ Marked `db`: needs PostgreSQL through DATABASE_URL (`docker compose up -d`), and
 runs in CI against the service container with `uv run pytest -m db`.
 """
 
+import json
 import os
 import uuid
+from pathlib import Path
 
 import psycopg
 import pytest
 from psycopg import sql
-from store_contract import CURSOR_KEY, Clock, RecordStoreContract, dump, load_alert_records, load_c2
+from store_contract import (
+    CURSOR_KEY,
+    Clock,
+    RecordStoreContract,
+    dump,
+    load_alert_records,
+    load_c2,
+)
 from test_ingest_run import direct_ingest, run_until_done, stored_sources
 
 from soc.config import load_config
@@ -62,6 +71,46 @@ def test_referenced_source_cannot_be_deleted(conn):
     store.save_alert_record(load_alert_records()[0])
     with pytest.raises(psycopg.errors.ForeignKeyViolation), conn.transaction():
         conn.execute("DELETE FROM source_records")
+
+
+def test_legacy_event_record_reads_with_null_http_bytes(conn):
+    fixture = (
+        Path(__file__).resolve().parents[1] / "fixtures" / "store" / "legacy_event_record.json"
+    )
+    legacy = json.loads(fixture.read_text(encoding="utf-8"))
+    source = next(item for item in load_c2() if item.source_record_id == legacy["source_record_id"])
+    store = PostgresRecordStore(conn, 0, Clock())
+    store.save_source_records([source], CURSOR_KEY, "c1")
+
+    conn.execute(
+        "INSERT INTO event_records"
+        " (event_id, source_record_id, time, src_ip, dst_ip, host, record)"
+        " VALUES (%s, %s, %s, %s, %s, %s, %s::json)",
+        (
+            legacy["event_id"],
+            legacy["source_record_id"],
+            legacy["time"],
+            legacy["src_ip"],
+            legacy["dst_ip"],
+            legacy["host"],
+            json.dumps(legacy),
+        ),
+    )
+
+    record = store.get_event_record(legacy["event_id"])
+    assert record is not None
+    assert record.http_bytes is None
+
+    found = store.find_event_records("host", legacy["host"], legacy["time"], legacy["time"] + 1, 10)
+    assert len(found) == 1
+    assert found[0].http_bytes is None
+
+    persisted = conn.execute(
+        "SELECT record FROM event_records WHERE event_id = %s", (legacy["event_id"],)
+    ).fetchone()[0]
+    if isinstance(persisted, str):
+        persisted = json.loads(persisted)
+    assert "http_bytes" not in persisted
 
 
 @pytest.mark.parametrize("table", ["alert_records", "event_records"])

@@ -12,6 +12,7 @@ export interface EventRecord {
   user: string | null;
   http_url: string | null;
   http_status: number | null;
+  http_bytes: number | null;
   api_operation: string | null;
   status: string | null;
   src_asset: AssetInfo | null;
