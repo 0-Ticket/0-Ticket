@@ -52,6 +52,25 @@ def test_ait_events_normalize_to_expected_c13(normalizer):
     assert [validate_contract("EventRecord", dump(result)) for result in results] == results
 
 
+@pytest.mark.parametrize(
+    "case",
+    read_json(NORMALIZE / "http_bytes" / "cases.json"),
+    ids=lambda case: case["case"],
+)
+def test_http_bytes_alias_normalizes_nonnegative_body_length(case):
+    alias_dir = NORMALIZE / "http_bytes" / "aliases"
+    normalizer = Normalizer(load_alias_tables(alias_dir), MAX_PARSE)
+    source = make_c2("event", "http_bytes_event", case["fields"], raw_ids=["raw_http_bytes_event"])
+
+    result = normalizer.normalize(source, NOW)
+
+    assert isinstance(result, EventRecord)
+    assert result.http_bytes == case["http_bytes"]
+    assert result.unmapped == case["unmapped"]
+    assert result.raw_ids == source.raw_ids
+    assert validate_contract("EventRecord", dump(result)) == result
+
+
 def test_wazuh_alerts_normalize_to_expected_c3(normalizer):
     """#79, #113: AIT-ADS Wazuh alerts. dst_ip falls back to agent.ip. data.id is the response
     code in access logs; an Apache error code (AH01630) or a fast.log ID (gid:sid:rev) leaves

@@ -58,6 +58,7 @@ EVENT_TARGETS = frozenset(
         "user",
         "http_url",
         "http_status",
+        "http_bytes",
         "api_operation",
         "status",
     }

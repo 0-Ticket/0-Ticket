@@ -144,7 +144,7 @@ SIEM 어댑터가 낸 알럿 또는 이벤트. 시나리오마다 필드명이 �
 규칙
 - `fields`에 없는 원본 필드는 `unmapped`로 간다. 쓴 값만 빼고 원래 중첩 구조를 그대로 둔다. `extensions_map`으로 옮긴 값과 `parse`로 나눈 원본 필드는 `unmapped`에 넣지 않고, 나눈 그룹 중 쓰지 않은 값은 `unmapped`의 `<field>` 아래에 남는다.
 - 빈 문자열과 없는 값은 "없음"이다. 정수 필드는 정수나 숫자 문자열, 문자열 필드는 문자열이나 정수, 목록 필드는 목록이나 문자열 하나를 받는다.
-- 선택 정수 필드(C3 `src_port`·`dst_port`·`http_status`, C13 `http_status`)의 값이 정수로 바뀌지 않으면 그 필드만 `null`로 두고 나머지를 계속 정규화한다. 0 같은 다른 값으로 바꾸지 않는다. 원본 값은 쓰지 않은 것으로 보아 `unmapped`의 원래 자리에 원래 모양으로 남는다. 다음 후보는 찾지 않는다(앞에서 처음 값이 있는 후보만 쓴다).
+- 선택 정수 필드(C3 `src_port`·`dst_port`·`http_status`, C13 `http_status`·`http_bytes`)의 값이 정수로 바뀌지 않으면 그 필드만 `null`로 두고 나머지를 계속 정규화한다. C13 `http_bytes`는 0 이상만 유효하고 음수도 같은 방식으로 처리한다. 0 같은 다른 값으로 바꾸지 않는다. 원본 값은 쓰지 않은 것으로 보아 `unmapped`의 원래 자리에 원래 모양으로 남는다. 다음 후보는 찾지 않는다(앞에서 처음 값이 있는 후보만 쓴다).
 - 시간대가 없는 시간은 추측하지 않고 실패(`bad_value`)로 둔다.
 - `parse` 정규식은 공격자가 만든 문자열에 적용되므로 역추적이 폭발하지 않게 쓴다(중첩 반복 금지). 대상 값이 설정 `normalize.max_parse_length`보다 길면 정규식을 적용하지 않고 C12(`bad_value`)를 만든다. 정규식이 맞지 않으면 필수 필드를 못 찾은 것으로 본다(`missing_required`).
 - C2의 `scenario`에 맞는 표가 없거나 표의 `kind`가 C2와 다르면 C12(`unknown_scenario`), 필수 필드를 못 찾으면 C12(`missing_required`), 시간·심각도 변환이나 선택 정수 필드가 아닌 필드의 형 변환에 실패하면 C12(`bad_value`)를 만든다.
@@ -208,7 +208,7 @@ OCSF 경로는 OCSF 1.9.0 Detection Finding, 프로필 없음 기준이다.
 | user | str | 선택 | | `actor.user.name` |
 | http_url | str | 선택 | 원문, 데이터로만 취급 | `http_request.url.url_string` |
 | http_status | int | 선택 | | `http_response.code` |
-| http_bytes | int | 선택 | HTTP 응답 본문 크기(헤더 제외), 바이트 단위. 음수는 허용하지 않으며, 크기를 알 수 없거나 HTTP 응답이 아니면 `null`; 본문이 비어 있으면 `0` | |
+| http_bytes | int | 선택 | HTTP 응답 본문 크기(헤더 제외), 바이트 단위. 음수는 허용하지 않으며, 크기를 알 수 없거나 HTTP 응답이 아니면 `null`; 본문이 비어 있으면 `0` | `http_response.body_length` |
 | api_operation | str | 선택 | 클라우드 API 이름 | `api.operation` |
 | status | str | 선택 | 성공·실패 | `status` |
 | src_asset | AssetInfo | 선택 | | |

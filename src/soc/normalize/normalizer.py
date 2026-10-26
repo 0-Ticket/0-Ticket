@@ -44,7 +44,8 @@ ALERT_REQUIRED = ("time", "severity_id", "rule_id", "rule_name")
 ALERT_ENTITIES = ("src_ip", "dst_ip", "host")
 EVENT_REQUIRED = ("time",)
 # Integer fields; all optional, so a value that does not convert becomes null.
-INT_FIELDS = frozenset({"src_port", "dst_port", "http_status"})
+INT_FIELDS = frozenset({"src_port", "dst_port", "http_status", "http_bytes"})
+NON_NEGATIVE_INT_FIELDS = frozenset({"http_bytes"})
 ALERT_OPTIONAL = (
     "src_ip",
     "src_port",
@@ -223,7 +224,10 @@ def _convert(draft: _Draft, time_format: str, severity_map: Mapping[str, int]) -
             elif target == "severity_id":
                 converted[target] = _severity(value, severity_map)
             elif target in INT_FIELDS:
-                converted[target] = _integer(value)
+                integer = _integer(value)
+                if target in NON_NEGATIVE_INT_FIELDS and integer < 0:
+                    raise BadValue("must be non-negative")
+                converted[target] = integer
             elif target == "techniques":
                 converted[target] = _text_list(value)
             else:
