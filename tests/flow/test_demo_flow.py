@@ -90,8 +90,10 @@ def use_database(monkeypatch, tmp_path):
         org = tmp_path / f"settings_{uuid.uuid4().hex[:8]}.toml"
         text = settings_text or SETTINGS.read_text(encoding="utf-8")
         artifacts = tmp_path / "agent_log"
-        # A TOML literal string: the backslashes of a Windows path are not escapes in it.
-        org.write_text(f"{text}\n[agent_log]\nartifact_dir = '{artifacts}'\n", encoding="utf-8")
+        # A TOML basic string with the path escaped: a Windows path's backslashes are
+        # escapes in it, and a literal string would break on a quote in the path instead.
+        quoted = str(artifacts).replace("\\", "\\\\").replace('"', '\\"')
+        org.write_text(f'{text}\n[agent_log]\nartifact_dir = "{quoted}"\n', encoding="utf-8")
         monkeypatch.setenv("ZT_CONFIG", str(org))
         monkeypatch.setenv("DATABASE_URL", url)
         # The same account reads; the read-only connection still refuses writes.
