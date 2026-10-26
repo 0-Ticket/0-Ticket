@@ -12,7 +12,7 @@
     "host": null,
     "user": null,
     "http_url": "/backup",
-    "http_status": null,
+    "http_status": 404,
     "techniques": [],
     "raw_ids": [
       "raw_wazuh_alert.jsonl_3"
@@ -23,7 +23,6 @@
         "id": "7"
       },
       "data": {
-        "id": "404",
         "protocol": "GET"
       },
       "location": "/var/log/apache2/intranet-access.log"
@@ -74,7 +73,7 @@
     "host": null,
     "user": null,
     "http_url": "/_mem_bin",
-    "http_status": null,
+    "http_status": 404,
     "techniques": [
       "T1055",
       "T1083",
@@ -89,7 +88,6 @@
         "id": "7"
       },
       "data": {
-        "id": "404",
         "protocol": "GET"
       },
       "location": "/var/log/apache2/intranet-access.log"
@@ -123,6 +121,66 @@
         "id": "AH01630"
       },
       "location": "/var/log/apache2/intranet-error.log"
+    },
+    "extensions": {}
+  },
+  {
+    "class_uid": 2004,
+    "time": 1642500480000,
+    "severity_id": 2,
+    "rule_id": "31101",
+    "rule_name": "Web server 400 error code.",
+    "src_ip": "198.51.100.23",
+    "src_port": null,
+    "dst_ip": "192.0.2.80",
+    "dst_port": null,
+    "host": null,
+    "user": null,
+    "http_url": "/server-status",
+    "http_status": 403,
+    "techniques": [],
+    "raw_ids": [
+      "raw_wazuh_alert.jsonl_8"
+    ],
+    "unmapped": {
+      "agent": {
+        "name": "wazuh-client",
+        "id": "7"
+      },
+      "data": {
+        "protocol": "GET"
+      },
+      "location": "/var/log/apache2/intranet-access.log"
+    },
+    "extensions": {}
+  },
+  {
+    "class_uid": 2004,
+    "time": 1642500540000,
+    "severity_id": 2,
+    "rule_id": "20101",
+    "rule_name": "IDS event.",
+    "src_ip": "198.51.100.23",
+    "src_port": null,
+    "dst_ip": "192.0.2.1",
+    "dst_port": null,
+    "host": null,
+    "user": null,
+    "http_url": null,
+    "http_status": null,
+    "techniques": [],
+    "raw_ids": [
+      "raw_wazuh_alert.jsonl_9"
+    ],
+    "unmapped": {
+      "agent": {
+        "name": "wazuh-client",
+        "id": "3"
+      },
+      "data": {
+        "id": "1:2024364:4"
+      },
+      "location": "/var/log/suricata/fast.log"
     },
     "extensions": {}
   }

@@ -112,5 +112,57 @@
       },
       "location": "/var/log/apache2/intranet-error.log"
     }
+  },
+  {
+    "kind": "alert",
+    "scenario": "ait_wazuh_alert",
+    "raw_ids": [
+      "raw_wazuh_alert.jsonl_8"
+    ],
+    "fields": {
+      "@timestamp": "2022-01-18T10:08:00.000000Z",
+      "agent": {
+        "ip": "192.0.2.80",
+        "name": "wazuh-client",
+        "id": "7"
+      },
+      "rule": {
+        "id": "31101",
+        "level": 5,
+        "description": "Web server 400 error code."
+      },
+      "data": {
+        "srcip": "198.51.100.23",
+        "id": 403,
+        "url": "/server-status",
+        "protocol": "GET"
+      },
+      "location": "/var/log/apache2/intranet-access.log"
+    }
+  },
+  {
+    "kind": "alert",
+    "scenario": "ait_wazuh_alert",
+    "raw_ids": [
+      "raw_wazuh_alert.jsonl_9"
+    ],
+    "fields": {
+      "@timestamp": "2022-01-18T10:09:00.000000Z",
+      "agent": {
+        "ip": "192.0.2.1",
+        "name": "wazuh-client",
+        "id": "3"
+      },
+      "rule": {
+        "id": "20101",
+        "level": 6,
+        "description": "IDS event."
+      },
+      "data": {
+        "srcip": "198.51.100.23",
+        "id": "1:2024364:4"
+      },
+      "location": "/var/log/suricata/fast.log"
+    }
   }
 ]

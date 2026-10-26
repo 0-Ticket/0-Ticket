@@ -13,7 +13,7 @@ from normalize_fixtures import (
     read_json,
 )
 
-from soc.contracts import EventRecord, NormalizedAlert, NormalizeFailure
+from soc.contracts import EventRecord, NormalizedAlert, NormalizeFailure, validate_contract
 from soc.normalize.alias import load_alias_tables
 from soc.normalize.normalizer import Normalizer
 
@@ -51,8 +51,9 @@ def test_ait_events_normalize_to_expected_c13(normalizer):
 
 
 def test_wazuh_alerts_normalize_to_expected_c3(normalizer):
-    """#79: AIT-ADS Wazuh alerts. dst_ip falls back to agent.ip, and data.id (a status code
-    or an Apache error code such as AH01630) stays in unmapped instead of failing."""
+    """#79, #113: AIT-ADS Wazuh alerts. dst_ip falls back to agent.ip. data.id is the response
+    code in access logs; an Apache error code (AH01630) or a fast.log ID (gid:sid:rev) leaves
+    http_status null and stays in unmapped instead of failing."""
     items = read_json(NORMALIZE / "wazuh_c2.json")
     expected = read_json(NORMALIZE / "wazuh_expected_c3.json")
     results = [
@@ -185,6 +186,35 @@ def test_failure_detail_has_no_raw_text(normalizer, case):
     text = json.dumps(dump(result))
     assert "secretmarker" not in text
     assert "198.51.100.23" not in text
+
+
+@pytest.mark.parametrize(
+    "case", read_json(NORMALIZE / "optional_number_c2.json"), ids=lambda case: case["case"]
+)
+def test_optional_number_that_does_not_convert_is_null(normalizer, case):
+    """#113: the field is null (never 0), the record still normalizes and the value stays in
+    unmapped."""
+    result = normalizer.normalize(make_c2(case["kind"], case["scenario"], case["fields"]), NOW)
+    contract = "NormalizedAlert" if case["kind"] == "alert" else "EventRecord"
+    assert isinstance(result, NormalizedAlert if case["kind"] == "alert" else EventRecord)
+    output = dump(validate_contract(contract, dump(result)))
+    assert {name: output[name] for name in case["expected"]} == case["expected"]
+    assert output["unmapped"] == case["unmapped"]
+    assert output["src_ip"] == "198.51.100.23"
+
+
+def test_nulled_number_stays_out_of_unmapped_when_its_field_is_used_elsewhere(tmp_path):
+    directory = _table_dir(tmp_path, "epoch_ms")
+    table = directory / "time_case.toml"
+    text = table.read_text(encoding="utf-8")
+    text = text.replace("[severity_map]", '[extensions_map]\n"p" = "acme.port"\n[severity_map]')
+    table.write_text(text + '\nsrc_port = ["p"]\n', encoding="utf-8")
+    normalizer = Normalizer(load_alias_tables(directory), MAX_PARSE)
+    fields = {**_time_case(1642500341120), "p": "web-01"}
+    result = normalizer.normalize(make_c2("alert", "time_case", fields), NOW)
+    assert result.src_port is None
+    assert result.extensions == {"acme.port": "web-01"}
+    assert result.unmapped == {}
 
 
 def test_line_longer_than_parse_limit_is_bad_value_without_running_the_pattern():
