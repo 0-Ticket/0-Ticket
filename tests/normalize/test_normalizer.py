@@ -203,6 +203,41 @@ def test_optional_number_that_does_not_convert_is_null(normalizer, case):
     assert output["src_ip"] == "198.51.100.23"
 
 
+# Python refuses int() on text longer than 4300 digits (sys.get_int_max_str_digits).
+HUGE_NUMBER = "9" * 4301
+
+
+def _wazuh_access_alert(**data):
+    return {
+        "@timestamp": "2022-01-18T10:03:00.000000Z",
+        "agent": {"ip": "192.0.2.80"},
+        "rule": {"id": "31101", "level": 5, "description": "Web server 400 error code."},
+        "data": {"srcip": "198.51.100.23", "url": "/backup", **data},
+    }
+
+
+def test_optional_number_too_long_for_int_is_null(normalizer):
+    fields = _wazuh_access_alert(id=HUGE_NUMBER, srcport=HUGE_NUMBER)
+    result = normalizer.normalize(make_c2("alert", "ait_wazuh_alert", fields), NOW)
+    assert isinstance(result, NormalizedAlert)
+    output = dump(result)
+    assert (output["http_status"], output["src_port"]) == (None, None)
+    assert output["http_url"] == "/backup"
+    assert output["unmapped"]["data"] == {"id": HUGE_NUMBER, "srcport": HUGE_NUMBER}
+
+
+def test_required_value_too_long_for_int_is_bad_value_without_the_value(normalizer, tmp_path):
+    fields = _wazuh_access_alert()
+    fields["rule"] = {**fields["rule"], "level": HUGE_NUMBER}
+    severity = normalizer.normalize(make_c2("alert", "ait_wazuh_alert", fields), NOW)
+    epoch_ms = Normalizer(load_alias_tables(_table_dir(tmp_path, "epoch_ms")), MAX_PARSE)
+    time = epoch_ms.normalize(make_c2("alert", "time_case", _time_case(HUGE_NUMBER)), NOW)
+    for result in (severity, time):
+        assert isinstance(result, NormalizeFailure)
+        assert result.reason == "bad_value"
+        assert "9999" not in json.dumps(dump(result))
+
+
 def test_nulled_number_stays_out_of_unmapped_when_its_field_is_used_elsewhere(tmp_path):
     directory = _table_dir(tmp_path, "epoch_ms")
     table = directory / "time_case.toml"

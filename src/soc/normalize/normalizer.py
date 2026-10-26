@@ -297,7 +297,11 @@ def _integer(value: Any, reason: str = "not an integer") -> int:
     if isinstance(value, int) and not isinstance(value, bool):
         return value
     if isinstance(value, str) and INTEGER_TEXT.fullmatch(value):
-        return int(value)
+        try:
+            return int(value)
+        except ValueError:
+            # Longer than Python's int digit limit; the limit stays as a DoS guard.
+            raise BadValue(reason) from None
     raise BadValue(reason)
 
 
