@@ -49,6 +49,7 @@ def test_ait_events_normalize_to_expected_c13(normalizer):
     assert all(isinstance(result, EventRecord) for result in results)
     assert [result.http_bytes for result in results] == [None] * len(events)
     assert [dump(result) for result in results] == expected
+    assert [validate_contract("EventRecord", dump(result)) for result in results] == results
 
 
 def test_wazuh_alerts_normalize_to_expected_c3(normalizer):
