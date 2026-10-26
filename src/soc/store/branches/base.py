@@ -56,6 +56,17 @@ class BranchStore(Protocol):
 
 
 class BranchStoreFactory(Protocol):
-    """What a backend registers as ``<backend>.branches`` in the ``stores`` registry."""
+    """What a backend registers as ``<backend>.branches`` in the ``stores`` registry.
 
-    def __call__(self, settings: Settings, environ: Mapping[str, str]) -> BranchStore: ...
+    A backend that wants to serve the screen API (box 27) also takes
+    ``connection``: a connection the caller borrowed from this backend's own pool,
+    to be used as it is and not closed by the store (#104). The core passes it
+    only when it has one, so a factory without the argument keeps working.
+    """
+
+    def __call__(
+        self,
+        settings: Settings,
+        environ: Mapping[str, str],
+        connection: object | None = None,
+    ) -> BranchStore: ...

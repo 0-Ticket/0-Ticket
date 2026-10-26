@@ -82,18 +82,33 @@ class PostgresAgentLogStore:
 
 
 def create_postgresql_agent_log_store(
-    settings: Settings, environ: Mapping[str, str] | None = None
+    settings: Settings,
+    environ: Mapping[str, str] | None = None,
+    connection: psycopg.Connection | None = None,
 ) -> PostgresAgentLogStore:
-    """Factory registered as ``postgresql.agent_log`` in the stores group."""
-    return PostgresAgentLogStore(connect(settings, environ), owns_connection=True)
+    """Factory registered as ``postgresql.agent_log`` in the stores group.
+
+    With ``connection`` the store reads through a connection the caller borrowed
+    from a pool: it is used as it is and never closed here (#104).
+    """
+    return PostgresAgentLogStore(
+        connection or connect(settings, environ), owns_connection=connection is None
+    )
 
 
 def create_postgresql_readonly_agent_log_store(
-    settings: Settings, environ: Mapping[str, str] | None = None
+    settings: Settings,
+    environ: Mapping[str, str] | None = None,
+    connection: psycopg.Connection | None = None,
 ) -> PostgresAgentLogStore:
     """The ``postgresql.readonly_agent_log`` factory: reads work, every write fails.
 
     For the screen API (box 27), which only reads the Agent Log
     (docs/security-policy.md 4).
+
+    With ``connection`` the store reads through a connection the caller borrowed
+    from a pool: it is used as it is and never closed here (#104).
     """
-    return PostgresAgentLogStore(connect_readonly(settings, environ), owns_connection=True)
+    return PostgresAgentLogStore(
+        connection or connect_readonly(settings, environ), owns_connection=connection is None
+    )

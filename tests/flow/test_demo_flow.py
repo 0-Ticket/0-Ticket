@@ -23,7 +23,7 @@ from contextlib import closing
 from pathlib import Path
 
 import pytest
-from fakes import FakeLLMProvider, fake_siem_registries, l1_registries
+from fakes import FakeLLMProvider, fake_siem_registries, l1_registries, toml_string
 from fastapi.testclient import TestClient
 from psycopg import sql
 
@@ -34,7 +34,7 @@ import soc.l1.__main__ as l1_command
 import soc.normalize.__main__ as normalize_command
 import soc.normalize.lookup.load as lookup_command
 from soc.api.app import create_app
-from soc.api.readers import open_readers
+from soc.api.readers import open_reader_pool
 from soc.config import load_config
 from soc.db import connect
 from soc.ingest.connector import to_c2
@@ -90,7 +90,8 @@ def use_database(monkeypatch, tmp_path):
         org = tmp_path / f"settings_{uuid.uuid4().hex[:8]}.toml"
         text = settings_text or SETTINGS.read_text(encoding="utf-8")
         artifacts = tmp_path / "agent_log"
-        org.write_text(f'{text}\n[agent_log]\nartifact_dir = "{artifacts}"\n', encoding="utf-8")
+        quoted = toml_string(str(artifacts))
+        org.write_text(f"{text}\n[agent_log]\nartifact_dir = {quoted}\n", encoding="utf-8")
         monkeypatch.setenv("ZT_CONFIG", str(org))
         monkeypatch.setenv("DATABASE_URL", url)
         # The same account reads; the read-only connection still refuses writes.
@@ -285,14 +286,11 @@ def test_api_returns_the_flow_results(new_database, use_database):
     (scenario,) = by_rule(results, "31104")
     (smtp,) = by_rule(results, "86601")
 
-    readers = open_readers(load_config())
-    try:
-        client = TestClient(create_app(readers))
+    # The app's lifespan opens the pool and closes it; entering the client runs it.
+    with TestClient(create_app(open_reader_pool(load_config()))) as client:
         decisions = client.get("/api/l1/decisions", params={"limit": 100}).json()["items"]
         ticket = client.get(f"/api/tickets/{scenario.ticket_id}").json()
         alert = client.get(f"/api/alerts/{smtp.alert_id}/l1").json()
-    finally:
-        readers.close()
 
     assert {(item["subject_type"], item["decision"]) for item in decisions} == {
         ("alert", "l1_escalated"),
@@ -311,10 +309,12 @@ def test_api_returns_the_flow_results(new_database, use_database):
 
 
 def test_api_answers_concurrent_requests_without_internal_errors(new_database, use_database):
-    """#97: the screen sends many requests at once; the API shares one connection per store.
+    """#97, #104: the screen sends many requests at once.
 
-    Before the reader lock, two requests in the same store connection nested their
-    transactions and one of them failed with psycopg OutOfOrderTransactionNesting (500).
+    When every store held one connection for the whole process, two requests in
+    the same connection nested their transactions and one failed with psycopg
+    OutOfOrderTransactionNesting (500). A reader lock serialized them; each
+    request now borrows its own connection from the pool instead.
     """
     use_database(new_database())
     run_flow(FakeLLMProvider())
@@ -326,15 +326,12 @@ def test_api_answers_concurrent_requests_without_internal_errors(new_database, u
             paths.append(f"/api/tickets/{row.ticket_id}")
     paths *= 4
 
-    readers = open_readers(load_config())
-    try:
-        with (
-            TestClient(create_app(readers), raise_server_exceptions=False) as client,
-            ThreadPoolExecutor(max_workers=16) as pool,
-        ):
-            statuses = list(pool.map(lambda path: (path, client.get(path).status_code), paths))
-    finally:
-        readers.close()
+    app = create_app(open_reader_pool(load_config()))
+    with (
+        TestClient(app, raise_server_exceptions=False) as client,
+        ThreadPoolExecutor(max_workers=16) as threads,
+    ):
+        statuses = list(threads.map(lambda path: (path, client.get(path).status_code), paths))
 
     assert [item for item in statuses if item[1] != 200] == []
 

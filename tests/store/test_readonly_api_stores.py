@@ -18,7 +18,7 @@ from readonly_schema import grant_readonly, readonly_environ
 
 from soc.config import MissingSecretError, load_config
 from soc.contracts import validate_contract
-from soc.db import apply_migrations, connect
+from soc.db import apply_migrations, connect, open_readonly_pool
 from soc.l1.evidence import EVIDENCE_QUEUES, open_evidence_queue
 from soc.l1.evidence.postgresql import PostgresEvidenceQueue
 from soc.plugins import PluginRegistry
@@ -126,6 +126,27 @@ class TestReadonlyAgainstPostgres:
         assert [entry.step.step for entry in entries] == [1]
         with pytest.raises(psycopg.errors.ReadOnlySqlTransaction):
             store.save_step(step)
+
+    def test_a_pooled_connection_reads_but_cannot_write(self, schema, environ):
+        """#104: the screen API reads through connections it borrows from a pool,
+        and those have to carry the read-only transaction too, not just the ones
+        opened one at a time (docs/security-policy.md 4)."""
+        step = validate_contract("AgentStep", load_json("agent_log", "agent_step.json"))
+        with self.writable(schema, environ) as connection:
+            PostgresAgentLogStore(connection).save_step(step)
+
+        pool = open_readonly_pool(load_config(environ=environ), environ)
+        pool.open()
+        try:
+            with pool.connection() as borrowed:
+                borrowed.execute(sql.SQL("SET search_path TO {}").format(sql.Identifier(schema)))
+                store = PostgresAgentLogStore(borrowed)
+                entries = store.list_steps("alert", step.subject_id)
+                assert [entry.step.step for entry in entries] == [1]
+                with pytest.raises(psycopg.errors.ReadOnlySqlTransaction):
+                    store.save_step(step)
+        finally:
+            pool.close()
 
     def test_readonly_queue_lists_but_cannot_enqueue(self, schema, environ, opened):
         request = load_json("l1", "evidence", "specialist_ticket_request.json")

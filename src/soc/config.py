@@ -51,6 +51,10 @@ class DatabaseSettings(_Section):
     # The account agent tools read with (box 15, docs/security-policy.md 4).
     readonly_url_env: EnvName
     connect_timeout_seconds: int = Field(ge=1)
+    # The screen API (box 27) borrows one connection per request from a pool: how
+    # many it may hold at once, and how long a request waits for a free one (#104).
+    pool_max_size: int = Field(ge=1)
+    pool_timeout_seconds: int = Field(ge=1)
 
 
 class AgentModelSettings(_Section):

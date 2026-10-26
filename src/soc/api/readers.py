@@ -4,15 +4,20 @@ The API never writes, so every store is opened through the read-only account
 ``[database] readonly_url_env`` names (``docs/security-policy.md`` 4). The core
 names only store kinds, never a backend: ``[store] backend`` and
 ``[evidence_queue] backend`` choose the implementations (``docs/extensibility.md``).
+
+Each request borrows one connection from a pool and every store of that request
+reads through it, so requests no longer share a connection and their
+transactions stay apart (#104).
 """
 
 import os
-import threading
-from collections.abc import Mapping
-from dataclasses import dataclass, field
-from typing import Any, Protocol
+from collections.abc import Iterator, Mapping
+from contextlib import contextmanager
+from dataclasses import dataclass
+from typing import Any
 
 from soc.config import Settings
+from soc.db import ReadonlyPool, open_readonly_pool
 from soc.l1.agent_log import AgentLogService
 from soc.l1.evidence import open_evidence_queue
 from soc.l1.tickets import TicketStore
@@ -23,15 +28,12 @@ from soc.store.l1_decisions.base import READONLY_STORE_KIND as READONLY_L1_DECIS
 from soc.store.records.base import READONLY_STORE_KIND as READONLY_RECORDS
 
 
-class Closeable(Protocol):
-    def close(self) -> None: ...
-
-
 @dataclass
 class ApiReaders:
-    """One read-only reader per store the screen API serves from.
+    """One read-only reader per store, all on the connection of one request.
 
-    ``close`` releases every connection; the app calls it when it shuts down.
+    The readers live as long as the request does; the connection goes back to
+    the pool when it ends, and no reader closes it.
     """
 
     tickets: Any
@@ -40,27 +42,6 @@ class ApiReaders:
     branches: Any
     evidence_queue: Any
     agent_log: AgentLogService
-    _closed: bool = field(default=False, repr=False)
-
-    def close(self) -> None:
-        if self._closed:
-            return
-        self._closed = True
-        errors = []
-        for reader in (
-            self.tickets,
-            self.records,
-            self.decisions,
-            self.branches,
-            self.evidence_queue,
-            self.agent_log,
-        ):
-            try:
-                reader.close()
-            except Exception as error:  # one broken connection must not keep the rest open
-                errors.append(error)
-        if errors:
-            raise errors[0]
 
 
 @dataclass(frozen=True)
@@ -68,8 +49,8 @@ class SharedTicketReader:
     """A Ticket reader that ``AgentLogService`` may not close.
 
     ``AgentLogService.list_for_ticket`` closes the store its factory returns.
-    The API holds one read-only Ticket store for every request, so the factory
-    hands out this wrapper instead.
+    The request's Ticket store reads through the borrowed connection, so the
+    factory hands out this wrapper instead.
     """
 
     store: TicketStore
@@ -78,56 +59,66 @@ class SharedTicketReader:
         return self.store.get(ticket_id)
 
 
-class LockedReader:
-    """A store whose every method call holds the API's one reader lock (#97).
+class ApiReaderPool:
+    """The read-only connections the screen API serves its requests from (#104).
 
-    Each store keeps one connection for every request, and FastAPI runs requests
-    in worker threads. Two requests in the same psycopg connection nest their
-    transactions and fail, so the API lets one store call in at a time. The lock is
-    reentrant: the Agent Log service reads the Ticket store inside its own call.
-    A connection pool (psycopg_pool) would replace this after the presentation.
+    ``open`` and ``close`` belong to the service's start and shutdown;
+    ``readers`` belongs to one request.
     """
 
-    def __init__(self, store: Any, lock: threading.RLock) -> None:
-        self._store = store
-        self._lock = lock
+    def __init__(
+        self,
+        pool: ReadonlyPool,
+        settings: Settings,
+        environ: Mapping[str, str],
+        registry: PluginRegistry | None = None,
+    ) -> None:
+        self._pool = pool
+        self._settings = settings
+        self._environ = environ
+        self._registry = registry
 
-    def __getattr__(self, name: str) -> Any:
-        value = getattr(self._store, name)
-        if not callable(value):
-            return value
+    def open(self) -> None:
+        """Fill the pool. Raises DatabaseConnectionError if the database is unreachable."""
+        self._pool.open()
 
-        def locked(*args: Any, **kwargs: Any) -> Any:
-            with self._lock:
-                return value(*args, **kwargs)
+    def close(self) -> None:
+        self._pool.close()
 
-        return locked
+    @contextmanager
+    def readers(self) -> Iterator[ApiReaders]:
+        """Borrow a connection, open this request's readers on it, give it back."""
+        with self._pool.connection() as conn:
+            yield self._readers(conn)
+
+    def _readers(self, conn: object) -> ApiReaders:
+        def store(kind: str):
+            return open_store(
+                kind, self._settings, self._environ, registry=self._registry, connection=conn
+            )
+
+        tickets = store(READONLY_TICKETS)
+        return ApiReaders(
+            tickets=tickets,
+            records=store(READONLY_RECORDS),
+            decisions=store(READONLY_L1_DECISIONS),
+            branches=store(READONLY_BRANCHES),
+            evidence_queue=open_evidence_queue(
+                self._settings, self._environ, readonly=True, connection=conn
+            ),
+            agent_log=AgentLogService(
+                store(READONLY_AGENT_LOG),
+                self._settings.agent_log.artifact_dir,
+                ticket_store_factory=lambda: SharedTicketReader(tickets),
+            ),
+        )
 
 
-def open_readers(
+def open_reader_pool(
     settings: Settings,
     environ: Mapping[str, str] | None = None,
     registry: PluginRegistry | None = None,
-) -> ApiReaders:
-    """Open every read-only store the API needs, with the configured backends."""
+) -> ApiReaderPool:
+    """The pool the API serves from, with the configured backends. Not open yet."""
     environ = os.environ if environ is None else environ
-
-    lock = threading.RLock()
-
-    def store(kind: str):
-        return LockedReader(open_store(kind, settings, environ, registry=registry), lock)
-
-    tickets = store(READONLY_TICKETS)
-    agent_log = AgentLogService(
-        store(READONLY_AGENT_LOG),
-        settings.agent_log.artifact_dir,
-        ticket_store_factory=lambda: SharedTicketReader(tickets),
-    )
-    return ApiReaders(
-        tickets=tickets,
-        records=store(READONLY_RECORDS),
-        decisions=store(READONLY_L1_DECISIONS),
-        branches=store(READONLY_BRANCHES),
-        evidence_queue=LockedReader(open_evidence_queue(settings, environ, readonly=True), lock),
-        agent_log=agent_log,
-    )
+    return ApiReaderPool(open_readonly_pool(settings, environ), settings, environ, registry)

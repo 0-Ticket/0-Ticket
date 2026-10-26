@@ -21,6 +21,8 @@ def test_default_config_loads_without_org_file():
     settings = load_config(environ={})
     assert settings.database.url_env == "DATABASE_URL"
     assert settings.database.connect_timeout_seconds == 5
+    assert settings.database.pool_max_size == 8
+    assert settings.database.pool_timeout_seconds == 5
     assert settings.llm.provider == "openai_compatible"
     assert settings.llm.model == "granite4:micro"
     assert settings.llm.base_url == "http://localhost:11434/v1"
@@ -261,6 +263,19 @@ def test_invalid_value_fails_without_echoing_it(tmp_path):
         load_config(org, environ={})
     assert "database.connect_timeout_seconds" in str(caught.value)
     assert "-3" not in str(caught.value)
+
+
+@pytest.mark.parametrize(
+    "body",
+    ["pool_max_size = 0", "pool_timeout_seconds = 0", "pool_max_size = -1"],
+)
+def test_bad_pool_settings_are_rejected(tmp_path, body):
+    """#104: the screen API's pool size and wait must stay above zero."""
+    org = tmp_path / "org.toml"
+    org.write_text("[database]\n" + body + "\n")
+    with pytest.raises(ConfigError) as caught:
+        load_config(org, environ={})
+    assert "database.pool_" in str(caught.value)
 
 
 def test_secret_literal_in_env_name_field_fails_without_echoing_it():

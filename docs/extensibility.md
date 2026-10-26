@@ -112,6 +112,18 @@ model = "my-larger-model"
 그대로 두어 실수로 호출하면 실패하게 한다(`docs/security-policy.md` 4항). 새 백엔드를 붙이면 코어가 쓰는
 종류와 그 `readonly_` 짝을 함께 등록해야 한다.
 
+**빌린 연결 받기 (화면용 API, 박스 27).** 화면용 API는 요청마다 연결 하나를 풀에서 빌려
+그 요청의 저장소 전부에 넘긴다(#104). 그래서 팩토리는 선택 인자 `connection`을 하나 더 받는다.
+
+- 코어는 빌린 연결이 있을 때만 `connection=`을 넘긴다. 없으면 기존처럼 `factory(settings, environ)`으로
+  부르므로, 이 인자를 받지 않는 팩토리도 그대로 동작한다. 다만 **화면용 API가 고르는 백엔드라면 이 인자를
+  받아야 한다**
+- `connection`을 받은 저장소는 그 연결을 그대로 쓰고 **닫지 않는다**(`close()`는 자기가 연 연결만 닫는다).
+  연결을 풀에 돌려주는 것은 빌린 쪽의 일이다
+- 어떤 연결을 빌리는지는 백엔드의 사정이므로 계약에서는 타입을 두지 않는다(`object | None`)
+- 풀 자체의 설정은 `[database] pool_max_size`, `[database] pool_timeout_seconds`다. PostgreSQL 백엔드는
+  `soc.db.open_readonly_pool`로 풀을 열고, 읽기 전용 트랜잭션 옵션과 autocommit을 풀이 여는 연결에도 건다
+
 "(제안: …)"으로 적은 그룹 이름은 `src/soc/plugins.py`의 기존 규칙(소문자 snake_case 복수형, 예: `review_channels`, `vector_stores`)을 따른 제안이다. 확정되면 코드와 이 표를 함께 고친다.
 
 SIEM 커넥터와 SIEM MCP 어댑터는 설정의 `[siem] adapter` 값 하나로 함께 선택된다(D-037). 두 확장 지점의 그룹은 따로지만 이름은 같은 것을 쓴다. 에이전트가 어떤 MCP 도구를 부를 수 있는지는 설정의 `[mcp.allowed_tools]`에 에이전트 이름별로 적고, 기본값은 비어 있어 모든 호출이 거부된다(박스 15).

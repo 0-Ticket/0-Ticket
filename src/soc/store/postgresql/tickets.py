@@ -165,17 +165,32 @@ class PostgresTicketStore:
 
 
 def create_postgresql_ticket_store(
-    settings: Settings, environ: Mapping[str, str] | None = None
+    settings: Settings,
+    environ: Mapping[str, str] | None = None,
+    connection: psycopg.Connection | None = None,
 ) -> PostgresTicketStore:
-    """Factory registered in the ``zero_ticket_soc.stores`` entry point group."""
-    return PostgresTicketStore(connect(settings, environ), owns_connection=True)
+    """Factory registered in the ``zero_ticket_soc.stores`` entry point group.
+
+    With ``connection`` the store reads through a connection the caller borrowed
+    from a pool: it is used as it is and never closed here (#104).
+    """
+    return PostgresTicketStore(
+        connection or connect(settings, environ), owns_connection=connection is None
+    )
 
 
 def create_postgresql_readonly_ticket_store(
-    settings: Settings, environ: Mapping[str, str] | None = None
+    settings: Settings,
+    environ: Mapping[str, str] | None = None,
+    connection: psycopg.Connection | None = None,
 ) -> PostgresTicketStore:
     """The ``postgresql.readonly_tickets`` factory: reads and lists work, every write fails.
 
     For the screen API (box 27), which only reads Tickets (docs/security-policy.md 4).
+
+    With ``connection`` the store reads through a connection the caller borrowed
+    from a pool: it is used as it is and never closed here (#104).
     """
-    return PostgresTicketStore(connect_readonly(settings, environ), owns_connection=True)
+    return PostgresTicketStore(
+        connection or connect_readonly(settings, environ), owns_connection=connection is None
+    )
