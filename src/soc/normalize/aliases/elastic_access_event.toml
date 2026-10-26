@@ -9,7 +9,6 @@ activity = "http_request"
 time_format = "iso8601"
 
 # http_status: 이 랩의 http.response.status_code는 접근로그 응답 코드라 정수로 믿을 수 있다(Web 전문가 근거 표에 쓰인다).
-# Wazuh 표(ait_wazuh_alert)에서 http_status를 뺀 이유(오류 로그의 data.id)와는 상관없다.
 # user_agent.original은 C13에 맞는 필드가 없어 unmapped에 남는다. 목적지 IP는 원본에 없다.
 [fields]
 time = ["@timestamp"]

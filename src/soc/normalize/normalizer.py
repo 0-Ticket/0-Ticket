@@ -8,6 +8,8 @@ Rules, in docs/data-contracts.md C20:
   string, an empty list and a missing key are "no value".
 - Values are converted to the contract type; a value that does not convert is
   a ``bad_value``. Times need a time zone. Severity goes through severity_map.
+- An optional integer (ports, HTTP status) that does not convert is null instead,
+  never a made-up number; its source value stays in ``unmapped``.
 - Source fields no candidate used stay in ``unmapped`` in their original shape.
 
 Field values come from logs an attacker may have written. They are only data:
@@ -41,6 +43,7 @@ INTEGER_TEXT = re.compile(r"-?[0-9]+")
 ALERT_REQUIRED = ("time", "severity_id", "rule_id", "rule_name")
 ALERT_ENTITIES = ("src_ip", "dst_ip", "host")
 EVENT_REQUIRED = ("time",)
+# Integer fields; all optional, so a value that does not convert becomes null.
 INT_FIELDS = frozenset({"src_port", "dst_port", "http_status"})
 ALERT_OPTIONAL = (
     "src_ip",
@@ -76,7 +79,9 @@ class _Draft:
     """What one record yields before it becomes C3, C13 or C12."""
 
     values: dict[str, Any] = field(default_factory=dict)
+    sources: dict[str, Path] = field(default_factory=dict)
     extensions: dict[str, Any] = field(default_factory=dict)
+    extension_paths: set[Path] = field(default_factory=set)
     used: set[Path] = field(default_factory=set)
     bad: str | None = None
     parse_note: str | None = None
@@ -195,6 +200,7 @@ def _pick(
             value = _get(view, path)
             if _has_value(value):
                 draft.values[target] = value
+                draft.sources[target] = path
                 draft.used.add(path)
                 break
     for source_field, key in extensions_map.items():
@@ -202,11 +208,13 @@ def _pick(
         value = _get(view, path)
         if _has_value(value):
             draft.extensions[key] = value
+            draft.extension_paths.add(path)
             draft.used.add(path)
 
 
 def _convert(draft: _Draft, time_format: str, severity_map: Mapping[str, int]) -> dict[str, Any]:
     converted: dict[str, Any] = {}
+    nulled: set[str] = set()
     for target, value in draft.values.items():
         try:
             if target == "time":
@@ -220,7 +228,15 @@ def _convert(draft: _Draft, time_format: str, severity_map: Mapping[str, int]) -
             else:
                 converted[target] = _text(value)
         except BadValue as error:
-            draft.bad = draft.bad or f"{target}: {error}"
+            if target in INT_FIELDS:
+                converted[target] = None
+                nulled.add(target)
+            else:
+                draft.bad = draft.bad or f"{target}: {error}"
+    # A nulled value goes back to unmapped unless something else still uses its field.
+    still_used = {path for target, path in draft.sources.items() if target not in nulled}
+    still_used |= draft.extension_paths
+    draft.used -= {draft.sources[target] for target in nulled} - still_used
     return converted
 
 
@@ -281,7 +297,11 @@ def _integer(value: Any, reason: str = "not an integer") -> int:
     if isinstance(value, int) and not isinstance(value, bool):
         return value
     if isinstance(value, str) and INTEGER_TEXT.fullmatch(value):
-        return int(value)
+        try:
+            return int(value)
+        except ValueError:
+            # Longer than Python's int digit limit; the limit stays as a DoS guard.
+            raise BadValue(reason) from None
     raise BadValue(reason)
 
 
