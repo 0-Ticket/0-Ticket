@@ -20,6 +20,7 @@ from soc.l1.evidence.service import EvidenceQueueService
 from soc.l1.runtime import L1Runtime
 from soc.l1.runtime import build_runtime as assemble_runtime
 from soc.l1.tickets import TicketService
+from soc.l1.vector_search import UnavailableTicketSearch
 from soc.llm import CallContext, CallFailure, LLMCallResult
 from soc.llm.prompts import format_untrusted_data, load_prompt
 from soc.plugins import PluginRegistry
@@ -639,3 +640,118 @@ def test_summarized_log_text_stays_inside_the_untrusted_data_delimiter(tmp_path)
     body = wrapped.split("<untrusted_data>", 1)[1].rsplit("</untrusted_data>", 1)[0]
     assert marker in body
     assert marker not in load_prompt(call["prompt_path"]).text
+
+
+# --- #105: the search path disabled by an initialization failure ----------------------
+
+
+def test_soc_l1_starts_when_the_ticket_search_cannot_be_initialized(tmp_path):
+    """#105: a search dependency that cannot be opened disables the search path only."""
+    settings_path = tmp_path / "organization.toml"
+    settings_path.write_text('[store]\nbackend = "fake"\n', encoding="utf-8")
+    settings = load_config(settings_path, environ={})
+
+    def failing_factory(*_args, **_kwargs):
+        raise RuntimeError("synthetic search initialization failure")
+
+    runtime = assemble_runtime(
+        settings,
+        environ={},
+        store_registry=fake_store_registry([]),
+        tool_server_factory=lambda *_args: object(),
+        lookup_factory=lambda *_args: object(),
+        evidence_queue_factory=lambda *_args: FakeEvidenceQueue(),
+        vector_ticket_factory=failing_factory,
+    )
+
+    assert isinstance(runtime.vector_tickets, UnavailableTicketSearch)
+    runtime.close()
+
+
+def test_other_initialization_failures_still_fail_to_start(tmp_path):
+    """#105: only the search factory is caught; every other failure still stops startup."""
+    settings_path = tmp_path / "organization.toml"
+    settings_path.write_text('[store]\nbackend = "fake"\n', encoding="utf-8")
+    settings = load_config(settings_path, environ={})
+
+    def failing_queue(*_args, **_kwargs):
+        raise RuntimeError("synthetic queue initialization failure")
+
+    with pytest.raises(RuntimeError):
+        assemble_runtime(
+            settings,
+            environ={},
+            store_registry=fake_store_registry([]),
+            tool_server_factory=lambda *_args: object(),
+            lookup_factory=lambda *_args: object(),
+            evidence_queue_factory=failing_queue,
+            vector_ticket_factory=lambda *_args, **_kwargs: FakeVectorTickets(),
+        )
+
+
+def search_steps(state):
+    return [
+        entry.step.output_excerpt
+        for entry in state["agent_log"].entries
+        if entry.step.tool == "vector_ticket_search"
+    ]
+
+
+def test_search_disabled_by_initialization_failure_is_recorded_as_unavailable(tmp_path):
+    runtime, state = build_runtime(
+        tmp_path,
+        verdict=read_json(L1_FIXTURES / "promote.json"),
+        vector=UnavailableTicketSearch(),
+    )
+
+    assert runtime.run(all_alerts=True) == 1
+
+    assert search_steps(state) == ['{"unavailable":true}']
+    assert state["decisions"].get("alert", ALERT_ID).decision == "l1_escalated"
+    assert state["llm"].calls[0]["data"]["similar_tickets"] == []
+
+
+def test_a_normal_empty_search_is_recorded_as_count_zero(tmp_path):
+    runtime, state = build_runtime(
+        tmp_path, verdict=read_json(L1_FIXTURES / "promote.json"), vector=FakeVectorTickets()
+    )
+
+    assert runtime.run(all_alerts=True) == 1
+
+    assert search_steps(state) == ['{"count":0}']
+
+
+def test_a_search_failure_during_the_alert_lookup_is_recorded_as_failed(tmp_path):
+    runtime, state = build_runtime(
+        tmp_path,
+        verdict=read_json(L1_FIXTURES / "promote.json"),
+        vector=FakeVectorTickets(error=RuntimeError("synthetic search failure")),
+    )
+
+    assert runtime.run(all_alerts=True) == 1
+
+    assert search_steps(state) == ['{"failed":true}']
+
+
+def test_evidence_failure_still_holds_when_the_search_is_unavailable(tmp_path):
+    """D-034: the search state does not change the evidence-request hold."""
+    runtime, state = build_runtime(tmp_path, queue_failure=True, vector=UnavailableTicketSearch())
+
+    runtime.run(all_alerts=True)
+
+    decision = state["decisions"].get("alert", ALERT_ID)
+    assert (decision.decision, decision.reason) == ("held", "evidence_request_failure")
+
+
+def test_llm_failure_still_holds_when_the_search_is_unavailable(tmp_path):
+    """D-036: the search state does not change the LLM-failure hold."""
+    runtime, state = build_runtime(
+        tmp_path,
+        llm_failure=CallFailure(rule="invalid_json", path=None),
+        vector=UnavailableTicketSearch(),
+    )
+
+    runtime.run(all_alerts=True)
+
+    decision = state["decisions"].get("alert", ALERT_ID)
+    assert (decision.decision, decision.reason) == ("held", "llm_failure")

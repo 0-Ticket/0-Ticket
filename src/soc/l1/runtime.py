@@ -35,6 +35,7 @@ from soc.l1.mcp import build_tool_server
 from soc.l1.specialists import SpecialistContext
 from soc.l1.ticket_triage import L1TicketTriage
 from soc.l1.tickets import DECIDED_TICKET_STATUSES, TicketService
+from soc.l1.vector_search import SearchUnavailableError, UnavailableTicketSearch
 from soc.llm import CallContext, LLMCallResult, call_llm
 from soc.normalize.lookup import open_lookup
 from soc.plugins import PluginRegistry
@@ -312,9 +313,19 @@ class L1Runtime:
                 action="tool_call",
                 tool="vector_ticket_search",
                 input_value=query,
-                output_value=tickets,
+                output_value={"count": len(tickets)},
             )
             return tickets
+        except SearchUnavailableError:
+            # #105: the search path is disabled for this process, not failing for this Alert.
+            self._record_step(
+                alert.alert_id,
+                action="tool_call",
+                tool="vector_ticket_search",
+                input_value=query,
+                output_value={"unavailable": True},
+            )
+            return []
         except Exception as error:
             logger.warning("L1 similar-ticket search failed (%s)", type(error).__name__)
             self._record_step(
@@ -529,11 +540,20 @@ def build_runtime(
             handlers=default_handlers(context, lookup),
             tickets=tickets,
         )
-        vector_tickets = vector_ticket_factory(
-            settings,
-            vector_registry=vector_registry,
-            embedder_registry=embedder_registry,
-        )
+        # #105: a search dependency that cannot be opened disables the search path only.
+        # Every other service here still stops startup through the outer handler below.
+        try:
+            vector_tickets = vector_ticket_factory(
+                settings,
+                vector_registry=vector_registry,
+                embedder_registry=embedder_registry,
+            )
+        except Exception as error:
+            logger.warning(
+                "L1 similar-Ticket search is unavailable; starting without it (%s)",
+                type(error).__name__,
+            )
+            vector_tickets = UnavailableTicketSearch()
         resources.append(vector_tickets)
         branches = store("readonly_branches")
         decisions = store("l1_decisions")

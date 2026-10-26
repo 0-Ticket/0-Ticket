@@ -15,6 +15,7 @@ from soc.l1.agent_log import AgentLogEntry, AgentLogService
 from soc.l1.evidence.service import EvidenceQueueService
 from soc.l1.ticket_triage import L1TicketTriage
 from soc.l1.tickets import TicketService
+from soc.l1.vector_search import UnavailableTicketSearch
 from soc.llm import CallFailure, LLMCallResult
 from soc.llm.prompts import format_untrusted_data, load_prompt
 
@@ -509,6 +510,82 @@ def test_ticket_input_still_over_the_limit_is_held_without_calling_the_llm(tmp_p
     triage.run(all_tickets=True)
 
     assert state["llm"].calls == []
+    assert state["ticket_store"].get(TICKET_ID)["status"] == "on_hold"
+    decision = state["decisions"].get("ticket", TICKET_ID)
+    assert (decision.decision, decision.reason) == ("held", "llm_failure")
+
+
+# --- #105: the search path disabled by an initialization failure ----------------------
+
+
+def triage_steps(state, tool):
+    return [
+        entry.step.output_excerpt for entry in state["agent_log"].entries if entry.step.tool == tool
+    ]
+
+
+def test_search_disabled_by_initialization_failure_is_recorded_as_unavailable(tmp_path):
+    triage, state = build_triage(tmp_path, vector=UnavailableTicketSearch())
+
+    assert triage.run(all_tickets=True) == 1
+
+    assert triage_steps(state, "vector_ticket_search") == ['{"unavailable":true}']
+    assert state["llm"].calls[0]["data"]["similar_tickets"] == []
+
+
+def test_a_normal_empty_search_is_recorded_as_count_zero(tmp_path):
+    triage, state = build_triage(tmp_path, vector=FakeVectorTickets())
+
+    assert triage.run(all_tickets=True) == 1
+
+    assert triage_steps(state, "vector_ticket_search") == ['{"count":0}']
+
+
+def test_a_search_failure_during_triage_is_recorded_as_failed(tmp_path):
+    triage, state = build_triage(
+        tmp_path, vector=FakeVectorTickets(error=RuntimeError("synthetic search failure"))
+    )
+
+    assert triage.run(all_tickets=True) == 1
+
+    assert triage_steps(state, "vector_ticket_search") == ['{"failed":true}']
+
+
+def test_unavailable_indexing_does_not_change_the_decided_ticket_or_its_decision(tmp_path):
+    """#105: a C19 index that cannot run leaves the C6 status and the C23 record as decided."""
+    triage, state = build_triage(tmp_path, vector=UnavailableTicketSearch())
+
+    assert triage.run(all_tickets=True) == 1
+
+    ticket = state["ticket_store"].get(TICKET_ID)
+    assert ticket["status"] == "closed_fp"
+    assert ticket["verdict"]["verdict"] == "fp"
+    decision = state["decisions"].get("ticket", TICKET_ID)
+    assert (decision.decision, decision.confidence, decision.reason) == ("closed_fp", 0.95, None)
+    assert triage_steps(state, "vector_ticket_index") == ['{"unavailable":true}']
+
+
+def test_evidence_failure_still_holds_when_the_search_is_unavailable(tmp_path):
+    """D-034: the search state does not change the evidence-request hold."""
+    triage, state = build_triage(tmp_path, queue_failure=True, vector=UnavailableTicketSearch())
+
+    triage.run(all_tickets=True)
+
+    assert state["ticket_store"].get(TICKET_ID)["status"] == "on_hold"
+    decision = state["decisions"].get("ticket", TICKET_ID)
+    assert (decision.decision, decision.reason) == ("held", "evidence_request_failure")
+
+
+def test_llm_failure_still_holds_when_the_search_is_unavailable(tmp_path):
+    """D-036: the search state does not change the LLM-failure hold."""
+    triage, state = build_triage(
+        tmp_path,
+        llm_failure=CallFailure(rule="invalid_json", path=None),
+        vector=UnavailableTicketSearch(),
+    )
+
+    triage.run(all_tickets=True)
+
     assert state["ticket_store"].get(TICKET_ID)["status"] == "on_hold"
     decision = state["decisions"].get("ticket", TICKET_ID)
     assert (decision.decision, decision.reason) == ("held", "llm_failure")

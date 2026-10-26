@@ -31,6 +31,7 @@ from soc.l1.tickets import (
     TicketNotFoundError,
     TicketService,
 )
+from soc.l1.vector_search import SearchUnavailableError
 from soc.llm import CallContext, LLMCallResult, call_llm
 from soc.plugins import PluginRegistry
 from soc.store.paging import DEFAULT_PAGE_LIMIT, check_page_limit
@@ -358,6 +359,16 @@ class L1TicketTriage:
                 output_value={"count": len(similar)},
             )
             return similar
+        except SearchUnavailableError:
+            # #105: the search path is disabled for this process, not failing for this Ticket.
+            self._record_step(
+                ticket_id,
+                action="tool_call",
+                tool="vector_ticket_search",
+                input_value=query,
+                output_value={"unavailable": True},
+            )
+            return []
         except Exception as error:
             logger.warning("L1 similar-ticket search failed (%s)", type(error).__name__)
             self._record_step(
@@ -474,6 +485,16 @@ class L1TicketTriage:
     def _index_decided(self, ticket_id: str) -> None:
         try:
             self.tickets.index_decided(ticket_id, self.vector_tickets)
+        except SearchUnavailableError:
+            # #105: the Ticket stays decided; only the C19 index is out of reach.
+            self._record_step(
+                ticket_id,
+                action="tool_call",
+                tool="vector_ticket_index",
+                input_value={"ticket_id": ticket_id},
+                output_value={"unavailable": True},
+            )
+            return
         except Exception as error:
             logger.warning("L1 decided Ticket vector indexing failed (%s)", type(error).__name__)
             self._record_step(
