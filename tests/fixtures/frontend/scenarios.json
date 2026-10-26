@@ -340,6 +340,7 @@
       "user": null,
       "http_url": "https://example.com/",
       "http_status": 200,
+      "http_bytes": null,
       "api_operation": null,
       "status": null,
       "src_asset": null,

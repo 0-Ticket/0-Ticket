@@ -89,6 +89,7 @@ def web_flow_events(at, *, extra_4xx=0):
             "user": None,
             "http_url": line["url"],
             "http_status": line["status"],
+            "http_bytes": None,
             "api_operation": None,
             "status": None,
             "src_asset": None,

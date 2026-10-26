@@ -1,0 +1,38 @@
+[
+  {
+    "case": "empty body",
+    "fields": {
+      "timestamp": 1642500062000,
+      "response": {"body_bytes": 0}
+    },
+    "http_bytes": 0,
+    "unmapped": {}
+  },
+  {
+    "case": "numeric text",
+    "fields": {
+      "timestamp": 1642500062000,
+      "response": {"body_bytes": "1534"}
+    },
+    "http_bytes": 1534,
+    "unmapped": {}
+  },
+  {
+    "case": "negative size",
+    "fields": {
+      "timestamp": 1642500062000,
+      "response": {"body_bytes": -1}
+    },
+    "http_bytes": null,
+    "unmapped": {"response": {"body_bytes": -1}}
+  },
+  {
+    "case": "unparseable size",
+    "fields": {
+      "timestamp": 1642500062000,
+      "response": {"body_bytes": "unknown"}
+    },
+    "http_bytes": null,
+    "unmapped": {"response": {"body_bytes": "unknown"}}
+  }
+]

@@ -158,6 +158,20 @@ class RecordStoreContract:
             assert dump(store.get_event_record(record.event_id)) == dump(record)
             assert store.get_source_record(record.source_record_id).kind == "event"
 
+    @pytest.mark.parametrize("http_bytes", [0, 1534, None])
+    def test_event_http_bytes_round_trip_through_get_and_find(self, store, http_bytes):
+        store.save_source_records(load_c2(), CURSOR_KEY, "c1")
+        record = load_event_records()[0].model_copy(update={"http_bytes": http_bytes})
+        store.save_event_record(record)
+
+        stored = store.get_event_record(record.event_id)
+        assert stored is not None
+        assert stored.http_bytes == http_bytes
+
+        found = store.find_event_records("host", record.host, record.time, record.time + 1, 10)
+        assert len(found) == 1
+        assert found[0].http_bytes == http_bytes
+
     def test_unknown_normalized_record_is_none(self, store):
         assert store.get_alert_record("al_missing") is None
         assert store.get_event_record("ev_missing") is None

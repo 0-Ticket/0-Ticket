@@ -49,6 +49,13 @@ def _now_ms() -> int:
     return time.time_ns() // 1_000_000
 
 
+def _validate_stored_record(contract: str, record):
+    """Read the pre-http_bytes C13 shape as the current nullable contract."""
+    if contract == "EventRecord" and isinstance(record, Mapping) and "http_bytes" not in record:
+        record = {**record, "http_bytes": None}
+    return validate_contract(contract, record)
+
+
 # Per normalized kind: table, ID column, contract name.
 _TABLES = {
     "alert": ("alert_records", "alert_id", "AlertRecord"),
@@ -166,7 +173,7 @@ class PostgresRecordStore:
             sql.Identifier(table), sql.Identifier(id_column)
         )
         row = self._one(query, (record_id,))
-        return validate_contract(contract, row[0]) if row else None
+        return _validate_stored_record(contract, row[0]) if row else None
 
     def find_alert_records(
         self, field: EntityField, value: str, time_from: int, time_to: int, limit: int
@@ -189,7 +196,7 @@ class PostgresRecordStore:
             table=sql.Identifier(table), field=sql.Identifier(field), id=sql.Identifier(id_column)
         )
         rows = self._all(query, (lookup_value(value), time_from, time_to, limit))
-        return tuple(validate_contract(contract, row[0]) for row in rows)
+        return tuple(_validate_stored_record(contract, row[0]) for row in rows)
 
     # Normalization batches (box 4)
 

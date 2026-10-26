@@ -57,6 +57,13 @@
         "null"
       ]
     },
+    "http_bytes": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
     "api_operation": {
       "type": [
         "string",
@@ -130,6 +137,7 @@
     "user",
     "http_url",
     "http_status",
+    "http_bytes",
     "api_operation",
     "status",
     "src_asset",
