@@ -41,7 +41,7 @@
 
 1. `docs/product-spec.md`: 무엇을 만들고 무엇을 만들지 않는지
 2. `docs/architecture.md`: 작업할 박스의 절만
-3. 중간 발표 범위 안의 작업이라면 `docs/milestone-l1.md`
+3. 지금 단계의 마일스톤 문서: L1 범위면 `docs/milestone-l1.md`, L2 범위면 `docs/milestone-l2.md`
 4. `docs/data-contracts.md`: 그 박스의 입출력 객체. 맨 위 "v2 불일치"를 먼저 본다
 5. `docs/extensibility.md`: 그 박스의 확장 지점
 6. `docs/decisions.md`: 쓸 수 있는 도구와 데이터셋 ("확정"만)

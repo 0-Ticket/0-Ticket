@@ -1,0 +1,77 @@
+flowchart TB
+  subgraph OUT["외부 (이 프로젝트 범위 밖, SIEM 소관)"]
+    ES["1 · Event Source"] --> RAW["2 · Raw Log"]
+    EXT[("외부 SIEM (설정으로 1개 선택)<br/>초기 Wazuh · 확장 ELK, Splunk")]
+  end
+  DIRECT["direct 어댑터<br/>(개발·테스트·데모: 데이터셋 재생)"]
+
+  subgraph P0["수집 · 정규화 (파이프라인, 에이전트 아님)"]
+    CON["3 · SIEM 커넥터"]
+    CON --> AL["6 · Alert (RDB, 원본)"]
+    CON --> EV["7 · Event (RDB, 원본)"]
+    AL --> OCSF["4 · OCSF 정규화<br/>(결과는 별도 테이블, FK)"]
+    EV --> OCSF
+    OCSF --> LK["5 · Lookup (RDB)"]
+    LK --> BR["25 · 엔티티 분기"]
+  end
+
+  subgraph L1G["SOC L1"]
+    L1Q["11 · L1 Agent<br/>엔티티 정보 조회"]
+    TK["10 · Ticket (RDB + VDB)"]
+    Q["26 · 증거 요청 큐"]
+    SP["14 · Web / 13 · Cloud 전문가<br/>+ 15 · MCP"]
+    L1V["11 · L1 Agent 판정"]
+    L1R["27 · L1 결과 조회<br/>(사람, 읽기 전용)"]
+  end
+
+  SMCP["15 · SIEM MCP (선택된 SIEM용, 읽기 전용)"]
+
+  subgraph L2G["SOC L2"]
+    INC["18 · Incident (RDB)"]
+    L2["19 · L2 Agent"]
+    ART["20 · Incident Artifact (RDB)<br/>+ 24 · 탐지 룰 제안 · 대응 방안"]
+    H["21 · Human 승인 · 확정"]
+    CASE["22 · Case (RDB + VDB)"]
+  end
+
+  subgraph L3G["SOC L3"]
+    POOL["헌팅 데이터 풀<br/>Event · Alert · SIEM MCP · 보류 건"]
+    L3["23 · L3 Agent"]
+  end
+
+  RAW --> EXT
+  EXT -- "가져오기 (C2)" --> CON
+  DIRECT -. "운영 대상 아님" .-> CON
+  EXT -.- SMCP
+  SMCP -. "조회" .-> L1Q
+  SMCP -. "과거 조회" .-> INC
+  SMCP -. "가설 검증" .-> L3
+
+  BR -- "Incident에 존재: 기존 Incident 추가 + L2 재실행" --> INC
+  BR -- "없음 · 공격 대상 시나리오: 시나리오 티켓" --> TK
+  BR -- "없음 · 그 외 시나리오" --> L1Q
+  L1Q -- "확신도 ≥ 임계값: L1 승격 티켓" --> TK
+  L1Q -- "확신도 < 임계값: 보류" --> POOL
+  TK -- "L1 증거 요청" --> Q --> SP
+  SP -- "L1 요청 결과" --> L1V
+  Q -- "재시도 후 실패: 보류" --> POOL
+  L1V -- "오탐 · 확신도 ≥ 임계값: 종결" --> END1(("종결"))
+  L1V -- "확신도 < 임계값 또는 LLM 실패: 보류" --> POOL
+  L1V -- "이상 행위 · 확신도 ≥ 임계값: L2 승격" --> BR2["25 · 엔티티 분기 (L2 입구)"]
+  L1Q -. "조회만" .-> L1R
+  L1V -. "조회만" .-> L1R
+  BR2 -- "없음: 새 Incident + SIEM MCP 과거 조회" --> INC
+  BR2 -- "있음: 기존 Incident 추가" --> INC
+  INC -- "생성 · 갱신" --> L2
+  L2 -- "L2 증거 요청" --> Q
+  SP -- "L2 요청 결과" --> L2
+  L2 -- "발견 정보는 항상 추가 (새 엔티티·증거가 늘면 재실행)" --> INC
+  L2 --> ART --> H
+  H -- "승인 · 확정" --> CASE
+  H -- "반려 (사유 입력, 2회면 사람 처리)" --> L2
+  ART -. "승인 필요: Slack 알림 (유일한 트리거)" .-> SLACK(["Slack"])
+  OP["운영자 위협 시나리오"] --> L3
+  CASE --> L3
+  POOL --> L3
+  L3 -- "위협 존재: L3 승격 티켓 (L2 Ticket으로 바로)" --> BR2
+
