@@ -96,7 +96,7 @@ model = "my-larger-model"
 | 증거 요청 큐 | 26, 27 | `evidence_queues` | PostgreSQL 테이블 큐 (D-034). 구현체 이름 `postgresql`, `[evidence_queue] backend`로 고르고 코어는 `soc.l1.evidence.open_evidence_queue`로 연다. 백엔드는 이름 두 개를 등록한다: `<백엔드>`(큐 작업자가 쓰는 연결)와 `<백엔드>.readonly`(같은 행을 읽기 전용으로 읽는 연결). 화면용 API(27)는 `open_evidence_queue(..., readonly=True)`로 뒤쪽만 연다 | 다른 큐 백엔드 |
 | 사람 검토 채널 | 21 | `review_channels` | 웹 화면 (D-013, `docs/frontend.md`) | 메신저, 사내 포털 |
 | 티켓·케이스 시스템 | 10, 22 | `case_systems` | 내부 저장과 내부 UI (D-012) | 외부 티켓·케이스 관리 도구와 동기화 |
-| 알림 채널 | 사용자 접점 | (제안: notification_channels) | Slack (D-033) | 메신저, 메일 |
+| 알림 채널 | 사용자 접점 | `notification_channels` (D-043) | Slack (D-033). 전송 어댑터는 아직 없다 | 메신저, 메일 |
 | 엔티티 분기 규칙 | 25 | (파일) | 공격 대상 시나리오 목록, 공용 엔티티 기준, Incident 매칭 기준 | 자사 공격 시나리오, 자사 공용 자산 |
 | 헌팅 쿼리 | 23 | (파일) | 기본 기준선 쿼리 | 자사 환경 기준선 |
 | 룰 변환 대상 | 24 | `rule_targets` | 연결된 SIEM 어댑터를 따름 | 다른 SIEM 쿼리 언어 |

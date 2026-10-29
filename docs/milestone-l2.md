@@ -248,11 +248,11 @@ C10 members가 현재 Ticket/hunt만 표현하므로 직접 Alert 연결은 계�
 
 우선 검토할 정책은 **강한 매칭 기준, 매칭 시간창, 복수 후보·무엔티티 처리, 초기 과거 조회 상한, 승인 대기 중 갱신 처리**다. 제안 승인 후 25·18·26·21 및 계약 변경의 이슈 경계를 정한다. soc-plan은 이 동작과 계약을 입력으로 파일·인터페이스·마이그레이션·검증 계획을 구체화한다.
 
-## 선행 결정 (미확정)
+## 선행 결정
 
-아래 두 건은 결정 대장에 행이 없다. 후보 비교는 검토용이고 확정은 사람이 한다(`prompts/decision-review.md`). 확정 전에는 해당 이슈의 구현을 시작하지 않는다.
+아래 두 건은 2026-10-29에 확정해 `docs/decisions.md`에 올렸다. 후보 비교는 근거로 남긴다.
 
-### D-042 · 탐지 룰 형식과 문법 검사·쿼리 변환 도구 (박스 24, L2-07 선행)
+### D-042 · 탐지 룰 문법 검사·쿼리 변환 도구 (박스 24) — 확정: pySigma
 
 D-011(Sigma 2.0 상관 규칙)은 Correlation(17) 폐기와 함께 폐기됐고, 그 뒤로 룰 형식·검사 도구 행이 없다. 반면 `contracts/rule_proposal.schema.json`에는 `sigma_rule`·`siem_query`·`syntax_ok`·`backtest`가 이미 있다. 즉 형식은 사실상 Sigma이고, 미정인 것은 **문법 검사·쿼리 변환 구현체**다.
 
@@ -265,12 +265,12 @@ D-011(Sigma 2.0 상관 규칙)은 Correlation(17) 폐기와 함께 폐기됐고,
 | 라이선스 | pySigma LGPL-2.1, sigma-cli LGPL-2.1-or-later. D-016(라이선스 정책)이 후보 상태라 사람 확인 필요 | 동일 | 해당 없음 |
 | 교체 용이성 | 변환 대상은 이미 `rule_targets` 확장 지점이 있다. 검사·파싱만 어댑터 뒤로 감싸면 교체 가능 | 같음 | 같음. 단 Sigma 문법 호환 범위를 직접 책임진다 |
 
-- **검토 의견**: A. 문법 검사와 변환은 24의 완료 조건이지 이 프로젝트의 연구 주제가 아니다. D-029(OCSF 직접 구현)와 달리 Sigma는 외부 생태계의 문법이라 자체 구현은 호환 책임만 늘린다. 백테스트만 우리 Event 기준으로 직접 평가한다.
+- **확정(D-042)**: A. 문법 검사와 변환은 24의 완료 조건이지 이 프로젝트의 연구 주제가 아니다. D-029(OCSF 직접 구현)와 달리 Sigma는 외부 생태계의 문법이라 자체 구현은 호환 책임만 늘린다. 변환 대상은 `rule_targets` 확장 지점 뒤에 두고, 백테스트는 저장된 Event에 대한 자체 평가로 구현한다.
 - B를 추천하지 않는 이유: 같은 기능을 서브프로세스로 감싸 실패 구분과 테스트가 어려워진다. C를 추천하지 않는 이유: 룰 호환성 책임을 지면서 얻는 것이 의존성 하나 줄이는 것뿐이다.
-- **남은 질문**: Wazuh 대상 변환을 어디까지 지원할지(미지원은 실패로 표시), LGPL-2.1 수용 여부(D-016), 백테스트를 자체 평가기로 할지 SQL 백엔드로 할지.
+- **박스 24 이슈에서 정할 것**: Wazuh 대상 변환의 지원 범위(미지원 변환은 실패로 표시). LGPL-2.1 수용 여부는 D-016 확정 때 함께 확인한다.
 - 출처: [pySigma(PyPI)](https://pypi.org/project/pySigma), [sigma-cli(PyPI)](https://pypi.org/project/sigma-cli), [pySigma-backend-sqlite(PyPI)](https://pypi.org/project/pySigma-backend-sqlite/0.1.0), [pySigma-backend-opensearch](https://mynixos.com/nixpkgs/package/python313Packages.pysigma-backend-opensearch)
 
-### D-043 · 알림 채널 확장 지점 그룹 이름 (박스 21, L2-08 선행)
+### D-043 · 알림 채널 확장 지점 그룹 이름 (박스 21) — 확정: `notification_channels`
 
 `docs/extensibility.md`에 `(제안: notification_channels)`로만 있다. #41(`siem_mcp_adapters`)·#53(`evidence_queues`)처럼 결정 기록 한 줄로 확정하면 된다.
 
@@ -280,7 +280,7 @@ D-011(Sigma 2.0 상관 규칙)은 Correlation(17) 폐기와 함께 폐기됐고,
 | `notifiers` | 짧지만 기존 문서 표기를 모두 고쳐야 한다 |
 | `review_channels`에 흡수 | 추천하지 않음. 검토 채널(D-013)과 알림(D-033)은 트리거와 책임이 다르다 |
 
-- **검토 의견**: `notification_channels` 그대로 확정. Slack 전송 기반은 레포에 없으므로(#109 미구현) 이 그룹의 첫 구현체도 #109가 만든다.
+- **확정(D-043)**: `notification_channels` 그대로. Slack 전송 기반은 레포에 없으므로(#109 미구현) 이 그룹의 첫 구현체도 #109 범위에서 만든다.
 
 ### Slack 전송 기반
 
@@ -316,7 +316,7 @@ C10의 `review_state`·`review_round`와 C15의 반려 흐름은 유지한다. C
 
 | 순서 | 작업 | 확인할 결과 |
 |---|---|---|
-| 1 | 선행 결정(D-042·D-043, Slack 기반) → 계약 정리·미정 정책 확정 | 결정 대장 기록, Schema·생성 코드·fixture·API 영향 범위 정합성 |
+| 1 | 계약 정리·미정 정책 확정 (D-042·D-043은 확정, Slack 기반 이슈만 남음) | Schema·생성 코드·fixture·API 영향 범위 정합성 |
 | 2 | 25 L2 입구 + 18 Incident 저장·갱신 | 신규 생성, 기존 연결, 과거 조회, 변경 감지 |
 | 3 | 26 Incident 요청 지원 + 전문가 반복 조사·MCP 선택 | 요청·결과 연결, 후보 추적·복귀, 도구 전환, 예산·실패 처리 |
 | 4 | 19 L2 분석 + 20 Artifact | 근거 검증, 예산, 정보 추가, 재실행 조건과 한도 |
