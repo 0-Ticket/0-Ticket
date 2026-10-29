@@ -13,6 +13,12 @@ class EmbeddingError(RuntimeError):
     """A safe embedding failure code that never includes provider response text."""
 
 
+def _is_timeout(error: BaseException) -> bool:
+    if isinstance(error, TimeoutError):
+        return True
+    return isinstance(error, URLError) and isinstance(error.reason, TimeoutError)
+
+
 class OllamaEmbedder:
     """Create one dense embedding with a locally served Ollama model."""
 
@@ -44,8 +50,13 @@ class OllamaEmbedder:
         try:
             with urlopen(request, timeout=self._timeout_seconds) as response:
                 payload = json.loads(response.read())
-        except (HTTPError, URLError, TimeoutError, OSError):
-            raise EmbeddingError("embedder_unavailable") from None
+        except HTTPError as error:
+            status = error.code
+            error.close()
+            raise EmbeddingError(f"embedder_http_{status}") from None
+        except (URLError, TimeoutError, OSError) as error:
+            code = "embedder_timeout" if _is_timeout(error) else "embedder_unavailable"
+            raise EmbeddingError(code) from None
         except (UnicodeDecodeError, json.JSONDecodeError, TypeError, ValueError):
             raise EmbeddingError("embedder_invalid_response") from None
 
