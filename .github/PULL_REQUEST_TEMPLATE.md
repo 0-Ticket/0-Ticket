@@ -1,13 +1,12 @@
 <!--
 제목: <type>(<scope>): <summary> (#이슈번호)   예: feat(box4): add OCSF alias table loader (#12)
-대상 브랜치(base): review
-review → main 릴리스 PR은 이 양식 대신 CONTRIBUTING.md의 "릴리스 PR" 양식을 씁니다.
+대상 브랜치(base): main
 -->
 
 ## 관련 이슈
 
-<!-- review에 머지돼도 이슈는 닫히지 않습니다. 이슈는 review → main 릴리스 PR에서 닫습니다. -->
-Refs #
+<!-- main에 머지되면 이슈가 닫힙니다. 이슈마다 Closes를 따로 씁니다. "Closes #12, #13"은 첫 번째만 닫힙니다. -->
+Closes #
 
 ## 변경 내용
 
