@@ -1,0 +1,8 @@
+{
+  "ticket_id": "tk_sample",
+  "reviewer": "sample-reviewer",
+  "decision": "tp",
+  "overturned": true,
+  "reason": "Sample reason",
+  "created_at": 1791849600000
+}

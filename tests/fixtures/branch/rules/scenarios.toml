@@ -1,0 +1,6 @@
+# Organization file: replaces the default scenarios.toml by name.
+[[scenario]]
+id = "org_wpscan"
+rule_ids = ["2008983"]
+handling_type = "scan"
+specialist = "none"

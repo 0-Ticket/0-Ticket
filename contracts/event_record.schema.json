@@ -1,0 +1,151 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "event_record.schema.json",
+  "title": "EventRecord",
+  "type": "object",
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "pattern": "^ev_"
+    },
+    "source_record_id": {
+      "type": "string",
+      "pattern": "^src_"
+    },
+    "class_uid": {
+      "type": "integer"
+    },
+    "time": {
+      "type": "integer"
+    },
+    "activity": {
+      "type": "string"
+    },
+    "src_ip": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "dst_ip": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "host": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "user": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "http_url": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "http_status": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "http_bytes": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "api_operation": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "status": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "src_asset": {
+      "anyOf": [
+        {
+          "$ref": "asset_info.schema.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "dst_asset": {
+      "anyOf": [
+        {
+          "$ref": "asset_info.schema.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "user_info": {
+      "anyOf": [
+        {
+          "$ref": "user_info.schema.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "raw_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^raw_"
+      }
+    },
+    "unmapped": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "extensions": {
+      "type": "object",
+      "additionalProperties": true,
+      "propertyNames": {
+        "pattern": "^[^.]+\\..+$"
+      }
+    }
+  },
+  "required": [
+    "event_id",
+    "source_record_id",
+    "class_uid",
+    "time",
+    "activity",
+    "src_ip",
+    "dst_ip",
+    "host",
+    "user",
+    "http_url",
+    "http_status",
+    "http_bytes",
+    "api_operation",
+    "status",
+    "src_asset",
+    "dst_asset",
+    "user_info",
+    "raw_ids",
+    "unmapped",
+    "extensions"
+  ],
+  "additionalProperties": false
+}

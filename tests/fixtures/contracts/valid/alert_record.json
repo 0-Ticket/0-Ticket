@@ -1,0 +1,58 @@
+{
+  "class_uid": 2004,
+  "time": 1791849600000,
+  "severity_id": 4,
+  "rule_id": "sample",
+  "rule_name": "Sample",
+  "src_ip": "203.0.113.10",
+  "src_port": null,
+  "dst_ip": null,
+  "dst_port": null,
+  "host": null,
+  "user": null,
+  "http_url": null,
+  "http_status": null,
+  "techniques": [],
+  "raw_ids": [
+    "raw_sample_1"
+  ],
+  "unmapped": {},
+  "extensions": {
+    "example.context": {
+      "labels": [
+        "sample"
+      ],
+      "value": null
+    }
+  },
+  "alert_id": "al_sample",
+  "source_record_id": "src_sample",
+  "src_asset": null,
+  "dst_asset": {
+    "match": "192.0.2.10",
+    "hostname": "web-01",
+    "criticality": 5,
+    "owner": null,
+    "zone": "dmz",
+    "shared": false,
+    "valid_from": null,
+    "valid_to": null,
+    "extensions": {
+      "example.context": {
+        "labels": [
+          "sample"
+        ],
+        "value": null
+      }
+    }
+  },
+  "user_info": {
+    "user": "sample-user",
+    "dept": null,
+    "privileged": false,
+    "extensions": {}
+  },
+  "count": 1,
+  "first_seen": 1791849600000,
+  "last_seen": 1791849600000
+}

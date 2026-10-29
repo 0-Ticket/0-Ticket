@@ -1,0 +1,9 @@
+{"timestamp":"2022-01-18T09:59:59.999000+0000","event_type":"alert","src_ip":"198.51.100.23","src_port":51500,"dest_ip":"192.0.2.80","dest_port":80,"proto":"TCP","alert":{"signature_id":2008983,"signature":"ET SCAN WPScan User Agent","category":"Web Application Attack","severity":1}}
+{"timestamp":"2022-01-18T10:00:00.000000+0000","event_type":"alert","src_ip":"198.51.100.23","src_port":51544,"dest_ip":"192.0.2.80","dest_port":80,"proto":"TCP","alert":{"signature_id":2008983,"signature":"ET SCAN WPScan User Agent","category":"Web Application Attack","severity":1}}
+{"timestamp":"2022-01-18T10:00:01.000000+0000","event_type":"flow","src_ip":"198.51.100.23","src_port":51544,"dest_ip":"192.0.2.80","dest_port":80,"proto":"TCP"}
+{"timestamp":"2022-01-18T10:00:02.000000+0000","event_type":"dns","src_ip":"192.0.2.53","src_port":53,"dest_ip":"192.0.2.80","dest_port":40000,"proto":"UDP"}
+{"timestamp":"2022-01-18T10:04:00.000000+0000","event_type":"alert","src_ip":"198.51.100.23","src_port":51590,"dest_ip":"192.0.2.80","dest_port":80,"proto":"TCP","alert":{"signature_id":2008983,"signature":"ET SCAN WPScan User Agent","category":"Web Application Attack","severity":1}}
+
+{"timestamp":"2022-01-18T10:05:00.000000+0000","event_type":"alert","src_ip":
+{"timestamp":"2022-01-18T10:20:00.000000+0000","event_type":"alert","src_ip":"198.51.100.23","src_port":51600,"dest_ip":"192.0.2.80","dest_port":80,"proto":"TCP","alert":{"signature_id":2008983,"signature":"ET SCAN WPScan User Agent","category":"Web Application Attack","severity":1}}
+{"timestamp":"2022-01-18T10:30:00.000000+0000","event_type":"alert","src_ip":"198.51.100.23","src_port":51700,"dest_ip":"192.0.2.80","dest_port":80,"proto":"TCP","alert":{"signature_id":2009999,"signature":"Example webshell upload","category":"Web Application Attack","severity":1}}

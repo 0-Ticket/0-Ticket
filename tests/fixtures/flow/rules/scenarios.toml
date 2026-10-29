@@ -1,0 +1,9 @@
+# Integration test scenario rules (#81). Same shape as config/demo/rules/scenarios.toml:
+# only 31104 (Common web attack) becomes a scenario Ticket for the Web specialist.
+
+[[scenario]]
+id = "flow_web_attack"
+rule_ids = ["31104"]
+techniques = []
+handling_type = "web_attack"
+specialist = "web"

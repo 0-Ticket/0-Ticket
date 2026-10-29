@@ -1,0 +1,210 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "agent_step.schema.json",
+  "title": "AgentStep",
+  "type": "object",
+  "properties": {
+    "subject_type": {
+      "type": "string",
+      "enum": [
+        "alert",
+        "ticket",
+        "incident",
+        "hunt"
+      ]
+    },
+    "subject_id": {
+      "type": "string"
+    },
+    "step": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "agent": {
+      "type": "string"
+    },
+    "action": {
+      "type": "string",
+      "enum": [
+        "llm_call",
+        "tool_call",
+        "decision"
+      ]
+    },
+    "tool": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "prompt_version": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "input_excerpt": {
+      "type": "string",
+      "maxLength": 2000
+    },
+    "output_excerpt": {
+      "type": "string",
+      "maxLength": 2000
+    },
+    "model": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "tokens": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "latency_ms": {
+      "type": "integer"
+    },
+    "created_at": {
+      "type": "integer"
+    }
+  },
+  "required": [
+    "subject_type",
+    "subject_id",
+    "step",
+    "agent",
+    "action",
+    "tool",
+    "prompt_version",
+    "input_excerpt",
+    "output_excerpt",
+    "model",
+    "tokens",
+    "latency_ms",
+    "created_at"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "subject_type": {
+            "const": "alert"
+          }
+        },
+        "required": [
+          "subject_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "subject_id": {
+            "type": "string",
+            "pattern": "^al_"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "subject_type": {
+            "const": "ticket"
+          }
+        },
+        "required": [
+          "subject_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "subject_id": {
+            "type": "string",
+            "pattern": "^tk_"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "subject_type": {
+            "const": "incident"
+          }
+        },
+        "required": [
+          "subject_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "subject_id": {
+            "type": "string",
+            "pattern": "^in_"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "subject_type": {
+            "const": "hunt"
+          }
+        },
+        "required": [
+          "subject_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "subject_id": {
+            "type": "string",
+            "pattern": "^ht_"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "action": {
+            "const": "tool_call"
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "then": {
+        "properties": {
+          "tool": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "action": {
+            "const": "llm_call"
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "then": {
+        "properties": {
+          "prompt_version": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  ],
+  "description": "Core follow-up: increasing step sequence within each subject and secret redaction."
+}

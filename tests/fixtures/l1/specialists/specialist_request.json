@@ -1,0 +1,14 @@
+{
+  "request_id": "rq_web_specialist_sample",
+  "requester_type": "ticket",
+  "requester_id": "tk_web_sample",
+  "request_type": "specialist_agent",
+  "domain": "web",
+  "params": {"question": "Did the SQL injection attempt from 203.0.113.25 succeed?"},
+  "retry_count": 0,
+  "status": "pending",
+  "failure_reason": null,
+  "result": null,
+  "created_at": 1770001800000,
+  "updated_at": 1770001800000
+}

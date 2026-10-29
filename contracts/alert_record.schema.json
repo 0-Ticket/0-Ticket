@@ -1,0 +1,217 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "alert_record.schema.json",
+  "title": "AlertRecord",
+  "type": "object",
+  "properties": {
+    "alert_id": {
+      "type": "string",
+      "pattern": "^al_"
+    },
+    "source_record_id": {
+      "type": "string",
+      "pattern": "^src_"
+    },
+    "class_uid": {
+      "type": "integer",
+      "const": 2004
+    },
+    "time": {
+      "type": "integer"
+    },
+    "severity_id": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 6
+    },
+    "rule_id": {
+      "type": "string"
+    },
+    "rule_name": {
+      "type": "string"
+    },
+    "src_ip": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "src_port": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "dst_ip": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "dst_port": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "host": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "user": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "http_url": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "http_status": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "techniques": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "raw_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^raw_"
+      }
+    },
+    "unmapped": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "extensions": {
+      "type": "object",
+      "additionalProperties": true,
+      "propertyNames": {
+        "pattern": "^[^.]+\\..+$"
+      }
+    },
+    "src_asset": {
+      "anyOf": [
+        {
+          "$ref": "asset_info.schema.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "dst_asset": {
+      "anyOf": [
+        {
+          "$ref": "asset_info.schema.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "user_info": {
+      "anyOf": [
+        {
+          "$ref": "user_info.schema.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "count": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "first_seen": {
+      "type": "integer"
+    },
+    "last_seen": {
+      "type": "integer"
+    }
+  },
+  "required": [
+    "alert_id",
+    "source_record_id",
+    "class_uid",
+    "time",
+    "severity_id",
+    "rule_id",
+    "rule_name",
+    "src_ip",
+    "src_port",
+    "dst_ip",
+    "dst_port",
+    "host",
+    "user",
+    "http_url",
+    "http_status",
+    "techniques",
+    "raw_ids",
+    "unmapped",
+    "extensions",
+    "src_asset",
+    "dst_asset",
+    "user_info",
+    "count",
+    "first_seen",
+    "last_seen"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "anyOf": [
+        {
+          "properties": {
+            "src_ip": {
+              "not": {
+                "type": "null"
+              }
+            }
+          },
+          "required": [
+            "src_ip"
+          ]
+        },
+        {
+          "properties": {
+            "dst_ip": {
+              "not": {
+                "type": "null"
+              }
+            }
+          },
+          "required": [
+            "dst_ip"
+          ]
+        },
+        {
+          "properties": {
+            "host": {
+              "not": {
+                "type": "null"
+              }
+            }
+          },
+          "required": [
+            "host"
+          ]
+        }
+      ]
+    }
+  ],
+  "description": "Core follow-up: deduplication and first/last seen computation."
+}

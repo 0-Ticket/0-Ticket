@@ -1,0 +1,3 @@
+# Organization override: changes one value, keeps every other default.
+[database]
+connect_timeout_seconds = 12

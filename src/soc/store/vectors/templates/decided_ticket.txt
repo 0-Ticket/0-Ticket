@@ -1,0 +1,10 @@
+Ticket decision
+Origin: {origin}
+Status: {status}
+Handling type: {handling_type}
+Specialist: {specialist}
+Verdict: {verdict}
+Confidence: {confidence}
+Entities: {entities}
+Summary: {summary}
+Recommended action: {recommended_action}

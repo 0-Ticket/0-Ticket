@@ -1,0 +1,104 @@
+[
+  {
+    "_index": ".internal.alerts-security.alerts-default-000001",
+    "_id": "al-1",
+    "_source": {
+      "@timestamp": "2026-10-21T01:02:10.120Z",
+      "kibana.alert.uuid": "al-1",
+      "kibana.alert.original_time": "2026-10-21T01:01:05.000Z",
+      "kibana.alert.rule.rule_id": "a2a-web-attack-juice-shop",
+      "kibana.alert.rule.name": "Web Attack - Juice Shop",
+      "kibana.alert.rule.uuid": "rule-uuid-1",
+      "kibana.alert.rule.category": "Custom Query Rule",
+      "kibana.alert.severity": "high",
+      "kibana.alert.risk_score": 73,
+      "kibana.alert.status": "active",
+      "kibana.alert.workflow_status": "open",
+      "kibana.alert.last_detected": "2026-10-21T01:02:10.120Z",
+      "kibana.alert.depth": 1,
+      "kibana.alert.ancestors": [
+        {
+          "id": "ev-2",
+          "index": ".ds-logs-generic-default-2026.10.21-000001",
+          "type": "event",
+          "depth": 0
+        }
+      ],
+      "kibana.space_ids": ["default"],
+      "event.kind": "signal",
+      "source": {"address": "198.51.100.23"},
+      "url": {"original": "/rest/products/search?q=')) UNION SELECT * FROM Users--"},
+      "http": {"request": {"method": "GET"}, "response": {"status_code": 500}},
+      "user_agent": {"original": "attack-sim/1.0"},
+      "host": {"name": "logstash"}
+    }
+  },
+  {
+    "_index": ".internal.alerts-security.alerts-default-000001",
+    "_id": "al-2",
+    "_source": {
+      "@timestamp": "2026-10-21T01:02:10.130Z",
+      "kibana.alert.uuid": "al-2",
+      "kibana.alert.original_time": "2026-10-21T01:01:05.000Z",
+      "kibana.alert.rule.rule_id": "a2a-web-attack-juice-shop",
+      "kibana.alert.rule.name": "Web Attack - Juice Shop",
+      "kibana.alert.rule.uuid": "rule-uuid-1",
+      "kibana.alert.rule.category": "Custom Query Rule",
+      "kibana.alert.severity": "high",
+      "kibana.alert.risk_score": 73,
+      "kibana.alert.status": "active",
+      "kibana.alert.workflow_status": "open",
+      "kibana.alert.last_detected": "2026-10-21T01:02:10.130Z",
+      "kibana.alert.depth": 1,
+      "kibana.alert.ancestors": [
+        {
+          "id": "ev-3",
+          "index": ".ds-logs-generic-default-2026.10.21-000001",
+          "type": "event",
+          "depth": 0
+        }
+      ],
+      "kibana.space_ids": ["default"],
+      "event.kind": "signal",
+      "source": {"address": "198.51.100.23"},
+      "url": {"original": "/ftp/../../etc/passwd"},
+      "http": {"request": {"method": "GET"}, "response": {"status_code": 403}},
+      "user_agent": {"original": "attack-sim/1.0"},
+      "host": {"name": "logstash"}
+    }
+  },
+  {
+    "_index": ".internal.alerts-security.alerts-default-000001",
+    "_id": "al-3",
+    "_source": {
+      "@timestamp": "2026-10-21T01:03:10.050Z",
+      "kibana.alert.uuid": "al-3",
+      "kibana.alert.original_time": "2026-10-21T01:02:40.000Z",
+      "kibana.alert.rule.rule_id": "a2a-web-attack-juice-shop",
+      "kibana.alert.rule.name": "Web Attack - Juice Shop",
+      "kibana.alert.rule.uuid": "rule-uuid-1",
+      "kibana.alert.rule.category": "Custom Query Rule",
+      "kibana.alert.severity": "high",
+      "kibana.alert.risk_score": 73,
+      "kibana.alert.status": "active",
+      "kibana.alert.workflow_status": "open",
+      "kibana.alert.last_detected": "2026-10-21T01:03:10.050Z",
+      "kibana.alert.depth": 1,
+      "kibana.alert.ancestors": [
+        {
+          "id": "ev-5",
+          "index": ".ds-logs-generic-default-2026.10.21-000001",
+          "type": "event",
+          "depth": 0
+        }
+      ],
+      "kibana.space_ids": ["default"],
+      "event.kind": "signal",
+      "source.address": "192.0.2.77",
+      "url.original": "/#/search?q=<script>alert(1)</script>",
+      "http": {"request": {"method": "GET"}, "response": {"status_code": 200}},
+      "user_agent": {"original": "attack-sim/1.0"},
+      "host": {"name": "logstash"}
+    }
+  }
+]

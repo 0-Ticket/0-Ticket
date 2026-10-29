@@ -1,0 +1,21 @@
+# SIEM MCP direct 어댑터 테스트 전용 별칭 표(C20). 기본 AIT 표에는 host 매핑이 없어
+# host·user·목적지 IP 매칭을 시험하려고 둔다. 운영 설정에는 쓰지 않는다.
+scenario = "direct_test_alert"
+kind = "alert"
+class_uid = 2004
+time_format = "epoch_ms"
+default_techniques = []
+
+[severity_map]
+"high" = 4
+"low" = 2
+
+[fields]
+time = ["time"]
+severity_id = ["severity"]
+rule_id = ["rule_id"]
+rule_name = ["rule_name"]
+src_ip = ["src_ip"]
+dst_ip = ["dst_ip"]
+host = ["host"]
+user = ["user"]

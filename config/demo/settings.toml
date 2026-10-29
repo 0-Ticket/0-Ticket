@@ -1,0 +1,42 @@
+# 시연 설정 (#79). ZT_CONFIG로 고르는 덮어쓰기 파일이다. config/default.toml에 있는 키만 바꾼다.
+#   export ZT_CONFIG=config/demo/settings.toml
+# 내부 주소 없이 공개 데이터셋의 가상 회사 값만 쓰는 시연 샘플이라 예외로 커밋한다(docs/security-policy.md 1항).
+# 데이터 출처:
+#   AIT Log Data Set V2.0 (Zenodo), CC BY-NC-SA 4.0: russellmitchell Apache 접근 로그
+#   AIT Alert Data Set (AIT-ADS, Zenodo), CC BY 4.0: russellmitchell Wazuh 알럿
+# 재생 파일은 커밋하지 않는다. 받는 방법과 자르는 명령은 docs/milestone-l1.md "시연 데이터".
+# 상대 경로는 레포 루트 기준이라 명령은 레포 루트에서 실행한다.
+
+[siem]
+# SIEM 없이 데이터셋을 재생한다(개발·테스트·데모용, D-037).
+adapter = "direct"
+
+# AIT-ADS Wazuh 알럿 (2022-01-24 03:56:40 ~ 03:59:50 UTC, IDS 중복 알럿 20100·20101·20151·20152 제외)
+[[siem.direct.files]]
+path = "data/demo/wazuh_alert.jsonl"
+kind = "alert"
+scenario = "ait_wazuh_alert"
+source_type = "web"
+format = "jsonl"
+
+# intranet_server Apache 접근 로그 (같은 구간, 404 줄 제외). Web 전문가가 흐름으로 읽는다.
+[[siem.direct.files]]
+path = "data/demo/intranet.smith.russellmitchell.com-access.log.2"
+kind = "event"
+scenario = "ait_apache_access"
+source_type = "web"
+format = "text"
+
+[llm]
+# granite4:micro에 문맥 길이 16,384를 준 시연 모델. 만드는 방법은 config/demo/Modelfile.
+model = "granite4-micro-16k"
+
+[branch]
+# 시연 시나리오 규칙. 같은 이름(scenarios.toml)이라 기본 샘플 규칙을 통째로 바꾼다.
+rules_dir = "config/demo/rules"
+
+[mcp.allowed_tools]
+# L1 Agent: SIEM 조회와 내부 데이터 조회.
+l1 = ["query_siem", "query_records", "get_alert"]
+# Web 전문가 Agent: 내부 데이터와 HTTP 흐름 조회.
+web_specialist = ["query_records", "get_alert", "query_http_flow"]

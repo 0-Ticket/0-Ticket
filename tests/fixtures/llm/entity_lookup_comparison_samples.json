@@ -1,0 +1,206 @@
+[
+  {
+    "sample_id": "health_check_only",
+    "input": {
+      "alert": {
+        "alert_id": "al_cmp_health_1",
+        "time": 1792454400000,
+        "severity_id": 2,
+        "rule_id": "health_check",
+        "rule_name": "Web health endpoint request",
+        "src_ip": "203.0.113.10",
+        "src_port": 51001,
+        "dst_ip": "192.0.2.10",
+        "dst_port": 443,
+        "host": "web-01",
+        "user": null,
+        "http_url": "/health",
+        "http_status": 200,
+        "techniques": [],
+        "raw_ids": ["raw_cmp_health_1"],
+        "src_asset": null,
+        "dst_asset": null,
+        "user_info": null,
+        "count": 1,
+        "first_seen": 1792454400000,
+        "last_seen": 1792454400000
+      },
+      "entities": [
+        {"type": "ip", "value": "203.0.113.10"},
+        {"type": "ip", "value": "192.0.2.10"},
+        {"type": "host", "value": "web-01"}
+      ],
+      "representative_entity": {"type": "ip", "value": "203.0.113.10"},
+      "evidence_requests": [
+        {
+          "request_id": "er_cmp_health_1",
+          "request_type": "siem_mcp",
+          "status": "succeeded",
+          "params": {"entity": {"type": "ip", "value": "203.0.113.10"}, "kind": "event"},
+          "result": {
+            "total": 1,
+            "not_normalized": 0,
+            "first_time": 1792454400000,
+            "last_time": 1792454400000,
+            "rules": [{"rule_id": "health_check", "count": 1}],
+            "records": [
+              {
+                "alert_id": "al_cmp_health_1",
+                "time": 1792454400000,
+                "rule_id": "health_check",
+                "rule_name": "Web health endpoint request",
+                "src_ip": "203.0.113.10",
+                "dst_ip": "192.0.2.10",
+                "http_url": "/health",
+                "raw_ids": ["raw_cmp_health_1"]
+              }
+            ],
+            "omitted": 0
+          }
+        }
+      ],
+      "similar_tickets": []
+    }
+  },
+  {
+    "sample_id": "single_failed_login",
+    "input": {
+      "alert": {
+        "alert_id": "al_cmp_login_1",
+        "time": 1792458000000,
+        "severity_id": 3,
+        "rule_id": "auth_failed",
+        "rule_name": "Failed web login",
+        "src_ip": "198.51.100.23",
+        "src_port": 51002,
+        "dst_ip": "192.0.2.10",
+        "dst_port": 443,
+        "host": "web-01",
+        "user": "demo-user",
+        "http_url": "/login",
+        "http_status": 401,
+        "techniques": [],
+        "raw_ids": ["raw_cmp_login_1"],
+        "src_asset": null,
+        "dst_asset": null,
+        "user_info": {"user": "demo-user", "dept": null, "privileged": false, "extensions": {}},
+        "count": 1,
+        "first_seen": 1792458000000,
+        "last_seen": 1792458000000
+      },
+      "entities": [
+        {"type": "ip", "value": "198.51.100.23"},
+        {"type": "ip", "value": "192.0.2.10"},
+        {"type": "host", "value": "web-01"},
+        {"type": "user", "value": "demo-user"}
+      ],
+      "representative_entity": {"type": "ip", "value": "198.51.100.23"},
+      "evidence_requests": [
+        {
+          "request_id": "er_cmp_login_1",
+          "request_type": "siem_mcp",
+          "status": "succeeded",
+          "params": {"entity": {"type": "ip", "value": "198.51.100.23"}, "kind": "event"},
+          "result": {
+            "total": 1,
+            "not_normalized": 0,
+            "first_time": 1792458000000,
+            "last_time": 1792458000000,
+            "rules": [{"rule_id": "auth_failed", "count": 1}],
+            "records": [
+              {
+                "alert_id": "al_cmp_login_1",
+                "time": 1792458000000,
+                "rule_id": "auth_failed",
+                "rule_name": "Failed web login",
+                "src_ip": "198.51.100.23",
+                "dst_ip": "192.0.2.10",
+                "http_url": "/login",
+                "raw_ids": ["raw_cmp_login_1"]
+              }
+            ],
+            "omitted": 0
+          }
+        }
+      ],
+      "similar_tickets": []
+    }
+  },
+  {
+    "sample_id": "corroborated_webshell_activity",
+    "input": {
+      "alert": {
+        "alert_id": "al_cmp_upload_1",
+        "time": 1792461600000,
+        "severity_id": 5,
+        "rule_id": "web_upload",
+        "rule_name": "Unexpected web file upload",
+        "src_ip": "203.0.113.25",
+        "src_port": 51003,
+        "dst_ip": "192.0.2.20",
+        "dst_port": 443,
+        "host": "web-02",
+        "user": "demo-user",
+        "http_url": "/upload.php",
+        "http_status": 200,
+        "techniques": ["T1505.003"],
+        "raw_ids": ["raw_cmp_upload_1"],
+        "src_asset": null,
+        "dst_asset": null,
+        "user_info": {"user": "demo-user", "dept": null, "privileged": false, "extensions": {}},
+        "count": 1,
+        "first_seen": 1792461600000,
+        "last_seen": 1792461600000
+      },
+      "entities": [
+        {"type": "ip", "value": "203.0.113.25"},
+        {"type": "ip", "value": "192.0.2.20"},
+        {"type": "host", "value": "web-02"},
+        {"type": "user", "value": "demo-user"}
+      ],
+      "representative_entity": {"type": "ip", "value": "203.0.113.25"},
+      "evidence_requests": [
+        {
+          "request_id": "er_cmp_webshell_1",
+          "request_type": "siem_mcp",
+          "status": "succeeded",
+          "params": {"entity": {"type": "ip", "value": "203.0.113.25"}, "kind": "event"},
+          "result": {
+            "total": 2,
+            "not_normalized": 0,
+            "first_time": 1792461600000,
+            "last_time": 1792461660000,
+            "rules": [
+              {"rule_id": "web_upload", "count": 1},
+              {"rule_id": "webshell_command", "count": 1}
+            ],
+            "records": [
+              {
+                "alert_id": "al_cmp_upload_1",
+                "time": 1792461600000,
+                "rule_id": "web_upload",
+                "rule_name": "Unexpected web file upload",
+                "src_ip": "203.0.113.25",
+                "dst_ip": "192.0.2.20",
+                "http_url": "/upload.php",
+                "raw_ids": ["raw_cmp_upload_1"]
+              },
+              {
+                "alert_id": "al_cmp_command_1",
+                "time": 1792461660000,
+                "rule_id": "webshell_command",
+                "rule_name": "Web shell command execution",
+                "src_ip": "203.0.113.25",
+                "dst_ip": "192.0.2.20",
+                "http_url": "/uploads/shell.php",
+                "raw_ids": ["raw_cmp_command_1"]
+              }
+            ],
+            "omitted": 0
+          }
+        }
+      ],
+      "similar_tickets": []
+    }
+  }
+]

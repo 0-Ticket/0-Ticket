@@ -1,0 +1,369 @@
+{
+  "alerts": [
+    {
+      "alert_id": "al_api_sqli",
+      "source_record_id": "src_api_sqli",
+      "class_uid": 2004,
+      "time": 1791849600000,
+      "severity_id": 5,
+      "rule_id": "sample_web_sqli",
+      "rule_name": "SQL injection attempt",
+      "src_ip": "198.51.100.23",
+      "src_port": null,
+      "dst_ip": "203.0.113.20",
+      "dst_port": 443,
+      "host": "web-01",
+      "user": null,
+      "http_url": "/search?q=1%27%20OR%20%271",
+      "http_status": 200,
+      "techniques": ["T1190"],
+      "raw_ids": ["raw_api_web_access.log_1"],
+      "unmapped": {},
+      "extensions": {},
+      "src_asset": null,
+      "dst_asset": {
+        "match": "203.0.113.20",
+        "hostname": "web-01",
+        "criticality": 4,
+        "owner": null,
+        "zone": "dmz",
+        "shared": false,
+        "valid_from": null,
+        "valid_to": null,
+        "extensions": {}
+      },
+      "user_info": null,
+      "count": 1,
+      "first_seen": 1791849600000,
+      "last_seen": 1791849600000
+    },
+    {
+      "alert_id": "al_api_held",
+      "source_record_id": "src_api_held",
+      "class_uid": 2004,
+      "time": 1791849610000,
+      "severity_id": 2,
+      "rule_id": "sample_web_scan",
+      "rule_name": "Scanner user agent",
+      "src_ip": "198.51.100.77",
+      "src_port": null,
+      "dst_ip": "203.0.113.20",
+      "dst_port": 443,
+      "host": "web-01",
+      "user": null,
+      "http_url": "/wp-login.php",
+      "http_status": 404,
+      "techniques": [],
+      "raw_ids": ["raw_api_web_access.log_2"],
+      "unmapped": {},
+      "extensions": {},
+      "src_asset": null,
+      "dst_asset": null,
+      "user_info": null,
+      "count": 3,
+      "first_seen": 1791849610000,
+      "last_seen": 1791849618000
+    },
+    {
+      "alert_id": "al_api_plain",
+      "source_record_id": "src_api_plain",
+      "class_uid": 2004,
+      "time": 1791849620000,
+      "severity_id": 1,
+      "rule_id": "sample_web_noise",
+      "rule_name": "Noisy rule",
+      "src_ip": "198.51.100.90",
+      "src_port": null,
+      "dst_ip": "203.0.113.20",
+      "dst_port": 443,
+      "host": "web-01",
+      "user": null,
+      "http_url": "/favicon.ico",
+      "http_status": 404,
+      "techniques": [],
+      "raw_ids": ["raw_api_web_access.log_3"],
+      "unmapped": {},
+      "extensions": {},
+      "src_asset": null,
+      "dst_asset": null,
+      "user_info": null,
+      "count": 1,
+      "first_seen": 1791849620000,
+      "last_seen": 1791849620000
+    }
+  ],
+  "tickets": [
+    {
+      "ticket_id": "tk_api_escalated",
+      "origin": "l1_escalated",
+      "status": "l2_escalated",
+      "handling_type": "web_attack",
+      "specialist": "web",
+      "priority": 20,
+      "alert_ids": ["al_api_sqli", "al_api_gone"],
+      "entities": [{ "type": "ip", "value": "198.51.100.23" }],
+      "verdict": {
+        "verdict": "tp",
+        "confidence": 0.9,
+        "summary": "The injection attempt reached the application and needs L2.",
+        "evidence": [
+          {
+            "ref_type": "alert",
+            "ref_id": "al_api_sqli",
+            "note": "Injected search request"
+          }
+        ],
+        "recommended_action": "Review the application log for the search endpoint.",
+        "needs_human": false,
+        "human_reason": null
+      },
+      "extensions": {},
+      "created_at": 1791849601000,
+      "updated_at": 1791849605000,
+      "awaiting_human_at": null
+    },
+    {
+      "ticket_id": "tk_api_scenario_held",
+      "origin": "scenario",
+      "status": "on_hold",
+      "handling_type": "scan",
+      "specialist": "none",
+      "priority": 6,
+      "alert_ids": ["al_api_held"],
+      "entities": [{ "type": "ip", "value": "198.51.100.77" }],
+      "verdict": null,
+      "extensions": {},
+      "created_at": 1791849611000,
+      "updated_at": 1791849612000,
+      "awaiting_human_at": null
+    }
+  ],
+  "branches": [
+    {
+      "branch_id": "br_api_sqli",
+      "subject_type": "alert",
+      "subject_id": "al_api_sqli",
+      "path": "scenario_ticket",
+      "reason": {
+        "rule_id": "sample_web_sqli",
+        "entity": { "type": "ip", "value": "198.51.100.23" }
+      },
+      "created_at": 1791849600500
+    },
+    {
+      "branch_id": "br_api_held",
+      "subject_type": "alert",
+      "subject_id": "al_api_held",
+      "path": "l1_entity_lookup",
+      "reason": {
+        "rule_id": null,
+        "entity": { "type": "ip", "value": "198.51.100.77" }
+      },
+      "created_at": 1791849610500
+    }
+  ],
+  "decisions": [
+    {
+      "decision_id": "ld_api_alert_escalated",
+      "subject_type": "alert",
+      "subject_id": "al_api_sqli",
+      "decision": "l1_escalated",
+      "confidence": 0.91,
+      "reason": null,
+      "created_at": 1791849600900
+    },
+    {
+      "decision_id": "ld_api_ticket_escalated",
+      "subject_type": "ticket",
+      "subject_id": "tk_api_escalated",
+      "decision": "l2_escalated",
+      "confidence": 0.9,
+      "reason": null,
+      "created_at": 1791849605000
+    },
+    {
+      "decision_id": "ld_api_alert_held_threshold",
+      "subject_type": "alert",
+      "subject_id": "al_api_held",
+      "decision": "held",
+      "confidence": 0.42,
+      "reason": "below_threshold",
+      "created_at": 1791849610900
+    },
+    {
+      "decision_id": "ld_api_alert_held_llm",
+      "subject_type": "alert",
+      "subject_id": "al_api_held",
+      "decision": "held",
+      "confidence": null,
+      "reason": "llm_failure",
+      "created_at": 1791849611500
+    },
+    {
+      "decision_id": "ld_api_ticket_held",
+      "subject_type": "ticket",
+      "subject_id": "tk_api_scenario_held",
+      "decision": "held",
+      "confidence": null,
+      "reason": "evidence_request_failure",
+      "created_at": 1791849612000
+    }
+  ],
+  "evidence_requests": [
+    {
+      "request_id": "rq_api_specialist_done",
+      "requester_type": "ticket",
+      "requester_id": "tk_api_escalated",
+      "request_type": "specialist_agent",
+      "domain": "web",
+      "params": {
+        "question": "Did the SQL injection attempt from 198.51.100.23 succeed?"
+      },
+      "retry_count": 0,
+      "status": "completed",
+      "failure_reason": null,
+      "result": {
+        "finding": {
+          "ticket_id": "tk_api_escalated",
+          "specialist": "web",
+          "question": "Did the SQL injection attempt from 198.51.100.23 succeed?",
+          "summary": "The injected search request returned 200 but no data leak is visible.",
+          "attack_type": "sqli",
+          "succeeded": "unknown",
+          "confidence": 0.6,
+          "evidence": [
+            {
+              "ref_type": "raw",
+              "ref_id": "raw_api_web_access.log_1",
+              "note": "Injected search request"
+            }
+          ],
+          "details": {},
+          "needs_human": false,
+          "human_reason": null,
+          "created_at": 1791849603000
+        }
+      },
+      "created_at": 1791849601500,
+      "updated_at": 1791849603000
+    },
+    {
+      "request_id": "rq_api_lookup_done",
+      "requester_type": "ticket",
+      "requester_id": "tk_api_escalated",
+      "request_type": "lookup",
+      "domain": null,
+      "params": {
+        "entity": { "type": "ip", "value": "198.51.100.23" },
+        "at": 1791849601000
+      },
+      "retry_count": 0,
+      "status": "completed",
+      "failure_reason": null,
+      "result": { "asset": null, "user": null },
+      "created_at": 1791849601600,
+      "updated_at": 1791849602000
+    },
+    {
+      "request_id": "rq_api_siem_failed",
+      "requester_type": "ticket",
+      "requester_id": "tk_api_escalated",
+      "request_type": "siem_mcp",
+      "domain": null,
+      "params": {
+        "entity": { "type": "ip", "value": "198.51.100.23" },
+        "kind": "event",
+        "start_at": 1791849000000,
+        "end_at": 1791849600000,
+        "limit": 100
+      },
+      "retry_count": 3,
+      "status": "failed",
+      "failure_reason": "siem_mcp timed out after 3 retries",
+      "result": null,
+      "created_at": 1791849601700,
+      "updated_at": 1791849604000
+    },
+    {
+      "request_id": "rq_api_lookup_pending",
+      "requester_type": "ticket",
+      "requester_id": "tk_api_escalated",
+      "request_type": "lookup",
+      "domain": null,
+      "params": {
+        "entity": { "type": "host", "value": "web-01" },
+        "at": null
+      },
+      "retry_count": 0,
+      "status": "pending",
+      "failure_reason": null,
+      "result": null,
+      "created_at": 1791849601800,
+      "updated_at": 1791849601800
+    },
+    {
+      "request_id": "rq_api_alert_lookup",
+      "requester_type": "alert",
+      "requester_id": "al_api_held",
+      "request_type": "lookup",
+      "domain": null,
+      "params": {
+        "entity": { "type": "ip", "value": "198.51.100.77" },
+        "at": null
+      },
+      "retry_count": 0,
+      "status": "completed",
+      "failure_reason": null,
+      "result": { "asset": null, "user": null },
+      "created_at": 1791849610600,
+      "updated_at": 1791849610800
+    }
+  ],
+  "steps": [
+    {
+      "subject_type": "alert",
+      "subject_id": "al_api_sqli",
+      "step": 1,
+      "agent": "l1",
+      "action": "tool_call",
+      "tool": "query_records",
+      "prompt_version": null,
+      "input_excerpt": "entity ip 198.51.100.23",
+      "output_excerpt": "2 alerts in the last hour",
+      "model": null,
+      "tokens": null,
+      "latency_ms": 12,
+      "created_at": 1791849600800
+    },
+    {
+      "subject_type": "ticket",
+      "subject_id": "tk_api_escalated",
+      "step": 1,
+      "agent": "l1",
+      "action": "decision",
+      "tool": null,
+      "prompt_version": "l1_verdict@1",
+      "input_excerpt": "ticket tk_api_escalated with 1 finding",
+      "output_excerpt": "l2_escalated, confidence 0.9",
+      "model": "granite4:micro",
+      "tokens": 318,
+      "latency_ms": 940,
+      "created_at": 1791849605000
+    },
+    {
+      "subject_type": "alert",
+      "subject_id": "al_api_held",
+      "step": 1,
+      "agent": "l1",
+      "action": "decision",
+      "tool": null,
+      "prompt_version": "l1_entity@1",
+      "input_excerpt": "entity ip 198.51.100.77",
+      "output_excerpt": "held, confidence 0.42",
+      "model": "granite4:micro",
+      "tokens": 120,
+      "latency_ms": 450,
+      "created_at": 1791849610900
+    }
+  ]
+}

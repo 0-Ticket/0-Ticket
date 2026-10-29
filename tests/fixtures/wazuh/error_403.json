@@ -1,0 +1,1 @@
+{"error": {"root_cause": [{"type": "security_exception", "reason": "no permissions for [indices:data/read/search] and User [name=test-reader-01]"}], "type": "security_exception", "reason": "no permissions for [indices:data/read/search] and User [name=test-reader-01]"}, "status": 403}

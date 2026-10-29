@@ -1,0 +1,27 @@
+[
+  {
+    "_index": ".internal.alerts-security.alerts-default-000001",
+    "_id": "al-4",
+    "_source": {
+      "@timestamp": "2026-10-21T01:01:30.000Z",
+      "kibana.alert.uuid": "al-4",
+      "kibana.alert.rule.rule_id": "a2a-web-attack-juice-shop",
+      "kibana.alert.rule.name": "Web Attack - Juice Shop",
+      "kibana.alert.rule.uuid": "rule-uuid-1",
+      "kibana.alert.rule.category": "Custom Query Rule",
+      "kibana.alert.severity": "high",
+      "kibana.alert.risk_score": 73,
+      "kibana.alert.status": "active",
+      "kibana.alert.workflow_status": "open",
+      "kibana.alert.last_detected": "2026-10-21T01:01:30.000Z",
+      "kibana.alert.depth": 1,
+      "kibana.space_ids": ["default"],
+      "event.kind": "signal",
+      "source": {"address": "198.51.100.23"},
+      "url": {"original": "/rest/user/login"},
+      "http": {"request": {"method": "POST"}, "response": {"status_code": 500}},
+      "user_agent": {"original": "attack-sim/1.0"},
+      "host": {"name": "logstash"}
+    }
+  }
+]

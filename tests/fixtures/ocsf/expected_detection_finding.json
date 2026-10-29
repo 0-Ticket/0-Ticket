@@ -1,0 +1,33 @@
+{
+  "activity_id": 1,
+  "category_uid": 2,
+  "class_uid": 2004,
+  "type_uid": 200401,
+  "time": 1642500500123,
+  "severity_id": 5,
+  "metadata": {
+    "version": "1.9.0",
+    "product": {"name": "0-Ticket SOC"}
+  },
+  "finding_info": {
+    "uid": "al_sample_waf",
+    "title": "SQL Injection Attack Detected via libinjection",
+    "analytic": {
+      "uid": "waf-942100",
+      "name": "SQL Injection Attack Detected via libinjection",
+      "type_id": 1
+    },
+    "attacks": [{"technique": {"uid": "T1190"}}]
+  },
+  "device": {"hostname": "web-01", "type_id": 0},
+  "evidences": [
+    {
+      "src_endpoint": {"ip": "203.0.113.10", "port": 40000},
+      "dst_endpoint": {"ip": "192.0.2.80", "port": 443},
+      "device": {"hostname": "web-01", "type_id": 0},
+      "http_request": {"url": {"url_string": "/search?q=1' OR '1'='1"}},
+      "http_response": {"code": 403}
+    }
+  ],
+  "unmapped": {"account": ""}
+}

@@ -1,0 +1,19 @@
+{
+  "class_uid": 2004,
+  "time": 1642500500123,
+  "severity_id": 5,
+  "rule_id": "waf-942100",
+  "rule_name": "SQL Injection Attack Detected via libinjection",
+  "src_ip": "203.0.113.10",
+  "src_port": 40000,
+  "dst_ip": "192.0.2.80",
+  "dst_port": 443,
+  "host": "web-01",
+  "user": null,
+  "http_url": "/search?q=1' OR '1'='1",
+  "http_status": 403,
+  "techniques": ["T1190"],
+  "raw_ids": ["raw_fake_waf.jsonl_1"],
+  "unmapped": {"account": ""},
+  "extensions": {"acme.tenant": "acme-01"}
+}

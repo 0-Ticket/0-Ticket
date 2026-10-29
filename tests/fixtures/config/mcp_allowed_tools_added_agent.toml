@@ -1,0 +1,7 @@
+[mcp]
+max_query_limit = 50
+
+# l3 is an agent name the default file does not list.
+[mcp.allowed_tools]
+l1 = ["query_siem"]
+l3 = ["query_siem"]

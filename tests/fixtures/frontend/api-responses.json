@@ -1,0 +1,113 @@
+{
+  "empty": {
+    "items": [],
+    "next_cursor": null
+  },
+  "first_page": {
+    "items": [
+      {
+        "ticket_id": "tk_sample",
+        "status": "awaiting_human",
+        "handling_type": "web_attack",
+        "specialist": "none",
+        "priority": 20,
+        "alert_ids": [
+          "al_sample"
+        ],
+        "entities": [
+          {
+            "type": "ip",
+            "value": "203.0.113.10"
+          }
+        ],
+        "verdict": {
+          "verdict": "unknown",
+          "confidence": 0.5,
+          "summary": "Sample",
+          "evidence": [
+            {
+              "ref_type": "raw",
+              "ref_id": "raw_sample_1",
+              "note": "Synthetic evidence"
+            }
+          ],
+          "recommended_action": "Review",
+          "needs_human": true,
+          "human_reason": "Sample reason"
+        },
+        "extensions": {},
+        "created_at": 1791849600000,
+        "updated_at": 1791849600000,
+        "awaiting_human_at": 1791849600000,
+        "origin": "scenario"
+      }
+    ],
+    "next_cursor": "1"
+  },
+  "last_page": {
+    "items": [
+      {
+        "ticket_id": "tk_custom",
+        "status": "awaiting_human",
+        "handling_type": "example.custom",
+        "specialist": "example.specialist",
+        "priority": 5,
+        "alert_ids": [
+          "al_sample"
+        ],
+        "entities": [
+          {
+            "type": "ip",
+            "value": "203.0.113.10"
+          }
+        ],
+        "verdict": {
+          "verdict": "unknown",
+          "confidence": 0.5,
+          "summary": "Sample",
+          "evidence": [
+            {
+              "ref_type": "raw",
+              "ref_id": "raw_sample_1",
+              "note": "Synthetic evidence"
+            }
+          ],
+          "recommended_action": "Review",
+          "needs_human": true,
+          "human_reason": "Sample reason"
+        },
+        "extensions": {
+          "example.context": {
+            "label": "synthetic"
+          }
+        },
+        "created_at": 1791849600000,
+        "updated_at": 1791849600000,
+        "awaiting_human_at": 1791849600000,
+        "origin": "scenario"
+      }
+    ],
+    "next_cursor": null
+  },
+  "metrics": {
+    "from": 1791849600000,
+    "to": 1791853200000,
+    "available": true,
+    "tickets_total": 3,
+    "tickets_awaiting_human": 3,
+    "l1_reviews_total": 1,
+    "l1_overturned": 1,
+    "l2_reviews_total": 1,
+    "l2_rejects_by_type": {
+      "missing_step": 1
+    },
+    "incident_members_by_source": {
+      "l1": 0,
+      "human_l1": 1,
+      "l3": 1
+    },
+    "normalize_failures_by_reason": {
+      "bad_value": 1
+    }
+  }
+}

@@ -1,0 +1,187 @@
+[
+  {
+    "class_uid": 2004,
+    "time": 1642500180000,
+    "severity_id": 2,
+    "rule_id": "31101",
+    "rule_name": "Web server 400 error code.",
+    "src_ip": "198.51.100.23",
+    "src_port": null,
+    "dst_ip": "192.0.2.80",
+    "dst_port": null,
+    "host": null,
+    "user": null,
+    "http_url": "/backup",
+    "http_status": 404,
+    "techniques": [],
+    "raw_ids": [
+      "raw_wazuh_alert.jsonl_3"
+    ],
+    "unmapped": {
+      "agent": {
+        "name": "wazuh-client",
+        "id": "7"
+      },
+      "data": {
+        "protocol": "GET"
+      },
+      "location": "/var/log/apache2/intranet-access.log"
+    },
+    "extensions": {}
+  },
+  {
+    "class_uid": 2004,
+    "time": 1642500300000,
+    "severity_id": 2,
+    "rule_id": "86601",
+    "rule_name": "Suricata: Alert - ET SCAN Possible Nmap User-Agent Observed",
+    "src_ip": "198.51.100.23",
+    "src_port": null,
+    "dst_ip": "192.0.2.80",
+    "dst_port": 80,
+    "host": null,
+    "user": null,
+    "http_url": null,
+    "http_status": null,
+    "techniques": [],
+    "raw_ids": [
+      "raw_wazuh_alert.jsonl_5"
+    ],
+    "unmapped": {
+      "agent": {
+        "ip": "192.0.2.1",
+        "name": "wazuh-client",
+        "id": "3"
+      },
+      "data": {
+        "event_type": "alert"
+      },
+      "location": "/var/log/suricata/eve.json"
+    },
+    "extensions": {}
+  },
+  {
+    "class_uid": 2004,
+    "time": 1642500360000,
+    "severity_id": 2,
+    "rule_id": "31104",
+    "rule_name": "Common web attack.",
+    "src_ip": "198.51.100.23",
+    "src_port": null,
+    "dst_ip": "192.0.2.80",
+    "dst_port": null,
+    "host": null,
+    "user": null,
+    "http_url": "/_mem_bin",
+    "http_status": 404,
+    "techniques": [
+      "T1055",
+      "T1083",
+      "T1190"
+    ],
+    "raw_ids": [
+      "raw_wazuh_alert.jsonl_6"
+    ],
+    "unmapped": {
+      "agent": {
+        "name": "wazuh-client",
+        "id": "7"
+      },
+      "data": {
+        "protocol": "GET"
+      },
+      "location": "/var/log/apache2/intranet-access.log"
+    },
+    "extensions": {}
+  },
+  {
+    "class_uid": 2004,
+    "time": 1642500420000,
+    "severity_id": 2,
+    "rule_id": "30305",
+    "rule_name": "Apache: Attempt to access forbidden file or directory.",
+    "src_ip": "198.51.100.23",
+    "src_port": 40000,
+    "dst_ip": "192.0.2.80",
+    "dst_port": null,
+    "host": null,
+    "user": null,
+    "http_url": null,
+    "http_status": null,
+    "techniques": [],
+    "raw_ids": [
+      "raw_wazuh_alert.jsonl_7"
+    ],
+    "unmapped": {
+      "agent": {
+        "name": "wazuh-client",
+        "id": "7"
+      },
+      "data": {
+        "id": "AH01630"
+      },
+      "location": "/var/log/apache2/intranet-error.log"
+    },
+    "extensions": {}
+  },
+  {
+    "class_uid": 2004,
+    "time": 1642500480000,
+    "severity_id": 2,
+    "rule_id": "31101",
+    "rule_name": "Web server 400 error code.",
+    "src_ip": "198.51.100.23",
+    "src_port": null,
+    "dst_ip": "192.0.2.80",
+    "dst_port": null,
+    "host": null,
+    "user": null,
+    "http_url": "/server-status",
+    "http_status": 403,
+    "techniques": [],
+    "raw_ids": [
+      "raw_wazuh_alert.jsonl_8"
+    ],
+    "unmapped": {
+      "agent": {
+        "name": "wazuh-client",
+        "id": "7"
+      },
+      "data": {
+        "protocol": "GET"
+      },
+      "location": "/var/log/apache2/intranet-access.log"
+    },
+    "extensions": {}
+  },
+  {
+    "class_uid": 2004,
+    "time": 1642500540000,
+    "severity_id": 2,
+    "rule_id": "20101",
+    "rule_name": "IDS event.",
+    "src_ip": "198.51.100.23",
+    "src_port": null,
+    "dst_ip": "192.0.2.1",
+    "dst_port": null,
+    "host": null,
+    "user": null,
+    "http_url": null,
+    "http_status": null,
+    "techniques": [],
+    "raw_ids": [
+      "raw_wazuh_alert.jsonl_9"
+    ],
+    "unmapped": {
+      "agent": {
+        "name": "wazuh-client",
+        "id": "3"
+      },
+      "data": {
+        "id": "1:2024364:4"
+      },
+      "location": "/var/log/suricata/fast.log"
+    },
+    "extensions": {}
+  }
+]

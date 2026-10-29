@@ -1,0 +1,112 @@
+[
+  {
+    "ticket_id": "tk_list_a",
+    "origin": "scenario",
+    "status": "new",
+    "handling_type": "web_attack",
+    "specialist": "none",
+    "priority": 25,
+    "alert_ids": [
+      "al_list_a"
+    ],
+    "entities": [
+      {
+        "type": "ip",
+        "value": "203.0.113.10"
+      }
+    ],
+    "verdict": null,
+    "extensions": {},
+    "created_at": 1791849600000,
+    "updated_at": 1791849600000,
+    "awaiting_human_at": null
+  },
+  {
+    "ticket_id": "tk_list_b",
+    "origin": "l1_escalated",
+    "status": "on_hold",
+    "handling_type": "scan",
+    "specialist": "none",
+    "priority": 25,
+    "alert_ids": [
+      "al_list_b"
+    ],
+    "entities": [
+      {
+        "type": "ip",
+        "value": "203.0.113.10"
+      }
+    ],
+    "verdict": null,
+    "extensions": {},
+    "created_at": 1791849600000,
+    "updated_at": 1791849600000,
+    "awaiting_human_at": null
+  },
+  {
+    "ticket_id": "tk_list_c",
+    "origin": "l1_escalated",
+    "status": "new",
+    "handling_type": "web_attack",
+    "specialist": "none",
+    "priority": 25,
+    "alert_ids": [
+      "al_list_c"
+    ],
+    "entities": [
+      {
+        "type": "ip",
+        "value": "203.0.113.10"
+      }
+    ],
+    "verdict": null,
+    "extensions": {},
+    "created_at": 1791849599000,
+    "updated_at": 1791849599000,
+    "awaiting_human_at": null
+  },
+  {
+    "ticket_id": "tk_list_d",
+    "origin": "scenario",
+    "status": "closed_fp",
+    "handling_type": "other",
+    "specialist": "none",
+    "priority": 3,
+    "alert_ids": [
+      "al_list_d"
+    ],
+    "entities": [
+      {
+        "type": "ip",
+        "value": "203.0.113.10"
+      }
+    ],
+    "verdict": null,
+    "extensions": {},
+    "created_at": 1791849590000,
+    "updated_at": 1791849590000,
+    "awaiting_human_at": null
+  },
+  {
+    "ticket_id": "tk_list_e",
+    "origin": "l3_escalated",
+    "status": "new",
+    "handling_type": "example.custom",
+    "specialist": "none",
+    "priority": 15,
+    "alert_ids": [
+      "al_list_e"
+    ],
+    "entities": [
+      {
+        "type": "ip",
+        "value": "203.0.113.10"
+      }
+    ],
+    "verdict": null,
+    "extensions": {},
+    "created_at": 1791849610000,
+    "updated_at": 1791849610000,
+    "awaiting_human_at": null
+  }
+]
