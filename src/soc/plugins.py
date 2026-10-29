@@ -28,6 +28,7 @@ EXTENSION_POINT_GROUPS = frozenset(
         "siem_mcp_adapters",
         "evidence_queues",
         "review_channels",
+        "notification_channels",
         "case_systems",
         "rule_targets",
     }
