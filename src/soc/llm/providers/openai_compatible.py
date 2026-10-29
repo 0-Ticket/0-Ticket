@@ -57,7 +57,10 @@ class OpenAICompatibleProvider:
             "temperature": request.temperature,
             "response_format": {"type": "json_object"},
         }
-        headers = {"Content-Type": "application/json"}
+        headers = {
+            "Content-Type": "application/json",
+            "User-Agent": "0-Ticket-SOC/0.1 (Python urllib)",
+        }
         if request.api_key:
             headers["Authorization"] = f"Bearer {request.api_key}"
         http_request = Request(
