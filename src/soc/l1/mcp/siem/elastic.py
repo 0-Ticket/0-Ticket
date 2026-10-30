@@ -154,7 +154,7 @@ class ElasticSiemMcp:
             ),
         }
         # Health is the connector's check: the same two indices, the same probe.
-        self._connector = ElasticSiemConnector(client, settings)
+        self._connector = ElasticSiemConnector(client, settings, alias_tables=tables)
 
     def query(self, query: SiemQuery) -> tuple[Mapping[str, Any], ...]:
         body = search_body(query)

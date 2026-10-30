@@ -23,7 +23,7 @@ from siem_mcp_contract import SiemMcpAdapterContract
 
 from soc.config import load_config
 from soc.contracts import Entity
-from soc.ingest.connector import to_c2
+from soc.ingest.connector import open_connector, to_c2
 from soc.ingest.siem.elastic import MUTABLE_ALERT_FIELDS, create_elastic
 from soc.l1.mcp import build_tool_server
 from soc.l1.mcp.siem import SIEM_MCP_ADAPTERS
@@ -309,3 +309,45 @@ def test_demo_elk_settings_build_the_tool_server(fake, tmp_path, monkeypatch):
     )
     assert len(records) == 3
     assert all(record["source_record_id"].startswith("src_") for record in records)
+
+
+def test_org_alias_selector_is_shared_by_ingest_and_mcp(fake, tmp_path, monkeypatch):
+    """An org C20 override can select a source pair absent from the defaults."""
+    monkeypatch.chdir(ROOT)
+    alias_dir = tmp_path / "aliases"
+    alias_dir.mkdir()
+    alert_alias = (ROOT / "src/soc/normalize/aliases/elastic_security_alert.toml").read_text(
+        encoding="utf-8"
+    )
+    alert_alias = alert_alias.replace('tool = "kibana_security"', 'tool = "org_endpoint"')
+    alert_alias = alert_alias.replace('log_type = "security_alert"', 'log_type = "edr_alert"')
+    (alias_dir / "elastic_security_alert.toml").write_text(alert_alias, encoding="utf-8")
+
+    org = tmp_path / "org.toml"
+    settings_text = DEMO_ELK.read_text(encoding="utf-8").replace("http://localhost:9200", fake.url)
+    settings_text = settings_text.replace(
+        'alert_tool = "kibana_security"', 'alert_tool = "org_endpoint"'
+    )
+    settings_text = settings_text.replace(
+        'alert_log_type = "security_alert"', 'alert_log_type = "edr_alert"'
+    )
+    settings_text += f'\n[normalize]\nalias_dir = "{alias_dir}"\n'
+    org.write_text(settings_text, encoding="utf-8")
+    settings = load_config(org, environ=ENV)
+
+    server = build_tool_server(settings, environ=ENV)
+    ingested = open_connector(settings, ENV).fetch(None).items
+    records = server.call(
+        "l1",
+        "query_siem",
+        entity_type="ip",
+        entity_value=ATTACKER,
+        kind="alert",
+        start_at=WINDOW_START,
+        end_at=WINDOW_END,
+        limit=10,
+    )
+
+    ingested_ids = {record.source_record_id for record in ingested}
+    assert {record["mapping_profile"] for record in records} == {"elastic_security_alert"}
+    assert {record["source_record_id"] for record in records} <= ingested_ids
