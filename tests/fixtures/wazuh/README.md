@@ -4,7 +4,7 @@
 server API 인증 응답의 형태만 따랐고, 값은 모두 지어냈다.
 
 - IP는 문서용 대역(192.0.2.0/24, 198.51.100.0/24, 203.0.113.0/24), 호스트는 `example.com`, 계정은 `test-user-*`·`test-reader-*`만 쓴다.
-- 알럿 `_source` 필드는 박스 4 별칭 표 `ait_wazuh_alert`가 찾는 이름(`@timestamp`, `rule.*`, `agent.*`,
+- Alert `_source` 필드는 6 OCSF 별칭 표 `ait_wazuh_alert`가 찾는 이름(`@timestamp`, `rule.*`, `agent.*`,
   `data.srcip`·`data.src_ip`, `data.dest_ip`, `data.srcport`·`data.src_port`, `data.dest_port`, `data.url`)을 쓴다.
 - JWT는 가짜 문자열이다. 비밀 값은 없다.
 - 가짜 Wazuh(`tests/ingest/fake_wazuh.py`)가 이 파일을 응답으로 돌려준다. probe가 값을 보고서에 옮기지 않는지 이 값으로 확인한다.

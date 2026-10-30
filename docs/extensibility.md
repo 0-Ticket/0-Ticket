@@ -79,27 +79,27 @@ model = "my-larger-model"
 
 | 확장 지점 | 박스 | 그룹 (entry point) | 기본 구현체 | 조직이 바꾸는 예 |
 |---|---|---|---|---|
-| 소스 커넥터 | 1 (외부) | `sources` | 파일 (`direct` 어댑터의 데이터셋 재생 입력, 개발·테스트·데모용) | 다른 데이터셋 형식. 운영 로그 소스는 외부 SIEM에 붙인다 |
+| 소스 커넥터 | 1, 2 (외부) | `sources` | 파일 (`direct` 어댑터의 데이터셋 재생 입력, 개발·테스트·데모용) | 다른 데이터셋 형식. 운영 로그 소스는 3 외부 SIEM에 붙인다 |
 | 원본 저장소 | 2 (외부) | `raw_stores` | 로컬 파일 (`direct` 재생용) | 운영 원본 로그 보관은 외부 SIEM 소관 |
-| SIEM 커넥터 | 3 | `siem` (기존 그룹을 그대로 쓰는 것을 제안) | Wazuh (초기 구현 대상, D-037), `elastic`(ELK: Elasticsearch + Kibana Security. `_search`로 `[siem.elastic] alert_index`·`event_index`를 읽는다. 시나리오 `elastic_security_alert`·`elastic_access_event`, #99), `direct`(SIEM 없이 데이터셋을 재생해 C1을 C2로 넘김. 개발·테스트·데모용, 운영 대상 아님). 운영에서는 외부 SIEM 하나를 설정으로 선택 | Splunk |
-| 별칭 표 | 4 | (파일) | 기본 시나리오 별칭 표 `src/soc/normalize/aliases/<scenario>.toml`. 조직 폴더는 `[normalize] alias_dir`이고, 같은 이름 파일이 기본 표를 통째로 바꾼다. 텍스트 한 줄 원본은 `parse`(이름 붙은 그룹 정규식)로 나눈다. parse 정규식은 공격자가 만든 문자열에 적용되므로 역추적이 폭발하지 않게 쓴다(중첩 반복 금지). 대상 값이 `normalize.max_parse_length`보다 길면 적용하지 않는다 | 자사 SIEM 시나리오, 새 로그 형식 |
-| 룩업 제공자 | 5 | `lookups` | `csv`: CSV로 적재한 자산·계정 표(RDB, `postgresql.lookups`)를 읽는다(#60). `none`(항상 찾지 못함)도 설정으로 고를 수 있다. 인터페이스 `src/soc/normalize/lookup/base.py`의 `find_asset(value, at)`, `find_user(user, at)`. `[lookup] provider`로 고르고 코어는 `soc.normalize.lookup.open_lookup`으로 연다. 정규화 결합(`LookupEnricher`)과 증거 요청 큐의 lookup 처리자가 같은 제공자를 쓴다 | CMDB, 디렉터리 서비스, 위협 인텔 평판 서비스 |
-| 저장소 백엔드 | 5, 6, 7, 10, 12, 18, 20, 22, 24 | `stores` | PostgreSQL (D-002). Event도 RDB. 구현체 이름은 `<백엔드>.<저장소 종류>`(예: `postgresql.records`, `postgresql.tickets`)이고, `[store] backend` 하나로 고르며 코어는 `soc.store.open_store(<종류>, ...)`에 종류만 넘긴다 | 다른 RDB, 별도 로그 저장소(이벤트) |
-| 벡터 저장소 | 8 | `vector_stores` | Qdrant (D-003). Ticket, Case만 | 다른 벡터 DB |
-| 임베딩 제공자 | 8 | `embedders` | bge-m3, 로컬 실행 (D-010) | 상용 임베딩 API |
-| 검색 결과 융합 | 8 | `FUSION_FUNCTIONS` 함수 맵 | RRF (`[vector_search] fusion_method`) | `keyword_first`, `weighted_rrf`, `dbsf`, `weighted_score` 중 선택하거나 함수를 추가 |
-| LLM 제공자 | 11, 13, 14, 19, 23, 24 | `llm_providers` | OpenAI 호환 제공자. 데모 기본값: 서빙 도구 Ollama, 모델 `granite4:micro` (로컬 서빙, D-009) | 상용 모델, 사내 모델, 로컬 모델 |
-| 전문 에이전트 | 13, 14 | `specialists` | `web`: Web 전문가 Agent(#63). 인터페이스 `src/soc/l1/specialists/base.py`의 `SpecialistContext`를 받아 C22 요청 하나를 C14로 답하는 함수. C22 `domain` 값이 구현체 이름이고(도메인이 없으면 `web`), 코어는 `soc.l1.specialists.open_specialist(domain, context)`로 연다. Cloud(13)는 등록 한 줄 (D-005 확정 후) | Cloud, 엔드포인트, 메일, 네트워크 전문 에이전트 추가 |
-| 프롬프트 | 11, 13, 14, 19, 23, 24 | (파일) | 기본 프롬프트 | 자사 판정 기준, 언어 |
-| MCP 도구 | 15 | `mcp_servers` | 내부 데이터 조회, Web 도메인. 공식 Python MCP SDK로 구현 (D-041) | 사내 도구 연결 |
-| SIEM MCP 어댑터 | 15 | `siem_mcp_adapters` | Wazuh (초기, D-035). 선택된 SIEM을 따라간다. 읽기 전용. `direct`(개발·테스트·시연용, 운영 대상 아님): `siem.direct.files`를 수집과 같은 방식으로 읽고 기본 별칭 표로 엔티티·시간을 찾는다. `elastic`(ELK, #99): 커넥터와 같은 인덱스를 `_search`로 읽는다. ip는 `source.address`(IP 값이면 `destination.ip`도), host는 `host.name`, user는 `user.name`에 term으로 건다. 시간은 이벤트는 `@timestamp`, 알럿은 `kibana.alert.original_time`(없으면 `@timestamp`)이다. 질의 실패는 SIEM에 닿지 못하면 `SiemUnavailableError`, 답을 쓸 수 없으면 `SiemAdapterError`로 알린다(`src/soc/l1/mcp/siem/base.py`, #111). 답을 쓸 수 없음에는 어댑터가 돌려준 레코드의 C2 변환 실패도 포함된다. `query_siem` 도구는 두 오류를 같은 타입·고정 메시지로 다시 만들고, 다른 예외는 고정 메시지의 `SiemAdapterError`로 바꾼다. elastic은 아직 연결 불가를 구분하지 못해 모든 실패가 `SiemAdapterError`다(박스 3 별도 이슈) | Splunk |
-| 증거 요청 큐 | 26, 27 | `evidence_queues` | PostgreSQL 테이블 큐 (D-034). 구현체 이름 `postgresql`, `[evidence_queue] backend`로 고르고 코어는 `soc.l1.evidence.open_evidence_queue`로 연다. 백엔드는 이름 두 개를 등록한다: `<백엔드>`(큐 작업자가 쓰는 연결)와 `<백엔드>.readonly`(같은 행을 읽기 전용으로 읽는 연결). 화면용 API(27)는 `open_evidence_queue(..., readonly=True)`로 뒤쪽만 연다 | 다른 큐 백엔드 |
-| 사람 검토 채널 | 21 | `review_channels` | 웹 화면 (D-013, `docs/frontend.md`) | 메신저, 사내 포털 |
-| 티켓·케이스 시스템 | 10, 22 | `case_systems` | 내부 저장과 내부 UI (D-012) | 외부 티켓·케이스 관리 도구와 동기화 |
+| SIEM 커넥터 | 번호 없음 (3→4·5) | `siem` | Wazuh (초기 구현 대상, D-037), `elastic`(ELK: Elasticsearch + Kibana Security. `_search`로 `[siem.elastic] alert_index`·`event_index`를 읽는다. 시나리오 `elastic_security_alert`·`elastic_access_event`, #99), `direct`(SIEM 없이 데이터셋을 재생해 C1을 C2로 넘김. 개발·테스트·데모용, 운영 대상 아님). 운영에서는 3 외부 SIEM 하나를 설정으로 선택 | Splunk |
+| 별칭 표 | 6 | (파일) | 기본 시나리오 별칭 표 `src/soc/normalize/aliases/<scenario>.toml`. 조직 폴더는 `[normalize] alias_dir`이고, 같은 이름 파일이 기본 표를 통째로 바꾼다. 텍스트 한 줄 원본은 `parse`(이름 붙은 그룹 정규식)로 나눈다. parse 정규식은 공격자가 만든 문자열에 적용되므로 역추적이 폭발하지 않게 쓴다(중첩 반복 금지). 대상 값이 `normalize.max_parse_length`보다 길면 적용하지 않는다 | 자사 SIEM 시나리오, 새 로그 형식 |
+| 룩업 제공자 | 7 | `lookups` | `csv`: CSV로 적재한 자산·계정 표(RDB, `postgresql.lookups`)를 읽는다(#60). `none`(항상 찾지 못함)도 설정으로 고를 수 있다. 인터페이스 `src/soc/normalize/lookup/base.py`의 `find_asset(value, at)`, `find_user(user, at)`. `[lookup] provider`로 고르고 코어는 `soc.normalize.lookup.open_lookup`으로 연다. 정규화 결합(`LookupEnricher`)과 증거 요청 큐의 lookup 처리자가 같은 제공자를 쓴다 | CMDB, 디렉터리 서비스, 위협 인텔 평판 서비스 |
+| 저장소 백엔드 | 4, 5, 7~9, 18, 29, 33, 34, 37, 공통 기반 | `stores` | PostgreSQL (D-002). 5·9 Event도 RDB다. 구현체 이름은 `<백엔드>.<저장소 종류>`(예: `postgresql.records`, `postgresql.tickets`)이고, `[store] backend` 하나로 고르며 코어는 `soc.store.open_store(<종류>, ...)`에 종류만 넘긴다 | 다른 RDB |
+| 벡터 저장소 | 번호 없음 (18, 37) | `vector_stores` | Qdrant (D-003). 판정이 끝난 Ticket, Case만 | 다른 벡터 DB |
+| 임베딩 제공자 | 번호 없음 (18, 37) | `embedders` | bge-m3, 로컬 실행 (D-010) | 상용 임베딩 API |
+| 검색 결과 융합 | 번호 없음 (18, 37) | `FUSION_FUNCTIONS` 함수 맵 | RRF (`[vector_search] fusion_method`) | `keyword_first`, `weighted_rrf`, `dbsf`, `weighted_score` 중 선택하거나 함수를 추가 |
+| LLM 제공자 | 14, 15, 19, 20, 30~32, 34, 39 | `llm_providers` | OpenAI 호환 제공자. 데모 기본값: Ollama `granite4:micro` (D-009) | 상용 모델, 사내 모델, 로컬 모델 |
+| 전문 에이전트 | 번호 없음 (19, 31) | `specialists` | `web`: Web 전문가 Agent(#63). 인터페이스 `src/soc/l1/specialists/base.py`의 `SpecialistContext`를 받아 C22 요청 하나를 C14로 답하는 함수. C22 `domain` 값이 구현체 이름이고(도메인이 없으면 `web`), 코어는 `soc.l1.specialists.open_specialist(domain, context)`로 연다. Cloud는 등록 한 줄(D-005 확정 후) | Cloud, 엔드포인트, 메일, 네트워크 전문 에이전트 추가 |
+| 프롬프트 | 14, 15, 19, 20, 30~32, 34, 39 | (파일) | 기본 프롬프트 | 자사 판정 기준, 언어 |
+| MCP 도구 | 19, 28, 31, 42 | `mcp_servers` | 내부 데이터 조회, Web 도메인, SIEM. 공식 Python MCP SDK로 구현 (D-041) | 사내 도구 연결 |
+| SIEM MCP 어댑터 | 14, 28, 42 | `siem_mcp_adapters` | Wazuh (초기, D-035). 선택된 3 SIEM을 따라가며 읽기 전용이다. `direct`는 `siem.direct.files`를 수집과 같은 방식으로 읽고, `elastic`(#99)은 커넥터와 같은 인덱스를 `_search`로 읽는다. ip는 `source.address`(IP 값이면 `destination.ip`도), host는 `host.name`, user는 `user.name`에 term으로 건다. 시간은 Event는 `@timestamp`, Alert는 `kibana.alert.original_time`(없으면 `@timestamp`)이다. SIEM에 닿지 못하면 `SiemUnavailableError`, 답을 쓸 수 없거나 C2 변환에 실패하면 `SiemAdapterError`로 알린다(#111). `query_siem`은 고정 메시지를 사용해 원문 오류를 노출하지 않는다. elastic은 아직 연결 불가를 구분하지 못해 모든 실패가 `SiemAdapterError`다(번호 없는 커넥터 별도 이슈) | Splunk |
+| 증거 요청 큐 | 번호 없음 (14·18→19, 30→31) | `evidence_queues` | PostgreSQL 테이블 큐 (D-034). 구현체 이름 `postgresql`, `[evidence_queue] backend`로 고르고 코어는 `soc.l1.evidence.open_evidence_queue`로 연다. 백엔드는 `<백엔드>` 쓰기 연결과 `<백엔드>.readonly` 읽기 연결을 등록한다. 번호 없는 L1 결과 API는 `open_evidence_queue(..., readonly=True)`로 뒤쪽만 연다 | 다른 큐 백엔드 |
+| 사람 검토 채널 | 36 | `review_channels` | 웹 화면 (D-013, `docs/frontend.md`) | 메신저, 사내 포털 |
+| 티켓·케이스 시스템 | 18, 37 | `case_systems` | 내부 저장과 내부 UI (D-012) | 외부 티켓·케이스 관리 도구와 동기화 |
 | 알림 채널 | 사용자 접점 | (제안: notification_channels) | Slack (D-033) | 메신저, 메일 |
-| 엔티티 분기 규칙 | 25 | (파일) | 공격 대상 시나리오 목록, 공용 엔티티 기준, Incident 매칭 기준 | 자사 공격 시나리오, 자사 공용 자산 |
-| 헌팅 쿼리 | 23 | (파일) | 기본 기준선 쿼리 | 자사 환경 기준선 |
-| 룰 변환 대상 | 24 | `rule_targets` | 연결된 SIEM 어댑터를 따름 | 다른 SIEM 쿼리 언어 |
+| 엔티티 분기 규칙 | 10, 11, 24, 25 | (파일) | 공격 대상 시나리오 목록, 공용 엔티티 기준, Incident 매칭 기준 | 자사 공격 시나리오, 자사 공용 자산 |
+| 헌팅 쿼리 | 39~42 | (파일) | 기본 기준선 쿼리 | 자사 환경 기준선 |
+| 룰 변환 대상 | 34 | `rule_targets` | 연결된 SIEM 어댑터를 따름 | 다른 SIEM 쿼리 언어 |
 
 `stores` 그룹의 이름은 `<백엔드>.<저장소 종류>` 형식이다. Ticket 저장소는 `postgresql.tickets`로 등록하며,
 공통 `open_store("tickets", ...)`가 `[store] backend` 설정에 따라 선택한다.
@@ -112,7 +112,7 @@ model = "my-larger-model"
 그대로 두어 실수로 호출하면 실패하게 한다(`docs/security-policy.md` 4항). 새 백엔드를 붙이면 코어가 쓰는
 종류와 그 `readonly_` 짝을 함께 등록해야 한다.
 
-**빌린 연결 받기 (화면용 API, 박스 27).** 화면용 API는 요청마다 연결 하나를 풀에서 빌려
+**빌린 연결 받기 (번호 없는 L1 결과 API).** 화면용 API는 요청마다 연결 하나를 풀에서 빌려
 그 요청의 저장소 전부에 넘긴다(#104). 그래서 팩토리는 선택 인자 `connection`을 하나 더 받는다.
 
 - 코어는 빌린 연결이 있을 때만 `connection=`을 넘긴다. 없으면 기존처럼 `factory(settings, environ)`으로
@@ -126,7 +126,7 @@ model = "my-larger-model"
 
 "(제안: …)"으로 적은 그룹 이름은 `src/soc/plugins.py`의 기존 규칙(소문자 snake_case 복수형, 예: `review_channels`, `vector_stores`)을 따른 제안이다. 확정되면 코드와 이 표를 함께 고친다.
 
-SIEM 커넥터와 SIEM MCP 어댑터는 설정의 `[siem] adapter` 값 하나로 함께 선택된다(D-037). 두 확장 지점의 그룹은 따로지만 이름은 같은 것을 쓴다. 에이전트가 어떤 MCP 도구를 부를 수 있는지는 설정의 `[mcp.allowed_tools]`에 에이전트 이름별로 적고, 기본값은 비어 있어 모든 호출이 거부된다(박스 15).
+번호 없는 SIEM 커넥터와 14·28·42 SIEM MCP 어댑터는 설정의 `[siem] adapter` 값 하나로 함께 선택된다(D-037). 두 확장 지점의 그룹은 따로지만 이름은 같은 것을 쓴다. 에이전트가 어떤 MCP 도구를 부를 수 있는지는 설정의 `[mcp.allowed_tools]`에 에이전트 이름별로 적고, 기본값은 비어 있어 모든 호출이 거부된다.
 
 `mcp_servers` 그룹의 구현체는 **도구 묶음 함수 하나**다. `ToolContext`(설정, 환경변수, 읽기 전용 Alert·Event 저장소를 처음 쓸 때 여는 함수)를 받아 `ToolSpec` 목록을 돌려주고, 코어가 등록된 모든 묶음을 한 서버에 올린다. 레포 기본 묶음은 `internal_data`(`query_records`, `get_alert`)와 `web`(`query_http_flow`)이고, SIEM 도구(`query_siem`)는 선택된 어댑터에서 온다. 이미 등록된 도구 이름을 다시 쓰는 묶음은 시작할 때 거부된다(허용 목록이 가리키는 도구가 바뀌지 않게). 내부 데이터 조회는 `[database] readonly_url_env`가 가리키는 읽기 전용 계정으로만 하고, 연결에 읽기 전용 트랜잭션도 함께 건다(`docs/security-policy.md` 4항).
 
@@ -155,7 +155,7 @@ web_specialist = ["query_records", "get_alert", "query_http_flow"]
 1. `src/soc/ingest/siem/base.py`의 커넥터 인터페이스를 구현한다. 그 SIEM에서 알럿·이벤트를 가져와 C2 SiemAlert 내용(`kind`, `scenario`, `raw_ids`, `fields`)을 내보내면 된다. 어댑터는 `source_record_id` 없이 C2 내용을 돌려주고, 코어가 ID를 붙인다(넣어 보내면 거부된다). `tests/ingest/adapter_contract.py`의 공통 계약 테스트를 통과해야 한다. 같은 SIEM용 SIEM MCP 어댑터(읽기 전용)도 함께 만든다.
 2. 레포에 기여하면 같은 폴더에 두고, 사내 전용이면 별도 패키지로 만들어 `zero_ticket_soc.siem` entry point로 등록한다.
 3. 설정의 `[siem] adapter`를 새 이름으로 바꾼다. 한 번에 하나의 SIEM만 연결한다.
-4. 그 SIEM의 시나리오용 별칭 표를 추가한다(박스 4).
+4. 그 SIEM의 시나리오용 별칭 표를 추가한다(6 OCSF).
 
 사례: ELK(`elastic`, #99)는 커넥터 `src/soc/ingest/siem/elastic.py`, SIEM MCP 어댑터 `src/soc/l1/mcp/siem/elastic.py`, 설정 `[siem.elastic]`의 인덱스 두 개, 별칭 표 `elastic_security_alert`·`elastic_access_event`만 더했다. 코어 코드는 바꾸지 않았다. 시연 설정은 `config/demo-elk/`.
 

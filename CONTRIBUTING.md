@@ -65,12 +65,12 @@ git switch -c feat/12-ocsf-alias origin/main
 `<type>(<scope>): <summary> (#이슈번호)` 형식입니다.
 
 - **type**: 위 표와 같습니다. 브랜치의 type과 맞춥니다.
-- **scope**: 박스 작업이면 `box<번호>`(예: `box4`). 웹 화면이면 `frontend`, 화면용 API면 `api`. 그 밖에는 영역 이름: `core`, `contracts`, `llm`, `config`, `docs`, `ci`, `harness`
+- **scope**: 박스 작업이면 `box<번호>`(예: `box6`). 웹 화면이면 `frontend`, 화면용 API면 `api`. 그 밖에는 영역 이름: `core`, `contracts`, `llm`, `config`, `docs`, `ci`, `harness`
 - **summary**: 영어로 짧게 씁니다. 동사 원형으로 시작하고(`add`, `fix`, `update`), 첫 글자는 소문자, 끝에 마침표를 찍지 않습니다. 50자 안팎을 권장합니다.
 
 ```
-feat(box4): add OCSF alias table loader (#12)
-fix(box6): fix dedup window boundary check (#21)
+feat(box6): add OCSF alias table loader (#12)
+fix(box8): fix alert dedup window boundary check (#21)
 docs(contracts): clarify C3 extensions field (#15)
 chore(ci): run CI on pushes to main (#3)
 ```

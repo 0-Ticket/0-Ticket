@@ -74,29 +74,29 @@ Schema로 옮길 때 지킬 것:
 
 | ID | 객체 | 만드는 박스 → 쓰는 박스 |
 |---|---|---|
-| C1 | RawRecord | 1 → 2, 3 (박스 1·2는 외부. `direct` 어댑터의 재생 입력) |
-| C2 | SiemAlert | 3 → 4, 6, 7 |
-| C20 | AliasTable (설정) | 사람 → 4 |
-| C3 | NormalizedAlert | 4 → 5 |
-| C12 | NormalizeFailure | 4 → 사람 확인 |
-| C13 | EventRecord | 4, 5 → 7, 23 |
-| C4 | AssetInfo, UserInfo | 5 (룩업 표) |
-| C5 | AlertRecord | 5, 6 → 25, 11, 23, 27 |
-| C6 | Ticket | 25, 11, 23, 10 → 26, 11, 25(L2 입구), 18, 19, 27 |
-| C7 | Verdict | 11 → 10, 27 |
-| C8 | AgentStep | 11, 13, 14, 19, 23, 24 → 12 |
+| C1 | RawRecord | 1 → 2, 번호 없는 `direct` 어댑터의 재생 입력 |
+| C2 | SiemAlert | 번호 없는 SIEM 커넥터 → 4, 5, 6; 28·42 SIEM MCP 조회 결과 |
+| C20 | AliasTable (설정) | 사람 → 6 |
+| C3 | NormalizedAlert | 6 → 7 |
+| C12 | NormalizeFailure | 6 → 사람 확인 |
+| C13 | EventRecord | 6, 7 → 9, 40 |
+| C4 | AssetInfo, UserInfo | 7 (룩업 표) |
+| C5 | AlertRecord | 7, 8 → 10, 11, 14, 18, 41, L1 결과 조회 |
+| C6 | Ticket | 13, 15, 17, 18, 45 → 18~20, 23~27, 29, L1 결과 조회 |
+| C7 | Verdict | 20 → 18, L1 결과 조회 |
+| C8 | AgentStep | 14, 15, 19, 20, 30~32, 34, 39 → 번호 없는 Agent Log |
 | C9 | HumanReview | (v1 객체. v2에서 제거 예정. 위 "v2 불일치") |
-| C10 | Incident | 25, 18, 19 → 19 |
-| C11 | IncidentArtifact | 19 → 20, 21 |
-| C14 | SpecialistFinding | 13, 14 → 11, 19 |
-| C15 | L2Review | 21 → 22 |
-| C16 | Case | 22 → 8, 23 |
-| C17 | HuntFinding | 23 (v2에서 헌팅 결과는 C6으로 L2에 들어감. 위 "v2 불일치") |
-| C18 | RuleProposal | 24 → 20, 21, 3 (사람 승인 후) |
-| C19 | VectorDoc | 10, 22 → 8 |
-| C21 | BranchResult | 25 → 10, 11, 18 |
-| C22 | EvidenceRequest | 10, 11, 19 → 26 → 14, 15, 5 → 26 → 11, 19 |
-| C23 | L1DecisionRecord | 11 → 27 |
+| C10 | Incident | 26, 27, 29, 32 → 30~36 |
+| C11 | IncidentArtifact | 32, 33 → 34~36 |
+| C14 | SpecialistFinding | 19, 31 → 20, 32 |
+| C15 | L2Review | 36 → 37 |
+| C16 | Case | 37 → 번호 없는 VDB, 39 |
+| C17 | HuntFinding | 이전 객체. v2에서 45 헌팅 결과는 C6으로 23에 들어감(위 "v2 불일치") |
+| C18 | RuleProposal | 34 → 36 |
+| C19 | VectorDoc | 18, 37 → 번호 없는 Vector DB |
+| C21 | BranchResult | 10, 11, 24, 25 → 13, 14, 26, 27 |
+| C22 | EvidenceRequest | 14, 18, 30 → 번호 없는 증거 요청 큐 → 7, 19, 28, 31, 42 → 큐 → 15, 20, 32 |
+| C23 | L1DecisionRecord | 15, 20~22 → 번호 없는 L1 결과 조회, 41 |
 
 ---
 
@@ -118,15 +118,15 @@ SIEM 어댑터가 낸 알럿 또는 이벤트. 시나리오마다 필드명이 �
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| kind | enum | ✅ | `alert`(박스 4가 C3로 바꿈), `event`(C13으로 바꿈) |
-| source_record_id | str | ✅ | `src_` 접두어. 저장되는 C2 원본 행의 고유 ID. 코어가 `src_` + sha256(정규화된 JSON: `kind`, `scenario`, `raw_ids`, `fields`만, 키 정렬, 공백 없음, UTF-8) 16진수 전체로 부여한다(`docs/architecture.md` 박스 3). 어댑터는 이 필드를 채우지 않는다 |
+| kind | enum | ✅ | `alert`(6이 C3로 바꿈), `event`(C13으로 바꿈) |
+| source_record_id | str | ✅ | `src_` 접두어. 저장되는 C2 원본 행의 고유 ID. 코어가 `src_` + sha256(정규화된 JSON: `kind`, `scenario`, `raw_ids`, `fields`만, 키 정렬, 공백 없음, UTF-8) 16진수 전체로 부여한다. 번호 없는 SIEM 커넥터가 저장 직전에 부여하고 어댑터는 이 필드를 채우지 않는다 |
 | scenario | str | ✅ | 탐지 시나리오 또는 이벤트 종류 이름. 정규화 시 C20 별칭 표를 고르는 키. `direct` 어댑터는 설정에서 정한 이름을 쓴다 |
 | raw_ids | list[str] | ✅ | 근거가 된 RawRecord ID |
 | fields | dict | ✅ | SIEM 알럿 JSON 원본 그대로. ES 계열 어댑터(`elastic`)는 `_source`의 점 표기 키(`"a.b": 1`)를 중첩 객체(`{"a": {"b": 1}}`)로 펼쳐 넣는다. ES 안에서 두 표기는 같은 뜻이고, 값은 바꾸지 않는다 |
 
 ## C20 · AliasTable
 
-박스 4가 쓰는 시나리오별 별칭 표. 데이터가 아니라 설정 파일이다(형식은 D-015). 조직은 같은 `scenario` 이름의 파일로 기본 표를 덮어쓴다.
+6 OCSF가 쓰는 시나리오별 별칭 표. 데이터가 아니라 설정 파일이다(형식은 D-015). 조직은 같은 `scenario` 이름의 파일로 기본 표를 덮어쓴다.
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
@@ -231,7 +231,7 @@ Lookup 표의 한 행이자, 알럿에 붙는 정보.
 | criticality | int | ✅ | 1(낮음) ~ 5(높음) |
 | owner | str | 선택 | 담당자 |
 | zone | str | 선택 | `dmz`, `internal` 등 |
-| shared | bool | ✅ | 프록시·DNS·도메인 컨트롤러 같은 공용 자산이면 `true`. 엔티티 분기(25)에서 공용 엔티티로 빼는 기준이다 |
+| shared | bool | ✅ | 프록시·DNS·도메인 컨트롤러 같은 공용 자산이면 `true`. 초기 분기(10~13)에서 공용 엔티티로 빼는 기준이다 |
 | valid_from | int | 선택 | 이 대응이 유효한 시작 시각 |
 | valid_to | int | 선택 | 끝 시각. `null`이면 현재까지 |
 | extensions | dict | ✅ | CMDB 등에서 가져온 추가 속성. 없으면 `{}` |
@@ -274,14 +274,14 @@ L1이 처리하는 업무 단위.
 | specialist | 등록형 | ✅ | 전문 에이전트 이름. 기본 `none`, `web`, `cloud` |
 | priority | int | ✅ | `severity_id × 대상 자산 criticality`. 대상 자산은 `dst_asset`, 없으면 `src_asset`, 둘 다 없으면 criticality 1로 계산 |
 | alert_ids | list[str] | ✅ | 하나 이상 |
-| entities | list[Entity] | ✅ | 공통 객체 Entity. 엔티티 분기(25)가 이 값을 본다 |
+| entities | list[Entity] | ✅ | 공통 객체 Entity. 초기 분기(10~13)가 이 값을 본다 |
 | verdict | Verdict | 선택 | 판정 전에는 `null` |
 | extensions | dict | ✅ | 조직·플러그인 추가 필드. 외부 티켓 시스템 ID 등. 없으면 `{}` |
 | created_at | int | ✅ | |
 | updated_at | int | ✅ | |
 | awaiting_human_at | int | 선택 | `awaiting_human` 상태에 진입한 UTC epoch 밀리초. 아직 진입하지 않았다면 `null`. 상태를 벗어나도 진입 시각을 유지한다 |
 
-v2 상태 전이: `new → triaging → on_hold | closed_benign | closed_fp | l2_escalated`. `on_hold`는 L1 보류 결과로 L3 풀에 전달되고, `l2_escalated`는 박스 25의 L2 입구로 간다. `awaiting_human`과 `escalated` 값은 기존 데이터 호환을 위해 계약에 남기며 v2 흐름에서는 새로 만들지 않는다. `handling_type`과 `awaiting_human_at`도 발표 후 정리 전까지 유지한다.
+v2 상태 전이: `new → triaging → on_hold | closed_benign | closed_fp | l2_escalated`. `on_hold`는 41의 L3 Alert 풀에 전달되고, `l2_escalated`는 23 L2 입구로 간다. `awaiting_human`과 `escalated` 값은 기존 데이터 호환을 위해 계약에 남기며 v2 흐름에서는 새로 만들지 않는다. `handling_type`과 `awaiting_human_at`도 발표 후 정리 전까지 유지한다.
 
 `awaiting_human_at`은 공통 규칙에 따라 필드 자체는 필수이고 값만 nullable이다.
 미진입 시 `null`, `awaiting_human` 진입 시 해당 시각 `t1`, 상태 종료 후에도 `t1`을 유지한다.
@@ -289,7 +289,7 @@ v2 상태 전이: `new → triaging → on_hold | closed_benign | closed_fp | l2
 `created_at`이나 `updated_at`을 대체 값으로 사용하지 않는다.
 
 #12는 필드 계약·검증·직렬화 보존을 정의한다. 실제 상태 전이 시각 기록과 유지 로직은
-박스 10의 후속 구현 및 K12 검증 대상이다. 검토 완료 시각이나 소요 시간 계산은 추가하지 않는다.
+18 Ticket의 후속 구현 및 K12 검증 대상이다. 검토 완료 시각이나 소요 시간 계산은 추가하지 않는다.
 
 ## C7 · Verdict
 
@@ -340,7 +340,7 @@ L1의 판정 결과. LLM 출력이 이 형식을 통과하지 못하면 판정�
 
 ## C10 · Incident
 
-같은 엔티티로 엮인 Ticket 묶음. v2에서는 엔티티 분기(25)의 결과로 만들어지거나 갱신된다(박스 18). 묶음 관련 필드는 v1 Correlation 기준이다(위 "v2 불일치").
+같은 엔티티로 엮인 Ticket 묶음. v2에서는 24·25 Incident 존재 분기의 결과로 26에서 만들어지거나 27에서 갱신된다. 묶음 관련 필드는 v1 Correlation 기준이다(위 "v2 불일치").
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
@@ -367,7 +367,7 @@ L1의 판정 결과. LLM 출력이 이 형식을 통과하지 못하면 판정�
 |---|---|---|
 | `analyzing` | `null` | 아직 검토 기회가 열리지 않았다. L2가 분석하거나 반려 후 재분석하는 중 |
 | `awaiting_review` | 1 이상 | 지금 검토 기회가 열려 있다. 사람이 승인하거나 반려할 수 있다 |
-| `approved` | `null` | L2 검토에서 승인했다. Case 생성은 박스 22가 한다 |
+| `approved` | `null` | 36 Human 검토에서 승인했다. Case 생성은 37이 한다 |
 | `human_handling` | `null` | 두 번 반려되어 L2 자동 재검토를 끝냈다. 사람이 직접 처리한다 |
 
 ```
@@ -377,10 +377,10 @@ awaiting_review ──reject (첫 번째 반려)──▶ analyzing ──재분
 awaiting_review ──reject (두 번째 반려)──▶ human_handling
 ```
 
-- 상태를 바꾸고 회차를 부여하는 것은 코어(박스 21)다. 화면과 검토 채널은 계산하지 않는다.
+- 상태를 바꾸고 회차를 부여하는 것은 36의 코어다. 화면과 검토 채널은 계산하지 않는다.
 - 첫 검토 기회는 round 1이다. 새 기회가 열릴 때마다 코어가 다음 회차를 부여하며, 같은 Incident에서 회차는 단조 증가한다.
 - 검토 기회 하나에는 검토(C15)가 하나만 남는다. 처리된 기회에는 다시 제출할 수 없다.
-- `human_handling`은 L2 자동 검토 흐름의 끝일 뿐, Incident 생명주기의 끝이 아니다. 그 뒤 Case로 넘길지 종결할지는 `status`와 박스 22가 정한다. 이 상태에서는 새 L2 검토 기회를 열지 않는다.
+- `human_handling`은 L2 자동 검토 흐름의 끝일 뿐, Incident 생명주기의 끝이 아니다. 그 뒤 Case로 넘길지 종결할지는 `status`와 37 Case가 정한다. 이 상태에서는 새 L2 검토 기회를 열지 않는다.
 - 반려 후 `analyzing`으로 돌아가 재분석하는 동안 `status`는 `investigating`을 유지한다. 이 흐름은 `status` 값이나 전이를 바꾸지 않는다.
 - 화면은 검토 건수, C15 `round`, C11 `generated_at`, 그 밖의 시각으로 새 검토 기회를 추론하지 않는다. `review_state`와 `review_round`만 본다.
 
@@ -475,11 +475,11 @@ L2의 분석 결과물. 사람이 읽는 보고서는 이 객체로부터 만든
 
 | 값 | 위치 | 뜻 | 누가 정하나 |
 |---|---|---|---|
-| `status` | C10 | Incident 생명주기 | 코어(박스 18, 22) |
-| `review_state` | C10 | L2 검토 흐름 상태 | 코어(박스 21) |
-| `review_round` | C10 | 지금 열려 있는 검토 기회의 회차 | 코어(박스 21) |
+| `status` | C10 | Incident 생명주기 | 코어(29, 37) |
+| `review_state` | C10 | L2 검토 흐름 상태 | 36의 코어 |
+| `review_round` | C10 | 지금 열려 있는 검토 기회의 회차 | 36의 코어 |
 | `expected_review_round` | 검토 요청 본문 | 요청이 답하는 검토 기회. 그 기회가 아직 열려 있는지 확인하는 사전 조건이며 계약 객체에 저장하지 않는다(`docs/api-contracts.md`) | 화면이 받은 `review_round`를 그대로 보냄 |
-| `round` | C15 | 이 검토가 실제로 처리한 회차 | 코어(박스 21)가 기록 |
+| `round` | C15 | 이 검토가 실제로 처리한 회차 | 36의 코어가 기록 |
 
 ## C16 · Case
 
@@ -575,7 +575,7 @@ Vector DB에 넣는 문서 한 건. 임베딩할 문장과 원본 연결 정보.
 
 ## C21 · BranchResult
 
-박스 25가 알럿 또는 Ticket에 대해 선택한 경로와 근거다. 분기 규칙은 코드로 적용하며 이 객체는 결과를 기록한다.
+10·11과 24·25가 Alert 또는 Ticket에 대해 선택한 경로와 근거다. 분기 규칙은 코드로 적용하며 이 객체는 결과를 기록한다.
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
@@ -590,7 +590,7 @@ Vector DB에 넣는 문서 한 건. 임베딩할 문장과 원본 연결 정보.
 
 ## C22 · EvidenceRequest
 
-박스 26 증거 요청 큐의 한 항목. 재시도 횟수는 최초 요청 뒤 다시 시도한 횟수다.
+번호 없는 증거 요청 큐의 한 항목. 재시도 횟수는 최초 요청 뒤 다시 시도한 횟수다.
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
@@ -612,7 +612,7 @@ Vector DB에 넣는 문서 한 건. 임베딩할 문장과 원본 연결 정보.
 | request_type | 키 | 설명 |
 |---|---|---|
 | `specialist_agent` | `question` (str) | 전문가에게 물을 내용. 1자 이상 |
-| `siem_mcp` | `entity` (Entity), `kind` (enum `alert`, `event`), `start_at` (int), `end_at` (int), `limit` (int) | SIEM MCP 공통 조회 조건(박스 15 `SiemQuery`와 같은 모양). 시간 범위는 양 끝 포함. `limit`은 1 이상 |
+| `siem_mcp` | `entity` (Entity), `kind` (enum `alert`, `event`), `start_at` (int), `end_at` (int), `limit` (int) | 28·42 SIEM MCP 공통 조회 조건(`SiemQuery`와 같은 모양). 시간 범위는 양 끝 포함. `limit`은 1 이상 |
 | `lookup` | `entity` (Entity), `at` (int, 선택) | 조회할 엔티티와 매칭 시점. 자산·계정 표의 유효 기간(`valid_from`, `valid_to`)을 이 시점으로 맞춘다. `null`이면 현재 시각 |
 
 **`result`** (`status`가 `completed`일 때, 모든 키 필수)
@@ -621,11 +621,11 @@ Vector DB에 넣는 문서 한 건. 임베딩할 문장과 원본 연결 정보.
 |---|---|---|
 | `specialist_agent` | `finding` (C14) | 전문가 Agent의 분석 결과 |
 | `siem_mcp` | `records` (list[C2]) | SIEM MCP가 돌려준 C2. 찾은 것이 없으면 `[]` |
-| `lookup` | `asset` (C4 AssetInfo, 선택), `user` (C4 UserInfo, 선택) | Lookup(5)이 고른 자산·계정 한 건씩. 찾은 것이 없으면 둘 다 `null`이고 그래도 `completed`다 |
+| `lookup` | `asset` (C4 AssetInfo, 선택), `user` (C4 UserInfo, 선택) | Lookup(7)이 고른 자산·계정 한 건씩. 찾은 것이 없으면 둘 다 `null`이고 그래도 `completed`다 |
 
 `requester_type`이 `alert`이면 전문가를 부르지 않는다. 전문가 결과 C14는 Ticket에 연결되기 때문이다.
 
-코어 검증: 박스 26 큐가 요청 저장·결과 저장 때 수행한다(draft-07 Schema로 표현할 수 없는 조건).
+코어 검증: 번호 없는 증거 요청 큐가 요청 저장·결과 저장 때 수행한다(draft-07 Schema로 표현할 수 없는 조건).
 
 - `siem_mcp`의 `params.end_at`은 `params.start_at` 이상이다.
 - `siem_mcp`의 `params.limit`은 설정 `mcp.max_query_limit` 이하다.
@@ -633,7 +633,7 @@ Vector DB에 넣는 문서 한 건. 임베딩할 문장과 원본 연결 정보.
 
 ## C23 · L1DecisionRecord
 
-박스 11이 남기고 박스 27이 읽는 Alert·Ticket 단위의 승격·보류·판정 결과.
+15와 20이 남기고 번호 없는 L1 결과 조회와 41이 읽는 Alert·Ticket 단위의 승격·보류·판정 결과.
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|

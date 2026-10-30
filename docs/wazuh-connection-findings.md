@@ -1,6 +1,6 @@
 # Wazuh 연결 사전검증 결과 (C-02a, #112)
 
-> **박스 3 구현 완료가 아니다.** 이미 구축된 Wazuh에 연결·인증할 수 있는지와 원시 응답의 형태만 확인했다.
+> **번호 없는 SIEM 커넥터 구현 완료가 아니다.** 이미 구축된 Wazuh에 연결·인증할 수 있는지와 원시 응답의 형태만 확인했다.
 > 커넥터(C-02b), 정규화 매핑(C-02c), SIEM MCP(C-01b)는 이 문서의 결과를 입력으로 삼는 후속 이슈다.
 > SIEM 구축·설정 변경, DB 저장, OCSF 정규화는 하지 않았다.
 
@@ -92,7 +92,7 @@ took, timed_out, _shards, hits{ total{value, relation}, max_score, hits[ {_index
 - `_index`: 날짜별 인덱스. `wazuh-alerts-4.x-<date>`, `wazuh-archives-4.x-<date>` (`<date>` = `YYYY.MM.DD`)
 - `_id`: indexer가 붙인 문서 ID. 같은 문서를 다시 읽으면 같다.
 
-알럿 `_source` (박스 4 별칭 표 `ait_wazuh_alert`가 찾는 필드):
+Alert `_source` (6 OCSF 별칭 표 `ait_wazuh_alert`가 찾는 필드):
 
 | 필드 | 타입 | 비고 |
 |---|---|---|
@@ -148,8 +148,8 @@ event_index = "wazuh-archives-*"
 | 단계 | 이슈 | 범위 | 상태 |
 |---|---|---|---|
 | (1) | C-02a #112 | 접속·인증·원시 응답 사전 점검 (이 문서) | 이번 작업. 3절 실제 실행 결과는 미기록 |
-| (2) | C-02b | 박스 3 Wazuh Alert·Event C2 커넥터. 5절 대조표와 설정 키 후보가 입력 | 후속 |
-| (3) | C-02c | 박스 4 Wazuh 시나리오별 정규화 매핑. **조건부**: 실제 응답이 기존 별칭·시나리오로 처리되지 않을 때만 등록 | 3절 결과에 따라 결정 |
-| 관련 | C-01b | 박스 15 Wazuh 읽기 전용 SIEM MCP 어댑터 | 후속 |
+| (2) | C-02b | 번호 없는 Wazuh Alert·Event C2 커넥터. 5절 대조표와 설정 키 후보가 입력 | 후속 |
+| (3) | C-02c | 6 OCSF의 Wazuh 시나리오별 정규화 매핑. **조건부**: 실제 응답이 기존 별칭·시나리오로 처리되지 않을 때만 등록 | 3절 결과에 따라 결정 |
+| 관련 | C-01b | 14·28·42의 Wazuh 읽기 전용 SIEM MCP 어댑터 | 후속 |
 
 이번 spike는 (1)만이다. `tests/checklist.md`의 K3·K66은 🟡 그대로 둔다.

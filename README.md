@@ -132,7 +132,7 @@ export ZT_CONFIG=config/local.toml
 uv run python -m soc.l1 --all
 ```
 
-### L1 결과 조회 API (박스 27)
+### L1 결과 조회 API (번호 없는 사용자 접점)
 
 사람이 L1 결과(승격·보류된 Alert, Ticket 판정, 증거 요청 실패)를 읽는 읽기 전용 API입니다. 저장소를
 읽기 전용 계정으로만 열기 때문에 `.env`에 `DATABASE_READONLY_URL`이 있어야 합니다.

@@ -17,7 +17,7 @@
 4. 샘플을 먼저 만든다. `tests/fixtures/`에 손으로 만든 작은 데이터를 둔다. IP는 문서용 대역, 도메인은 `example.com`을 쓴다. 화면 작업이면 `docs/api-contracts.md` 응답 모양 그대로 mock 데이터를 만든다.
 5. 테스트를 먼저 쓰고, 지금은 실패하는지 확인한다.
 6. 테스트가 통과하도록 구현한다. 코드 위치는 `docs/architecture.md`의 "박스 그룹과 코드 위치" 표를 따른다. 화면은 `docs/frontend.md`의 "폴더"를 따르고, 계약 타입은 `frontend/src/contracts/`, API 호출은 `frontend/src/api/`에만 둔다.
-7. 의미 있는 단위로 나눠 로컬에 커밋한다. 커밋 메시지 첫 줄은 `<type>(<scope>): <summary> (#이슈번호)`이다. 그룹 작업은 조정 이슈 번호를 쓴다. 예: `feat(box4): add OCSF alias table loader (#12)`, `test(box4): add alias table fixtures (#12)`
+7. 의미 있는 단위로 나눠 로컬에 커밋한다. 커밋 메시지 첫 줄은 `<type>(<scope>): <summary> (#이슈번호)`이다. 그룹 작업은 조정 이슈 번호를 쓴다. 예: `feat(box6): add OCSF alias table loader (#12)`, `test(box6): add alias table fixtures (#12)`
 
 ## 지킬 것
 

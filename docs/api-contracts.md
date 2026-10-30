@@ -61,7 +61,7 @@
 검토 대기함(F1)은 `GET /api/tickets?status=awaiting_human`이다. v2 L1은 `awaiting_human`
 티켓을 새로 만들지 않는다(`docs/data-contracts.md` C6).
 
-**지금 구현된 경로** (박스 27, #71): `GET /api/tickets`, `GET /api/tickets/{ticket_id}`,
+**지금 구현된 경로** (번호 없는 L1 결과 조회, #71): `GET /api/tickets`, `GET /api/tickets/{ticket_id}`,
 `GET /api/alerts/{alert_id}`, `GET /api/alerts/{alert_id}/l1`, `GET /api/l1/decisions`,
 `GET /api/metrics`(#103, 집계 없이 `available: false`만 돌려준다).
 나머지 읽기 경로(`/api/events`, `/api/raw`, `/api/incidents`, `/api/cases`, `/api/hunts`,
@@ -108,11 +108,11 @@
   없으면 `[]`.
 - `decisions`: 이 티켓이 주체인 C23만, 새것부터. 연결된 알럿의 C23은 "알럿 L1 상세"에서 본다.
 - `evidence_requests`: 이 티켓이 요청자인 C22 전체를 들어온 순서대로. `failed` 요청의
-  `failure_reason`이 증거 수집 실패 표시다(박스 26, D-034).
+  `failure_reason`이 증거 수집 실패 표시다(번호 없는 증거 요청 큐, D-034).
 - `steps`: 티켓 단계와 `alert_ids`가 가리키는 알럿 단계를 합쳐 `created_at` 순으로 돌려준다(#44).
   C8 필드만 담고, 큰 결과의 보관 파일 경로·해시는 내보내지 않는다.
-- `reviews`와 `incident_ids`: v2 L1에서는 항상 `[]`다. 사람이 L1 판정을 검토하지 않고(박스 16 폐기),
-  Incident 묶음은 L2(박스 18) 범위다.
+- `reviews`와 `incident_ids`: v2 L1에서는 항상 `[]`다. 사람이 L1 판정을 검토하지 않고(v1 박스 16 폐기),
+  Incident 묶음은 L2의 23~29 범위다.
 
 ### 알럿 L1 상세
 
@@ -179,9 +179,9 @@
 | l1_reviews_total | int | 기간 안의 C9 수 |
 | l1_overturned | int | 그중 `overturned`가 `true`인 수 (v1 박스 16. v2 정리는 후속) |
 | l2_reviews_total | int | 기간 안의 C15 수 |
-| l2_rejects_by_type | dict[str, int] | `reject_type`별 반려 수 (박스 21) |
+| l2_rejects_by_type | dict[str, int] | `reject_type`별 반려 수 (36 Human) |
 | incident_members_by_source | dict[str, int] | 묶음 항목 `source`(`l1`, `human_l1`, `l3`)별 수 (v1 Correlation 기준. v2 정리는 후속) |
-| normalize_failures_by_reason | dict[str, int] | `reason`별 C12 수 (박스 4) |
+| normalize_failures_by_reason | dict[str, int] | `reason`별 C12 수 (6 OCSF) |
 
 `available`로 두 가지 응답을 가른다. 둘 다 200이다. 집계할 것이 없다는 사실은 오류가 아니다.
 
@@ -193,9 +193,9 @@
 
 ## 쓰기
 
-**발표 후, L1 결과에는 쓰지 않음.** 아래 쓰기 경로는 모두 L2·Case·룰 단계(박스 21, 22, 24)의 것이고
+**발표 후, L1 결과에는 쓰지 않음.** 아래 쓰기 경로는 모두 L2·Case·룰 단계(34, 36, 37)의 것이고
 **현재 미구현(발표 후 구현 예정)**이다. L1 결과(승격·보류·판정)를 바꾸는 경로는 앞으로도 만들지 않는다.
-사람의 승인은 박스 21에만 있다(`docs/architecture.md`). `POST /api/tickets/{ticket_id}/reviews`는
+사람의 승인은 36에만 있다(`docs/architecture.md`). `POST /api/tickets/{ticket_id}/reviews`는
 폐기된 v1 박스 16의 경로이며 v2 L1 결과에는 쓰지 않는다.
 
 | 메서드 · 경로 | 요청 본문 | 응답 | 쓰는 화면 |

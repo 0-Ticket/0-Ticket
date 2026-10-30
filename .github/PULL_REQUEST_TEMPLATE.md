@@ -1,5 +1,5 @@
 <!--
-제목: <type>(<scope>): <summary> (#이슈번호)   예: feat(box4): add OCSF alias table loader (#12)
+제목: <type>(<scope>): <summary> (#이슈번호)   예: feat(box6): add OCSF alias table loader (#12)
 대상 브랜치(base): main
 -->
 

@@ -192,7 +192,7 @@ type에는 `feat`(새 기능), `fix`(버그), `docs`(문서만), `test`(테스�
 커밋 메시지와 PR 제목은 `<type>(<scope>): <설명> (#이슈번호)`으로 사용합니다.
 ex) 
 ```text
-새 기능 : feat(box4): add OCSF normalization (#12)
+새 기능 : feat(box6): add OCSF normalization (#12)
 버그 : fix(core): handle empty alert input (#21)
 문서 작업 : docs(harness): update development workflow (#30)
 ```

@@ -73,7 +73,7 @@ set -a; source .env; set +a                     # SIEM_TOKEN, DATABASE_URL
 export ZT_CONFIG=config/demo-elk/settings.toml
 uv run python -m soc.db.migrate
 uv run python -m soc.ingest --all
-uv run python -m soc.normalize --all            # Lookup(박스 5)은 정규화 중에 붙는다
+uv run python -m soc.normalize --all            # 7 Lookup은 정규화 중에 붙는다
 uv run python -m soc.branch --all
 ```
 
