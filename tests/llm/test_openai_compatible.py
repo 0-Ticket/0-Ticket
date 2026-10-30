@@ -63,6 +63,7 @@ def test_provider_sends_openai_chat_completion_and_extracts_usage(monkeypatch):
     def fake_urlopen(request, timeout):
         captured["url"] = request.full_url
         captured["headers"] = dict(request.header_items())
+        captured["user_agent"] = request.get_header("User-agent")
         captured["body"] = json.loads(request.data)
         captured["timeout"] = timeout
         return FakeHTTPResponse(
@@ -77,6 +78,7 @@ def test_provider_sends_openai_chat_completion_and_extracts_usage(monkeypatch):
 
     assert captured["url"] == "http://localhost:11434/v1/chat/completions"
     assert captured["headers"]["Authorization"] == "Bearer test-api-secret"
+    assert captured["user_agent"] == "0-Ticket-SOC/0.1 (Python urllib)"
     assert captured["body"]["model"] == "granite4:micro"
     assert captured["body"]["response_format"] == {"type": "json_object"}
     assert captured["body"]["messages"][0]["role"] == "system"
