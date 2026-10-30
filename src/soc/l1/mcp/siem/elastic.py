@@ -32,11 +32,9 @@ import logging
 from collections.abc import Mapping
 from typing import Any
 
-from soc.config import ElasticSiemSettings, SiemSettings
+from soc.config import ElasticSiemSettings, Settings, SiemSettings
 from soc.ingest.siem.base import HealthStatus
 from soc.ingest.siem.elastic import (
-    ALERT_SCENARIO,
-    EVENT_SCENARIO,
     MUTABLE_ALERT_FIELDS,
     TIME_FIELD,
     ElasticClient,
@@ -48,6 +46,13 @@ from soc.ingest.siem.elastic import (
     search_hits,
 )
 from soc.l1.mcp.siem.base import SiemAdapterError, SiemQuery
+from soc.normalize.alias import (
+    CompiledAliasTable,
+    MappingAwareFactory,
+    MappingSelection,
+    load_alias_tables,
+    mapping_profile_for,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -130,10 +135,24 @@ def search_body(query: SiemQuery) -> dict[str, Any] | None:
 
 
 class ElasticSiemMcp:
-    def __init__(self, client: ElasticClient, settings: ElasticSiemSettings):
+    def __init__(
+        self,
+        client: ElasticClient,
+        settings: ElasticSiemSettings,
+        *,
+        alias_tables: Mapping[str, CompiledAliasTable] | None = None,
+    ):
         self._client = client
         self._indices = {"alert": settings.alert_index, "event": settings.event_index}
-        self._scenarios = {"alert": ALERT_SCENARIO, "event": EVENT_SCENARIO}
+        tables = load_alias_tables(None) if alias_tables is None else alias_tables
+        self._profiles = {
+            "alert": mapping_profile_for(
+                tables, settings.alert_tool, settings.alert_log_type, "alert"
+            ),
+            "event": mapping_profile_for(
+                tables, settings.event_tool, settings.event_log_type, "event"
+            ),
+        }
         # Health is the connector's check: the same two indices, the same probe.
         self._connector = ElasticSiemConnector(client, settings)
 
@@ -156,7 +175,7 @@ class ElasticSiemMcp:
                 reasons.append("is not an object")
                 continue
             try:
-                records.append(hit_to_c2(hit, query.kind, self._scenarios[query.kind]))
+                records.append(hit_to_c2(hit, query.kind, self._profiles[query.kind]))
             except UnusableHitError as reason:
                 reasons.append(str(reason))
         if reasons:
@@ -172,6 +191,33 @@ class ElasticSiemMcp:
         return self._connector.health_check()
 
 
-def create_elastic_mcp(settings: SiemSettings, environ: Mapping[str, str]) -> ElasticSiemMcp:
+def create_elastic_mcp(
+    settings: SiemSettings,
+    environ: Mapping[str, str],
+    *,
+    alias_tables: Mapping[str, CompiledAliasTable] | None = None,
+) -> ElasticSiemMcp:
     """Factory registered as ``elastic``. The API key comes from ``siem.token_env``."""
-    return ElasticSiemMcp(open_client(settings, environ), settings.elastic)
+    return ElasticSiemMcp(
+        open_client(settings, environ), settings.elastic, alias_tables=alias_tables
+    )
+
+
+def _mapping_selections(settings: SiemSettings) -> tuple[MappingSelection, ...]:
+    return (
+        MappingSelection("alert", settings.elastic.alert_tool, settings.elastic.alert_log_type),
+        MappingSelection("event", settings.elastic.event_tool, settings.elastic.event_log_type),
+    )
+
+
+def _configured_factory(
+    settings: Settings,
+    environ: Mapping[str, str],
+    tables: Mapping[str, CompiledAliasTable],
+) -> ElasticSiemMcp:
+    return create_elastic_mcp(settings.siem, environ, alias_tables=tables)
+
+
+MAPPING_AWARE_ELASTIC_MCP_FACTORY = MappingAwareFactory(
+    create_elastic_mcp, _mapping_selections, _configured_factory
+)

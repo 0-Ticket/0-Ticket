@@ -60,7 +60,7 @@ def lookup_request(entity_type, value, at=T):
 
 RECORD = {
     "kind": "alert",
-    "scenario": "web_sqli",
+    "mapping_profile": "web_sqli",
     "raw_ids": ["raw_web_access.log_2"],
     "fields": {"time": 1770000600000, "src_ip": "203.0.113.10", "url": "/search"},
 }
@@ -143,7 +143,7 @@ def test_siem_mcp_request_completes_with_c2_records(tmp_path):
     done = svc.process_next()
 
     assert done["status"] == "completed"
-    assert done["result"]["records"][0]["scenario"] == "web_sqli"
+    assert done["result"]["records"][0]["mapping_profile"] == "web_sqli"
 
 
 def test_agent_without_query_siem_fails_the_request(tmp_path):
@@ -192,7 +192,7 @@ def test_records_that_are_not_c2_fail_the_request_as_an_adapter_error(tmp_path):
     org = tmp_path / "org.toml"
     org.write_text('[mcp.allowed_tools]\nl1 = ["query_siem"]\n', encoding="utf-8")
     settings = load_config(org, environ={})
-    broken = {"kind": "alert", "fields": RECORD["fields"]}  # No scenario, no raw_ids.
+    broken = {"kind": "alert", "fields": RECORD["fields"]}  # No mapping_profile, no raw_ids.
     adapter = FakeSiemMcp(BASE_URL, TOKEN, records=[broken])
     server = ToolServer(settings.mcp, siem_tools(adapter))
     svc = queue_service(server, settings)

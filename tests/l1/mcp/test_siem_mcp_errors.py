@@ -78,7 +78,7 @@ def logged_tracebacks(caplog):
 
 def missing_direct_files(tmp_path):
     return DirectSiemSettings.model_validate(
-        {"files": [entry(tmp_path / "missing.jsonl", "alert", "ait_suricata_alert", "jsonl")]}
+        {"files": [entry(tmp_path / "missing.jsonl", "alert", "suricata", "eve_alert", "jsonl")]}
     )
 
 
@@ -111,12 +111,12 @@ class ReturningAdapter:
 def not_c2_records():
     """Each breaks C2 its own way, and each carries text that must never leave the tool."""
     return [
-        # No scenario and no raw_ids.
+        # No mapping_profile and no raw_ids.
         {"kind": "alert", "fields": {"time": 1, "token": SECRET, "url": LOG_TEXT}},
         # source_record_id is the core's to assign.
         {
             "kind": "alert",
-            "scenario": "web_scan",
+            "mapping_profile": "web_scan",
             "raw_ids": ["raw_web_access.log_1"],
             "fields": {"time": 1, "token": SECRET, "url": LOG_TEXT},
             "source_record_id": "src_" + "0" * 64,

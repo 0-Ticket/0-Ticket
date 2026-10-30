@@ -11,9 +11,11 @@ import pytest
 from fake_siem_mcp import BASE_URL, ENV, TOKEN, FakeSiemMcp, fake_registry, org_settings
 from mcp import Client
 
-from soc.config import load_config
+from soc.config import ConfigError, load_config
 from soc.l1.mcp import build_tool_server
 from soc.l1.mcp.server import ToolNotAllowedError, UnknownToolError
+from soc.normalize.alias import MappingSelection
+from soc.plugins import PluginRegistry
 
 SOURCE = "203.0.113.10"
 START = 1_770_000_000_000
@@ -66,7 +68,11 @@ def test_allowed_tool_works_through_mcp_client(tmp_path):
     result = call_through_protocol(server.as_mcp_server("l1"), "query_siem", arguments())
     assert result.is_error is False
     records = result.structured_content["result"]
-    assert [record["scenario"] for record in records] == ["web_scan", "web_sqli", "web_upload"]
+    assert [record["mapping_profile"] for record in records] == [
+        "web_scan",
+        "web_sqli",
+        "web_upload",
+    ]
     assert all(record["source_record_id"].startswith("src_") for record in records)
 
 
@@ -163,3 +169,23 @@ def test_unknown_kind_is_rejected_through_mcp(tmp_path):
 def test_default_settings_allow_no_agent_any_tool():
     """The shipped default denies everything; the organization settings grant tools."""
     assert load_config(environ={}).mcp.allowed_tools == {}
+
+
+def test_bad_mapping_selector_precedes_siem_mcp_factory(tmp_path):
+    settings = org_settings(tmp_path, NO_TOOLS_CONFIG)
+    calls = []
+
+    class Factory:
+        def mapping_selections(self, siem_settings):
+            calls.append("metadata")
+            return (MappingSelection("alert", "unsupported_tool", "alerts"),)
+
+        def __call__(self, siem_settings, environ):
+            calls.append("factory")
+            return FakeSiemMcp(BASE_URL, TOKEN)
+
+    registry = PluginRegistry("siem_mcp_adapters")
+    registry.register("fake", Factory())
+    with pytest.raises(ConfigError, match="no mapping profile"):
+        build_tool_server(settings, environ=ENV, registry=registry)
+    assert calls == ["metadata"]

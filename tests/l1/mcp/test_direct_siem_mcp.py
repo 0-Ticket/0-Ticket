@@ -43,11 +43,12 @@ FIRST_ALERT = ms("2022-01-18T10:05:41.120+00:00")
 LAST_ALERT = ms("2022-01-18T10:07:10.500+00:00")
 
 
-def entry(path, kind, scenario, fmt):
+def entry(path, kind, tool, log_type, fmt):
     return {
         "path": str(path),
         "kind": kind,
-        "scenario": scenario,
+        "tool": tool,
+        "log_type": log_type,
         "source_type": "web",
         "format": fmt,
     }
@@ -57,8 +58,8 @@ def ait_files():
     return DirectSiemSettings.model_validate(
         {
             "files": [
-                entry(AIT / "suricata_eve.jsonl", "alert", "ait_suricata_alert", "jsonl"),
-                entry(AIT / "apache_access.log", "event", "ait_apache_access", "text"),
+                entry(AIT / "suricata_eve.jsonl", "alert", "suricata", "eve_alert", "jsonl"),
+                entry(AIT / "apache_access.log", "event", "apache", "access", "text"),
             ]
         }
     )
@@ -66,7 +67,7 @@ def ait_files():
 
 def own_files():
     return DirectSiemSettings.model_validate(
-        {"files": [entry(OWN / "records.jsonl", "alert", "direct_test_alert", "jsonl")]}
+        {"files": [entry(OWN / "records.jsonl", "alert", "test_web", "security_alert", "jsonl")]}
     )
 
 
@@ -75,7 +76,8 @@ def default_normalizer():
 
 
 def own_adapter():
-    return DirectSiemMcp(own_files(), Normalizer(load_alias_tables(OWN / "aliases"), MAX_PARSE))
+    tables = load_alias_tables(OWN / "aliases")
+    return DirectSiemMcp(own_files(), Normalizer(tables, MAX_PARSE), alias_tables=tables)
 
 
 def query(
@@ -106,7 +108,11 @@ class TestDirectSiemMcp(SiemMcpAdapterContract):
     @pytest.fixture
     def unhealthy_adapter(self, tmp_path):
         missing = DirectSiemSettings.model_validate(
-            {"files": [entry(tmp_path / "missing.jsonl", "alert", "ait_suricata_alert", "jsonl")]}
+            {
+                "files": [
+                    entry(tmp_path / "missing.jsonl", "alert", "suricata", "eve_alert", "jsonl")
+                ]
+            }
         )
         return DirectSiemMcp(missing, default_normalizer())
 
@@ -121,7 +127,7 @@ class TestDirectSiemMcp(SiemMcpAdapterContract):
 
 def test_direct_is_registered_for_siem_mcp():
     assert "direct" in SIEM_MCP_ADAPTERS.names()
-    assert SIEM_MCP_ADAPTERS.get("direct") is create_direct_mcp
+    assert SIEM_MCP_ADAPTERS.get("direct").factory is create_direct_mcp
 
 
 def test_query_and_ingest_give_the_same_source_record_id():
@@ -140,7 +146,7 @@ def test_events_come_from_event_files_only():
     adapter = DirectSiemMcp(ait_files(), default_normalizer())
     events = adapter.query(query(kind="event", value="192.0.2.10", start=0, end=LAST_ALERT))
     assert {record["kind"] for record in events} == {"event"}
-    assert {record["scenario"] for record in events} == {"ait_apache_access"}
+    assert {record["mapping_profile"] for record in events} == {"ait_apache_access"}
 
 
 def test_ip_matches_source_or_destination():
@@ -230,3 +236,33 @@ def test_direct_demo_settings_build_the_tool_server(tmp_path, monkeypatch):
     )
     assert len(records) == 2
     assert all(record["source_record_id"].startswith("src_") for record in records)
+
+
+def test_registered_direct_mcp_uses_the_configured_org_alias_dir(tmp_path, monkeypatch):
+    monkeypatch.chdir(ROOT)
+    org = tmp_path / "org.toml"
+    org.write_text(
+        '[siem]\nadapter = "direct"\n\n'
+        "[[siem.direct.files]]\n"
+        f'path = "{OWN / "records.jsonl"}"\n'
+        'kind = "alert"\ntool = "test_web"\n'
+        'log_type = "security_alert"\nsource_type = "web"\nformat = "jsonl"\n\n'
+        "[normalize]\n"
+        f'alias_dir = "{OWN / "aliases"}"\n\n'
+        '[mcp.allowed_tools]\nl1 = ["query_siem"]\n',
+        encoding="utf-8",
+    )
+    server = build_tool_server(load_config(org, environ={}), environ={})
+
+    records = server.call(
+        "l1",
+        "query_siem",
+        entity_type="ip",
+        entity_value=SOURCE,
+        kind="alert",
+        start_at=T0,
+        end_at=T0 + 10_000,
+        limit=10,
+    )
+
+    assert rule_ids(records) == ["r1", "r2", "r3", "r5"]

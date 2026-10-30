@@ -9,9 +9,9 @@ adapter lands with its environment.
 
 from soc.plugins import PluginRegistry
 
-from .direct import create_direct_mcp
-from .elastic import create_elastic_mcp
+from .direct import MAPPING_AWARE_DIRECT_MCP_FACTORY
+from .elastic import MAPPING_AWARE_ELASTIC_MCP_FACTORY
 
 SIEM_MCP_ADAPTERS = PluginRegistry("siem_mcp_adapters")
-SIEM_MCP_ADAPTERS.register("direct", create_direct_mcp)
-SIEM_MCP_ADAPTERS.register("elastic", create_elastic_mcp)
+SIEM_MCP_ADAPTERS.register("direct", MAPPING_AWARE_DIRECT_MCP_FACTORY)
+SIEM_MCP_ADAPTERS.register("elastic", MAPPING_AWARE_ELASTIC_MCP_FACTORY)

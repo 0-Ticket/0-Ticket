@@ -71,7 +71,7 @@ def test_group_is_an_extension_point_with_direct_and_elastic_built_in():
 def test_fake_filters_by_kind():
     adapter = FakeSiemMcp(BASE_URL, TOKEN)
     assert {record["kind"] for record in adapter.query(query(kind="event"))} == {"event"}
-    assert [record["scenario"] for record in adapter.query(query())] == [
+    assert [record["mapping_profile"] for record in adapter.query(query())] == [
         "web_scan",
         "web_sqli",
         "web_upload",
@@ -80,11 +80,14 @@ def test_fake_filters_by_kind():
 
 def test_fake_filters_by_entity_and_window():
     adapter = FakeSiemMcp(BASE_URL, TOKEN)
-    assert adapter.query(query(entity_type="host", value="web-02"))[0]["scenario"] == "web_upload"
+    assert (
+        adapter.query(query(entity_type="host", value="web-02"))[0]["mapping_profile"]
+        == "web_upload"
+    )
     # The login event sits before the window, so a wider window finds it and this one does not.
     assert adapter.query(query(kind="event", value=SOURCE)) != ()
     assert all(
-        record["scenario"] != "auth_login"
+        record["mapping_profile"] != "auth_login"
         for record in adapter.query(query(kind="event", value=SOURCE))
     )
     assert adapter.query(query(start=END, end=END)) == ()
@@ -92,7 +95,7 @@ def test_fake_filters_by_entity_and_window():
 
 def test_fake_applies_the_limit_in_time_order():
     adapter = FakeSiemMcp(BASE_URL, TOKEN)
-    assert [record["scenario"] for record in adapter.query(query(limit=2))] == [
+    assert [record["mapping_profile"] for record in adapter.query(query(limit=2))] == [
         "web_scan",
         "web_sqli",
     ]
@@ -105,7 +108,7 @@ def test_query_result_matches_expected_c2():
 
 
 def test_core_rejects_adapter_output_that_is_not_c2():
-    """A record without scenario and raw_ids never reaches a caller as C2."""
+    """A record without mapping_profile and raw_ids never reaches a caller as C2."""
     broken = {"kind": "alert", "fields": {"time": START, "src_ip": SOURCE}}
     adapter = FakeSiemMcp(BASE_URL, TOKEN, records=[broken])
     with pytest.raises(ContractValidationError) as error:
@@ -116,7 +119,7 @@ def test_core_rejects_adapter_output_that_is_not_c2():
 def test_core_rejects_source_record_id_from_an_adapter():
     record = {
         "kind": "alert",
-        "scenario": "web_scan",
+        "mapping_profile": "web_scan",
         "raw_ids": ["raw_web_access.log_1"],
         "fields": {"time": START, "src_ip": SOURCE},
         "source_record_id": "src_" + "0" * 64,

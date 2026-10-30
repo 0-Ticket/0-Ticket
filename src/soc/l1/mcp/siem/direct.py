@@ -5,11 +5,10 @@ with ``siem.adapter = "direct"`` the dataset files are the SIEM, so the SIEM MCP
 reads those same files. Reading and C2 conversion reuse the connector, so a line
 gets the same ``source_record_id`` here as at ingest. To find each record's
 entities and time it reuses the box 4 normalizer and its alias tables (C20).
+The registered factory validates selectors before construction and passes the
+same configured tables, including an organization's ``normalize.alias_dir``.
 
 Limits:
-- Only the default alias tables and the default ``normalize.max_parse_length``
-  are used. An organization's ``normalize.alias_dir`` does not reach this adapter,
-  because an adapter factory receives the ``[siem]`` settings only.
 - The files are read and normalized once, on the first query, and remembered:
   they do not change while the process runs. A file that cannot be read raises
   ``SiemUnavailableError``, and the next query tries again.
@@ -24,13 +23,18 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from soc.config import DirectSiemSettings, SiemSettings, load_config
+from soc.config import DirectSiemSettings, Settings, SiemSettings, load_config
 from soc.contracts import EventRecord, NormalizedAlert
 from soc.ingest.connector import to_c2
 from soc.ingest.siem.base import HealthStatus
 from soc.ingest.siem.direct import DirectSiemConnector
 from soc.l1.mcp.siem.base import SiemQuery, SiemUnavailableError
-from soc.normalize.alias import load_alias_tables
+from soc.normalize.alias import (
+    CompiledAliasTable,
+    MappingAwareFactory,
+    MappingSelection,
+    load_alias_tables,
+)
 from soc.normalize.normalizer import Normalizer
 
 logger = logging.getLogger(__name__)
@@ -58,10 +62,12 @@ class DirectSiemMcp:
         settings: DirectSiemSettings,
         normalizer: Normalizer,
         chunk_size: int = DEFAULT_CHUNK_SIZE,
+        *,
+        alias_tables: Mapping[str, CompiledAliasTable] | None = None,
     ):
         if chunk_size < 1:
             raise ValueError("chunk_size must be at least 1")
-        self._connector = DirectSiemConnector(settings)
+        self._connector = DirectSiemConnector(settings, alias_tables=alias_tables)
         self._normalizer = normalizer
         self._chunk_size = chunk_size
         self._records: tuple[_Indexed, ...] | None = None
@@ -132,6 +138,32 @@ class DirectSiemMcp:
 
 def create_direct_mcp(settings: SiemSettings, environ: Mapping[str, str]) -> DirectSiemMcp:
     """Factory registered as ``direct``. It needs no address or secret."""
+    tables = load_alias_tables(None)
     defaults = load_config(environ={}).normalize
-    normalizer = Normalizer(load_alias_tables(None), defaults.max_parse_length)
-    return DirectSiemMcp(settings.direct, normalizer, settings.batch_size)
+    normalizer = Normalizer(tables, defaults.max_parse_length)
+    return DirectSiemMcp(settings.direct, normalizer, settings.batch_size, alias_tables=tables)
+
+
+def _mapping_selections(settings: SiemSettings) -> tuple[MappingSelection, ...]:
+    return tuple(
+        MappingSelection(file.kind, file.tool, file.log_type) for file in settings.direct.files
+    )
+
+
+def _configured_factory(
+    settings: Settings,
+    environ: Mapping[str, str],
+    tables: Mapping[str, CompiledAliasTable],
+) -> DirectSiemMcp:
+    normalizer = Normalizer(tables, settings.normalize.max_parse_length)
+    return DirectSiemMcp(
+        settings.siem.direct,
+        normalizer,
+        settings.siem.batch_size,
+        alias_tables=tables,
+    )
+
+
+MAPPING_AWARE_DIRECT_MCP_FACTORY = MappingAwareFactory(
+    create_direct_mcp, _mapping_selections, _configured_factory
+)

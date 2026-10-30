@@ -36,6 +36,7 @@ from soc.l1.mcp.server import (
 from soc.l1.mcp.siem import SIEM_MCP_ADAPTERS
 from soc.l1.mcp.siem.tools import siem_tools
 from soc.l1.mcp.web import web_tools
+from soc.normalize.alias import load_alias_tables, validate_mapping_selections
 from soc.plugins import PluginRegistry
 from soc.store import open_store
 from soc.store.records.base import READONLY_STORE_KIND
@@ -66,8 +67,20 @@ def build_tool_server(
             "organization settings (ZT_CONFIG)"
         )
     factory = registry.get(siem.adapter)
+    selectors = getattr(factory, "mapping_selections", None)
+    tables = None
+    configured_factory = None
+    if callable(selectors):
+        tables = load_alias_tables(settings.normalize.alias_dir or None)
+        validate_mapping_selections(tables, selectors(siem))
+        configured_factory = getattr(factory, "create_with_alias_tables", None)
     context = ToolContext(settings, environ, _readonly_records(settings, environ))
-    tools = list(siem_tools(factory(siem, environ)))
+    adapter = (
+        configured_factory(settings, environ, tables)
+        if callable(configured_factory)
+        else factory(siem, environ)
+    )
+    tools = list(siem_tools(adapter))
     for name in servers.names():
         tools.extend(servers.get(name)(context))
     return ToolServer(settings.mcp, tools)

@@ -115,7 +115,7 @@ class TestElasticSiemMcp(SiemMcpAdapterContract):
 def test_registered_as_elastic_like_the_connector():
     """One siem.adapter name selects the connector and the SIEM MCP (D-037)."""
     assert "elastic" in SIEM_MCP_ADAPTERS.names()
-    assert SIEM_MCP_ADAPTERS.get("elastic") is create_elastic_mcp
+    assert SIEM_MCP_ADAPTERS.get("elastic").factory is create_elastic_mcp
 
 
 def test_query_and_ingest_give_the_same_source_record_id(fake, mcp):
@@ -161,7 +161,7 @@ def test_window_includes_both_ends(mcp):
 def test_events_use_the_event_index_and_timestamp(fake, mcp):
     events = mcp.query(query(kind="event", value="192.0.2.50", start=0, end=WINDOW_END))
     assert doc_ids(events) == ["ev-1"]
-    assert {record["scenario"] for record in events} == {"elastic_access_event"}
+    assert {record["mapping_profile"] for record in events} == {"elastic_access_event"}
     request = fake.requests[-1]
     assert unquote(request.path) == f"/{EVENT_INDEX}/_search"
     assert request.body["sort"] == [{"@timestamp": {"order": "asc", "numeric_type": "date"}}]
@@ -171,7 +171,7 @@ def test_events_use_the_event_index_and_timestamp(fake, mcp):
 
 def test_alerts_use_the_alert_index_without_mutable_fields(fake, mcp):
     alerts = mcp.query(query())
-    assert {record["scenario"] for record in alerts} == {"elastic_security_alert"}
+    assert {record["mapping_profile"] for record in alerts} == {"elastic_security_alert"}
     request = fake.requests[-1]
     assert unquote(request.path) == f"/{ALERT_INDEX}/_search"
     assert request.body["_source"] == {"excludes": list(MUTABLE_ALERT_FIELDS)}

@@ -2,7 +2,7 @@
   {
     "kind": "alert",
     "source_record_id": "src_2c05ef8d2dbde54813a94a1fc4d4365675bb21b9cd4118dffca1666fc2777f4f",
-    "scenario": "web_scan",
+    "mapping_profile": "web_scan",
     "raw_ids": [
       "raw_web_access.log_1"
     ],
@@ -17,7 +17,7 @@
   {
     "kind": "alert",
     "source_record_id": "src_ccc4c5817da493b5abfb8242f90c51aac5210a3df086d959d2a0e74364252035",
-    "scenario": "web_sqli",
+    "mapping_profile": "web_sqli",
     "raw_ids": [
       "raw_web_access.log_2"
     ],
@@ -32,7 +32,7 @@
   {
     "kind": "alert",
     "source_record_id": "src_65935e4eaf9e588d3f6d92e7a54d207cc5ad69ca816b15320c4ec0eb80d58703",
-    "scenario": "web_upload",
+    "mapping_profile": "web_upload",
     "raw_ids": [
       "raw_web_access.log_3"
     ],
