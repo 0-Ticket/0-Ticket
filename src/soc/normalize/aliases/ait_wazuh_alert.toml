@@ -1,7 +1,9 @@
 # AIT Alert Data Set (AIT-ADS, D-004)의 Wazuh 알럿 → C3. 박스 4 기본 별칭 표(C20).
 # AIT-ADS는 AIT Log Data Set V2.0을 Wazuh에 넣어 만든 알럿 모음이다(JSON Lines, 줄 하나가 알럿 하나).
 # 조직은 normalize.alias_dir 폴더에 같은 이름의 파일을 두어 이 표를 통째로 바꾼다.
-scenario = "ait_wazuh_alert"
+tool = "wazuh"
+log_type = "alert"
+mapping_profile = "ait_wazuh_alert"
 kind = "alert"
 class_uid = 2004
 # 예: 2022-01-24T03:57:26.000000Z

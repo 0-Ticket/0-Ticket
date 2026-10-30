@@ -118,7 +118,7 @@ took, timed_out, _shards, hits{ total{value, relation}, max_score, hits[ {_index
 |---|---|---|
 | 가져오기 | `SiemConnector.fetch(cursor, limit) -> FetchBatch(items, next_cursor, skipped)` (`src/soc/ingest/siem/base.py`) | indexer `_search`를 `@timestamp` 오름차순으로 읽는다. 알럿·이벤트 두 패턴 |
 | C2 `kind` | `alert` / `event` | `wazuh-alerts-*` → `alert`, `wazuh-archives-*` → `event` |
-| C2 `scenario` | 별칭 표 이름 | 알럿은 기존 `ait_wazuh_alert` 표로 표현되는지 실제 응답과 대조. 안 되면 C-02c |
+| C2 `mapping_profile` | C20의 소스 쌍이 고르는 별칭 표 | Wazuh 알럿은 `(tool=wazuh, log_type=alert)` 쌍과 `ait_wazuh_alert` 프로필을 실제 응답에 대조. 안 되면 C-02c |
 | C2 `raw_ids` | 커넥터가 정하는 고유값 | 후보 `raw_wazuh_<_index>_<_id>` (elastic의 `raw_es_<index>_<_id>`와 같은 방식) |
 | C2 `fields` | SIEM 원본 그대로 | `_source` 그대로. Wazuh는 점 표기 키를 쓰지 않는 것으로 보이나 실제 응답으로 확인 |
 | 커서 | 어댑터가 정하는 문자열 | 후보: 패턴별 마지막 `@timestamp` + 그 시각에 읽은 `_id` 목록 (elastic 커서와 같은 방식, `_id` 정렬 안 함) |

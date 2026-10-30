@@ -18,7 +18,7 @@ def alert_data():
 def source_for(alert_id):
     content = {
         "kind": "alert",
-        "scenario": "branch_test",
+        "mapping_profile": "branch_test",
         "raw_ids": [],
         "fields": {"alert": alert_id},
     }

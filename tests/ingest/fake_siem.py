@@ -14,7 +14,7 @@ from soc.ingest.siem.base import FetchBatch, HealthStatus, InvalidCursorError
 FAKE_ALERTS = [
     {
         "kind": "alert" if number % 2 else "event",
-        "scenario": "fake_scenario",
+        "mapping_profile": "fake_scenario",
         "raw_ids": [f"raw_fake_{number}"],
         "fields": {"rule": {"id": number}, "src_ip": "192.0.2.1"},
     }

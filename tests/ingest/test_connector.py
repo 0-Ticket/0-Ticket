@@ -11,6 +11,7 @@ from soc.contracts import ContractValidationError, SiemAlert
 from soc.ingest.connector import canonical_c2_content, open_connector, source_record_id
 from soc.ingest.siem import SIEM_CONNECTORS
 from soc.ingest.siem.base import FetchBatch, HealthStatus
+from soc.normalize.alias import MappingSelection
 from soc.plugins import PluginNotFoundError, PluginRegistry
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -56,6 +57,34 @@ def test_core_runs_the_fake_siem_chosen_by_setting(tmp_path):
     assert connector.health_check() == HealthStatus(
         ok=True, detail="connected to https://siem.example.com"
     )
+
+
+def test_selector_metadata_is_checked_before_plugin_factory(tmp_path):
+    calls = []
+
+    class Factory:
+        def mapping_selections(self, settings):
+            calls.append("metadata")
+            return (MappingSelection("alert", "unsupported_tool", "alerts"),)
+
+        def __call__(self, settings, environ):
+            calls.append("factory")
+            return fake_factory(settings, environ)
+
+    with pytest.raises(ConfigError, match="no mapping profile"):
+        open_connector(
+            org_settings(tmp_path, FAKE_CONFIG),
+            environ=ENV,
+            registry=fake_registry(Factory()),
+        )
+    assert calls == ["metadata"]
+
+
+def test_plugin_without_selector_metadata_keeps_legacy_factory_path(tmp_path):
+    connector = open_connector(
+        org_settings(tmp_path, FAKE_CONFIG), environ=ENV, registry=fake_registry()
+    )
+    assert connector.fetch(None).items
 
 
 def test_core_passes_batch_size_as_limit(tmp_path):
@@ -128,7 +157,7 @@ def test_core_turns_valid_plugin_dicts_into_c2_models(tmp_path):
 
 
 PINNED_CONTENT = {
-    "scenario": "s",
+    "mapping_profile": "s",
     "raw_ids": ["raw_1"],
     "kind": "alert",
     "fields": {"b": [1, 2], "a": "\u00e9"},
@@ -145,6 +174,18 @@ def test_canonical_c2_content_is_fixed():
     assert source_record_id(PINNED_CONTENT) == PINNED_ID
 
 
+def test_mapping_profile_keeps_the_previous_canonical_identity():
+    """Renaming scenario in C2 does not reissue existing source IDs."""
+    legacy = {
+        "kind": "alert",
+        "scenario": PINNED_CONTENT["mapping_profile"],
+        "raw_ids": PINNED_CONTENT["raw_ids"],
+        "fields": PINNED_CONTENT["fields"],
+    }
+    assert canonical_c2_content(PINNED_CONTENT) == canonical_c2_content(legacy)
+    assert source_record_id(PINNED_CONTENT) == source_record_id(legacy) == PINNED_ID
+
+
 def test_source_record_id_ignores_keys_outside_c2_content():
     assert source_record_id({**PINNED_CONTENT, "extra": 1}) == PINNED_ID
 
@@ -155,7 +196,7 @@ def test_source_record_id_ignores_keys_outside_c2_content():
         {"raw_ids": ["raw_2"]},
         {"fields": {"b": [1, 2], "a": "e"}},
         {"kind": "event"},
-        {"scenario": "t"},
+        {"mapping_profile": "t"},
     ],
 )
 def test_any_content_change_gives_a_different_id(change):

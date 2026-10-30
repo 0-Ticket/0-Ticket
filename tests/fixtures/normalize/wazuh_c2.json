@@ -1,7 +1,7 @@
 [
   {
     "kind": "alert",
-    "scenario": "ait_wazuh_alert",
+    "mapping_profile": "ait_wazuh_alert",
     "raw_ids": [
       "raw_wazuh_alert.jsonl_3"
     ],
@@ -28,7 +28,7 @@
   },
   {
     "kind": "alert",
-    "scenario": "ait_wazuh_alert",
+    "mapping_profile": "ait_wazuh_alert",
     "raw_ids": [
       "raw_wazuh_alert.jsonl_5"
     ],
@@ -55,7 +55,7 @@
   },
   {
     "kind": "alert",
-    "scenario": "ait_wazuh_alert",
+    "mapping_profile": "ait_wazuh_alert",
     "raw_ids": [
       "raw_wazuh_alert.jsonl_6"
     ],
@@ -89,7 +89,7 @@
   },
   {
     "kind": "alert",
-    "scenario": "ait_wazuh_alert",
+    "mapping_profile": "ait_wazuh_alert",
     "raw_ids": [
       "raw_wazuh_alert.jsonl_7"
     ],
@@ -115,7 +115,7 @@
   },
   {
     "kind": "alert",
-    "scenario": "ait_wazuh_alert",
+    "mapping_profile": "ait_wazuh_alert",
     "raw_ids": [
       "raw_wazuh_alert.jsonl_8"
     ],
@@ -142,7 +142,7 @@
   },
   {
     "kind": "alert",
-    "scenario": "ait_wazuh_alert",
+    "mapping_profile": "ait_wazuh_alert",
     "raw_ids": [
       "raw_wazuh_alert.jsonl_9"
     ],

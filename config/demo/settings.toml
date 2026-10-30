@@ -15,7 +15,8 @@ adapter = "direct"
 [[siem.direct.files]]
 path = "data/demo/wazuh_alert.jsonl"
 kind = "alert"
-scenario = "ait_wazuh_alert"
+tool = "wazuh"
+log_type = "alert"
 source_type = "web"
 format = "jsonl"
 
@@ -23,7 +24,8 @@ format = "jsonl"
 [[siem.direct.files]]
 path = "data/demo/intranet.smith.russellmitchell.com-access.log.2"
 kind = "event"
-scenario = "ait_apache_access"
+tool = "apache"
+log_type = "access"
 source_type = "web"
 format = "text"
 

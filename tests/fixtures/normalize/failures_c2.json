@@ -2,7 +2,7 @@
   {
     "case": "no_alias_table",
     "kind": "alert",
-    "scenario": "no_such_scenario",
+    "mapping_profile": "no_such_scenario",
     "fields": {"timestamp": "2022-01-18T10:05:41+0000", "src_ip": "198.51.100.23"},
     "reason": "unknown_scenario",
     "missing_fields": []
@@ -10,7 +10,7 @@
   {
     "case": "table_kind_differs",
     "kind": "alert",
-    "scenario": "ait_apache_access",
+    "mapping_profile": "ait_apache_access",
     "fields": {"message": "198.51.100.23 - - [18/Jan/2022:10:05:41 +0000] \"GET / HTTP/1.1\" 200 1 \"-\" \"-\""},
     "reason": "unknown_scenario",
     "missing_fields": []
@@ -18,7 +18,7 @@
   {
     "case": "no_rule_name_no_entity",
     "kind": "alert",
-    "scenario": "ait_suricata_alert",
+    "mapping_profile": "ait_suricata_alert",
     "fields": {"timestamp": "2022-01-18T10:05:41+0000", "alert": {"signature_id": 2008983, "severity": 2}},
     "reason": "missing_required",
     "missing_fields": ["rule_name", "src_ip", "dst_ip", "host"]
@@ -26,7 +26,7 @@
   {
     "case": "time_not_iso8601",
     "kind": "alert",
-    "scenario": "ait_suricata_alert",
+    "mapping_profile": "ait_suricata_alert",
     "fields": {"timestamp": "yesterday-secretmarker", "src_ip": "198.51.100.23", "alert": {"signature_id": 1, "signature": "s", "severity": 1}},
     "reason": "bad_value",
     "missing_fields": []
@@ -34,7 +34,7 @@
   {
     "case": "time_without_zone",
     "kind": "alert",
-    "scenario": "ait_suricata_alert",
+    "mapping_profile": "ait_suricata_alert",
     "fields": {"timestamp": "2022-01-18T10:05:41", "src_ip": "198.51.100.23", "alert": {"signature_id": 1, "signature": "s", "severity": 1}},
     "reason": "bad_value",
     "missing_fields": []
@@ -42,7 +42,7 @@
   {
     "case": "severity_not_in_map",
     "kind": "alert",
-    "scenario": "ait_suricata_alert",
+    "mapping_profile": "ait_suricata_alert",
     "fields": {"timestamp": "2022-01-18T10:05:41+0000", "src_ip": "198.51.100.23", "alert": {"signature_id": 1, "signature": "s", "severity": 9}},
     "reason": "bad_value",
     "missing_fields": []
@@ -50,7 +50,7 @@
   {
     "case": "rule_id_not_text",
     "kind": "alert",
-    "scenario": "ait_suricata_alert",
+    "mapping_profile": "ait_suricata_alert",
     "fields": {"timestamp": "2022-01-18T10:05:41+0000", "src_ip": "198.51.100.23", "alert": {"signature_id": {"value": "secretmarker"}, "signature": "s", "severity": 1}},
     "reason": "bad_value",
     "missing_fields": []
@@ -58,7 +58,7 @@
   {
     "case": "optional_text_not_text",
     "kind": "alert",
-    "scenario": "ait_suricata_alert",
+    "mapping_profile": "ait_suricata_alert",
     "fields": {"timestamp": "2022-01-18T10:05:41+0000", "src_ip": "198.51.100.23", "alert": {"signature_id": 1, "signature": "s", "severity": 1}, "http": {"url": ["secretmarker"]}},
     "reason": "bad_value",
     "missing_fields": []
@@ -66,7 +66,7 @@
   {
     "case": "time_bad_and_port_bad",
     "kind": "alert",
-    "scenario": "ait_suricata_alert",
+    "mapping_profile": "ait_suricata_alert",
     "fields": {"timestamp": "yesterday-secretmarker", "src_ip": "198.51.100.23", "alert": {"signature_id": 1, "signature": "s", "severity": 1}, "src_port": "secretmarker"},
     "reason": "bad_value",
     "missing_fields": []
@@ -74,7 +74,7 @@
   {
     "case": "line_does_not_match_pattern",
     "kind": "event",
-    "scenario": "ait_apache_access",
+    "mapping_profile": "ait_apache_access",
     "fields": {"message": "secretmarker this is not an access log line", "source_file": "apache_access.log"},
     "reason": "missing_required",
     "missing_fields": ["time"]

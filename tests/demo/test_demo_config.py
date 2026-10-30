@@ -10,7 +10,7 @@ from pathlib import Path
 from soc.branch.rules import load_scenario_rules
 from soc.config import load_config
 from soc.l1.specialists import SPECIALISTS
-from soc.normalize.alias import load_alias_tables
+from soc.normalize.alias import load_alias_tables, mapping_profile_for
 from soc.normalize.lookup.table_csv import parse_assets_csv, parse_users_csv
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -38,7 +38,8 @@ def test_demo_settings_load_and_replay_with_direct():
     tables = load_alias_tables(None)
     for entry in settings.siem.direct.files:
         assert entry.path.startswith("data/")  # the dataset slice is never committed
-        assert tables[entry.scenario].table.kind == entry.kind
+        profile = mapping_profile_for(tables, entry.tool, entry.log_type, entry.kind)
+        assert tables[profile].table.kind == entry.kind
     assert {"l1", "web_specialist"} <= set(settings.mcp.allowed_tools)
     assert "query_http_flow" in settings.mcp.allowed_tools["web_specialist"]
 

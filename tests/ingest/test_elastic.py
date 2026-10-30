@@ -22,8 +22,6 @@ from soc.ingest.connector import SiemIngest, open_connector, to_c2
 from soc.ingest.siem import SIEM_CONNECTORS
 from soc.ingest.siem.base import InvalidCursorError
 from soc.ingest.siem.elastic import (
-    ALERT_SCENARIO,
-    EVENT_SCENARIO,
     MUTABLE_ALERT_FIELDS,
     ElasticError,
     create_elastic,
@@ -80,8 +78,8 @@ class TestElasticContract(AdapterContract):
 def test_alerts_come_first_then_events_as_c2(elastic):
     items = elastic.fetch(None, BIG).items
     assert [item["kind"] for item in items] == ["alert"] * 3 + ["event"] * 5
-    assert {item["scenario"] for item in items[:3]} == {ALERT_SCENARIO}
-    assert {item["scenario"] for item in items[3:]} == {EVENT_SCENARIO}
+    assert {item["mapping_profile"] for item in items[:3]} == {"elastic_security_alert"}
+    assert {item["mapping_profile"] for item in items[3:]} == {"elastic_access_event"}
     assert items[0]["raw_ids"] == ["raw_es_.internal.alerts-security.alerts-default-000001_al-1"]
     assert items[3]["raw_ids"] == ["raw_es_.ds-logs-generic-default-2026.10.21-000001_ev-1"]
 
@@ -132,8 +130,8 @@ def test_kibana_status_changes_do_not_change_the_source_record_id():
             "kibana.alert.updated_by": {"user": {"id": "u1", "name": "analyst"}},
         }
     )
-    first = to_c2(hit_to_c2(hit, "alert", ALERT_SCENARIO))
-    second = to_c2(hit_to_c2(changed, "alert", ALERT_SCENARIO))
+    first = to_c2(hit_to_c2(hit, "alert", "elastic_security_alert"))
+    second = to_c2(hit_to_c2(changed, "alert", "elastic_security_alert"))
     assert first.source_record_id == second.source_record_id
 
 
@@ -285,6 +283,12 @@ def test_index_defaults_are_in_the_default_settings():
     assert (elastic.alert_index, elastic.event_index) == (ALERT_INDEX, EVENT_INDEX)
 
 
+def test_elastic_source_selectors_must_be_nonempty(tmp_path):
+    org = _org_file(tmp_path, '[siem.elastic]\nalert_tool = ""\n')
+    with pytest.raises(ConfigError, match="alert_tool"):
+        load_config(org, environ={})
+
+
 @pytest.mark.parametrize(
     "name",
     ["", "logs-*/_delete_by_query", "a,b", "a b", "-logs-*", "_all", "+x", "a?b", "a#b", 'a"b'],
@@ -296,8 +300,20 @@ def test_index_name_with_path_characters_is_rejected(tmp_path, name):
 
 
 def test_elastic_is_chosen_by_setting_only(fake, tmp_path):
-    assert SIEM_CONNECTORS.get("elastic") is create_elastic
+    factory = SIEM_CONNECTORS.get("elastic")
+    assert factory.factory is create_elastic
+    assert factory.mapping_selections(siem_settings(fake.url))
     org = _org_file(tmp_path, f'[siem]\nadapter = "elastic"\nbase_url = "{fake.url}"\n')
     ingest = open_connector(load_config(org, environ={}), ENV)
     assert isinstance(ingest, SiemIngest)
     assert len(ingest.fetch(None).items) == 8
+
+
+def test_unmapped_elastic_selector_fails_before_connector_factory():
+    base = load_config(environ={})
+    elastic = base.siem.elastic.model_copy(update={"alert_tool": "unsupported_tool"})
+    siem = base.siem.model_copy(update={"adapter": "elastic", "elastic": elastic})
+    settings = base.model_copy(update={"siem": siem})
+
+    with pytest.raises(ConfigError, match="no mapping profile"):
+        open_connector(settings, environ=ENV)

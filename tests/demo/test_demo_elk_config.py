@@ -7,9 +7,9 @@ from soc.branch.rules import load_scenario_rules
 from soc.config import load_config
 from soc.contracts import validate_contract
 from soc.ingest.connector import to_c2
-from soc.ingest.siem.elastic import ALERT_SCENARIO, EVENT_SCENARIO, hit_to_c2
+from soc.ingest.siem.elastic import hit_to_c2
 from soc.l1.specialists import SPECIALISTS
-from soc.normalize.alias import load_alias_tables
+from soc.normalize.alias import load_alias_tables, mapping_profile_for
 from soc.normalize.normalizer import Normalizer
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -32,9 +32,27 @@ def test_demo_elk_settings_load_and_select_elastic():
     assert settings.siem.token_env == "SIEM_TOKEN"
     assert settings.siem.elastic.alert_index == ".alerts-security.alerts-*"
     assert settings.siem.elastic.event_index == "logs-*"
+    assert (settings.siem.elastic.alert_tool, settings.siem.elastic.alert_log_type) == (
+        "kibana_security",
+        "security_alert",
+    )
+    assert (settings.siem.elastic.event_tool, settings.siem.elastic.event_log_type) == (
+        "logstash",
+        "http_access",
+    )
     tables = load_alias_tables(None)
-    assert tables[ALERT_SCENARIO].table.kind == "alert"
-    assert tables[EVENT_SCENARIO].table.kind == "event"
+    assert (
+        mapping_profile_for(
+            tables, settings.siem.elastic.alert_tool, settings.siem.elastic.alert_log_type, "alert"
+        )
+        == "elastic_security_alert"
+    )
+    assert (
+        mapping_profile_for(
+            tables, settings.siem.elastic.event_tool, settings.siem.elastic.event_log_type, "event"
+        )
+        == "elastic_access_event"
+    )
 
 
 def test_demo_elk_does_not_touch_the_ait_demo():
@@ -49,7 +67,11 @@ def test_demo_elk_scenario_rule_matches_lab_rule_id():
     assert (rule.handling_type, rule.specialist) == ("web_attack", "web")
 
     hit = json.loads((ROOT / "tests/fixtures/elastic/alert_hits.json").read_text("utf-8"))[0]
-    c2 = to_c2(hit_to_c2(hit, "alert", ALERT_SCENARIO))
+    settings = _settings().siem.elastic
+    profile = mapping_profile_for(
+        load_alias_tables(None), settings.alert_tool, settings.alert_log_type, "alert"
+    )
+    c2 = to_c2(hit_to_c2(hit, "alert", profile))
     alert = Normalizer(load_alias_tables(None), 16_384).normalize(c2, 0)
     record = validate_contract(
         "AlertRecord",

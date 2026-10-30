@@ -6,13 +6,15 @@ adapter = "direct"
 [[siem.direct.files]]
 path = "tests/fixtures/ingest/ait/suricata_eve.jsonl"
 kind = "alert"
-scenario = "ait_suricata_alert"
+tool = "suricata"
+log_type = "eve_alert"
 source_type = "web"
 format = "jsonl"
 
 [[siem.direct.files]]
 path = "tests/fixtures/ingest/ait/apache_access.log"
 kind = "event"
-scenario = "ait_apache_access"
+tool = "apache"
+log_type = "access"
 source_type = "web"
 format = "text"

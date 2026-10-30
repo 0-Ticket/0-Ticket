@@ -17,8 +17,15 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from soc.config import DirectFileSettings, DirectSiemSettings, SiemSettings
+from soc.config import DirectFileSettings, DirectSiemSettings, Settings, SiemSettings
 from soc.contracts import RawRecord, validate_contract
+from soc.normalize.alias import (
+    CompiledAliasTable,
+    MappingAwareFactory,
+    MappingSelection,
+    load_alias_tables,
+    mapping_profile_for,
+)
 
 from .base import FetchBatch, HealthStatus, InvalidCursorError
 
@@ -56,9 +63,22 @@ def _strip_line_end(raw: bytes) -> bytes:
 class DirectSiemConnector:
     """Cursor: ``<file index>:<byte offset>:<lines read>``. A resume seeks, never rereads."""
 
-    def __init__(self, settings: DirectSiemSettings, clock: Callable[[], int] = _now_ms):
+    def __init__(
+        self,
+        settings: DirectSiemSettings,
+        clock: Callable[[], int] = _now_ms,
+        *,
+        alias_tables: Mapping[str, CompiledAliasTable] | None = None,
+    ):
         self._files = settings.files
         self._clock = clock
+        tables = load_alias_tables(None) if alias_tables is None else alias_tables
+        self._profiles = {
+            (entry.tool, entry.log_type, entry.kind): mapping_profile_for(
+                tables, entry.tool, entry.log_type, entry.kind
+            )
+            for entry in self._files
+        }
 
     def fetch(self, cursor: str | None, limit: int) -> FetchBatch:
         return self.replay(cursor, limit).batch
@@ -146,7 +166,7 @@ class DirectSiemConnector:
         )
         item = {
             "kind": entry.kind,
-            "scenario": entry.scenario,
+            "mapping_profile": self._profiles[(entry.tool, entry.log_type, entry.kind)],
             "raw_ids": [raw_id],
             "fields": self._fields(entry.format, payload, name),
         }
@@ -171,6 +191,30 @@ class DirectSiemConnector:
         return fields
 
 
-def create_direct(settings: SiemSettings, environ: Mapping[str, str]) -> DirectSiemConnector:
+def create_direct(
+    settings: SiemSettings,
+    environ: Mapping[str, str],
+    *,
+    alias_tables: Mapping[str, CompiledAliasTable] | None = None,
+) -> DirectSiemConnector:
     """Factory registered as ``direct``. It needs no address or secret."""
-    return DirectSiemConnector(settings.direct)
+    return DirectSiemConnector(settings.direct, alias_tables=alias_tables)
+
+
+def _mapping_selections(settings: SiemSettings) -> tuple[MappingSelection, ...]:
+    return tuple(
+        MappingSelection(file.kind, file.tool, file.log_type) for file in settings.direct.files
+    )
+
+
+def _configured_factory(
+    settings: Settings,
+    environ: Mapping[str, str],
+    tables: Mapping[str, CompiledAliasTable],
+) -> DirectSiemConnector:
+    return create_direct(settings.siem, environ, alias_tables=tables)
+
+
+MAPPING_AWARE_DIRECT_FACTORY = MappingAwareFactory(
+    create_direct, _mapping_selections, _configured_factory
+)

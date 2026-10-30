@@ -1,6 +1,6 @@
 {
   "kind": "alert",
-  "scenario": "fake_waf_alert",
+  "mapping_profile": "fake_waf_alert",
   "raw_ids": ["raw_fake_waf.jsonl_1"],
   "fields": {
     "@timestamp": 1642500500123,

@@ -2,7 +2,9 @@
 # elastic 어댑터는 _source의 점 표기 키("kibana.alert.severity")를 중첩으로 펼쳐 C2 fields에 넣으므로,
 # 아래 점 경로는 원본이 점 키든 중첩 객체든 같은 값을 가리킨다.
 # 조직은 normalize.alias_dir 폴더에 같은 이름의 파일을 두어 이 표를 통째로 바꾼다.
-scenario = "elastic_security_alert"
+tool = "kibana_security"
+log_type = "security_alert"
+mapping_profile = "elastic_security_alert"
 kind = "alert"
 class_uid = 2004
 # 예: 2026-10-21T01:01:05.000Z

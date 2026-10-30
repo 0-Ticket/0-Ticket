@@ -2,9 +2,9 @@
 
 from soc.plugins import PluginRegistry
 
-from .direct import create_direct
-from .elastic import create_elastic
+from .direct import MAPPING_AWARE_DIRECT_FACTORY
+from .elastic import MAPPING_AWARE_ELASTIC_FACTORY
 
 SIEM_CONNECTORS = PluginRegistry("siem")
-SIEM_CONNECTORS.register("direct", create_direct)
-SIEM_CONNECTORS.register("elastic", create_elastic)
+SIEM_CONNECTORS.register("direct", MAPPING_AWARE_DIRECT_FACTORY)
+SIEM_CONNECTORS.register("elastic", MAPPING_AWARE_ELASTIC_FACTORY)

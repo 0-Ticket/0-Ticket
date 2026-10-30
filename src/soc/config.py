@@ -110,11 +110,12 @@ class McpSettings(_Section):
 
 
 class DirectFileSettings(_Section):
-    """One dataset file the direct adapter replays, and how its lines become C2."""
+    """One dataset file and its source selectors for C2 mapping-profile resolution."""
 
     path: str = Field(min_length=1)
     kind: Literal["alert", "event"]
-    scenario: str = Field(min_length=1)
+    tool: str = Field(min_length=1)
+    log_type: str = Field(min_length=1)
     source_type: str = Field(min_length=1)
     format: Literal["text", "jsonl"]
 
@@ -137,10 +138,14 @@ ElasticIndex = Annotated[str, Field(pattern=r'^[^\-_+/,?#"\\\s][^/,?#"\\\s]*$')]
 
 
 class ElasticSiemSettings(_Section):
-    """Indices the elastic adapter reads (#99). Address and key come from [siem]."""
+    """Indices and source selectors for elastic alert/event inputs (#99)."""
 
     alert_index: ElasticIndex
+    alert_tool: str = Field(min_length=1)
+    alert_log_type: str = Field(min_length=1)
     event_index: ElasticIndex
+    event_tool: str = Field(min_length=1)
+    event_log_type: str = Field(min_length=1)
 
 
 class SiemSettings(_Section):

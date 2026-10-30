@@ -1,6 +1,8 @@
 # 가짜 시나리오 별칭 표(테스트용). AIT 표와 필드 이름이 전혀 다른 WAF 알럿을
 # 코드 수정 없이 이 파일 하나로 C3에 맞춘다(K4). 조직 폴더(normalize.alias_dir)로 넣는다.
-scenario = "fake_waf_alert"
+tool = "fake_waf"
+log_type = "alert"
+mapping_profile = "fake_waf_alert"
 kind = "alert"
 class_uid = 2004
 time_format = "epoch_ms"

@@ -1,5 +1,7 @@
 # Test-only C13 alias for verifying the new non-negative response body byte field.
-scenario = "http_bytes_event"
+tool = "http_service"
+log_type = "access_event"
+mapping_profile = "http_bytes_event"
 kind = "event"
 class_uid = 4002
 activity = "http_request"

@@ -24,11 +24,12 @@ def direct_settings(*files):
     return DirectSiemSettings.model_validate({"files": list(files)})
 
 
-def file_entry(path, kind="event", scenario="test_scenario", fmt="text"):
+def file_entry(path, kind="event", tool="apache", log_type="access", fmt="text"):
     return {
         "path": str(path),
         "kind": kind,
-        "scenario": scenario,
+        "tool": tool,
+        "log_type": log_type,
         "source_type": "web",
         "format": fmt,
     }
@@ -36,8 +37,8 @@ def file_entry(path, kind="event", scenario="test_scenario", fmt="text"):
 
 def ait_settings():
     return direct_settings(
-        file_entry(AIT / "suricata_eve.jsonl", "alert", "ait_suricata_alert", "jsonl"),
-        file_entry(AIT / "apache_access.log", "event", "ait_apache_access", "text"),
+        file_entry(AIT / "suricata_eve.jsonl", "alert", "suricata", "eve_alert", "jsonl"),
+        file_entry(AIT / "apache_access.log", "event", "apache", "access", "text"),
     )
 
 
@@ -66,6 +67,15 @@ def test_replays_fixture_config_to_expected_c2(monkeypatch):
     items, _ = walk(connector.fetch)
     expected = json.loads((FIXTURES / "expected_c2.json").read_text(encoding="utf-8"))
     assert [item.model_dump(mode="json") for item in items] == expected
+
+
+def test_unmapped_pair_fails_before_direct_connector_is_opened(tmp_path):
+    settings = load_config_with_files(
+        tmp_path,
+        [file_entry(tmp_path / "missing.jsonl", "alert", "unsupported_tool", "alerts", "jsonl")],
+    )
+    with pytest.raises(ConfigError, match="no mapping profile"):
+        open_connector(settings, environ={})
 
 
 def test_builds_c1_with_raw_id_hash_and_untouched_payload():
@@ -151,6 +161,14 @@ def test_same_file_name_twice_is_rejected(tmp_path):
 def test_unknown_format_is_rejected(tmp_path):
     with pytest.raises(ConfigError, match="format"):
         load_config_with_files(tmp_path, [file_entry(tmp_path / "x.log", fmt="csv")])
+
+
+def test_direct_source_selectors_must_be_nonempty(tmp_path):
+    with pytest.raises(ConfigError, match="tool"):
+        load_config_with_files(
+            tmp_path,
+            [file_entry(tmp_path / "x.log", tool="")],
+        )
 
 
 def load_config_with_files(tmp_path, files):

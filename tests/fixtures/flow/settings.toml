@@ -8,14 +8,16 @@ adapter = "direct"
 [[siem.direct.files]]
 path = "tests/fixtures/flow/wazuh_alert.jsonl"
 kind = "alert"
-scenario = "ait_wazuh_alert"
+tool = "wazuh"
+log_type = "alert"
 source_type = "web"
 format = "jsonl"
 
 [[siem.direct.files]]
 path = "tests/fixtures/flow/access.log"
 kind = "event"
-scenario = "ait_apache_access"
+tool = "apache"
+log_type = "access"
 source_type = "web"
 format = "text"
 

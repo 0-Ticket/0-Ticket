@@ -78,7 +78,9 @@ def test_wazuh_alerts_normalize_to_expected_c3(normalizer):
     items = read_json(NORMALIZE / "wazuh_c2.json")
     expected = read_json(NORMALIZE / "wazuh_expected_c3.json")
     results = [
-        normalizer.normalize(make_c2(i["kind"], i["scenario"], i["fields"], i["raw_ids"]), NOW)
+        normalizer.normalize(
+            make_c2(i["kind"], i["mapping_profile"], i["fields"], i["raw_ids"]), NOW
+        )
         for i in items
     ]
     assert all(isinstance(result, NormalizedAlert) for result in results)
@@ -188,12 +190,12 @@ def test_severity_map_converts_source_value(normalizer):
     "case", read_json(NORMALIZE / "failures_c2.json"), ids=lambda case: case["case"]
 )
 def test_failures_become_c12(normalizer, case):
-    item = make_c2(case["kind"], case["scenario"], case["fields"])
+    item = make_c2(case["kind"], case["mapping_profile"], case["fields"])
     result = normalizer.normalize(item, NOW)
     assert isinstance(result, NormalizeFailure)
     assert result.reason == case["reason"]
     assert result.missing_fields == case["missing_fields"]
-    assert result.scenario == case["scenario"]
+    assert result.mapping_profile == case["mapping_profile"]
     assert result.raw_ids == item.raw_ids
     assert result.failed_at == NOW
     assert result.detail
@@ -203,7 +205,9 @@ def test_failures_become_c12(normalizer, case):
     "case", read_json(NORMALIZE / "failures_c2.json"), ids=lambda case: case["case"]
 )
 def test_failure_detail_has_no_raw_text(normalizer, case):
-    result = normalizer.normalize(make_c2(case["kind"], case["scenario"], case["fields"]), NOW)
+    result = normalizer.normalize(
+        make_c2(case["kind"], case["mapping_profile"], case["fields"]), NOW
+    )
     text = json.dumps(dump(result))
     assert "secretmarker" not in text
     assert "198.51.100.23" not in text
@@ -215,7 +219,9 @@ def test_failure_detail_has_no_raw_text(normalizer, case):
 def test_optional_number_that_does_not_convert_is_null(normalizer, case):
     """#113: the field is null (never 0), the record still normalizes and the value stays in
     unmapped."""
-    result = normalizer.normalize(make_c2(case["kind"], case["scenario"], case["fields"]), NOW)
+    result = normalizer.normalize(
+        make_c2(case["kind"], case["mapping_profile"], case["fields"]), NOW
+    )
     contract = "NormalizedAlert" if case["kind"] == "alert" else "EventRecord"
     assert isinstance(result, NormalizedAlert if case["kind"] == "alert" else EventRecord)
     output = dump(validate_contract(contract, dump(result)))
@@ -311,7 +317,7 @@ def _table_dir(tmp_path, time_format):
     (directory / "time_case.toml").write_text(
         "\n".join(
             [
-                'scenario = "time_case"',
+                'tool = "test_web"\nlog_type = "alert"\nmapping_profile = "time_case"',
                 'kind = "alert"',
                 "class_uid = 2004",
                 f"time_format = {json.dumps(time_format)}",

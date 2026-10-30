@@ -1,6 +1,8 @@
 # AIT Log Data Set V2 (D-004)의 Apache access 로그(combined) → C13. 박스 4 기본 별칭 표(C20).
 # direct 어댑터는 줄 하나를 fields.message에 담으므로 parse로 나눈 뒤 별칭을 적용한다.
-scenario = "ait_apache_access"
+tool = "apache"
+log_type = "access"
+mapping_profile = "ait_apache_access"
 kind = "event"
 # OCSF HTTP Activity
 class_uid = 4002

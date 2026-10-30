@@ -12,7 +12,12 @@ base_url = "http://localhost:9200"
 # 읽기 전용 ES API 키(encoded 값)를 담은 환경변수 이름. 값은 .env에만 둔다.
 token_env = "SIEM_TOKEN"
 
-# 인덱스는 기본값(.alerts-security.alerts-*, logs-*)을 그대로 쓴다.
+# 인덱스는 기본값(.alerts-security.alerts-*, logs-*)을 그대로 쓴다. 매핑 선택은 C20 pair로 한다.
+[siem.elastic]
+alert_tool = "kibana_security"
+alert_log_type = "security_alert"
+event_tool = "logstash"
+event_log_type = "http_access"
 
 [branch]
 # 랩 탐지 룰을 시나리오로 둔다. 같은 이름(scenarios.toml)이라 기본 샘플 규칙을 통째로 바꾼다.

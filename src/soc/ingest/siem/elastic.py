@@ -4,8 +4,8 @@ Kibana detection rules write alerts to ``[siem.elastic] alert_index``; access
 logs live in ``event_index``. Each ``_search`` hit becomes one C2 content (no
 ``source_record_id``: the core entry assigns it):
 
-- ``scenario``: ``elastic_security_alert`` or ``elastic_access_event``, the
-  default alias tables of box 4. An organization replaces a table by its name.
+- ``mapping_profile``: resolved from the configured source ``tool`` and
+  ``log_type`` pair through the C20 tables of box 4.
 - ``raw_ids``: ``raw_es_<index>_<_id>``, from the concrete index the hit names.
   The SIEM keeps the original document (D-037), so no C1 is made here; the
   direct adapter's C1 is not stored either.
@@ -42,17 +42,23 @@ from urllib.request import Request, urlopen
 from soc.config import (
     ConfigError,
     ElasticSiemSettings,
+    Settings,
     SiemSettings,
     read_secret,
     validate_http_base_url,
+)
+from soc.normalize.alias import (
+    CompiledAliasTable,
+    MappingAwareFactory,
+    MappingSelection,
+    load_alias_tables,
+    mapping_profile_for,
 )
 
 from .base import FetchBatch, HealthStatus, InvalidCursorError
 
 logger = logging.getLogger(__name__)
 
-ALERT_SCENARIO = "elastic_security_alert"
-EVENT_SCENARIO = "elastic_access_event"
 TIME_FIELD = "@timestamp"
 RAW_ID_PREFIX = "raw_es_"
 CURSOR_VERSION = 1
@@ -194,7 +200,7 @@ def _drop(fields: dict[str, Any], path: str) -> None:
             del parent[key]
 
 
-def hit_to_c2(hit: Mapping[str, Any], kind: str, scenario: str) -> dict[str, Any]:
+def hit_to_c2(hit: Mapping[str, Any], kind: str, mapping_profile: str) -> dict[str, Any]:
     """One ``_search`` hit -> C2 content without ``source_record_id``. Raises UnusableHitError."""
     index, doc_id, source = hit.get("_index"), hit.get("_id"), hit.get("_source")
     if not isinstance(index, str) or not index or not isinstance(doc_id, str) or not doc_id:
@@ -212,7 +218,7 @@ def hit_to_c2(hit: Mapping[str, Any], kind: str, scenario: str) -> dict[str, Any
         raise UnusableHitError("holds a value that is not plain JSON") from None
     return {
         "kind": kind,
-        "scenario": scenario,
+        "mapping_profile": mapping_profile,
         "raw_ids": [f"{RAW_ID_PREFIX}{index}_{doc_id}"],
         "fields": fields,
     }
@@ -230,7 +236,7 @@ class _Position:
 class _Source:
     kind: str
     index: str
-    scenario: str
+    mapping_profile: str
 
 
 @dataclass(frozen=True)
@@ -299,11 +305,26 @@ def search_hits(answer: Mapping[str, Any]) -> list[Any]:
 
 
 class ElasticSiemConnector:
-    def __init__(self, client: ElasticClient, settings: ElasticSiemSettings):
+    def __init__(
+        self,
+        client: ElasticClient,
+        settings: ElasticSiemSettings,
+        *,
+        alias_tables: Mapping[str, CompiledAliasTable] | None = None,
+    ):
         self._client = client
+        tables = load_alias_tables(None) if alias_tables is None else alias_tables
         self._sources = (
-            _Source("alert", settings.alert_index, ALERT_SCENARIO),
-            _Source("event", settings.event_index, EVENT_SCENARIO),
+            _Source(
+                "alert",
+                settings.alert_index,
+                mapping_profile_for(tables, settings.alert_tool, settings.alert_log_type, "alert"),
+            ),
+            _Source(
+                "event",
+                settings.event_index,
+                mapping_profile_for(tables, settings.event_tool, settings.event_log_type, "event"),
+            ),
         )
 
     def fetch(self, cursor: str | None, limit: int) -> FetchBatch:
@@ -357,7 +378,7 @@ class ElasticSiemConnector:
                 raise ElasticError("Elasticsearch answer holds a hit without an id")
             position = _advance(position, _sort_time(hit), hit["_id"])
             try:
-                items.append(hit_to_c2(hit, source.kind, source.scenario))
+                items.append(hit_to_c2(hit, source.kind, source.mapping_profile))
             except UnusableHitError as reason:
                 reasons.append(str(reason))
         return _Read(items=items, reasons=reasons, position=position)
@@ -382,9 +403,36 @@ def _search_body(kind: str, position: _Position | None, size: int) -> dict[str, 
     return body
 
 
-def create_elastic(settings: SiemSettings, environ: Mapping[str, str]) -> ElasticSiemConnector:
+def create_elastic(
+    settings: SiemSettings,
+    environ: Mapping[str, str],
+    *,
+    alias_tables: Mapping[str, CompiledAliasTable] | None = None,
+) -> ElasticSiemConnector:
     """Factory registered as ``elastic``. The API key comes from ``siem.token_env``."""
-    return ElasticSiemConnector(open_client(settings, environ), settings.elastic)
+    return ElasticSiemConnector(
+        open_client(settings, environ), settings.elastic, alias_tables=alias_tables
+    )
+
+
+def _mapping_selections(settings: SiemSettings) -> tuple[MappingSelection, ...]:
+    return (
+        MappingSelection("alert", settings.elastic.alert_tool, settings.elastic.alert_log_type),
+        MappingSelection("event", settings.elastic.event_tool, settings.elastic.event_log_type),
+    )
+
+
+def _configured_factory(
+    settings: Settings,
+    environ: Mapping[str, str],
+    tables: Mapping[str, CompiledAliasTable],
+) -> ElasticSiemConnector:
+    return create_elastic(settings.siem, environ, alias_tables=tables)
+
+
+MAPPING_AWARE_ELASTIC_FACTORY = MappingAwareFactory(
+    create_elastic, _mapping_selections, _configured_factory
+)
 
 
 def open_client(settings: SiemSettings, environ: Mapping[str, str]) -> ElasticClient:

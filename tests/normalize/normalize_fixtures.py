@@ -23,10 +23,12 @@ def load_ait_c2() -> list[SiemAlert]:
     ]
 
 
-def make_c2(kind: str, scenario: str, fields: dict, raw_ids: list[str] | None = None) -> SiemAlert:
+def make_c2(
+    kind: str, mapping_profile: str, fields: dict, raw_ids: list[str] | None = None
+) -> SiemAlert:
     content = {
         "kind": kind,
-        "scenario": scenario,
+        "mapping_profile": mapping_profile,
         "raw_ids": raw_ids or ["raw_case_1"],
         "fields": fields,
     }
@@ -37,7 +39,7 @@ def make_c2(kind: str, scenario: str, fields: dict, raw_ids: list[str] | None = 
 
 def fake_waf_c2() -> SiemAlert:
     item = read_json(NORMALIZE / "fake_waf_c2.json")
-    return make_c2(item["kind"], item["scenario"], item["fields"], item["raw_ids"])
+    return make_c2(item["kind"], item["mapping_profile"], item["fields"], item["raw_ids"])
 
 
 def dump(model) -> dict:

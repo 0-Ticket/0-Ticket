@@ -81,8 +81,8 @@ model = "my-larger-model"
 |---|---|---|---|---|
 | 소스 커넥터 | 1 (외부) | `sources` | 파일 (`direct` 어댑터의 데이터셋 재생 입력, 개발·테스트·데모용) | 다른 데이터셋 형식. 운영 로그 소스는 외부 SIEM에 붙인다 |
 | 원본 저장소 | 2 (외부) | `raw_stores` | 로컬 파일 (`direct` 재생용) | 운영 원본 로그 보관은 외부 SIEM 소관 |
-| SIEM 커넥터 | 3 | `siem` (기존 그룹을 그대로 쓰는 것을 제안) | Wazuh (초기 구현 대상, D-037), `elastic`(ELK: Elasticsearch + Kibana Security. `_search`로 `[siem.elastic] alert_index`·`event_index`를 읽는다. 시나리오 `elastic_security_alert`·`elastic_access_event`, #99), `direct`(SIEM 없이 데이터셋을 재생해 C1을 C2로 넘김. 개발·테스트·데모용, 운영 대상 아님). 운영에서는 외부 SIEM 하나를 설정으로 선택 | Splunk |
-| 별칭 표 | 4 | (파일) | 기본 시나리오 별칭 표 `src/soc/normalize/aliases/<scenario>.toml`. 조직 폴더는 `[normalize] alias_dir`이고, 같은 이름 파일이 기본 표를 통째로 바꾼다. 텍스트 한 줄 원본은 `parse`(이름 붙은 그룹 정규식)로 나눈다. parse 정규식은 공격자가 만든 문자열에 적용되므로 역추적이 폭발하지 않게 쓴다(중첩 반복 금지). 대상 값이 `normalize.max_parse_length`보다 길면 적용하지 않는다 | 자사 SIEM 시나리오, 새 로그 형식 |
+| SIEM 커넥터 | 3 | `siem` (기존 그룹을 그대로 쓰는 것을 제안) | Wazuh (초기 구현 대상, D-037), `elastic`(ELK: Elasticsearch + Kibana Security. `_search`로 `[siem.elastic] alert_index`·`event_index`를 읽는다. 설정한 소스 `tool`·`log_type` 쌍이 C20 프로필을 고른다, #99), `direct`(SIEM 없이 데이터셋을 재생해 C1을 C2로 넘김. 입력별 `tool`·`log_type`을 지정한다. 개발·테스트·데모용, 운영 대상 아님). 운영에서는 외부 SIEM 하나를 설정으로 선택 | Splunk |
+| 별칭 표 | 4 | (파일) | 기본 C20 표 `src/soc/normalize/aliases/<mapping_profile>.toml`. 각 표는 로그 생성 소스 `tool`과 `log_type` 쌍 하나 및 그 쌍이 고르는 `mapping_profile`을 선언한다. 한 쌍은 정확히 한 프로필에만 대응한다. 조직 폴더는 `[normalize] alias_dir`이고, 같은 프로필 파일이 기본 표를 통째로 바꾼다. 텍스트 한 줄 원본은 `parse`(이름 붙은 그룹 정규식)로 나눈다. parse 정규식은 공격자가 만든 문자열에 적용되므로 역추적이 폭발하지 않게 쓴다(중첩 반복 금지). 대상 값이 `normalize.max_parse_length`보다 길면 적용하지 않는다 | 자사 로그 소스, 새 로그 형식 |
 | 룩업 제공자 | 5 | `lookups` | `csv`: CSV로 적재한 자산·계정 표(RDB, `postgresql.lookups`)를 읽는다(#60). `none`(항상 찾지 못함)도 설정으로 고를 수 있다. 인터페이스 `src/soc/normalize/lookup/base.py`의 `find_asset(value, at)`, `find_user(user, at)`. `[lookup] provider`로 고르고 코어는 `soc.normalize.lookup.open_lookup`으로 연다. 정규화 결합(`LookupEnricher`)과 증거 요청 큐의 lookup 처리자가 같은 제공자를 쓴다 | CMDB, 디렉터리 서비스, 위협 인텔 평판 서비스 |
 | 저장소 백엔드 | 5, 6, 7, 10, 12, 18, 20, 22, 24 | `stores` | PostgreSQL (D-002). Event도 RDB. 구현체 이름은 `<백엔드>.<저장소 종류>`(예: `postgresql.records`, `postgresql.tickets`)이고, `[store] backend` 하나로 고르며 코어는 `soc.store.open_store(<종류>, ...)`에 종류만 넘긴다 | 다른 RDB, 별도 로그 저장소(이벤트) |
 | 벡터 저장소 | 8 | `vector_stores` | Qdrant (D-003). Ticket, Case만 | 다른 벡터 DB |
@@ -92,7 +92,7 @@ model = "my-larger-model"
 | 전문 에이전트 | 13, 14 | `specialists` | `web`: Web 전문가 Agent(#63). 인터페이스 `src/soc/l1/specialists/base.py`의 `SpecialistContext`를 받아 C22 요청 하나를 C14로 답하는 함수. C22 `domain` 값이 구현체 이름이고(도메인이 없으면 `web`), 코어는 `soc.l1.specialists.open_specialist(domain, context)`로 연다. Cloud(13)는 등록 한 줄 (D-005 확정 후) | Cloud, 엔드포인트, 메일, 네트워크 전문 에이전트 추가 |
 | 프롬프트 | 11, 13, 14, 19, 23, 24 | (파일) | 기본 프롬프트 | 자사 판정 기준, 언어 |
 | MCP 도구 | 15 | `mcp_servers` | 내부 데이터 조회, Web 도메인. 공식 Python MCP SDK로 구현 (D-041) | 사내 도구 연결 |
-| SIEM MCP 어댑터 | 15 | `siem_mcp_adapters` | Wazuh (초기, D-035). 선택된 SIEM을 따라간다. 읽기 전용. `direct`(개발·테스트·시연용, 운영 대상 아님): `siem.direct.files`를 수집과 같은 방식으로 읽고 기본 별칭 표로 엔티티·시간을 찾는다. `elastic`(ELK, #99): 커넥터와 같은 인덱스를 `_search`로 읽는다. ip는 `source.address`(IP 값이면 `destination.ip`도), host는 `host.name`, user는 `user.name`에 term으로 건다. 시간은 이벤트는 `@timestamp`, 알럿은 `kibana.alert.original_time`(없으면 `@timestamp`)이다. 질의 실패는 SIEM에 닿지 못하면 `SiemUnavailableError`, 답을 쓸 수 없으면 `SiemAdapterError`로 알린다(`src/soc/l1/mcp/siem/base.py`, #111). 답을 쓸 수 없음에는 어댑터가 돌려준 레코드의 C2 변환 실패도 포함된다. `query_siem` 도구는 두 오류를 같은 타입·고정 메시지로 다시 만들고, 다른 예외는 고정 메시지의 `SiemAdapterError`로 바꾼다. elastic은 아직 연결 불가를 구분하지 못해 모든 실패가 `SiemAdapterError`다(박스 3 별도 이슈) | Splunk |
+| SIEM MCP 어댑터 | 15 | `siem_mcp_adapters` | Wazuh (초기, D-035). 선택된 SIEM을 따라간다. 읽기 전용. `direct`(개발·테스트·시연용, 운영 대상 아님): `siem.direct.files`를 수집과 같은 방식으로 읽고, 설정의 `[normalize] alias_dir`를 포함한 같은 C20 resolver로 엔티티·시간을 찾는다. `elastic`(ELK, #99): 커넥터와 같은 인덱스를 `_search`로 읽는다. ip는 `source.address`(IP 값이면 `destination.ip`도), host는 `host.name`, user는 `user.name`에 term으로 건다. 시간은 이벤트는 `@timestamp`, 알럿은 `kibana.alert.original_time`(없으면 `@timestamp`)이다. 각 입력은 설정된 `tool`·`log_type` 쌍에서 같은 `mapping_profile`을 쓴다. 질의 실패는 SIEM에 닿지 못하면 `SiemUnavailableError`, 답을 쓸 수 없으면 `SiemAdapterError`로 알린다(`src/soc/l1/mcp/siem/base.py`, #111). 답을 쓸 수 없음에는 어댑터가 돌려준 레코드의 C2 변환 실패도 포함된다. `query_siem` 도구는 두 오류를 같은 타입·고정 메시지로 다시 만들고, 다른 예외는 고정 메시지의 `SiemAdapterError`로 바꾼다. elastic은 아직 연결 불가를 구분하지 못해 모든 실패가 `SiemAdapterError`다(박스 3 별도 이슈) | Splunk |
 | 증거 요청 큐 | 26, 27 | `evidence_queues` | PostgreSQL 테이블 큐 (D-034). 구현체 이름 `postgresql`, `[evidence_queue] backend`로 고르고 코어는 `soc.l1.evidence.open_evidence_queue`로 연다. 백엔드는 이름 두 개를 등록한다: `<백엔드>`(큐 작업자가 쓰는 연결)와 `<백엔드>.readonly`(같은 행을 읽기 전용으로 읽는 연결). 화면용 API(27)는 `open_evidence_queue(..., readonly=True)`로 뒤쪽만 연다 | 다른 큐 백엔드 |
 | 사람 검토 채널 | 21 | `review_channels` | 웹 화면 (D-013, `docs/frontend.md`) | 메신저, 사내 포털 |
 | 티켓·케이스 시스템 | 10, 22 | `case_systems` | 내부 저장과 내부 UI (D-012) | 외부 티켓·케이스 관리 도구와 동기화 |
@@ -148,14 +148,14 @@ web_specialist = ["query_records", "get_alert", "query_http_flow"]
 
 ### SIEM 없이 받기 (개발·테스트·데모용)
 
-운영에서는 항상 외부 SIEM 하나에 연결한다. SIEM이 없는 개발·테스트·데모(데이터셋 재생)에서만 설정의 `[siem] adapter`를 `direct`로 둔다. 소스 커넥터가 낸 C1이 `direct` 어댑터를 거쳐 C2가 되고, 이후 흐름은 SIEM이 있을 때와 같다. 어느 소스를 알럿으로, 어느 소스를 이벤트로 볼지와 시나리오 이름은 설정에서 정한다.
+운영에서는 항상 외부 SIEM 하나에 연결한다. SIEM이 없는 개발·테스트·데모(데이터셋 재생)에서만 설정의 `[siem] adapter`를 `direct`로 둔다. 소스 커넥터가 낸 C1이 `direct` 어댑터를 거쳐 C2가 되고, 이후 흐름은 SIEM이 있을 때와 같다. 입력별 `tool`·`log_type` 쌍으로 C20 프로필을 고른다.
 
 ### 새 SIEM 붙이기
 
-1. `src/soc/ingest/siem/base.py`의 커넥터 인터페이스를 구현한다. 그 SIEM에서 알럿·이벤트를 가져와 C2 SiemAlert 내용(`kind`, `scenario`, `raw_ids`, `fields`)을 내보내면 된다. 어댑터는 `source_record_id` 없이 C2 내용을 돌려주고, 코어가 ID를 붙인다(넣어 보내면 거부된다). `tests/ingest/adapter_contract.py`의 공통 계약 테스트를 통과해야 한다. 같은 SIEM용 SIEM MCP 어댑터(읽기 전용)도 함께 만든다.
+1. `src/soc/ingest/siem/base.py`의 커넥터 인터페이스를 구현한다. 그 SIEM에서 알럿·이벤트를 가져와 C2 SiemAlert 내용(`kind`, `mapping_profile`, `raw_ids`, `fields`)을 내보내면 된다. 선택형 `mapping_selections` metadata를 제공하면 코어가 커넥터를 만들기 전에 C20 프로필을 검사한다. metadata가 없는 기존 플러그인은 이전 factory 호출을 그대로 쓴다. 어댑터는 `source_record_id` 없이 C2 내용을 돌려주고, 코어가 ID를 붙인다(넣어 보내면 거부된다). `tests/ingest/adapter_contract.py`의 공통 계약 테스트를 통과해야 한다. 같은 SIEM용 SIEM MCP 어댑터(읽기 전용)도 함께 만든다.
 2. 레포에 기여하면 같은 폴더에 두고, 사내 전용이면 별도 패키지로 만들어 `zero_ticket_soc.siem` entry point로 등록한다.
 3. 설정의 `[siem] adapter`를 새 이름으로 바꾼다. 한 번에 하나의 SIEM만 연결한다.
-4. 그 SIEM의 시나리오용 별칭 표를 추가한다(박스 4).
+4. 그 SIEM의 소스별 `tool`·`log_type` 쌍과 C20 매핑 프로필을 추가한다(박스 4).
 
 사례: ELK(`elastic`, #99)는 커넥터 `src/soc/ingest/siem/elastic.py`, SIEM MCP 어댑터 `src/soc/l1/mcp/siem/elastic.py`, 설정 `[siem.elastic]`의 인덱스 두 개, 별칭 표 `elastic_security_alert`·`elastic_access_event`만 더했다. 코어 코드는 바꾸지 않았다. 시연 설정은 `config/demo-elk/`.
 

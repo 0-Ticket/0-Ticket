@@ -6,7 +6,7 @@
   "filler_chars": 2000,
   "c2": {
     "kind": "alert",
-    "scenario": "sample",
+    "mapping_profile": "sample",
     "raw_ids": ["raw_siem_demo_{n}"],
     "fields": {"message": "synthetic SIEM alert {n} "}
   },

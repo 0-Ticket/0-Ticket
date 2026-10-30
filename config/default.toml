@@ -36,9 +36,9 @@ backend = "postgresql"
 # 정규화 결과가 가리키는 원본은 기간이 지나도 지우지 않는다.
 raw_retention_days = 0
 
-# OCSF 정규화 (박스 4, D-017, D-029). 시나리오별 별칭 표(C20)로 원본 C2를 C3·C13으로 바꾼다.
+# OCSF 정규화 (박스 4, D-017, D-029). 매핑 프로필 별칭 표(C20)로 원본 C2를 C3·C13으로 바꾼다.
 [normalize]
-# 조직 별칭 표 폴더. 이 폴더의 <scenario>.toml이 같은 이름의 기본 표를 통째로 바꾼다. 비우면 기본 표만 쓴다.
+# 조직 별칭 표 폴더. 이 폴더의 <mapping_profile>.toml이 같은 이름의 기본 표를 통째로 바꾼다. 비우면 기본 표만 쓴다.
 alias_dir = ""
 # 한 번에 읽어 정규화하는 원본 건수. 1 이상.
 batch_size = 500
@@ -112,7 +112,7 @@ batch_size = 500
 # direct 어댑터 (SIEM 없이 데이터셋 재생, 개발·테스트·데모용)
 [siem.direct]
 # 재생할 파일 목록. 조직 설정에서 [[siem.direct.files]]로 적는다. 상대 경로는 실행 위치 기준.
-# 항목: path, kind("alert"|"event"), scenario(C2 scenario), source_type(C1, 기본 "web"), format("text"|"jsonl").
+# 항목: path, kind("alert"|"event"), tool, log_type, source_type(C1, 기본 "web"), format("text"|"jsonl").
 # 파일 이름(raw_id에 쓰임)은 서로 달라야 한다. 예시는 tests/fixtures/ingest/direct.toml.
 files = []
 
@@ -120,10 +120,18 @@ files = []
 # token_env 환경변수에는 읽기 전용 ES API 키(encoded 값)를 넣는다. 요청 헤더는 "Authorization: ApiKey <값>".
 # 인덱스 이름에는 /, 쉼표, ?, #, 따옴표, 공백을 쓸 수 없고 -, _, +로 시작할 수 없다. 와일드카드(*)는 된다.
 [siem.elastic]
-# Kibana 탐지 룰이 만든 알럿을 읽을 인덱스(별칭·패턴). 시나리오 이름은 elastic_security_alert.
+# Kibana 탐지 룰이 만든 알럿을 읽을 인덱스(별칭·패턴).
 alert_index = ".alerts-security.alerts-*"
-# 접근로그 이벤트를 읽을 인덱스(데이터 스트림·패턴). 시나리오 이름은 elastic_access_event.
+# Kibana Security 알럿 입력의 로그 생성 도구. SIEM 어댑터 이름과 구분한다.
+alert_tool = "kibana_security"
+# Kibana Security가 생성한 알럿 로그의 종류.
+alert_log_type = "security_alert"
+# 접근로그 이벤트를 읽을 인덱스(데이터 스트림·패턴).
 event_index = "logs-*"
+# 접근로그 이벤트 입력의 로그 생성 도구. C20의 매핑 프로필을 고른다.
+event_tool = "logstash"
+# logstash가 생성한 접근 로그의 종류.
+event_log_type = "http_access"
 
 # MCP 도구 (박스 15, D-041). 에이전트가 도구를 부르는 유일한 경로다. SIEM MCP 어댑터는 siem.adapter로 함께 고른다(D-037).
 [mcp]

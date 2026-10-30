@@ -15,6 +15,7 @@ from typing import Any
 
 from soc.config import ConfigError, Settings
 from soc.contracts import ContractValidationError, SiemAlert, validate_contract
+from soc.normalize.alias import load_alias_tables, validate_mapping_selections
 from soc.plugins import PluginRegistry
 
 from .siem import SIEM_CONNECTORS
@@ -26,11 +27,16 @@ C2_CONTENT_KEYS = ("kind", "scenario", "raw_ids", "fields")
 
 
 def canonical_c2_content(content: Mapping[str, Any]) -> bytes:
-    """The bytes a source_record_id hashes: C2_CONTENT_KEYS only, sorted keys, no spaces, UTF-8.
+    """The bytes a source_record_id hashes with mapping_profile under the old scenario key.
 
     Raises ValueError when a value is not plain JSON (NaN, infinity, lone surrogate).
     """
-    subset = {key: content[key] for key in C2_CONTENT_KEYS}
+    subset = {
+        key: content["mapping_profile"]
+        if key == "scenario" and "mapping_profile" in content
+        else content[key]
+        for key in C2_CONTENT_KEYS
+    }
     text = json.dumps(
         subset, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False
     )
@@ -102,4 +108,16 @@ def open_connector(
             "organization settings (ZT_CONFIG)"
         )
     factory = registry.get(siem.adapter)
-    return SiemIngest(factory(siem, environ), siem.batch_size)
+    selectors = getattr(factory, "mapping_selections", None)
+    if callable(selectors):
+        tables = load_alias_tables(settings.normalize.alias_dir or None)
+        validate_mapping_selections(tables, selectors(siem))
+        configured_factory = getattr(factory, "create_with_alias_tables", None)
+        connector = (
+            configured_factory(settings, environ, tables)
+            if callable(configured_factory)
+            else factory(siem, environ)
+        )
+    else:
+        connector = factory(siem, environ)
+    return SiemIngest(connector, siem.batch_size)

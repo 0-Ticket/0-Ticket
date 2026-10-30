@@ -104,9 +104,9 @@ class Normalizer:
 
     def normalize(self, source: SiemAlert, now: int) -> Result:
         """One stored C2 to C3 (alert) or C13 (event), or C12 stamped ``now``."""
-        compiled = self._tables.get(source.scenario)
+        compiled = self._tables.get(source.mapping_profile)
         if compiled is None:
-            return _failure(source, now, "unknown_scenario", [], "no alias table for this scenario")
+            return _failure(source, now, "unknown_scenario", [], "no alias table for this profile")
         table = compiled.table
         if table.kind != source.kind:
             detail = f"alias table is for {table.kind} records, not {source.kind}"
@@ -251,7 +251,7 @@ def _failure(
     return validate_contract(
         "NormalizeFailure",
         {
-            "scenario": source.scenario,
+            "mapping_profile": source.mapping_profile,
             "raw_ids": list(source.raw_ids),
             "reason": reason,
             "missing_fields": missing,

@@ -23,7 +23,7 @@ class InvalidCursorError(ValueError):
 class FetchBatch:
     """What one fetch returned.
 
-    Each item is a C2 SiemAlert as a dict (``kind``, ``scenario``, ``raw_ids``,
+    Each item is a C2 SiemAlert as a dict (``kind``, ``mapping_profile``, ``raw_ids``,
     ``fields``) without ``source_record_id``; an item carrying one is rejected.
     ``next_cursor`` points after the last item; when nothing is new it equals the
     cursor that was passed in. ``skipped`` counts source records the adapter could

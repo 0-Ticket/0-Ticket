@@ -11,10 +11,11 @@ from pathlib import Path
 import pytest
 
 from soc.branch.dedup import dedup_key
+from soc.config import load_config
 from soc.contracts import EventRecord, NormalizedAlert, validate_contract
 from soc.ingest.connector import to_c2
-from soc.ingest.siem.elastic import ALERT_SCENARIO, EVENT_SCENARIO, hit_to_c2
-from soc.normalize.alias import load_alias_tables
+from soc.ingest.siem.elastic import hit_to_c2
+from soc.normalize.alias import load_alias_tables, mapping_profile_for
 from soc.normalize.normalizer import Normalizer
 from soc.normalize.runner import _alert_record
 
@@ -29,9 +30,15 @@ def hits(name):
 
 
 def normalize(hit, kind):
-    scenario = ALERT_SCENARIO if kind == "alert" else EVENT_SCENARIO
-    c2 = to_c2(hit_to_c2(hit, kind, scenario))
-    return c2, Normalizer(load_alias_tables(None), 16_384).normalize(c2, NOW)
+    settings = load_config(environ={}).siem.elastic
+    tables = load_alias_tables(None)
+    if kind == "alert":
+        tool, log_type = settings.alert_tool, settings.alert_log_type
+    else:
+        tool, log_type = settings.event_tool, settings.event_log_type
+    profile = mapping_profile_for(tables, tool, log_type, kind)
+    c2 = to_c2(hit_to_c2(hit, kind, profile))
+    return c2, Normalizer(tables, 16_384).normalize(c2, NOW)
 
 
 class _NoLookup:
@@ -44,10 +51,10 @@ def alert_record(hit):
     return _alert_record(alert, c2.source_record_id, _NoLookup())
 
 
-def test_default_tables_include_the_elastic_scenarios():
+def test_default_tables_include_the_elastic_profiles():
     tables = load_alias_tables(None)
-    assert tables[ALERT_SCENARIO].table.kind == "alert"
-    assert tables[EVENT_SCENARIO].table.kind == "event"
+    assert tables["elastic_security_alert"].table.kind == "alert"
+    assert tables["elastic_access_event"].table.kind == "event"
 
 
 @pytest.mark.parametrize("index", [0, 1, 2])

@@ -4,11 +4,13 @@ import pytest
 from normalize_fixtures import NORMALIZE, NOW, load_ait_c2
 
 from soc.config import ConfigError
-from soc.normalize.alias import AliasTableError, load_alias_tables
+from soc.normalize.alias import AliasTableError, load_alias_tables, mapping_profile_for
 from soc.normalize.normalizer import Normalizer
 
 VALID = """
-scenario = "x_case"
+tool = "test_web"
+log_type = "alert"
+mapping_profile = "x_case"
 kind = "alert"
 class_uid = 2004
 time_format = "epoch_ms"
@@ -29,7 +31,7 @@ def write(directory, name, text):
     return directory
 
 
-def test_default_tables_cover_the_ait_scenarios():
+def test_default_tables_cover_the_ait_profiles():
     tables = load_alias_tables(None)
     assert {"ait_suricata_alert", "ait_apache_access", "ait_wazuh_alert"} <= set(tables)
     assert tables["ait_suricata_alert"].table.kind == "alert"
@@ -37,7 +39,7 @@ def test_default_tables_cover_the_ait_scenarios():
     assert tables["ait_apache_access"].table.kind == "event"
 
 
-def test_org_alias_file_overrides_default_by_name():
+def test_org_alias_file_overrides_default_by_profile_name():
     tables = load_alias_tables(NORMALIZE / "org_aliases")
     assert tables["ait_suricata_alert"].table.severity_map == {"1": 5, "2": 3, "3": 2}
     assert "ait_apache_access" in tables  # untouched defaults stay
@@ -45,7 +47,7 @@ def test_org_alias_file_overrides_default_by_name():
     assert result.severity_id == 5
 
 
-def test_org_folder_adds_a_new_scenario():
+def test_org_folder_adds_a_new_mapping_profile():
     assert "fake_waf_alert" in load_alias_tables(NORMALIZE / "aliases")
 
 
@@ -61,7 +63,7 @@ def test_alias_table_error_is_a_config_error():
 @pytest.mark.parametrize(
     ("name", "text", "match"),
     [
-        ("other_name.toml", VALID, "scenario"),
+        ("other_name.toml", VALID, "mapping_profile"),
         ("x_case.toml", VALID.replace("class_uid = 2004", "class_uid = 4002"), "AliasTable"),
         ("x_case.toml", VALID.replace('rule_name = ["r"]', 'rule_nam = ["r"]'), "rule_nam"),
         ("x_case.toml", VALID.replace('rule_name = ["r"]', "rule_name = []"), "rule_name"),
@@ -99,9 +101,26 @@ def test_load_error_names_the_file_not_its_values(tmp_path):
 
 def test_event_table_fields_are_c13_fields(tmp_path):
     text = (
-        'scenario = "e_case"\nkind = "event"\nclass_uid = 4002\nactivity = "http_request"\n'
+        'tool = "test_web"\nlog_type = "access"\nmapping_profile = "e_case"\n'
+        'kind = "event"\nclass_uid = 4002\nactivity = "http_request"\n'
         'time_format = "epoch_ms"\n[fields]\ntime = ["t"]\nrule_id = ["r"]\n'
     )
     directory = write(tmp_path / "org", "e_case.toml", text)
     with pytest.raises(AliasTableError, match="rule_id"):
+        load_alias_tables(directory)
+
+
+def test_pair_resolves_to_mapping_profile_and_validates_kind():
+    tables = load_alias_tables(None)
+    assert mapping_profile_for(tables, "suricata", "eve_alert", "alert") == ("ait_suricata_alert")
+    with pytest.raises(ConfigError, match="different kind"):
+        mapping_profile_for(tables, "apache", "access", "alert")
+
+
+def test_duplicate_tool_log_type_pair_is_rejected(tmp_path):
+    first = VALID
+    second = VALID.replace('mapping_profile = "x_case"', 'mapping_profile = "y_case"')
+    directory = write(tmp_path / "org", "x_case.toml", first)
+    (directory / "y_case.toml").write_text(second, encoding="utf-8")
+    with pytest.raises(AliasTableError, match="pair is already mapped"):
         load_alias_tables(directory)

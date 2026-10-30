@@ -2,7 +2,7 @@
   {
     "kind": "alert",
     "source_record_id": "src_43e8396a61b70e553f54e52212558f5bf17738ad190ad022cf3612e71e442c9e",
-    "scenario": "ait_suricata_alert",
+    "mapping_profile": "ait_suricata_alert",
     "raw_ids": [
       "raw_suricata_eve.jsonl_1"
     ],
@@ -25,7 +25,7 @@
   {
     "kind": "alert",
     "source_record_id": "src_5ba33a9565b99edebb58d223ed29578655f435d4586fc2ccb499931481d218cc",
-    "scenario": "ait_suricata_alert",
+    "mapping_profile": "ait_suricata_alert",
     "raw_ids": [
       "raw_suricata_eve.jsonl_3"
     ],
@@ -48,7 +48,7 @@
   {
     "kind": "event",
     "source_record_id": "src_28c206fc561900f63e70262767039a879d3d23867ca7f9a33f20579e3d4a6122",
-    "scenario": "ait_apache_access",
+    "mapping_profile": "ait_apache_access",
     "raw_ids": [
       "raw_apache_access.log_1"
     ],
@@ -60,7 +60,7 @@
   {
     "kind": "event",
     "source_record_id": "src_943b4bc93db8cc1af4642873fc2f23f2db4ab2d78909bce4515d02b36db6ea3b",
-    "scenario": "ait_apache_access",
+    "mapping_profile": "ait_apache_access",
     "raw_ids": [
       "raw_apache_access.log_2"
     ],
@@ -72,7 +72,7 @@
   {
     "kind": "event",
     "source_record_id": "src_bae05f97d9da0c7244ff6cdb532e22ed0d237f9e3f63576a0b07f31a36b47947",
-    "scenario": "ait_apache_access",
+    "mapping_profile": "ait_apache_access",
     "raw_ids": [
       "raw_apache_access.log_4"
     ],
@@ -84,7 +84,7 @@
   {
     "kind": "event",
     "source_record_id": "src_d2a799817f5572132113ddb0d04034adf13066f2192fbf9fa97a5ec005a30f78",
-    "scenario": "ait_apache_access",
+    "mapping_profile": "ait_apache_access",
     "raw_ids": [
       "raw_apache_access.log_5"
     ],

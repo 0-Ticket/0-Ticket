@@ -1,6 +1,8 @@
 # Logstash grok(ECS)로 파싱해 Elasticsearch에 넣은 웹 접근로그(elastic 어댑터 #99) → C13. 박스 4 기본 별칭 표(C20).
 # elastic 어댑터가 점 표기 키를 중첩으로 펼치므로 아래 점 경로는 두 표기 모두에 맞는다.
-scenario = "elastic_access_event"
+tool = "logstash"
+log_type = "http_access"
+mapping_profile = "elastic_access_event"
 kind = "event"
 # OCSF HTTP Activity
 class_uid = 4002
