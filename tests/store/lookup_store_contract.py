@@ -1,4 +1,4 @@
-"""Shared contract tests for Lookup stores (box 5). Fake and PostgreSQL both run them.
+"""Shared contract tests for Lookup stores (box 7). Fake and PostgreSQL both run them.
 
 A subclass provides a ``make_store`` fixture returning an empty store.
 """

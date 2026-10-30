@@ -1,7 +1,7 @@
 """Lookup providers (``lookups`` group) and the join step that uses them.
 
 ``[lookup] provider`` picks a registered provider; the core opens it with
-``open_lookup`` and never names it. ``csv`` (box 5, the default) and ``none``
+``open_lookup`` and never names it. ``csv`` (box 7, the default) and ``none``
 are registered here.
 """
 

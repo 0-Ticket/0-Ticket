@@ -1,4 +1,4 @@
-"""PostgreSQL Lookup store (box 5, D-002, K7): the shared contract plus table rules.
+"""PostgreSQL Lookup store (box 7, D-002, K7): the shared contract plus table rules.
 
 Marked `db`: needs PostgreSQL through DATABASE_URL, and runs in CI with `uv run pytest -m db`.
 """

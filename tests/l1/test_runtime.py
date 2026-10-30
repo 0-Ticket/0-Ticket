@@ -1,4 +1,4 @@
-"""Box 11 entity lookup: evidence, Verdict, Ticket promotion, and C23 holds."""
+"""Boxes 14-17 entity lookup: evidence, Verdict, Ticket promotion, and C23 holds."""
 
 import json
 from pathlib import Path

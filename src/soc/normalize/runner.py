@@ -1,4 +1,4 @@
-"""Normalization run (box 4): stored source records -> C5 / C13 / C12, in arrival order.
+"""Normalization run (box 6): stored source records -> C5 / C13 / C12, in arrival order.
 
 Each run reads one page of ``kind`` after the saved position, normalizes it,
 joins lookups, and saves results, failures and the new position together. A

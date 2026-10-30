@@ -188,8 +188,8 @@ def test_incident_detail_fixture_contracts_and_references():
     )
 
 
-def test_incident_review_fixtures_follow_box21_flow():
-    # Synthetic mock states must tell a consistent box 21 story (#21); the screen never
+def test_incident_review_fixtures_follow_box36_flow():
+    # Synthetic mock states must tell a consistent box 36 story (#21); the screen never
     # derives them, so this only checks the hand-written fixtures.
     data = json.loads((FIXTURES / "scenarios.json").read_text(encoding="utf-8"))
     extra = json.loads((FIXTURES / "incident-detail.json").read_text(encoding="utf-8"))

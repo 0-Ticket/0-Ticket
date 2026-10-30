@@ -1,10 +1,10 @@
-"""SIEM MCP adapter interface (box 15, D-035, D-037, docs/extensibility.md).
+"""SIEM MCP adapter interface (boxes 28, 42, D-035, D-037, docs/extensibility.md).
 
 An adapter answers one neutral query -- an entity, a time window and a kind --
 by translating it into its own SIEM's query language. It only reads: there is no
 write or response method here, and ``READ_ONLY_METHODS`` is what an adapter may
 expose. Results are C2 SiemAlert content without ``source_record_id``, which the
-core assigns through ``to_c2_records``, exactly as the ingest entry does (box 3).
+core assigns through ``to_c2_records``, exactly as the ingest entry does (SIEM connector).
 
 A query that fails raises one of two errors, so a caller (and the evidence queue's
 ``failure_reason``, which keeps the error type name) can tell why without the
@@ -100,7 +100,7 @@ class SiemMcpAdapterFactory(Protocol):
 
     Address and options come from ``settings``; secrets are read from ``environ``
     through ``soc.config.read_secret(settings.token_env, environ)``. The same
-    ``siem.adapter`` name selects the connector (box 3) and this adapter (D-037).
+    ``siem.adapter`` name selects the connector (unnumbered) and this adapter (D-037).
     """
 
     def __call__(self, settings: SiemSettings, environ: Mapping[str, str]) -> SiemMcpAdapter: ...

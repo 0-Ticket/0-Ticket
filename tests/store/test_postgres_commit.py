@@ -1,6 +1,6 @@
 """Writes made after a read on the same connection survive close (#83).
 
-The runners (box 25, box 11) share one connection across several stores, so a
+The runners (boxes 10-13 and 14-22) share one connection across several stores, so a
 store write often follows a read on that connection, for example `tickets.get`
 before `create`. Without autocommit that read opens a transaction, the write's
 `transaction()` becomes a savepoint, and close rolls everything back.

@@ -1,4 +1,4 @@
-"""Command: run L1 entity lookup and Ticket triage (box 11).
+"""Command: run L1 entity lookup and Ticket triage (boxes 14-22).
 
 Usage: `uv run python -m soc.l1 [--all]`
 

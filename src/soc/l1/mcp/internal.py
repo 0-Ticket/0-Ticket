@@ -1,4 +1,4 @@
-"""Internal data MCP tools: the stored Alert and Event records (box 15, D-041).
+"""Internal data MCP tools: the stored Alert and Event records (boxes 19, 28, 31, 42, D-041).
 
 Read-only by construction: the store comes from ``ToolContext.records``, which
 connects with the read-only account (docs/security-policy.md 4). Records are

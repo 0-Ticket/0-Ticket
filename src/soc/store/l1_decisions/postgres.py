@@ -1,4 +1,4 @@
-"""PostgreSQL L1 decision store (boxes 11, 27, C23, D-002). Table: migration 0091.
+"""PostgreSQL L1 decision store (boxes 15, 20, L1 result read, C23, D-002). Table: migration 0091.
 
 Every call runs in its own transaction. Rows hold the whole C23 as jsonb and
 are turned back into the contract model through ``validate_contract``.

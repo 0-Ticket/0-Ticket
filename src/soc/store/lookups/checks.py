@@ -1,4 +1,4 @@
-"""Rules every Lookup store applies (box 5): row checks before a replace, and matching.
+"""Rules every Lookup store applies (box 7): row checks before a replace, and matching.
 
 Rows are C4. On top of the contract, an asset ``match`` must be an IP or a CIDR
 without host bits, a period must end after it starts (valid_to is exclusive),

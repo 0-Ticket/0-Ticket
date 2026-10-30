@@ -1,4 +1,4 @@
-"""Box 25 on PostgreSQL: the sample alerts take the same paths as with the fakes (db)."""
+"""Boxes 10-13 on PostgreSQL: the sample alerts take the same paths as with the fakes (db)."""
 
 import pytest
 from branch_fixtures import alert_data, store_alerts

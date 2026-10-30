@@ -2,8 +2,8 @@
 
 Six GET paths and nothing else. There is no path that changes an L1 result:
 people read promotions, holds, verdicts and failed evidence requests here, and
-the only human approval in v2 is box 21 (docs/architecture.md). Five paths serve
-box 27; ``/api/metrics`` serves the F6 dashboard and has no aggregate to serve yet.
+the only human approval in v2 is box 36 (docs/architecture.md). Five paths serve
+the L1 result read; ``/api/metrics`` serves the F6 dashboard and has no aggregate to serve yet.
 
 The five paths that read take their stores from a dependency that borrows one
 connection for the request and gives it back when it ends (#104). ``/api/metrics``
@@ -111,7 +111,7 @@ def create_app(reader_pool: ApiReaderPool) -> FastAPI:
             "steps": [
                 as_json(entry.step) for entry in readers.agent_log.list_for_ticket(ticket_id)
             ],
-            # v2 L1: people do not review L1 verdicts (box 16 dropped) and Incidents are L2.
+            # v2 L1: people do not review L1 verdicts (v1 box 16 dropped) and Incidents are L2.
             "reviews": [],
             "incident_ids": [],
         }

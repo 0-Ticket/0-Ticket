@@ -1,4 +1,4 @@
--- Boxes 11, 27 (#69): C23 L1DecisionRecord, promotions, holds and Ticket verdicts.
+-- Boxes 15, 20 (#69): C23 L1DecisionRecord, promotions, holds and Ticket verdicts.
 -- A subject may have several records; the latest is created_at, then seq, highest.
 -- record holds the whole C23; the other columns are copies for filters and order.
 

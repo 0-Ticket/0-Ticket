@@ -1,1 +1,1 @@
-"""Lookup store (box 5): asset and account tables. Interface in ``base``."""
+"""Lookup store (box 7): asset and account tables. Interface in ``base``."""

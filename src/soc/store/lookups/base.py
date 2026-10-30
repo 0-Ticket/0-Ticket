@@ -1,4 +1,4 @@
-"""Lookup store interface (box 5, D-002): the asset and account tables (C4) in the RDB.
+"""Lookup store interface (box 7, D-002): the asset and account tables (C4) in the RDB.
 
 Tables are replaced whole, from CSV or another source, and searched by value
 and moment. The store returns every row that matches (``checks.asset_matches``

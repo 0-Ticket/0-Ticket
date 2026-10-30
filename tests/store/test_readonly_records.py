@@ -1,4 +1,4 @@
-"""Read-only Alert/Event store for agent tools (boxes 15, 6, 7, docs/security-policy.md 4).
+"""Read-only Alert/Event store for agent tools (boxes 4, 5, docs/security-policy.md 4).
 
 The agent tools read through ``readonly_records``, which connects with the
 read-only account ``database.readonly_url_env`` names and forces read-only

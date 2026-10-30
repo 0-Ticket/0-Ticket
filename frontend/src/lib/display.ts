@@ -28,14 +28,14 @@ export const badges: Record<string, { label: string; tone: Tone }> = {
   below_threshold: { label: '확신도 미만', tone: 'warning' },
   llm_failure: { label: 'LLM 실패', tone: 'critical' },
   evidence_request_failure: { label: '증거 요청 실패', tone: 'critical' },
-  // C21 branch path (box 25).
+  // C21 branch path (boxes 10-13).
   deduplicated: { label: '중복 제거', tone: 'neutral' },
   excluded_shared_entity: { label: '공용 엔티티 제외', tone: 'neutral' },
   scenario_ticket: { label: '시나리오 티켓', tone: 'info' },
   l1_entity_lookup: { label: 'L1 엔티티 조회', tone: 'info' },
   existing_incident: { label: '기존 Incident 추가', tone: 'warning' },
   new_incident: { label: '새 Incident', tone: 'critical' },
-  // C22 evidence request status (box 26).
+  // C22 evidence request status (unnumbered queue).
   pending: { label: '대기', tone: 'neutral' },
   in_progress: { label: '진행 중', tone: 'info' },
   completed: { label: '완료', tone: 'success' },
@@ -78,7 +78,7 @@ export const reviewStateBadges: Record<string, { label: string; tone: Tone }> = 
   approved: { label: 'L2 승인', tone: 'success' },
   human_handling: { label: '사람 직접 처리', tone: 'purple' },
 };
-// C22 request_type (box 26). The specialist `domain` stays a registered value.
+// C22 request_type (unnumbered queue). The specialist `domain` stays a registered value.
 export const requestTypeLabels: Record<string, string> = {
   specialist_agent: '전문가 Agent',
   siem_mcp: 'SIEM MCP',

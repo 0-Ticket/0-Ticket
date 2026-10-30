@@ -105,7 +105,7 @@ def test_several_windows_are_joined(tmp_path):
     assert slicer.slice_eve(FIXTURES / "eve_mixed.jsonl", out, windows).kept == 2
 
 
-def test_summary_groups_repeats_like_box25_dedup():
+def test_summary_groups_repeats_like_branch_dedup():
     rows = slicer.summarize(FIXTURES / "eve_mixed.jsonl", [], dedup_minutes=10)
     by_id = {row.signature_id: row for row in rows}
     # 09:59:59.999, 10:00, 10:04 fall in one 10-minute window from the first alert; 10:20 starts

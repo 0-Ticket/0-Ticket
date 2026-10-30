@@ -1,4 +1,4 @@
--- Box 25 (#87): the duplicate representatives, so finding an alert's first alert is
+-- Boxes 10-13 (#87): the duplicate representatives, so finding an alert's first alert is
 -- one indexed lookup instead of reading every recent alert of the same IP.
 -- Outside the contracts like alert_dedup_merges: C5 and C21 stay as they are.
 

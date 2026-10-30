@@ -1,4 +1,4 @@
-"""Web specialist Agent (box 14, C14, K16): one question about one Ticket, answered.
+"""Web specialist Agent (boxes 19, 31, C14, K16): one question about one Ticket, answered.
 
 The flow is fixed by code, not by the model (D-008): read the Ticket, read its
 stored alerts, read the HTTP flow of each source IP around them, then ask once.
@@ -296,7 +296,7 @@ def _record(
     tool: str | None = None,
     started: float | None = None,
 ) -> None:
-    """Write one C8 step for this Ticket (box 12). ``output`` goes through the log service."""
+    """Write one C8 step for this Ticket (Agent Log). ``output`` goes through the log service."""
     elapsed = 0 if started is None else max(0, int((time.perf_counter() - started) * 1000))
     context.agent_log.record(
         {

@@ -14,7 +14,7 @@ function branchReason(reason: BranchResult['reason']) {
   return { ruleId: value.rule_id ?? null, entity: value.entity ?? null };
 }
 
-// C21: the path box 25 chose. The screen shows the recorded result and never re-derives it.
+// C21: the path boxes 10-13 chose. The screen shows the recorded result and never re-derives it.
 export function BranchPath({ branch }: { branch: BranchResult | null }) {
   const reason = branch && branchReason(branch.reason);
   return (
@@ -43,7 +43,7 @@ export function BranchPath({ branch }: { branch: BranchResult | null }) {
   );
 }
 
-// C23: promotions, holds and verdicts, newest first as received. Read-only (box 27).
+// C23: promotions, holds and verdicts, newest first as received. Read-only (L1 result read).
 export function DecisionList({
   decisions,
   label = 'L1 결정',
@@ -99,7 +99,7 @@ export function DecisionList({
 }
 
 // C22: what L1 asked for and what came back. A failed request is the evidence
-// collection failure box 27 shows (D-034); the screen does not retry it.
+// collection failure the L1 result read shows (D-034); the screen does not retry it.
 export function EvidenceRequestList({ requests }: { requests: EvidenceRequest[] }) {
   return (
     <Section label="증거 요청" description="큐에 올린 조회와 그 결과">

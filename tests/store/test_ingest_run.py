@@ -1,4 +1,4 @@
-"""direct replay -> source records -> cursor, resumed on the next run (boxes 3 -> 6, 7)."""
+"""direct replay -> source records -> cursor, resumed on the next run (boxes 4, 5)."""
 
 from pathlib import Path
 

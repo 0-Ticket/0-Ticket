@@ -1,4 +1,4 @@
-"""PostgreSQL Ticket store (box 10, D-002, registered as ``postgresql.tickets``)."""
+"""PostgreSQL Ticket store (box 18, D-002, registered as ``postgresql.tickets``)."""
 
 import json
 from collections.abc import Mapping
@@ -186,7 +186,7 @@ def create_postgresql_readonly_ticket_store(
 ) -> PostgresTicketStore:
     """The ``postgresql.readonly_tickets`` factory: reads and lists work, every write fails.
 
-    For the screen API (box 27), which only reads Tickets (docs/security-policy.md 4).
+    For the screen API (L1 result read), which only reads Tickets (docs/security-policy.md 4).
 
     With ``connection`` the store reads through a connection the caller borrowed
     from a pool: it is used as it is and never closed here (#104).

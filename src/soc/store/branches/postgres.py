@@ -1,4 +1,4 @@
-"""PostgreSQL branch store (box 25, C21, D-002). Table: migration 0090.
+"""PostgreSQL branch store (boxes 10-13, C21, D-002). Table: migration 0090.
 
 Every call runs in its own transaction. Rows hold the whole C21 as jsonb and
 are turned back into the contract model through ``validate_contract``.

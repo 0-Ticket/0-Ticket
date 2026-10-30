@@ -1,4 +1,4 @@
-"""Lets the box 4 tests reuse the in-memory record store from tests/store."""
+"""Lets the box 6 tests reuse the in-memory record store from tests/store."""
 
 import sys
 from pathlib import Path

@@ -1,4 +1,4 @@
-"""PostgreSQL Agent Log store (box 12, C8, D-002)."""
+"""PostgreSQL Agent Log store (Agent Log, C8, D-002)."""
 
 import json
 from collections.abc import Mapping
@@ -103,7 +103,7 @@ def create_postgresql_readonly_agent_log_store(
 ) -> PostgresAgentLogStore:
     """The ``postgresql.readonly_agent_log`` factory: reads work, every write fails.
 
-    For the screen API (box 27), which only reads the Agent Log
+    For the screen API (L1 result read), which only reads the Agent Log
     (docs/security-policy.md 4).
 
     With ``connection`` the store reads through a connection the caller borrowed

@@ -1,11 +1,11 @@
-"""Specialist Agent interface (boxes 13, 14, docs/extensibility.md).
+"""Specialist Agent interface (boxes 19, 31, docs/extensibility.md).
 
 A specialist answers one C22 ``specialist_agent`` request with a C14
 SpecialistFinding. The queue (26) picks the implementation by the request's
 ``domain``, so a new domain is one registration and one module: the core never
 names a specialist.
 
-``SpecialistContext`` is what one specialist is built from, the same shape box 15
+``SpecialistContext`` is what one specialist is built from, the same shape the MCP tool server
 uses for its tool bundles: everything an agent may touch comes in from outside,
 so a test can hand it fakes. Changing this interface breaks installed specialist
 plugins, so it follows the contract change procedure (docs/data-contracts.md).

@@ -1,4 +1,4 @@
-"""PostgreSQL Lookup store (box 5, D-002). Tables: migration 0060.
+"""PostgreSQL Lookup store (box 7, D-002). Tables: migration 0060.
 
 A replace deletes and inserts in one transaction, so a rejected table leaves the
 old one in place. IP values are searched with ``network >>= value`` (GiST index);

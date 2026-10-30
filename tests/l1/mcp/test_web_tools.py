@@ -1,4 +1,4 @@
-"""Web domain MCP tool: the HTTP requests around one source IP (boxes 14, 15, K18).
+"""Web domain MCP tool: the HTTP requests around one source IP (boxes 19, 31, K18).
 
 The Web specialist reads path, parameters, User-Agent, response code and size
 from this one flow. Those strings come from the log, so the tool hands them over

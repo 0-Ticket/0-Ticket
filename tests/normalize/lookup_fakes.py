@@ -1,4 +1,4 @@
-"""Fake lookup provider and sample C4 rows for the box 4 tests."""
+"""Fake lookup provider and sample C4 rows for the box 6 tests."""
 
 from soc.contracts import AssetInfo, UserInfo
 

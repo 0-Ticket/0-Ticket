@@ -1,4 +1,4 @@
-"""Vector store boundary for box 8 (C19)."""
+"""Vector store boundary for the unnumbered Vector DB (C19)."""
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass

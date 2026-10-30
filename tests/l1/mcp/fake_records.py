@@ -1,4 +1,4 @@
-"""Read-only Alert/Event records for the MCP tool tests (box 15).
+"""Read-only Alert/Event records for the MCP tool tests (boxes 19, 28, 31, 42).
 
 The internal data and Web tools only read, so this fake serves the three read
 methods they use and nothing else: a tool that tried to write would fail here.

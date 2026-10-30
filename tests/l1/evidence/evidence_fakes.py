@@ -1,8 +1,8 @@
-"""Test doubles for the evidence request queue (box 26).
+"""Test doubles for the evidence request queue (unnumbered).
 
 ``FakeEvidenceQueue`` keeps requests in memory in arrival order and follows the
 same rules as the PostgreSQL queue, so both run the shared contract tests in
-``evidence_queue_contract.py``. ``FakeTicketStore`` stands in for box 10's store.
+``evidence_queue_contract.py``. ``FakeTicketStore`` stands in for box 18's store.
 """
 
 import copy

@@ -1,4 +1,4 @@
--- Box 25 (#69): C21 BranchResult, the path each alert (later: ticket) took.
+-- Boxes 10-13 (#69): C21 BranchResult, the path each alert (later: ticket) took.
 -- A subject is branched once, so "a row exists" means "this subject is done".
 -- seq is the save order; L1 entity lookup reads one path by it. record holds the
 -- whole C21; the other columns are copies for lookup.

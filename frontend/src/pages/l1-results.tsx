@@ -6,8 +6,8 @@ import { TicketList } from '../components/ticket-list';
 import { Button } from '../components/ui/button';
 import { Section } from '../components/ui/card';
 
-// F1, box 27: read-only L1 results. There is no control that changes a decision;
-// human approval exists only in box 21 (docs/architecture.md).
+// F1, L1 result read: read-only L1 results. There is no control that changes a decision;
+// human approval exists only in box 36 (docs/architecture.md).
 export function L1ResultsPage() {
   const decisions = useL1Decisions('alert');
   const tickets = useTickets(false);

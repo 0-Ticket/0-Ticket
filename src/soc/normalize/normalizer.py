@@ -1,4 +1,4 @@
-"""C2 -> C3 (alert) / C13 (event) / C12 (failure) by alias tables only (box 4, D-029).
+"""C2 -> C3 (alert) / C13 (event) / C12 (failure) by alias tables only (box 6, D-029).
 
 Rules, in docs/data-contracts.md C20:
 - ``parse`` splits one text field with a named-group pattern first. A value

@@ -1,4 +1,4 @@
-"""The fake branch store passes the same contract tests as PostgreSQL (box 25, C21)."""
+"""The fake branch store passes the same contract tests as PostgreSQL (boxes 10-13, C21)."""
 
 import pytest
 from branch_store_contract import BranchStoreContract

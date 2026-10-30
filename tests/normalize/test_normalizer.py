@@ -1,4 +1,4 @@
-"""Box 4 normalization: C2 -> C3 / C13 / C12 by alias tables only (K4, K5, K34)."""
+"""Box 6 normalization: C2 -> C3 / C13 / C12 by alias tables only (K4, K5, K34)."""
 
 import json
 

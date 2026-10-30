@@ -1,10 +1,10 @@
 """direct SIEM MCP adapter: answers queries from the files the direct connector replays.
 
-For development, tests and demos only (D-037), like the direct connector (box 3):
+For development, tests and demos only (D-037), like the direct connector (unnumbered):
 with ``siem.adapter = "direct"`` the dataset files are the SIEM, so the SIEM MCP
 reads those same files. Reading and C2 conversion reuse the connector, so a line
 gets the same ``source_record_id`` here as at ingest. To find each record's
-entities and time it reuses the box 4 normalizer and its alias tables (C20).
+entities and time it reuses the box 6 normalizer and its alias tables (C20).
 
 Limits:
 - Only the default alias tables and the default ``normalize.max_parse_length``

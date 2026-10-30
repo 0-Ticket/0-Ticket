@@ -1,4 +1,4 @@
-"""Shared fixture loaders for the box 4 tests."""
+"""Shared fixture loaders for the box 6 tests."""
 
 import json
 from pathlib import Path

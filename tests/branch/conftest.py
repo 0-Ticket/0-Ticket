@@ -1,4 +1,4 @@
-"""Lets the box 25 tests reuse the in-memory stores from tests/store."""
+"""Lets the boxes 10-13 tests reuse the in-memory stores from tests/store."""
 
 import sys
 from pathlib import Path

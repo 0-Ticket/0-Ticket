@@ -1,10 +1,10 @@
-"""Built-in evidence handlers (box 26 -> boxes 15, 14 and 5).
+"""Built-in evidence handlers (evidence request queue -> MCP tools, specialists and box 7).
 
 - ``siem_mcp``: reads the SIEM through the MCP tool server.
 - ``lookup``: asks the configured lookup provider (the same one the
   normalization join uses) through ``LookupEnricher``, so its output is checked as C4.
 - ``specialist_agent``: hands the question to the specialist registered for the
-  request's domain (boxes 13, 14), which answers with a C14.
+  request's domain (boxes 19, 31), which answers with a C14.
 """
 
 import logging
@@ -99,7 +99,7 @@ def default_handlers(
 ) -> dict[str, EvidenceHandler]:
     """The handlers the queue worker runs with, keyed by C22 ``request_type``.
 
-    ``context`` is what a specialist is built from (box 14); its tool server is
+    ``context`` is what a specialist is built from (boxes 19, 31); its tool server is
     the one the SIEM handler reads through too. ``lookup`` is the provider
     ``open_lookup`` gave, shared with the normalization join.
     """

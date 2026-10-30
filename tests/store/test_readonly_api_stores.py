@@ -1,4 +1,4 @@
-"""Read-only Agent Log store and evidence queue for the screen API (box 27).
+"""Read-only Agent Log store and evidence queue for the screen API (L1 result read).
 
 The screen API only reads, so it opens every store through the read-only
 account ``database.readonly_url_env`` names (docs/security-policy.md 4). These

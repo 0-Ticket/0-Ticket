@@ -1,4 +1,4 @@
-"""Lets the box 14 tests reuse the MCP, queue and L1 input test doubles from the L1 folders."""
+"""Lets the specialist tests reuse the MCP, queue and L1 input test doubles from the L1 folders."""
 
 import sys
 from pathlib import Path

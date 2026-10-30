@@ -1,4 +1,4 @@
-"""PostgreSQL Alert/Event store (boxes 4, 6, 7, 25, D-002). Migrations 0010, 0011, 0050, 0093, 0094.
+"""PostgreSQL Alert/Event store (boxes 4-6, 8-13, D-002). Migrations 0010, 0011, 0050, 0093, 0094.
 
 Every call runs in its own transaction, so a failed batch leaves neither rows
 nor a moved cursor. Rows hold C2, C5 and C13 as json and are turned back into
@@ -198,7 +198,7 @@ class PostgresRecordStore:
         rows = self._all(query, (lookup_value(value), time_from, time_to, limit))
         return tuple(_validate_stored_record(contract, row[0]) for row in rows)
 
-    # Normalization batches (box 4)
+    # Normalization batches (box 6)
 
     def load_normalize_position(self, kind: SourceKind) -> int | None:
         row = self._one("SELECT last_seq FROM normalize_positions WHERE kind = %s", (kind,))
@@ -270,7 +270,7 @@ class PostgresRecordStore:
         )
         return validate_contract("NormalizeFailure", row[0]) if row else None
 
-    # Entity branching (box 25)
+    # Entity branching (boxes 10-13)
 
     def list_alert_records(self, after_seq: int | None, limit: int) -> tuple[StoredAlert, ...]:
         check_limit(limit)

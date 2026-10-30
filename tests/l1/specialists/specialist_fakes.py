@@ -1,7 +1,7 @@
-"""Test doubles for the Web specialist Agent (box 14).
+"""Test doubles for the Web specialist Agent (boxes 19, 31).
 
 ``FakeProvider`` answers every LLM call with a prepared string, so no model is
-reached (docs/llm-policy.md 7). ``FakeAgentLog`` stands in for box 12's service:
+reached (docs/llm-policy.md 7). ``FakeAgentLog`` stands in for the Agent Log service:
 it validates each C8 the same way and keeps the steps for assertions.
 ``build_context`` wires the real tool server and the real ``TicketService`` over
 the in-memory fakes, so the specialist runs its production code path.

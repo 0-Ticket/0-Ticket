@@ -1,4 +1,4 @@
-"""Core SIEM entry (box 3, K3, K66).
+"""Core SIEM entry (SIEM connector, K3, K66).
 
 The adapter is the one named in ``[siem] adapter``, found in the ``siem``
 registry. Nothing here knows any adapter by name. Adapters return C2 content

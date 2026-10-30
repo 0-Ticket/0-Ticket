@@ -1,4 +1,4 @@
-"""Specialist Agents (boxes 13, 14): the domain analysis behind an L1 verdict.
+"""Specialist Agents (boxes 19, 31): the domain analysis behind an L1 verdict.
 
 Implementations register in the ``specialists`` group under the C22 ``domain``
 they answer for, and the core opens one with ``open_specialist(domain, ...)``

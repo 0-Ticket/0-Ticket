@@ -1,4 +1,4 @@
-"""Input checks every Alert/Event store applies before writing (boxes 6, 7).
+"""Input checks every Alert/Event store applies before writing (boxes 4, 5).
 
 Shared so a backend cannot drift from the rules: each item is checked with
 ``validate_contract`` and a source record's ID must be the hash of its content,

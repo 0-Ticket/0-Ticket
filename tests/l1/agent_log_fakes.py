@@ -1,4 +1,4 @@
-"""In-memory Agent Log store (C8, box 12) for tests, shared with the box 27 API tests."""
+"""In-memory Agent Log store (C8) for tests, shared with the L1 result API tests."""
 
 from soc.l1.agent_log import AgentLogEntry, DuplicateAgentStepError
 

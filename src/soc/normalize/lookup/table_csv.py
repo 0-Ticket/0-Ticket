@@ -1,4 +1,4 @@
-"""CSV asset and account tables (box 5) -> C4 rows the Lookup store accepts.
+"""CSV asset and account tables (box 7) -> C4 rows the Lookup store accepts.
 
 Format (UTF-8, a BOM is ignored, cells are trimmed):
 

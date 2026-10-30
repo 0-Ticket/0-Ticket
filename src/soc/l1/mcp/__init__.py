@@ -1,4 +1,4 @@
-"""MCP tools (box 15): the only path from an agent to a tool.
+"""MCP tools (boxes 19, 28, 31, 42): the only path from an agent to a tool.
 
 ``build_tool_server`` reads the settings, resolves the SIEM MCP adapter the same
 ``siem.adapter`` name selects for the connector (D-037), adds every tool bundle

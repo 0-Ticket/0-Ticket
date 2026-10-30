@@ -1,4 +1,4 @@
-"""`python -m soc.ingest`: one run by default, until nothing new with --all (boxes 3 -> 6, 7)."""
+"""`python -m soc.ingest`: one run by default, until nothing new with --all (boxes 4, 5)."""
 
 from pathlib import Path
 

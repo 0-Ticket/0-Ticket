@@ -1,4 +1,4 @@
-"""Sample alerts for box 25, stored in a fake record store in fixture order."""
+"""Sample alerts for boxes 10-13, stored in a fake record store in fixture order."""
 
 import json
 from pathlib import Path

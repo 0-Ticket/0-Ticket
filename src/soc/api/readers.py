@@ -1,4 +1,4 @@
-"""The stores the screen API reads through (box 27, D-027).
+"""The stores the screen API reads through (L1 result read, D-027).
 
 The API never writes, so every store is opened through the read-only account
 ``[database] readonly_url_env`` names (``docs/security-policy.md`` 4). The core

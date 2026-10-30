@@ -1,4 +1,4 @@
-"""PostgreSQL Alert/Event store (boxes 6, 7, D-002): the shared contract plus table rules.
+"""PostgreSQL Alert/Event store (boxes 4, 5, D-002): the shared contract plus table rules.
 
 Marked `db`: needs PostgreSQL through DATABASE_URL (`docker compose up -d`), and
 runs in CI against the service container with `uv run pytest -m db`.

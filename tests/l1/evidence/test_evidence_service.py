@@ -1,4 +1,4 @@
-"""Queue service: order, retries, failure and Ticket hold (box 26, K59, K62, D-034)."""
+"""Queue service: order, retries, failure and Ticket hold (unnumbered, K59, K62, D-034)."""
 
 import logging
 

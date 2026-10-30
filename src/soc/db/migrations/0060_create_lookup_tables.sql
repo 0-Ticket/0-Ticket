@@ -1,4 +1,4 @@
--- Box 5 (#60): Lookup tables (C4). Loaded whole from CSV; RDB only (D-002).
+-- Box 7 (#60): Lookup tables (C4). Loaded whole from CSV; RDB only (D-002).
 -- A row is valid for valid_from <= at < valid_to; null is an open end.
 
 -- C4 AssetInfo. match is the text as loaded; network is the same value as cidr

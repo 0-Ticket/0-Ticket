@@ -1,12 +1,12 @@
-"""Stores (boxes 5, 6, 7, 10, 11, 12, 25, 27, D-002): one ``stores`` registry for every kind.
+"""Stores (boxes 4, 5, 7-13, 15, 18, 20, Agent Log, L1 result read; D-002): one registry per kind.
 
 Implementations are registered as ``<backend>.<kind>``: ``postgresql.records``
-for Alert/Event (boxes 6, 7), ``postgresql.readonly_records`` (the same records through
-the read-only account agent tools use, box 15), ``postgresql.lookups`` (box 5),
-``postgresql.branches`` (C21, box 25), ``postgresql.l1_decisions`` (C23, boxes 11, 27),
+for Alert/Event (boxes 4, 5), ``postgresql.readonly_records`` (the same records through
+the read-only account agent tools use, boxes 19, 28, 31, 42), ``postgresql.lookups`` (box 7),
+``postgresql.branches`` (C21, boxes 10-13), ``postgresql.l1_decisions`` (C23, boxes 15, 20),
 ``postgresql.tickets``, and ``postgresql.agent_log``. ``readonly_branches``,
 ``readonly_l1_decisions``, ``readonly_tickets`` and ``readonly_agent_log`` read the
-same tables through the read-only account, for the screen API (box 27).
+same tables through the read-only account, for the screen API (L1 result read).
 ``[store] backend`` picks the backend for all of them; the core passes only the
 kind to ``open_store`` and never names a backend.
 """
@@ -82,7 +82,7 @@ def open_store(
     """Open the ``kind`` store of the configured backend, e.g. ``open_store("records", ...)``.
 
     ``connection`` is a connection the caller already borrowed from its backend's
-    pool, which the screen API does once per request (box 27, #104). It is opaque
+    pool, which the screen API does once per request (L1 result read, #104). It is opaque
     to the core and only passed on when there is one, so a backend that does not
     take it keeps working.
     """

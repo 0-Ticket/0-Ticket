@@ -1,4 +1,4 @@
-"""elastic connector (box 3, #99): ES _search -> C2, against a fake ES, never a real one."""
+"""elastic connector (#99): ES _search -> C2, against a fake ES, never a real one."""
 
 import base64
 import copy

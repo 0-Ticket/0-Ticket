@@ -1,11 +1,11 @@
-"""elastic adapter: alerts and events from Elasticsearch + Kibana Security (box 3, D-037, #99).
+"""elastic adapter: alerts and events from Elasticsearch + Kibana Security (D-037, #99).
 
 Kibana detection rules write alerts to ``[siem.elastic] alert_index``; access
 logs live in ``event_index``. Each ``_search`` hit becomes one C2 content (no
 ``source_record_id``: the core entry assigns it):
 
 - ``scenario``: ``elastic_security_alert`` or ``elastic_access_event``, the
-  default alias tables of box 4. An organization replaces a table by its name.
+  default alias tables of box 6. An organization replaces a table by its name.
 - ``raw_ids``: ``raw_es_<index>_<_id>``, from the concrete index the hit names.
   The SIEM keeps the original document (D-037), so no C1 is made here; the
   direct adapter's C1 is not stored either.

@@ -1,4 +1,4 @@
-"""Shared contract tests every L1 decision store (C23, boxes 11, 27) must pass.
+"""Shared contract tests every L1 decision store (C23, boxes 15, 20) must pass.
 
 Subclass ``L1DecisionStoreContract`` in a ``Test*`` class and provide
 ``make_store``: a function returning a fresh, empty store.
@@ -134,7 +134,7 @@ class L1DecisionStoreContract:
         assert ids(filled.list(**filters)) == expected
 
     def test_subject_id_lists_the_whole_history_newest_first(self, store):
-        # ``get`` keeps only the latest record; box 27 shows every decision of a subject.
+        # ``get`` keeps only the latest record; the L1 result read shows every decision.
         store.save(decision("ld_a", "tk_one", 10))
         store.save(decision("ld_b", "tk_one", 30, decision="closed_fp", reason=None))
         store.save(decision("ld_c", "tk_one", 20))

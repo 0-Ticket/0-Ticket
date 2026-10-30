@@ -1,4 +1,4 @@
--- Boxes 6, 7 (#50): normalized results, apart from the source rows they point at.
+-- Boxes 8, 9 (#50): normalized results, apart from the source rows they point at.
 -- C5 AlertRecord and C13 EventRecord are kept whole in record; the entity and time
 -- columns are copies for lookup. Later boxes may update these rows, unlike sources.
 -- source_kind is fixed per table, so an alert result cannot point at an event source.

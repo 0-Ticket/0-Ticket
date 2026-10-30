@@ -1,4 +1,4 @@
-"""Box 25 speed (#87): DB work per alert does not grow with the alerts already stored (db).
+"""Branching speed (boxes 10-13, #87): DB work per alert does not grow with stored alerts (db).
 
 Before #87 an alert read up to dedup_scan_limit recent alerts of its IP to find
 its first alert, so each alert cost more as alerts piled up from one source.

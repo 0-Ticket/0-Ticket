@@ -32,7 +32,7 @@ const decisionFilters: Record<string, string[]> = {
   decision: ['l1_escalated', 'held', 'closed_fp', 'l2_escalated'],
   reason: ['below_threshold', 'llm_failure', 'evidence_request_failure'],
 };
-// Newest first, as box 27 serves them.
+// Newest first, as the L1 result read serves them.
 const sortedDecisions = () => [...state.decisions].sort((a, b) => b.created_at - a.created_at);
 const decisionsOf = (subject_type: string, subject_id: string) =>
   sortedDecisions().filter(
@@ -325,9 +325,9 @@ export const handlers = [
       created_at: Date.now(),
     };
     state.l2_reviews.push(review);
-    // Box 21 flow: approve ends the loop, the first rejection returns to L2 analysis and the
+    // Box 36 flow: approve ends the loop, the first rejection returns to L2 analysis and the
     // second hands the Incident to a person. Lifecycle status and Case creation are not
-    // changed here (box 22); the mock never reanalyzes, so new rounds come from fixtures.
+    // changed here (box 37); the mock never reanalyzes, so new rounds come from fixtures.
     const rejects = state.l2_reviews.filter(
       (item) => item.incident_id === incident.incident_id && item.decision === 'reject',
     ).length;

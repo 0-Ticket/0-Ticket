@@ -1,6 +1,6 @@
 """Store migrations use only the numbers their issues were given.
 
-#50 0010-0019, #59 0050-0059, #60 0060-0069, #69 0090-0099, #87 0094 (in the box 25 range).
+#50 0010-0019, #59 0050-0059, #60 0060-0069, #69 0090-0099, #87 0094 (in the boxes 10-13 range).
 """
 
 import pytest

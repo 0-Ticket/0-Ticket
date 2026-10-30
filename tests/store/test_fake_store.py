@@ -1,4 +1,4 @@
-"""The fake store passes the same contract tests as PostgreSQL (boxes 6, 7)."""
+"""The fake store passes the same contract tests as PostgreSQL (boxes 4, 5)."""
 
 import pytest
 from fake_store import FakeRecordStore

@@ -1,4 +1,4 @@
-"""Ticket lifecycle and store boundary (box 10, C5 -> C6)."""
+"""Ticket lifecycle and store boundary (box 18, C5 -> C6)."""
 
 import time
 import uuid
@@ -244,7 +244,7 @@ class TicketService:
         specialist: str = "none",
         ticket_id: str | None = None,
     ) -> dict[str, Any]:
-        """Create a C6. ``ticket_id`` is for callers that need a fixed ID (box 25 reruns)."""
+        """Create a C6. ``ticket_id`` is for callers that need a fixed ID (boxes 10-13 reruns)."""
         ticket = create_ticket(
             alert,
             origin=origin,

@@ -45,7 +45,7 @@ def connect_readonly(
 ) -> psycopg.Connection:
     """Connect with the read-only account `database.readonly_url_env` names.
 
-    This is the connection agent tools read through (box 15). It also forces
+    This is the connection agent tools read through (boxes 19, 28, 31, 42). It also forces
     read-only transactions, so a write fails on the connection, not only on the
     account's grants.
     """
@@ -85,7 +85,7 @@ POOL_ERRORS = (PoolClosed, PoolTimeout, TooManyRequests)
 
 
 class ReadonlyPool:
-    """Read-only connections the screen API borrows one of per request (box 27, #104).
+    """Read-only connections the screen API borrows one of per request (L1 result read, #104).
 
     The pool opens its own connections, so it carries the same options a single
     connection gets: autocommit (#83) and the read-only transaction option, which
@@ -133,7 +133,7 @@ class ReadonlyPool:
 def open_readonly_pool(
     settings: Settings, environ: Mapping[str, str] | None = None
 ) -> ReadonlyPool:
-    """A pool on the read-only account `database.readonly_url_env` names (box 27).
+    """A pool on the read-only account `database.readonly_url_env` names (L1 result read).
 
     The pool is created closed; the service opens it when it starts and closes it
     when it shuts down.

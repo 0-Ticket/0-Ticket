@@ -1,4 +1,4 @@
-"""Screen API (box 27, D-027): read-only L1 results for the web screens.
+"""Screen API (L1 result read, unnumbered, D-027): read-only L1 results for the web screens.
 
 ``create_app(reader_pool)`` builds the FastAPI app, ``open_reader_pool(settings)``
 makes the pool of read-only connections it borrows one of per request, and

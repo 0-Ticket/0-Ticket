@@ -1,6 +1,6 @@
-"""#112 (C-02a): read-only connection probe for an already built Wazuh (box 3 spike).
+"""#112 (C-02a): read-only connection probe for an already built Wazuh (SIEM connector spike).
 
-Not the box 3 connector (C-02b). It checks that the Wazuh indexer and server API
+Not the SIEM connector itself (C-02b). It checks that the Wazuh indexer and server API
 can be reached and logged in to, and reports the *shape* of the raw alert and
 event answers so the connector can be written against them:
 

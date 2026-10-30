@@ -1,4 +1,4 @@
-"""Command: load an asset or account CSV table into the Lookup store (box 5).
+"""Command: load an asset or account CSV table into the Lookup store (box 7).
 
 Usage: `uv run python -m soc.normalize.lookup.load assets|users <file.csv>`
 

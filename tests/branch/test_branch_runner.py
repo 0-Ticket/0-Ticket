@@ -1,4 +1,4 @@
-"""Box 25 stage 0: duplicates -> scenario Tickets -> L1 entity lookup (K56, K65)."""
+"""Boxes 10-13 stage 0: duplicates -> scenario Tickets -> L1 entity lookup (K56, K65)."""
 
 import pytest
 from branch_fixtures import MINUTE, T, alert_data, at, store_alerts

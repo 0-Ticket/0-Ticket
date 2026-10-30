@@ -1,13 +1,13 @@
-"""Evidence request queue worker (box 26, D-034, K59, K62).
+"""Evidence request queue worker (unnumbered, D-034, K59, K62).
 
 One worker takes requests in arrival order and runs the handler registered for
 each ``request_type``. A failed attempt is retried at once, up to
 ``evidence_queue.max_retries`` times, so a request keeps its place in line.
 After the last retry the request is ``failed``:
 
-- Ticket request: the Ticket goes on hold through box 10's transitions (D-034).
+- Ticket request: the Ticket goes on hold through box 18's transitions (D-034).
 - Alert request: the failed request goes back to the requester as is. The hold
-  record (C23 ``held`` / ``evidence_request_failure``) is box 11's job (D-036).
+  record (C23 ``held`` / ``evidence_request_failure``) is boxes 15 and 20's job (D-036).
 
 ``failure_reason`` holds an error type name, never an error message: messages can
 repeat log text an attacker wrote (docs/security-policy.md 3).

@@ -1,4 +1,4 @@
-"""SIEM MCP adapters: one interface, chosen by the same setting as the connector (box 15, K66)."""
+"""SIEM MCP adapters: one interface, chosen by the same setting as the connector (28, 42, K66)."""
 
 import ast
 import json
@@ -143,7 +143,7 @@ def connector_registry():
 
 
 def test_same_siem_setting_selects_connector_and_mcp(tmp_path):
-    """D-037: one SIEM name picks the connector (box 3) and the SIEM MCP adapter (box 15)."""
+    """D-037: one SIEM name picks the connector and the SIEM MCP adapter (28, 42)."""
     settings = org_settings(tmp_path)
     connector = open_connector(settings, environ=ENV, registry=connector_registry())
     server = build_tool_server(settings, environ=ENV, registry=fake_registry())
@@ -218,7 +218,7 @@ def _string_literals(path):
 def test_core_has_no_siem_name_branch():
     """Only adapter modules and the registration in siem/__init__.py may name a SIEM.
 
-    The same rule as box 3 (tests/ingest/test_connector.py): base.py and tools.py
+    The same rule as the SIEM connector (tests/ingest/test_connector.py): base.py and tools.py
     are core, like every other module under src/soc/l1/mcp.
     """
     siem = MCP_PACKAGE / "siem"

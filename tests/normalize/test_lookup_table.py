@@ -1,4 +1,4 @@
-"""Box 5 Lookup: CSV asset and account tables, loaded into the store, joined by the csv provider.
+"""Box 7 Lookup: CSV asset and account tables, loaded into the store, joined by the csv provider.
 
 K7: web-01 gets criticality 5, the proxy is shared, an unknown IP is null, an
 expired mapping is not used, and lookups live in the store (RDB) only.

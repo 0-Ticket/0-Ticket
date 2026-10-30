@@ -1,4 +1,4 @@
-"""In-memory fake SIEM MCP adapter for tests (box 15, K18, K66).
+"""In-memory fake SIEM MCP adapter for tests (boxes 28, 42, K18, K66).
 
 Like any adapter it answers a SiemQuery with C2 content without source_record_id;
 the core assigns the ID. It reads its address from settings and its token from the

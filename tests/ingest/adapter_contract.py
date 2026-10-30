@@ -1,4 +1,4 @@
-"""Shared contract tests every SIEM connector must pass (box 3, K3, K66).
+"""Shared contract tests every SIEM connector must pass (SIEM connector, K3, K66).
 
 Subclass ``AdapterContract`` in a ``Test*`` class and provide the fixtures below.
 The direct adapter and the fake SIEM use it now; the Wazuh adapter will reuse it.

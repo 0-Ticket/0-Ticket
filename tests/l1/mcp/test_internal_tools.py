@@ -1,4 +1,4 @@
-"""Internal data MCP tools: read stored C5 and C13 behind the allowlist (box 15, K18).
+"""Internal data MCP tools: read stored C5 and C13 behind the allowlist (boxes 19, 28, 31, 42, K18).
 
 The tools are built on the read-only record store, so these tests pass a fake
 that only reads. Entity field, kind and limit are checked before anything is read.

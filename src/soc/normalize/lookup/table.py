@@ -1,4 +1,4 @@
-"""The ``csv`` lookup provider (box 5): reads the asset and account tables loaded from CSV.
+"""The ``csv`` lookup provider (box 7): reads the asset and account tables loaded from CSV.
 
 The tables live in the Lookup store (RDB, D-002), opened with
 ``open_store("lookups", ...)``; the CSV files are only the load input

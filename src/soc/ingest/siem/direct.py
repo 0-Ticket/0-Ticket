@@ -1,4 +1,4 @@
-"""direct adapter: replays dataset files as C1 -> C2 without a SIEM (box 3, D-004, D-037).
+"""direct adapter: replays dataset files as C1 -> C2 without a SIEM (SIEM connector, D-004, D-037).
 
 For development, tests and demos only; production always connects to a SIEM.
 Each non-blank line of a configured file becomes one C1 RawRecord and one C2
@@ -155,7 +155,7 @@ class DirectSiemConnector:
     @staticmethod
     def _fields(line_format: str, payload: str, file_name: str) -> dict[str, Any]:
         if line_format == "text":
-            # Not parsed here: box 4 alias tables map fields, the adapter only replays.
+            # Not parsed here: box 6 alias tables map fields, the adapter only replays.
             return {"message": payload, "source_file": file_name}
         try:
             fields = json.loads(payload, parse_constant=_reject_constant)

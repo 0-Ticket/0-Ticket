@@ -1,4 +1,4 @@
--- Boxes 6, 7 (#50): C2 SiemAlert as it came from the SIEM connector. Never updated.
+-- Boxes 4, 5 (#50): C2 SiemAlert as it came from the SIEM connector. Never updated.
 -- content holds kind, source_record_id, scenario, raw_ids and fields. It is json,
 -- not jsonb, so the text is kept as written, \u0000 included.
 CREATE TABLE source_records (
@@ -7,7 +7,7 @@ CREATE TABLE source_records (
     content json NOT NULL,
     -- When it was stored (UTC epoch ms). Retention counts from here.
     ingested_at bigint NOT NULL,
-    -- Arrival order, for normalization (box 4) to read in pages.
+    -- Arrival order, for normalization (box 6) to read in pages.
     seq bigint GENERATED ALWAYS AS IDENTITY UNIQUE,
     -- Target of the normalized results' (source_record_id, kind) foreign keys.
     UNIQUE (source_record_id, kind)

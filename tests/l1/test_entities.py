@@ -1,4 +1,4 @@
-"""Alert -> entity list (boxes 25, 11): fixed order, no empty values, no repeats."""
+"""Alert -> entity list (boxes 10-13, 14): fixed order, no empty values, no repeats."""
 
 import json
 from pathlib import Path

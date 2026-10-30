@@ -1,4 +1,4 @@
-"""Lets the box 27 API tests reuse the store and queue test doubles from the other folders."""
+"""Lets the L1 result API tests reuse the store and queue test doubles from the other folders."""
 
 import sys
 from pathlib import Path

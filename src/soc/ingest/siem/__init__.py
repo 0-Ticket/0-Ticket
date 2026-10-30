@@ -1,4 +1,4 @@
-"""SIEM connector registry (box 3). In-repo adapters register here; others use entry points."""
+"""SIEM connector registry. In-repo adapters register here; others use entry points."""
 
 from soc.plugins import PluginRegistry
 

@@ -1,4 +1,4 @@
-"""The read-only L1 result API (box 27, K60, docs/api-contracts.md).
+"""The read-only L1 result API (L1 result read, K60, docs/api-contracts.md).
 
 Every test drives the FastAPI app over fake stores, so the shapes checked here
 are the ones docs/api-contracts.md promises the screen and the mock (D-022).
@@ -24,10 +24,10 @@ FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "api" / "l1_results
 
 
 class FakeAlertReader:
-    """The one Alert operation box 27 uses: read a stored C5 by its ID.
+    """The one Alert operation the L1 result read uses: read a stored C5 by its ID.
 
     The real store (``readonly_records``) has its own contract tests; seeding it
-    needs the C2 source rows box 3 hashes, which this box never reads.
+    needs the C2 source rows the SIEM connector hashes, which this box never reads.
     """
 
     def __init__(self, alerts=()):
@@ -132,7 +132,7 @@ def get(client, path, **params):
 
 
 def test_the_api_has_no_write_routes(reader_pool):
-    """Box 27 is read-only: no path may accept a write method (K60)."""
+    """The L1 result read is read-only: no path may accept a write method (K60)."""
     methods = set()
     for route in create_app(reader_pool).routes:
         methods |= set(getattr(route, "methods", ()))
@@ -192,7 +192,7 @@ def test_ticket_detail_has_decisions_evidence_requests_and_findings(client, data
         "rq_api_siem_failed",
         "rq_api_lookup_pending",
     ]
-    # The failed request is how box 27 shows evidence collection failure (K62).
+    # The failed request is how the L1 result read shows evidence collection failure (K62).
     failed = next(item for item in body["evidence_requests"] if item["status"] == "failed")
     assert failed["failure_reason"] == "siem_mcp timed out after 3 retries"
 

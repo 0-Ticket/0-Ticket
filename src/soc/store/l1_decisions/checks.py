@@ -1,4 +1,4 @@
-"""Input checks every L1 decision store applies before reading or writing (boxes 11, 27)."""
+"""Input checks every L1 decision store applies before reading or writing (boxes 15, 20)."""
 
 from soc.contracts import L1DecisionRecord, validate_contract
 from soc.store.paging import check_filter, check_page_limit, decode_cursor

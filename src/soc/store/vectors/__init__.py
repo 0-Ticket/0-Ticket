@@ -1,4 +1,4 @@
-"""Vector stores for box 8, selected through the ``vector_stores`` registry."""
+"""Vector stores (unnumbered Vector DB), selected through the ``vector_stores`` registry."""
 
 from soc.config import Settings
 from soc.plugins import PluginRegistry

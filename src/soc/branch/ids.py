@@ -1,4 +1,4 @@
-"""IDs box 25 takes from the alert, so running branching again names the same things.
+"""IDs boxes 10-13 take from the alert, so running branching again names the same things.
 
 A scenario Ticket ID has the shape of a random one (``tk_`` + 32 hex), so C6
 checks and the Ticket store treat it the same way.

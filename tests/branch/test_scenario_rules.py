@@ -1,4 +1,4 @@
-"""Scenario rule files (box 25): default file, organization override, checks."""
+"""Scenario rule files (boxes 10-13): default file, organization override, checks."""
 
 import shutil
 

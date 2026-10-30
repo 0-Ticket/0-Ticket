@@ -1,6 +1,6 @@
-"""elastic SIEM MCP adapter: reads Elasticsearch + Kibana Security (box 15, D-035, D-037, #99).
+"""elastic SIEM MCP adapter: reads Elasticsearch + Kibana Security (28, 42, D-035, D-037, #99).
 
-The same ``siem.adapter = "elastic"`` setting selects this adapter and the box 3
+The same ``siem.adapter = "elastic"`` setting selects this adapter and the unnumbered
 connector. Requests, hit conversion and the API key come from the connector
 module, so a document gets the same ``source_record_id`` here as at ingest.
 
@@ -20,7 +20,7 @@ One query becomes one ``POST /<index>/_search``, written as a structured query
 Alert fields Kibana changes later (``MUTABLE_ALERT_FIELDS``) are left out, as at
 ingest. A hit that cannot become C2 is skipped and only counted in the log.
 Any failed request raises ``SiemAdapterError``, even no connection or no answer
-in time: the box 3 client's ``ElasticError`` does not yet tell those apart.
+in time: the connector's ``ElasticError`` does not yet tell those apart.
 
 Only reads: ``POST /<index>/_search`` for queries and ``GET /<index>/_search?size=0``
 for the health check. Hit content may be attacker-written: it is returned as
@@ -147,7 +147,7 @@ class ElasticSiemMcp:
             hits = search_hits(answer)
         except ElasticError as error:
             # ElasticError does not say whether Elasticsearch was reached, so every
-            # failure is an adapter error until box 3 tells the two apart (#111).
+            # failure is an adapter error until the connector tells the two apart (#111).
             raise SiemAdapterError(str(error)) from None
         records: list[dict[str, Any]] = []
         reasons: list[str] = []

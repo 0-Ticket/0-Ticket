@@ -1,4 +1,4 @@
-"""In-memory fake SIEM connector for tests (box 3, K66).
+"""In-memory fake SIEM connector for tests (SIEM connector, K66).
 
 Like any adapter it returns C2 content without source_record_id; the core assigns it.
 

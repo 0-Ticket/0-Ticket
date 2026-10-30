@@ -14,7 +14,7 @@ import { HuntDetailPage } from '../pages/hunt-detail';
 import { RulesPage } from '../pages/rules';
 import { RuleDetailPage } from '../pages/rule-detail';
 
-// F1 serves the read-only L1 results at `/review` and one alert at `/alerts/:alert_id` (box 27);
+// F1 serves the read-only L1 results at `/review` and one alert at `/alerts/:alert_id` (L1 result read);
 // F2~F5 supply ticket, incident, case, hunt and rule pages; F6 is the dashboard at `/`.
 export const routes: RouteObject[] = [
   {

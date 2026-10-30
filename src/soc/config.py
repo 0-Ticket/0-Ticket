@@ -48,10 +48,10 @@ class _Section(BaseModel):
 
 class DatabaseSettings(_Section):
     url_env: EnvName
-    # The account agent tools read with (box 15, docs/security-policy.md 4).
+    # The account agent tools read with (boxes 19, 28, 31, 42; docs/security-policy.md 4).
     readonly_url_env: EnvName
     connect_timeout_seconds: int = Field(ge=1)
-    # The screen API (box 27) borrows one connection per request from a pool: how
+    # The screen API (L1 result read) borrows one connection per request from a pool: how
     # many it may hold at once, and how long a request waits for a free one (#104).
     pool_max_size: int = Field(ge=1)
     pool_timeout_seconds: int = Field(ge=1)
@@ -98,7 +98,7 @@ AgentTools = Annotated[tuple[ToolName, ...], AfterValidator(_without_repeats)]
 
 
 class SpecialistSettings(_Section):
-    """Box 14: how much of a source's flow a specialist reads around the alerts."""
+    """Boxes 19 and 31: how much of a source's flow a specialist reads around the alerts."""
 
     flow_window_minutes: int = Field(ge=1)
     flow_limit: int = Field(ge=1)
@@ -172,7 +172,7 @@ class EvidenceQueueSettings(_Section):
 
 
 class L1Settings(_Section):
-    """Box 11 thresholds and evidence-search windows."""
+    """Boxes 15 and 20 thresholds and evidence-search windows."""
 
     confidence_threshold: float = Field(ge=0, le=1, allow_inf_nan=False)
     siem_window_minutes: int = Field(ge=1)
@@ -186,7 +186,7 @@ class L1Settings(_Section):
 
 
 class NormalizeSettings(_Section):
-    # Organization alias table folder (box 4, C20). Empty: default tables only.
+    # Organization alias table folder (box 6, C20). Empty: default tables only.
     alias_dir: str
     batch_size: int = Field(ge=1)
     # Longest text a parse pattern is applied to. Longer values fail as bad_value.
@@ -194,7 +194,7 @@ class NormalizeSettings(_Section):
 
 
 class BranchSettings(_Section):
-    """Box 25 entity branching: duplicate window, batch sizes, scenario rule folder."""
+    """Boxes 10-13 entity branching: duplicate window, batch sizes, scenario rule folder."""
 
     # A repeat of the same rule and entities within this many minutes of the first
     # alert's first_seen is merged into it.
@@ -262,7 +262,7 @@ class VectorSearchSettings(_Section):
 
 
 class ApiSettings(_Section):
-    """Where the screen API listens (box 27). It serves read-only L1 results."""
+    """Where the screen API listens (L1 result read). It serves read-only L1 results."""
 
     host: str = Field(min_length=1)
     port: int = Field(ge=1, le=65535)

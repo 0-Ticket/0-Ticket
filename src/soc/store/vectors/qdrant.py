@@ -1,4 +1,4 @@
-"""Qdrant implementation for the box 8 Ticket vector store."""
+"""Qdrant implementation for the unnumbered Ticket vector store."""
 
 import math
 import uuid

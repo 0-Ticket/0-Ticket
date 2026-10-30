@@ -1,4 +1,4 @@
--- Box 4 (#59): normalization failures (C12) and how far each kind has been read.
+-- Box 6 (#59): normalization failures (C12) and how far each kind has been read.
 -- A source record gets at most one outcome: a result (C5 or C13) or a failure.
 
 -- C12 NormalizeFailure, one per source record. record holds the C12 as json; it

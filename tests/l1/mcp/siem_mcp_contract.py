@@ -1,4 +1,4 @@
-"""Shared contract tests every SIEM MCP adapter must pass (box 15, K18, K66).
+"""Shared contract tests every SIEM MCP adapter must pass (boxes 28, 42, K18, K66).
 
 Subclass ``SiemMcpAdapterContract`` in a ``Test*`` class and provide the fixtures
 below. The fake adapter uses it now; the Wazuh adapter will reuse it. Adapters

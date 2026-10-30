@@ -16,7 +16,7 @@ excluded), copied byte for byte:
 - ``--apache``: access log lines, minus the ``--drop-status`` codes. Files keep their names.
 
 ``summary`` lists, per rule ID (Wazuh rule.id or Suricata signature_id), how many
-alerts there are and how many box 25 would fold as duplicates (same rule and
+alerts there are and how many boxes 10-13 would fold as duplicates (same rule and
 entities within the dedup window from the first alert), to help pick the window.
 Wazuh entities follow the ait_wazuh_alert alias table: the source IP, and the
 destination IP or else the agent IP.
@@ -227,7 +227,7 @@ def summarize(
     source_format: str = "eve",
     drop_rules: frozenset[str] = frozenset(),
 ) -> list[SignatureSummary]:
-    """Per rule ID: alerts, and how box 25 would fold them (fixed window from the first)."""
+    """Per rule ID: alerts, and how boxes 10-13 would fold them (fixed window from the first)."""
     entries = _wazuh_entries(source) if source_format == "wazuh" else _eve_entries(source)
     alerts: dict[str, list[tuple[int, frozenset[str]]]] = defaultdict(list)
     for at, rule_id, entities in entries:

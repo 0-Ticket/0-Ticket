@@ -1,4 +1,4 @@
-"""Embedding provider boundary for box 8 (D-010)."""
+"""Embedding provider boundary for the unnumbered Vector DB (D-010)."""
 
 from typing import Protocol
 

@@ -1,4 +1,4 @@
-"""MCP tool server: read-only tools behind a per-agent allowlist (box 15, K18).
+"""MCP tool server: read-only tools behind a per-agent allowlist (boxes 19, 28, 31, 42, K18).
 
 The protocol tests drive the server through the official SDK's in-process client,
 so what they check is what an agent would get, not just what the gate returns.

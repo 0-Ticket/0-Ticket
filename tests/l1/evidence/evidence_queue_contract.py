@@ -1,4 +1,4 @@
-"""Rules every evidence queue backend must follow (box 26, K59).
+"""Rules every evidence queue backend must follow (unnumbered, K59).
 
 A backend test subclasses ``EvidenceQueueContract`` and provides ``make_queue``,
 a fixture returning a function that opens a queue. The PostgreSQL test calls it

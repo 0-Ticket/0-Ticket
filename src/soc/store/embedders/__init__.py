@@ -1,4 +1,4 @@
-"""Embedding providers for box 8, selected through the ``embedders`` registry."""
+"""Embedding providers for the unnumbered Vector DB, selected through the ``embedders`` registry."""
 
 from soc.config import Settings
 from soc.plugins import PluginRegistry

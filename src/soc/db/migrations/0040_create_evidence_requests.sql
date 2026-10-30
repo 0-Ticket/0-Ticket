@@ -1,4 +1,4 @@
--- Evidence request queue (box 26, D-034). payload is the C22 EvidenceRequest.
+-- Evidence request queue (unnumbered, D-034). payload is the C22 EvidenceRequest.
 -- seq is arrival order. agent is outside C22: whose MCP allowlist the request uses.
 -- status and requester are copied out of payload for the queue's indexes.
 CREATE TABLE evidence_requests (

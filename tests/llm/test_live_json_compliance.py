@@ -1,4 +1,4 @@
-"""Live JSON compliance checks for both Box 11 Verdict prompts."""
+"""Live JSON compliance checks for both L1 Verdict prompts (15, 20)."""
 
 import json
 import os

@@ -1,4 +1,4 @@
-"""direct adapter: replays dataset files as C1 -> C2 without a SIEM (box 3, K3)."""
+"""direct adapter: replays dataset files as C1 -> C2 without a SIEM (SIEM connector, K3)."""
 
 import hashlib
 import json

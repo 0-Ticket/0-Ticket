@@ -1,4 +1,4 @@
-"""Command: serve the read-only L1 result API (box 27).
+"""Command: serve the read-only L1 result API (unnumbered).
 
 Usage: `uv run python -m soc.api`
 

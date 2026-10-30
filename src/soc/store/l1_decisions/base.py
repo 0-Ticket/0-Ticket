@@ -1,6 +1,6 @@
-"""L1 decision record store interface (boxes 11, 27, C23, D-002, docs/extensibility.md).
+"""L1 decision record store interface (boxes 15, 20, C23, D-002, docs/extensibility.md).
 
-Box 11 (2-6, 2-7) records each promotion, hold and Ticket verdict; box 27
+Boxes 15 and 20 record each promotion, hold and Ticket verdict; the L1 result read
 (3-5) only reads them. A subject may get more than one record over time (an
 alert is held, a ticket is later decided), so ``get`` returns the latest.
 Lists are newest first: ``created_at`` descending, then save order descending.
@@ -59,7 +59,7 @@ class L1DecisionStore(Protocol):
     ) -> DecisionPage:
         """C23 matching every given filter, newest first, ``limit`` (1-200) per page.
 
-        ``subject_id`` is how box 27 reads one subject's whole decision history;
+        ``subject_id`` is how the L1 result read reads one subject's whole decision history;
         ``get`` keeps only the latest. Filters are applied before the page is
         cut, so paging a filtered list has no gaps.
 
@@ -74,7 +74,7 @@ class L1DecisionStore(Protocol):
 class L1DecisionStoreFactory(Protocol):
     """What a backend registers as ``<backend>.l1_decisions`` in the ``stores`` registry.
 
-    A backend that wants to serve the screen API (box 27) also takes
+    A backend that wants to serve the screen API (L1 result read) also takes
     ``connection``: a connection the caller borrowed from this backend's own pool,
     to be used as it is and not closed by the store (#104). The core passes it
     only when it has one, so a factory without the argument keeps working.

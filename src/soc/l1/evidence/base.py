@@ -1,4 +1,4 @@
-"""Evidence request queue interface (box 26, D-034, docs/extensibility.md).
+"""Evidence request queue interface (evidence request queue, D-034, docs/extensibility.md).
 
 A queue keeps C22 EvidenceRequests in arrival order and hands each one to a
 single worker. Besides C22 it keeps one thing outside the contract: the name of
@@ -84,7 +84,7 @@ class EvidenceQueue(Protocol):
 class EvidenceQueueFactory(Protocol):
     """What a backend registers in the ``evidence_queues`` registry.
 
-    A backend that wants to serve the screen API (box 27) also takes
+    A backend that wants to serve the screen API (L1 result read) also takes
     ``connection``: a connection the caller borrowed from this backend's own pool,
     to be used as it is and not closed by the store (#104). The core passes it
     only when it has one, so a factory without the argument keeps working.

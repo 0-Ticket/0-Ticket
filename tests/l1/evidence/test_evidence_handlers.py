@@ -1,5 +1,5 @@
-"""Built-in evidence handlers: siem_mcp through the MCP tool server (box 26 -> 15, K18, K59)
-and lookup through the configured lookup provider (box 26 -> 5, K7, K59)."""
+"""Built-in evidence handlers: siem_mcp through the MCP tool server (queue -> MCP tools, K18, K59)
+and lookup through the configured lookup provider (queue -> box 7, K7, K59)."""
 
 import logging
 
@@ -214,7 +214,7 @@ def test_default_handlers_cover_every_request_type(tmp_path):
     server, _, settings = tool_server(tmp_path, 'l1 = ["query_siem"]')
     handlers = default_handlers(context_for(settings, server), RecordingLookup())
 
-    # The specialist handler itself is box 14's (tests/l1/specialists).
+    # The specialist handler itself is boxes 19 and 31's (tests/l1/specialists).
     assert set(handlers) == {"siem_mcp", "lookup", "specialist_agent"}
 
 

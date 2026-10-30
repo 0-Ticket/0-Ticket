@@ -1,4 +1,4 @@
-"""direct SIEM MCP adapter: reads the files the direct connector replays (box 15, K18, K66).
+"""direct SIEM MCP adapter: reads the files the direct connector replays (boxes 28, 42, K18, K66).
 
 The demo setting ``siem.adapter = "direct"`` selects this adapter and the direct
 connector together (D-037), so the dataset files are the SIEM for both.
@@ -125,7 +125,7 @@ def test_direct_is_registered_for_siem_mcp():
 
 
 def test_query_and_ingest_give_the_same_source_record_id():
-    """The same line read by ingest (box 3) and by the SIEM MCP gets the same C2 ID."""
+    """The same line read by ingest (SIEM connector) and by the SIEM MCP gets the same C2 ID."""
     ingested = DirectSiemConnector(ait_files()).fetch(None, 100).items
     ingest_ids = {to_c2(item).source_record_id for item in ingested}
     adapter = DirectSiemMcp(ait_files(), default_normalizer())

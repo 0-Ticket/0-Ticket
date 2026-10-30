@@ -1,4 +1,4 @@
-"""L1 Ticket triage runtime (box 11, C6/C22/C14 -> C7/C23)."""
+"""L1 Ticket triage runtime (boxes 19-22, C6/C22/C14 -> C7/C23)."""
 
 import json
 import logging

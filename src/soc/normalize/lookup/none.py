@@ -1,6 +1,6 @@
 """The ``none`` lookup provider: knows no asset and no account, so every join is null.
 
-It is the default until a real provider (box 5) is configured.
+It is the default until a real provider (box 7) is configured.
 """
 
 from collections.abc import Mapping

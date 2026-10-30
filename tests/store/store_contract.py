@@ -1,4 +1,4 @@
-"""Shared contract tests every Alert/Event store must pass (boxes 6, 7, K8, K9, K67).
+"""Shared contract tests every Alert/Event store must pass (boxes 4, 5, K8, K9, K67).
 
 Subclass ``RecordStoreContract`` in a ``Test*`` class and provide ``make_store``:
 a function ``make_store(retention_days=0, clock=...)`` returning a fresh, empty
@@ -303,7 +303,7 @@ class RecordStoreContract:
         }
         assert store.purge_expired(NOW) == PurgeResult(deleted=0, skipped=2)
 
-    # Normalization batches (box 4): results, failures and position, together or not at all.
+    # Normalization batches (box 6): results, failures and position, together or not at all.
 
     def test_normalize_position_starts_empty(self, store):
         assert store.load_normalize_position("alert") is None
@@ -390,7 +390,7 @@ class RecordStoreContract:
         assert store.purge_expired(NOW) == PurgeResult(deleted=5, skipped=1)
         assert store.get_source_record(kept) is not None
 
-    # Entity branching (box 25): alerts in arrival order, a position, duplicate merges.
+    # Entity branching (boxes 10-13): alerts in arrival order, a position, duplicate merges.
 
     def _stored_alerts(self, store):
         """Both sample C5 saved, in the order their sources arrived."""
@@ -465,7 +465,7 @@ class RecordStoreContract:
             store.merge_duplicate(target.alert_id, target.alert_id, NOW)
         assert dump(store.get_alert_record(target.alert_id)) == dump(target)
 
-    # Duplicate representatives (box 25, #87): one row per representative alert.
+    # Duplicate representatives (boxes 10-13, #87): one row per representative alert.
 
     def test_dedup_representative_is_found_inside_its_window(self, store):
         first, _ = self._stored_alerts(store)

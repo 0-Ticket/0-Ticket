@@ -73,7 +73,7 @@ def test_postgresql_agent_log_store_validates_c8_before_writing(connection):
     assert connection.execute("SELECT count(*) FROM agent_steps").fetchone() == (0,)
 
 
-def test_agent_log_migration_uses_box_12_version_range(connection):
+def test_agent_log_migration_uses_the_agent_log_version_range(connection):
     versions = {migration.name: migration.version for migration in discover_migrations()}
     assert versions["create_agent_log"] == 30
     assert all(

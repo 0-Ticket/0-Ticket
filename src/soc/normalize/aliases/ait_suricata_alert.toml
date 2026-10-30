@@ -1,4 +1,4 @@
-# AIT Log Data Set V2 (D-004)의 Suricata EVE 알럿 → C3. 박스 4 기본 별칭 표(C20).
+# AIT Log Data Set V2 (D-004)의 Suricata EVE 알럿 → C3. 박스 6 기본 별칭 표(C20).
 # 조직은 normalize.alias_dir 폴더에 같은 이름의 파일을 두어 이 표를 통째로 바꾼다.
 scenario = "ait_suricata_alert"
 kind = "alert"

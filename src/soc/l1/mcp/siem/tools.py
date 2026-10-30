@@ -1,4 +1,4 @@
-"""The read-only SIEM MCP tool agents call (box 15, D-035).
+"""The read-only SIEM MCP tool agents call (boxes 28, 42, D-035).
 
 L1 (entity lookup), L2 (the same entity's past) and L3 (hypothesis checks) read
 the SIEM through this one tool. Which SIEM answers is the adapter's business, so

@@ -1,4 +1,4 @@
-"""MCP tool server: read-only tools behind a per-agent allowlist (box 15, K18, D-041).
+"""MCP tool server: read-only tools behind a per-agent allowlist (boxes 19, 28, 31, 42, K18, D-041).
 
 Built with the official MCP SDK. Every call goes through ``ToolServer.call``,
 which checks the allowlist from the settings and the query limit before the tool

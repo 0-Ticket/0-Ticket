@@ -1,4 +1,4 @@
-"""Box 4 runner: reads sources in order, normalizes, joins lookups, saves with its position."""
+"""Box 6 runner: reads sources in order, normalizes, joins lookups, saves with its position."""
 
 import pytest
 from fake_store import FakeRecordStore

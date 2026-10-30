@@ -1,4 +1,4 @@
-"""Command: fetch from the configured SIEM and store the source records (box 3 -> 6, 7).
+"""Command: fetch from the configured SIEM and store the source records (SIEM connector -> 6, 7).
 
 Usage: `uv run python -m soc.ingest [--all]`
 

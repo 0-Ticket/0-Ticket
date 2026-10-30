@@ -181,7 +181,7 @@ it('closes the form from the refetched review_state and reopens it only for a ne
     expect(await screen.findByText(/L2 분석 중입니다/)).toBeInTheDocument();
     expect(submit()).toBeDisabled();
     expect(posts).toBe(1);
-    // On the same mounted page, Box 19 finishing the reanalysis is represented by the server opening round 2.
+    // On the same mounted page, boxes 30 and 32 finishing the reanalysis is represented by the server opening round 2.
     const [first] = (await api.incident('in_web_campaign')).reviews;
     server.use(
       http.get('*/api/incidents/in_web_campaign', () =>

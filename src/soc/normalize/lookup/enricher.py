@@ -1,4 +1,4 @@
-"""Lookup join step (box 4 -> 5): fills src_asset, dst_asset and user_info of C5 and C13.
+"""Lookup join step (boxes 6 -> 7): fills src_asset, dst_asset and user_info of C5 and C13.
 
 The enricher is core; what it asks is the configured provider. Provider output
 is plugin output, so it is checked as C4 before it is joined. The evidence

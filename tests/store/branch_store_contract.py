@@ -1,4 +1,4 @@
-"""Shared contract tests every branch store (C21, box 25) must pass.
+"""Shared contract tests every branch store (C21, boxes 10-13) must pass.
 
 Subclass ``BranchStoreContract`` in a ``Test*`` class and provide ``make_store``:
 a function returning a fresh, empty store. The in-memory fake and the

@@ -1,4 +1,4 @@
-"""Box 4 alias tables (C20): default files, organization folder override, load-time checks (K36)."""
+"""Box 6 alias tables (C20): default files, organization folder override, load-time checks (K36)."""
 
 import pytest
 from normalize_fixtures import NORMALIZE, NOW, load_ait_c2

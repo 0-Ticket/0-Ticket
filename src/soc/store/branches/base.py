@@ -1,6 +1,6 @@
-"""Branch result store interface (box 25, C21, D-002, docs/extensibility.md).
+"""Branch result store interface (boxes 10-13, C21, D-002, docs/extensibility.md).
 
-Box 25 records where each alert (later: ticket) went. A subject is branched
+Boxes 10-13 record where each alert (later: ticket) went. A subject is branched
 once: a second C21 for the same ``(subject_type, subject_id)`` is refused, so
 "a C21 exists" means "this subject is done". ``seq`` grows in the order results
 were saved; L1 entity lookup (2-6) reads ``l1_entity_lookup`` results by it.
@@ -58,7 +58,7 @@ class BranchStore(Protocol):
 class BranchStoreFactory(Protocol):
     """What a backend registers as ``<backend>.branches`` in the ``stores`` registry.
 
-    A backend that wants to serve the screen API (box 27) also takes
+    A backend that wants to serve the screen API (L1 result read) also takes
     ``connection``: a connection the caller borrowed from this backend's own pool,
     to be used as it is and not closed by the store (#104). The core passes it
     only when it has one, so a factory without the argument keeps working.

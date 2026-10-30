@@ -1,4 +1,4 @@
-"""SIEM MCP transport and errors: request, response and failure kinds (box 15, K18, K66, #111).
+"""SIEM MCP transport and errors: request, response and failure kinds (28, 42, K18, K66, #111).
 
 Every adapter reports a SIEM it cannot reach as ``SiemUnavailableError`` and an
 answer it cannot use as ``SiemAdapterError``, so the queue's ``failure_reason``
@@ -169,8 +169,8 @@ def test_unreadable_direct_files_are_reported_as_unavailable(tmp_path):
     assert "missing.jsonl" not in str(error.value)
 
 
-def test_unreachable_elasticsearch_is_an_adapter_error_until_box3_tells_it_apart():
-    """#111: box 3's ElasticError does not say whether ES was reached; a box 3 issue will."""
+def test_unreachable_elasticsearch_is_an_adapter_error_until_the_connector_tells_it_apart():
+    """#111: ElasticError does not say whether ES was reached; a later issue will."""
     adapter = create_elastic_mcp(siem_settings(unreachable_url()), ELASTIC_ENV)
 
     with pytest.raises(SiemAdapterError) as error:

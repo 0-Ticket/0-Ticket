@@ -1,7 +1,7 @@
 """`python -m soc.normalize`: one run per kind by default, until no source is left with --all.
 
 The lookup join uses the configured provider: here the csv provider over the
-sample tables, so the AIT alert to 192.0.2.80 gets web-01 (box 4 -> 5, K7).
+sample tables, so the AIT alert to 192.0.2.80 gets web-01 (boxes 6 -> 7, K7).
 """
 
 from pathlib import Path

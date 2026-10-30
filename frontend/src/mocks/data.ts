@@ -58,7 +58,7 @@ export const data = {
   findings: [
     ...scenarios.findings.filter((item) => item.ticket_id !== detail.ticket.ticket_id),
     ...detail.findings,
-    // A C14 reaches a Ticket as the result of a completed specialist request (box 26).
+    // A C14 reaches a Ticket as the result of a completed specialist request (unnumbered queue).
     ...l1.evidence_requests
       .filter((item) => item.request_type === 'specialist_agent' && item.status === 'completed')
       .map((item) => (item.result as unknown as { finding: SpecialistFinding }).finding),

@@ -1,4 +1,4 @@
-"""The in-memory Lookup store follows the same contract as PostgreSQL (box 5)."""
+"""The in-memory Lookup store follows the same contract as PostgreSQL (box 7)."""
 
 import pytest
 from fake_lookup_store import FakeLookupStore

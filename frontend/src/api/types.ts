@@ -30,7 +30,7 @@ export type TicketDetail = {
   reviews: HumanReview[];
   incident_ids: string[];
 };
-// Box 27: the L1 result of an alert that was held before a Ticket existed.
+// L1 result read (unnumbered): the L1 result of an alert that was held before a Ticket existed.
 export type AlertL1Detail = {
   alert: AlertRecord;
   branch: BranchResult | null;

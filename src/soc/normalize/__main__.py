@@ -1,4 +1,4 @@
-"""Command: normalize stored source records and join lookups (box 4 -> 5).
+"""Command: normalize stored source records and join lookups (boxes 6 -> 7).
 
 Usage: `uv run python -m soc.normalize [--all]`
 

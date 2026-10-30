@@ -1,9 +1,9 @@
-"""Alert -> entity list (boxes 25, 11; C5 -> list[Entity]).
+"""Alert -> entity list (boxes 10-13, 14; C5 -> list[Entity]).
 
-The one place that says which C5 fields are entities, shared by box 25 (the
+The one place that says which C5 fields are entities, shared by boxes 10-13 (the
 scenario Ticket's entities, the dedup key and the representative entity) and
-box 11 (entity lookup). The order is fixed and documented in
-docs/architecture.md 25: ``src_ip`` -> ip, ``dst_ip`` -> ip, ``host`` -> host,
+box 14 (entity lookup). The order is fixed and documented in
+docs/architecture.md 10-13: ``src_ip`` -> ip, ``dst_ip`` -> ip, ``host`` -> host,
 ``user`` -> user. The first entity is the alert's representative entity.
 
 An empty value (None, "", or only whitespace) is left out, and an entity

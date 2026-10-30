@@ -118,7 +118,7 @@ def test_readonly_l1_record_stores_refuse_to_use_the_writable_url(kind):
         open_store(kind, settings, environ={"DATABASE_URL": "postgresql://localhost/zt"})
 
 
-# Borrowing a connection instead of opening one (#104, box 27)
+# Borrowing a connection instead of opening one (#104, L1 result read)
 
 
 class StubConnection:

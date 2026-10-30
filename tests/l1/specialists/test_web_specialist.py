@@ -1,4 +1,4 @@
-"""Web specialist Agent: one evidence request to a checked C14 (box 14, K16, K59).
+"""Web specialist Agent: one evidence request to a checked C14 (boxes 19, 31, K16, K59).
 
 No model is called: the provider is a fake that answers with a prepared string
 (docs/llm-policy.md 7). The flow is fixed by code (D-008) — read the Ticket, read
@@ -156,7 +156,7 @@ def test_every_step_is_logged_on_the_ticket(tmp_path):
 
 
 def test_request_completes_through_the_queue(tmp_path):
-    """Box 26 hands a specialist_agent request to box 14 and keeps the C14 result."""
+    """The queue hands a specialist_agent request to boxes 19 and 31 and keeps the C14 result."""
     context = build_context(tmp_path, response(VALID), tickets=(TICKET,))
     queue = FakeEvidenceQueue()
     service = EvidenceQueueService(

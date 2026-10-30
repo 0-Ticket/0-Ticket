@@ -1,4 +1,4 @@
-"""SIEM connector interface (box 3, D-037, docs/extensibility.md).
+"""SIEM connector interface (SIEM connector, D-037, docs/extensibility.md).
 
 A connector asks one SIEM for the alerts and events after a cursor and returns
 their C2 SiemAlert content without ``source_record_id``: the core entry

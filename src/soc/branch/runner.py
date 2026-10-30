@@ -1,4 +1,4 @@
-"""Branching run (box 25, stage 0): C5 -> C21, in arrival order, by rules only.
+"""Branching run (boxes 10-13, stage 0): C5 -> C21, in arrival order, by rules only.
 
 Each run reads one page of alerts after the saved position. For each alert:
 
@@ -9,7 +9,7 @@ Each run reads one page of alerts after the saved position. For each alert:
 3. Any other alert is saved as a duplicate representative first (if it has
    entities). Then an alert a scenario rule matches gets a ``scenario``
    Ticket and C21 ``scenario_ticket``.
-4. The rest get C21 ``l1_entity_lookup`` only. L1 (box 11) reads these
+4. The rest get C21 ``l1_entity_lookup`` only. L1 (box 14) reads these
    records itself; this run never calls L1 or an LLM.
 
 The side effects (merge, representative, Ticket) come first and the C21 last,

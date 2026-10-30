@@ -1,4 +1,4 @@
-"""Lookup provider interface (box 5 extension point, ``lookups`` group).
+"""Lookup provider interface (box 7 extension point, ``lookups`` group).
 
 A provider answers one question at a time: which asset (C4 AssetInfo) an IP or
 host name was at a moment, and which account (C4 UserInfo) a user name is. The

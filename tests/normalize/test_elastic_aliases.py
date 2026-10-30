@@ -1,4 +1,4 @@
-"""Box 4 alias tables for the elastic adapter (#99): ECS -> C3 and C13, dedup without dst_ip.
+"""Box 6 alias tables for the elastic adapter (#99): ECS -> C3 and C13, dedup without dst_ip.
 
 The C2 comes from the elastic connector's own hit conversion, so these check
 what the pipeline will actually normalize.

@@ -1,4 +1,4 @@
-"""Duplicate alerts (box 25): the same rule and entities again within the window.
+"""Duplicate alerts (boxes 10-13): the same rule and entities again within the window.
 
 An alert is a duplicate of a *first alert* when both have the same ``rule_id``
 and the same entity set (``alert_entities``, no direction: the same two IPs

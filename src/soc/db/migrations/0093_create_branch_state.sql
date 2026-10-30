@@ -1,4 +1,4 @@
--- Box 25 (#69): how far alert branching has read, and which alert each duplicate joined.
+-- Boxes 10-13 (#69): how far alert branching has read, and which alert each duplicate joined.
 -- Both live outside the contracts: C5 and C21 stay as they are.
 
 -- The last source_records.seq of an alert that branching has read. One row.

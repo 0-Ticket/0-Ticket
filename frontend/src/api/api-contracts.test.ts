@@ -134,7 +134,7 @@ describe('documented API contracts', () => {
     });
   });
 
-  it('serves the L1 decision list and the alert L1 detail of box 27', async () => {
+  it('serves the L1 decision list and the alert L1 detail of the L1 result read', async () => {
     const alerts = data.decisions.filter((item) => item.subject_type === 'alert');
     // Newest first, filters applied before the page is cut (docs/api-contracts.md).
     expect((await api.l1Decisions({ subject_type: 'alert' })).items).toEqual(alerts);
@@ -263,7 +263,7 @@ describe('documented API contracts', () => {
     expect(review).toMatchObject({ decision: 'approve', round: 2 });
     const after = await api.incident('in_second_round');
     expect(after.reviews).toEqual([...before.reviews, review]);
-    // Lifecycle status is untouched; Case creation belongs to box 22.
+    // Lifecycle status is untouched; Case creation belongs to box 37.
     expect(after.incident).toEqual({
       ...before.incident,
       review_state: 'approved',

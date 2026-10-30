@@ -1,4 +1,4 @@
-"""Lets the box 26 tests reuse the MCP and specialist test doubles from the sibling folders."""
+"""Lets the queue tests reuse the MCP and specialist test doubles from the sibling folders."""
 
 import sys
 from pathlib import Path

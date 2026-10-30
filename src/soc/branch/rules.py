@@ -1,4 +1,4 @@
-"""Attack scenario rules (box 25): TOML files, organization files win by name.
+"""Attack scenario rules (boxes 10-13): TOML files, organization files win by name.
 
 The default rules ship in ``soc/branch/rules/``. ``[branch] rules_dir`` names an
 organization folder; a ``<name>.toml`` there replaces the default file of the

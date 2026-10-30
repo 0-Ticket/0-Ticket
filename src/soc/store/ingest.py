@@ -1,4 +1,4 @@
-"""One ingest run: SIEM connector (box 3) -> source records (boxes 6, 7), resuming at the cursor.
+"""One ingest run: SIEM connector -> source records (boxes 4, 5), resuming at the cursor.
 
 The batch and the cursor after it are saved together, so a run that fails
 stores nothing and the next run fetches the same batch again. Saving is

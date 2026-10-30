@@ -1,6 +1,6 @@
-"""elastic SIEM MCP adapter (box 15, #99, K18, K66): queries a fake ES, never a real one.
+"""elastic SIEM MCP adapter (boxes 28, 42, #99, K18, K66): queries a fake ES, never a real one.
 
-``siem.adapter = "elastic"`` selects this adapter and the box 3 connector together
+``siem.adapter = "elastic"`` selects this adapter and the unnumbered connector together
 (D-037), so both read the same indices and give a document the same C2 ID.
 """
 
@@ -119,7 +119,7 @@ def test_registered_as_elastic_like_the_connector():
 
 
 def test_query_and_ingest_give_the_same_source_record_id(fake, mcp):
-    """The same document read at ingest (box 3) and through the SIEM MCP gets the same C2 ID."""
+    """The same document read at ingest and through the SIEM MCP gets the same C2 ID."""
     ingested = create_elastic(siem_settings(fake.url), ENV).fetch(None, BIG).items
     ingest_ids = {to_c2(item).source_record_id for item in ingested}
     alerts = to_c2_records(mcp.query(query()))

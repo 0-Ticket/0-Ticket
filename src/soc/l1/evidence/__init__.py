@@ -1,4 +1,4 @@
-"""Evidence request queue (box 26, D-034): L1 and L2 requests, one at a time, in order.
+"""Evidence request queue (unnumbered, D-034): L1 and L2 requests, one at a time, in order.
 
 Backends register in the ``evidence_queues`` group; ``[evidence_queue] backend``
 picks one and the core opens it with ``open_evidence_queue`` without naming it.
@@ -6,7 +6,7 @@ The worker is ``soc.l1.evidence.service.EvidenceQueueService``.
 
 A backend registers two names: ``<backend>`` for the queue the worker writes
 through and ``<backend>.readonly`` for the same rows through a read-only
-connection, which the screen API (box 27) reads with ``readonly=True``
+connection, which the screen API (L1 result read, unnumbered) reads with ``readonly=True``
 (docs/extensibility.md, docs/security-policy.md 4).
 """
 
@@ -44,7 +44,7 @@ def open_evidence_queue(
     implementation, which reads the same rows and fails on every write.
 
     ``connection`` is a connection the caller already borrowed from its backend's
-    pool, which the screen API does once per request (box 27, #104). It is opaque
+    pool, which the screen API does once per request (L1 result read, #104). It is opaque
     to the core and only passed on when there is one, so a backend that does not
     take it keeps working.
     """

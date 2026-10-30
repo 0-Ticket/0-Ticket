@@ -56,7 +56,7 @@ export function useEvidence(type: string, id: string, enabled: boolean) {
   });
 }
 
-// Box 27 reads C23 one page at a time; the screen never counts or reorders decisions.
+// The L1 result read reads C23 one page at a time; the screen never counts or reorders decisions.
 export function useL1Decisions(subject_type: L1DecisionRecord['subject_type']) {
   return useInfiniteQuery({
     queryKey: ['l1-decisions', { subject_type }],

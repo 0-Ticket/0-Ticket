@@ -1,4 +1,4 @@
-"""Tool bundles: what build_tool_server puts on one server (box 15, docs/extensibility.md).
+"""Tool bundles: what build_tool_server puts on one server (MCP boxes, docs/extensibility.md).
 
 Each bundle is one function from a ToolContext to tool specs, registered in the
 ``mcp_servers`` group. A plugin can add a bundle without touching the core, and

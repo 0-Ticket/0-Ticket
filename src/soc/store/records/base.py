@@ -1,12 +1,12 @@
-"""Alert and Event store interface (boxes 6, 7, D-002, docs/extensibility.md).
+"""Alert and Event store interface (boxes 4, 5, D-002, docs/extensibility.md).
 
 Source records are the C2 SiemAlert items the core SIEM entry produced, stored
 as they arrived and never changed (K8, K9). Normalized results (C5 AlertRecord,
 C13 EventRecord) live apart and point at their source row by
 ``source_record_id`` (K67). Later boxes may update C5 and C13; the source never.
-Normalization (box 4) saves its results, its C12 failures and how far it has
+Normalization (box 6) saves its results, its C12 failures and how far it has
 read in one batch, so a source record gets exactly one outcome. Entity branching
-(box 25) reads C5 in arrival order, keeps its own position, keeps a table of
+(boxes 10-13) reads C5 in arrival order, keeps its own position, keeps a table of
 duplicate representatives, and merges a duplicate alert into its first alert
 (C5 ``count`` and ``last_seen``).
 
@@ -24,7 +24,7 @@ from soc.config import Settings
 from soc.contracts import AlertRecord, EventRecord, NormalizeFailure, SiemAlert
 
 STORE_KIND = "records"
-# The same records through the read-only account, for the tools agents call (box 15).
+# The same records through the read-only account, for the tools agents call (boxes 19, 28, 31, 42).
 READONLY_STORE_KIND = "readonly_records"
 
 SourceKind = Literal["alert", "event"]
@@ -110,7 +110,7 @@ class RecordStore(Protocol):
     ) -> tuple[StoredSource, ...]:
         """At most ``limit`` (>= 1) source records of ``kind`` after ``after_seq``, oldest first.
 
-        This is how normalization (box 4) reads its input.
+        This is how normalization (box 6) reads its input.
         """
         ...
 
@@ -160,12 +160,12 @@ class RecordStore(Protocol):
 
     def get_normalize_failure(self, source_record_id: str) -> NormalizeFailure | None: ...
 
-    # Entity branching (box 25)
+    # Entity branching (boxes 10-13)
 
     def list_alert_records(self, after_seq: int | None, limit: int) -> tuple[StoredAlert, ...]:
         """At most ``limit`` (>= 1) C5 whose source ``seq`` is after ``after_seq``, oldest first.
 
-        ``seq`` is the source record's arrival position, the order box 25 reads in.
+        ``seq`` is the source record's arrival position, the order boxes 10-13 read in.
         """
         ...
 
@@ -191,7 +191,7 @@ class RecordStore(Protocol):
     def save_dedup_representative(self, alert_id: str, dedup_key: str, first_seen: int) -> bool:
         """Remember a stored alert as a duplicate representative, once.
 
-        ``dedup_key`` is opaque to the store (box 25 makes it from the rule and
+        ``dedup_key`` is opaque to the store (boxes 10-13 make it from the rule and
         entities); ``first_seen`` starts the representative's window. An alert
         already saved changes nothing and returns False, so running branching
         again is safe. The alert must be stored (UnknownRecordError).
@@ -227,7 +227,7 @@ class RecordStoreFactory(Protocol):
     Retention comes from ``settings.store.raw_retention_days``; secrets are read
     from ``environ`` through ``soc.config.read_secret``.
 
-    A backend that wants to serve the screen API (box 27) also takes
+    A backend that wants to serve the screen API (L1 result read) also takes
     ``connection``: a connection the caller borrowed from this backend's own pool,
     to be used as it is and not closed by the store (#104). The core passes it
     only when it has one, so a factory without the argument keeps working.

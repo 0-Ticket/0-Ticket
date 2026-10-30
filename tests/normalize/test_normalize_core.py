@@ -1,4 +1,4 @@
-"""Box 4 core rules: no LLM at run time, no scenario or SIEM name in code (K37, D-029)."""
+"""Box 6 core rules: no LLM at run time, no scenario or SIEM name in code (K37, D-029)."""
 
 import ast
 from pathlib import Path
@@ -9,7 +9,7 @@ CORE = Path(soc.normalize.__file__).resolve().parent
 CODE = sorted(CORE.rglob("*.py"))
 NAMES = ("ait_", "suricata", "apache", "wazuh", "splunk", "elk", "direct", "csv")
 LOOKUP = CORE / "lookup"
-# The csv lookup provider (box 5) and its registration may name "csv"; nothing else may.
+# The csv lookup provider (box 7) and its registration may name "csv"; nothing else may.
 CSV_PROVIDER = {
     LOOKUP / "__init__.py",
     LOOKUP / "table.py",

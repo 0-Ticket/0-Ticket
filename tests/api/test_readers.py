@@ -1,4 +1,4 @@
-"""How the screen API gets its stores (box 27): a read-only connection per request.
+"""How the screen API gets its stores (L1 result read): a read-only connection per request.
 
 Before #104 every store held one connection for the whole process and a lock let
 one request at a time into them. Now the API borrows one connection per request

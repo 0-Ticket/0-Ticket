@@ -1,4 +1,4 @@
-"""PostgreSQL table queue (box 26, D-034, registered as ``postgresql`` in evidence_queues).
+"""PostgreSQL evidence request queue (D-034, registered as ``postgresql`` in evidence_queues).
 
 ``claim_next`` takes the oldest pending row with ``FOR UPDATE SKIP LOCKED`` and
 marks it in_progress in the same transaction. A row is claimed once even if two
@@ -172,7 +172,7 @@ def create_postgresql_readonly_evidence_queue(
 ) -> PostgresEvidenceQueue:
     """The ``postgresql.readonly`` factory: ``list_by_requester`` works, every write fails.
 
-    For the screen API (box 27), which only reads the queue
+    For the screen API (L1 result read), which only reads the queue
     (docs/security-policy.md 4).
 
     With ``connection`` the store reads through a connection the caller borrowed

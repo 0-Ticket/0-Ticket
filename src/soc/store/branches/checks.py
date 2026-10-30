@@ -1,4 +1,4 @@
-"""Input checks every branch store applies before reading or writing (box 25)."""
+"""Input checks every branch store applies before reading or writing (boxes 10-13)."""
 
 from soc.contracts import BranchResult, validate_contract
 from soc.store.records.checks import check_limit

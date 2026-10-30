@@ -1,4 +1,4 @@
-"""Web domain MCP tool: the HTTP requests around one source IP (boxes 14, 15, D-041).
+"""Web domain MCP tool: the HTTP requests around one source IP (boxes 19, 31, D-041).
 
 The Web specialist judges an attack from the request path and parameters, the
 User-Agent, the response code and the response size. Path and code are C13

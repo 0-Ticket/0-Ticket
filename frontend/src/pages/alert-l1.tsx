@@ -7,7 +7,7 @@ import { BranchPath, DecisionList, EvidenceRequestList } from '../components/l1-
 import { Breadcrumbs } from '../components/page-header';
 import { Section } from '../components/ui/card';
 
-// F1 detail, box 27: the L1 result of one alert, including alerts held before a Ticket
+// F1 detail, L1 result read: the L1 result of one alert, including alerts held before a Ticket
 // existed. Read-only; the screen never changes a branch, a decision or a request.
 export function AlertL1Page() {
   const { alert_id = '' } = useParams();

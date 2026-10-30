@@ -1,4 +1,4 @@
-"""Agent Log lifecycle and storage boundary (box 12, C8)."""
+"""Agent Log lifecycle and storage boundary (Agent Log, unnumbered, C8)."""
 
 import hashlib
 import json

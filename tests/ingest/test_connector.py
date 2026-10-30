@@ -1,4 +1,4 @@
-"""Core SIEM entry: picks the adapter by setting, never by name in code (box 3, K3, K66)."""
+"""Core SIEM entry: picks the adapter by setting, never by name in code (K3, K66)."""
 
 import ast
 from pathlib import Path

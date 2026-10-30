@@ -1,4 +1,4 @@
-"""Lookup join step (box 4 -> 5): providers in the ``lookups`` group, the enricher on top (K31)."""
+"""Lookup join (boxes 6 -> 7): providers in the ``lookups`` group, the enricher on top (K31)."""
 
 import pytest
 from lookup_fakes import ALICE, WEB_01, FakeLookup, T
@@ -18,7 +18,7 @@ def test_none_lookup_finds_nothing():
 
 
 def test_none_provider_is_chosen_by_setting(tmp_path):
-    # The default became "csv" in box 5 (#60); "none" stays available by setting.
+    # The default became "csv" in box 7 (#60); "none" stays available by setting.
     org = tmp_path / "org.toml"
     org.write_text('[lookup]\nprovider = "none"\n', encoding="utf-8")
     settings = load_config(org, environ={})

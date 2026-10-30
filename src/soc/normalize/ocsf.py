@@ -1,4 +1,4 @@
-"""C3 -> OCSF 1.9.0 Detection Finding (class_uid 2004) as plain JSON (box 4, D-017, K6).
+"""C3 -> OCSF 1.9.0 Detection Finding (class_uid 2004) as plain JSON (box 6, D-017, K6).
 
 In OCSF 1.9.0 the endpoints, HTTP request and response, and user of a finding
 live in ``evidences[]`` and ATT&CK in ``finding_info.attacks``, not at the top

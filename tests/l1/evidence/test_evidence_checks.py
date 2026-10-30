@@ -1,4 +1,4 @@
-"""C22 core checks the Schema cannot express (box 26, docs/data-contracts.md C22)."""
+"""C22 core checks the Schema cannot express (unnumbered queue, docs/data-contracts.md C22)."""
 
 import pytest
 from evidence_fakes import default_settings, load

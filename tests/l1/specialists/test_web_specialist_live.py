@@ -1,7 +1,7 @@
 """One live check that the ZT_CONFIG-selected model answers the Web prompt as C14.
 
 Excluded from the default run (docs/llm-policy.md 7): ``uv run pytest -m llm``
-with the configured provider reachable. Everything else about box 14 is tested
+with the configured provider reachable. Everything else about the specialist is tested
 with fakes in ``test_web_specialist.py``.
 """
 

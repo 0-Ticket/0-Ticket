@@ -1,4 +1,4 @@
-"""Command: branch normalized alerts (box 25, stage 0).
+"""Command: branch normalized alerts (boxes 10-13, stage 0).
 
 Usage: `uv run python -m soc.branch [--all]`
 

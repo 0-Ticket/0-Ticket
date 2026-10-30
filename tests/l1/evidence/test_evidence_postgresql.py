@@ -1,4 +1,4 @@
-"""PostgreSQL evidence queue (box 26, D-034): the shared contract plus table rules.
+"""PostgreSQL evidence queue (unnumbered, D-034): the shared contract plus table rules.
 
 Marked `db`: needs PostgreSQL through DATABASE_URL (`docker compose up -d`), and
 runs in CI against the service container with `uv run pytest -m db`.

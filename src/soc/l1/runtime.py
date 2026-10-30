@@ -1,4 +1,4 @@
-"""L1 Alert entity lookup runtime (box 11, C21 -> C22 -> C23/C6)."""
+"""L1 Alert entity lookup runtime (boxes 14-17, C21 -> C22 -> C23/C6)."""
 
 import json
 import logging

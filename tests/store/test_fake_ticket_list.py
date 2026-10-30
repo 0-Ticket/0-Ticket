@@ -1,4 +1,4 @@
-"""The fake Ticket store passes the same list contract tests as PostgreSQL (box 10)."""
+"""The fake Ticket store passes the same list contract tests as PostgreSQL (box 18)."""
 
 import pytest
 from fake_ticket_store import FakeTicketStore

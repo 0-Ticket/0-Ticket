@@ -1,4 +1,4 @@
-"""Shared contract tests for ``TicketStore.list`` (box 10, ``GET /api/tickets`` order).
+"""Shared contract tests for ``TicketStore.list`` (box 18, ``GET /api/tickets`` order).
 
 Subclass ``TicketListContract`` in a ``Test*`` class and provide ``make_store``:
 a function returning a fresh, empty Ticket store.
