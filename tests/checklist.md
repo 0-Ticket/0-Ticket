@@ -99,7 +99,7 @@ v2 박스 기준이다(`docs/architecture.md`). 폐기한 박스(9, 16, 17)의 �
 
 ## 웹 화면
 
-화면 작업은 `docs/frontend.md`의 화면 순서(F0 ~ F6)를 따른다. 테스트는 mock 데이터로 한다.
+화면 작업은 `docs/frontend.md`의 화면 순서(F0 ~ F7)를 따른다. 테스트는 mock 데이터로 한다.
 
 | ID | 화면 | 확인할 것 | 상태 | 테스트 |
 |---|---|---|---|---|
@@ -114,6 +114,10 @@ v2 박스 기준이다(`docs/architecture.md`). 폐기한 박스(9, 16, 17)의 �
 | K48 | F4 | Case 작업의 상태·담당자·마감과 교훈을 수정할 수 있다 | 🟡 일부 | #27: 작업 상태 변경만 `case-tasks.test.tsx`(전체 `tasks` PATCH·재조회·중복 제출·오류 구분). 담당자·마감·교훈 수정은 후속 API/계약 이슈 필요 |
 | K49 | F5 | 룰 제안에 문법 검사 결과와 백테스트가 보이고, 승인해도 화면이 SIEM 반영을 하지 않는다 | ✅ 통과 | #29 화면 범위: `rules.test.tsx`, `rule-detail.test.tsx`(문법 결과·백테스트 그대로·null, 배포·실행 버튼 없음), `rule-review.test.tsx`(요청 본문은 `reviewer`·`decision`뿐, 서버 상태 표시). 실제 룰 검사·백테스트·배포 승인(박스 24, K27)은 후속 |
 | K50 | F6 | 지표 대시보드가 뒤집은 비율, 반려 유형 통계, 정규화 실패 수를 보여 준다 | ✅ 통과 | #31 화면 범위: `dashboard.test.tsx`(L1 검토·뒤집음 원본 값 나란히 표시, 비율 계산 없음, `l2_rejects_by_type`·`incident_members_by_source`·`normalize_failures_by_reason` 원본 값, 집계 기간 표시). 아직 없는 API(#97): `dashboard.test.tsx`의 목록 다섯 영역 404 → "아직 없음", 지표 404 → "지표 없음"(오류·다시 시도 없음), 지표 500 → "지표 없음"+오류·다시 시도. 지표 경로 구현(#103): `test_metrics_returns_an_empty_state_without_an_error`, `test_metrics_window_echoes_the_requested_range`, `test_metrics_rejects_a_bad_window`; `dashboard.test.tsx`의 `available=false` → "지표 없음"(0 미표시), `available=false` 뒤 500 → 오류가 숨지 않음. 404 경로 테스트는 구버전 API 호환으로 남긴다. 지표 집계 자체(박스 4·21, v1 16)는 해당 박스에서 확인 |
+| K68 | F7 | SIEM 연결 설정(`/settings/siem`)의 저장·활성화·연결 확인은 `admin`만 할 수 있다. 화면에서 숨겨도 역할 검사는 API가 한다 (D-042, D-043) | ⬜ | #138 |
+| K69 | F7 | 적용 중인 설정의 출처(화면 프로필 / TOML)가 보인다 (D-044) | ⬜ | #138 |
+| K70 | F7 | 토큰이 화면과 API 응답에 나오지 않고, 빈 칸으로 저장하면 기존 값이 유지된다. `base_url`을 바꾸면 토큰을 다시 입력하게 한다 (D-045) | ⬜ | #138 |
+| K71 | F7 | 연결 확인 결과가 텍스트로만 보이고 상대 응답 본문이 없다(D-045). 프로필 이름 등 사용자 입력 값도 텍스트로만 표시된다(`docs/security-policy.md` 7항). `base_url` 주소 검증은 API 규칙이라 여기서 확인하지 않는다(D-045) | ⬜ | #138 |
 | K51 | 전체 | HTML·스크립트 조각이 든 로그 원문, LLM 출력, `extensions` 값이 텍스트로만 표시된다 | 🟡 일부 | F1: `tickets.test.tsx`, `l1-results.test.tsx`, `alert-l1.test.tsx`(C22 `failure_reason`·`params`·`result`, C8 발췌); F2: `ticket-detail.test.tsx`; F3: `incidents.test.tsx`, `incident-detail.test.tsx`; F4: `cases.test.tsx`, `case-detail.test.tsx`, `case-tasks.test.tsx`; F5: `hunts.test.tsx`, `hunt-detail.test.tsx`, `rules.test.tsx`, `rule-detail.test.tsx`(C17·C18에는 `extensions`가 없음), F6: `dashboard.test.tsx`(C10·C16·C17·C18에 든 제목·가설, 새 상태·등록형 값; 대시보드는 `extensions`를 보여 주지 않음); 다른 화면은 후속 검증 |
 | K52 | 전체 | 플러그인이 등록한 새 등록형 값과 새 `extensions` 키가 화면 수정 없이 보인다 | 🟡 일부 | F1: `tickets.test.tsx`, `l1-results.test.tsx`, `alert-l1.test.tsx`(C22 `failure_reason`·`params`·`result`, C8 발췌); F2: `ticket-detail.test.tsx`; F3: `incidents.test.tsx`, `incident-detail.test.tsx`; F4: `cases.test.tsx`, `case-detail.test.tsx`, `case-tasks.test.tsx`; F5: `hunts.test.tsx`, `hunt-detail.test.tsx`, `rules.test.tsx`, `rule-detail.test.tsx`(C17·C18에는 `extensions`가 없음), F6: `dashboard.test.tsx`(C10·C16·C17·C18에 든 제목·가설, 새 상태·등록형 값; 대시보드는 `extensions`를 보여 주지 않음); 다른 화면은 후속 검증 |
 
