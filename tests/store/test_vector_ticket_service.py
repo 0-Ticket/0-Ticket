@@ -37,6 +37,7 @@ class FakeVectorStore:
         self.vector_queries = []
         self.keyword_hits = []
         self.vector_hits = []
+        self.close_calls = 0
 
     def upsert(self, document, vector):
         self.documents.append((document, list(vector)))
@@ -50,7 +51,7 @@ class FakeVectorStore:
         return self.vector_hits[:limit]
 
     def close(self):
-        pass
+        self.close_calls += 1
 
 
 def load_small_dimension_settings():
@@ -160,3 +161,91 @@ def test_vector_ticket_service_can_switch_fusion_function_from_config():
     results = service.search_by_entities([{"type": "ip", "value": "203.0.113.10"}], "web scan", k=2)
 
     assert [ticket_id for ticket_id, _ in results] == ["tk_z_exact", "tk_a_semantic"]
+
+
+def test_from_settings_closes_store_and_reraises_embedder_initialization_error(monkeypatch):
+    store = FakeVectorStore()
+    error = RuntimeError("embedder_initialization_failed")
+
+    monkeypatch.setattr(
+        "soc.store.vectors.tickets.open_vector_store",
+        lambda *_args, **_kwargs: store,
+    )
+
+    def fail_embedder(*_args, **_kwargs):
+        raise error
+
+    monkeypatch.setattr("soc.store.vectors.tickets.open_embedder", fail_embedder)
+
+    with pytest.raises(RuntimeError) as raised:
+        VectorTicketService.from_settings(load_small_dimension_settings())
+
+    assert raised.value is error
+    assert store.close_calls == 1
+
+
+def test_from_settings_closes_store_and_reraises_keyboard_interrupt(monkeypatch):
+    store = FakeVectorStore()
+    interrupt = KeyboardInterrupt("embedder_initialization_interrupted")
+    monkeypatch.setattr(
+        "soc.store.vectors.tickets.open_vector_store",
+        lambda *_args, **_kwargs: store,
+    )
+
+    def interrupt_embedder(*_args, **_kwargs):
+        raise interrupt
+
+    monkeypatch.setattr("soc.store.vectors.tickets.open_embedder", interrupt_embedder)
+
+    with pytest.raises(KeyboardInterrupt) as raised:
+        VectorTicketService.from_settings(load_small_dimension_settings())
+
+    assert raised.value is interrupt
+    assert store.close_calls == 1
+
+
+def test_from_settings_preserves_embedder_error_when_store_close_fails(monkeypatch):
+    store = FakeVectorStore()
+    embedder_error = RuntimeError("embedder_initialization_failed")
+
+    def fail_close():
+        store.close_calls += 1
+        raise OSError("store_close_failed")
+
+    store.close = fail_close
+    monkeypatch.setattr(
+        "soc.store.vectors.tickets.open_vector_store",
+        lambda *_args, **_kwargs: store,
+    )
+
+    def fail_embedder(*_args, **_kwargs):
+        raise embedder_error
+
+    monkeypatch.setattr("soc.store.vectors.tickets.open_embedder", fail_embedder)
+
+    with pytest.raises(RuntimeError) as raised:
+        VectorTicketService.from_settings(load_small_dimension_settings())
+
+    assert raised.value is embedder_error
+    assert raised.value.__notes__ == ["VectorStore cleanup failed (OSError)"]
+    assert store.close_calls == 1
+
+
+def test_from_settings_returns_service_when_store_and_embedder_open(monkeypatch):
+    store = FakeVectorStore()
+    embedder = FakeEmbedder()
+    monkeypatch.setattr(
+        "soc.store.vectors.tickets.open_vector_store",
+        lambda *_args, **_kwargs: store,
+    )
+    monkeypatch.setattr(
+        "soc.store.vectors.tickets.open_embedder",
+        lambda *_args, **_kwargs: embedder,
+    )
+
+    service = VectorTicketService.from_settings(load_small_dimension_settings())
+
+    assert isinstance(service, VectorTicketService)
+    assert store.close_calls == 0
+    service.close()
+    assert store.close_calls == 1
