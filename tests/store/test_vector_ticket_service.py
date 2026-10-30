@@ -184,6 +184,26 @@ def test_from_settings_closes_store_and_reraises_embedder_initialization_error(m
     assert store.close_calls == 1
 
 
+def test_from_settings_closes_store_and_reraises_keyboard_interrupt(monkeypatch):
+    store = FakeVectorStore()
+    interrupt = KeyboardInterrupt("embedder_initialization_interrupted")
+    monkeypatch.setattr(
+        "soc.store.vectors.tickets.open_vector_store",
+        lambda *_args, **_kwargs: store,
+    )
+
+    def interrupt_embedder(*_args, **_kwargs):
+        raise interrupt
+
+    monkeypatch.setattr("soc.store.vectors.tickets.open_embedder", interrupt_embedder)
+
+    with pytest.raises(KeyboardInterrupt) as raised:
+        VectorTicketService.from_settings(load_small_dimension_settings())
+
+    assert raised.value is interrupt
+    assert store.close_calls == 1
+
+
 def test_from_settings_preserves_embedder_error_when_store_close_fails(monkeypatch):
     store = FakeVectorStore()
     embedder_error = RuntimeError("embedder_initialization_failed")

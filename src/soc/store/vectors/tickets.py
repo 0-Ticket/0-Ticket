@@ -92,7 +92,7 @@ class VectorTicketService:
         store = open_vector_store(settings, registry=vector_registry)
         try:
             embedder = open_embedder(settings, registry=embedder_registry)
-        except Exception as error:
+        except BaseException as error:
             try:
                 store.close()
             except Exception as close_error:
