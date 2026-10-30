@@ -11,7 +11,7 @@ class NormalizeFailure(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    scenario: StrictStr
+    mapping_profile: constr(min_length=1, strict=True)
     raw_ids: list[constr(pattern=r"^raw_", strict=True)]
     reason: Literal["unknown_scenario", "missing_required", "bad_value"]
     missing_fields: list[StrictStr]

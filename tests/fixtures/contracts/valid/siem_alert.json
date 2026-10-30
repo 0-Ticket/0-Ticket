@@ -1,7 +1,7 @@
 {
   "kind": "alert",
   "source_record_id": "src_sample",
-  "scenario": "sample",
+  "mapping_profile": "sample",
   "raw_ids": [
     "raw_sample_1"
   ],

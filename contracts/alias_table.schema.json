@@ -4,8 +4,17 @@
   "title": "AliasTable",
   "type": "object",
   "properties": {
-    "scenario": {
-      "type": "string"
+    "tool": {
+      "type": "string",
+      "minLength": 1
+    },
+    "log_type": {
+      "type": "string",
+      "minLength": 1
+    },
+    "mapping_profile": {
+      "type": "string",
+      "minLength": 1
     },
     "kind": {
       "type": "string",
@@ -94,7 +103,9 @@
     }
   },
   "required": [
-    "scenario",
+    "tool",
+    "log_type",
+    "mapping_profile",
     "kind",
     "class_uid",
     "activity",
@@ -130,5 +141,5 @@
       }
     }
   ],
-  "description": "Core follow-up: scenario lookup, alias mapping, text parsing, time/severity conversion and NormalizeFailure creation. Empty optional list uses []."
+  "description": "Core follow-up: source tool and log type resolve to one mapping profile, then alias mapping, text parsing, time/severity conversion and NormalizeFailure creation. Empty optional list uses []."
 }

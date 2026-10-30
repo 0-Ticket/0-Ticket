@@ -15,8 +15,9 @@
       "type": "string",
       "pattern": "^src_"
     },
-    "scenario": {
-      "type": "string"
+    "mapping_profile": {
+      "type": "string",
+      "minLength": 1
     },
     "raw_ids": {
       "type": "array",
@@ -33,7 +34,7 @@
   "required": [
     "kind",
     "source_record_id",
-    "scenario",
+    "mapping_profile",
     "raw_ids",
     "fields"
   ],

@@ -3,7 +3,7 @@
 export interface SiemAlert {
   kind: 'alert' | 'event';
   source_record_id: string;
-  scenario: string;
+  mapping_profile: string;
   raw_ids: string[];
   fields: {
     [k: string]: unknown;

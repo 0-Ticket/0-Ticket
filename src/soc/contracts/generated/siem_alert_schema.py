@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, StrictStr, constr
+from pydantic import BaseModel, ConfigDict, constr
 
 
 class SiemAlert(BaseModel):
@@ -13,6 +13,6 @@ class SiemAlert(BaseModel):
     )
     kind: Literal["alert", "event"]
     source_record_id: constr(pattern=r"^src_", strict=True)
-    scenario: StrictStr
+    mapping_profile: constr(min_length=1, strict=True)
     raw_ids: list[constr(pattern=r"^raw_", strict=True)]
     fields: dict[str, Any]

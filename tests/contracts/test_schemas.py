@@ -91,6 +91,25 @@ def test_field_constraints(name, field, bad):
     assert not validator(name).is_valid(fixture(name) | {field: bad})
 
 
+@pytest.mark.parametrize(
+    "name,field",
+    [
+        ("siem_alert", "mapping_profile"),
+        ("alias_table", "tool"),
+        ("alias_table", "log_type"),
+        ("alias_table", "mapping_profile"),
+        ("normalize_failure", "mapping_profile"),
+    ],
+)
+def test_mapping_selectors_are_non_empty(name, field):
+    assert not validator(name).is_valid(fixture(name) | {field: ""})
+
+
+def test_normalize_failure_keeps_legacy_reason_for_stored_records():
+    schema = schemas()["normalize_failure.schema.json"]
+    assert "unknown_scenario" in schema["properties"]["reason"]["enum"]
+
+
 REGISTERED = {
     "raw_record": ["source_type"],
     "ticket": ["handling_type", "specialist"],

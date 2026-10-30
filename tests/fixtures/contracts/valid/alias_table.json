@@ -1,5 +1,7 @@
 {
-  "scenario": "sample",
+  "tool": "test_web",
+  "log_type": "alert",
+  "mapping_profile": "sample",
   "kind": "alert",
   "class_uid": 2004,
   "activity": null,

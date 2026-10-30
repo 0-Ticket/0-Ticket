@@ -19,7 +19,9 @@ class AliasTable(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    scenario: StrictStr
+    tool: constr(min_length=1, strict=True)
+    log_type: constr(min_length=1, strict=True)
+    mapping_profile: constr(min_length=1, strict=True)
     kind: Literal["alert", "event"]
     class_uid: StrictInt | None
     activity: StrictStr | None

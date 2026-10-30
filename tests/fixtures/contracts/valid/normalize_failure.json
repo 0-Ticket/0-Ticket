@@ -1,5 +1,5 @@
 {
-  "scenario": "sample",
+  "mapping_profile": "sample",
   "raw_ids": [],
   "reason": "bad_value",
   "missing_fields": [],
