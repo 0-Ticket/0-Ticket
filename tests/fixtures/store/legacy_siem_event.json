@@ -1,0 +1,7 @@
+{
+  "kind": "event",
+  "source_record_id": "src_03e4d45594e708f491d516cf4f5e2fdf9d6cbd76550dc65bb33d03a25555e363",
+  "scenario": "legacy_profile",
+  "raw_ids": ["raw_legacy_event_1"],
+  "fields": {"message": "legacy event"}
+}

@@ -1,5 +1,6 @@
 {
   "kind": "alert",
+  "source_record_id": "src_5a214ca80f13915b5b2519f0b16bd84654207b0d4d7d91d10fb0d7df688226c0",
   "scenario": "legacy_profile",
   "raw_ids": ["raw_legacy_1"],
   "fields": {"message": "legacy"}

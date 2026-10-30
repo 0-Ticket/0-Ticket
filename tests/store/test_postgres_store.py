@@ -125,22 +125,28 @@ def _legacy_source_id(content):
     return "src_" + hashlib.sha256(canonical).hexdigest()
 
 
-def test_legacy_source_records_read_as_mapping_profile_without_rewrite(conn):
+@pytest.mark.parametrize(
+    ("fixture_name", "kind"),
+    [("legacy_siem_alert.json", "alert"), ("legacy_siem_event.json", "event")],
+)
+def test_legacy_source_records_read_as_mapping_profile_without_rewrite(conn, fixture_name, kind):
     legacy = json.loads(
-        (Path(__file__).resolve().parents[1] / "fixtures/store/legacy_siem_alert.json").read_text(
+        (Path(__file__).resolve().parents[1] / "fixtures/store" / fixture_name).read_text(
             encoding="utf-8"
         )
     )
     source_id = _legacy_source_id(legacy)
+    assert legacy["source_record_id"] == source_id
     conn.execute(
         "INSERT INTO source_records (source_record_id, kind, content, ingested_at)"
-        " VALUES (%s, 'alert', %s::json, %s)",
-        (source_id, json.dumps(legacy), 1791849600000),
+        " VALUES (%s, %s, %s::json, %s)",
+        (source_id, kind, json.dumps(legacy), 1791849600000),
     )
 
     store = PostgresRecordStore(conn, 0, Clock())
     fetched = store.get_source_record(source_id)
-    [listed] = store.list_source_records("alert", None, 10)
+    [listed] = store.list_source_records(kind, None, 10)
+    assert fetched.kind == kind
     assert fetched.mapping_profile == "legacy_profile"
     assert listed.record.mapping_profile == "legacy_profile"
     assert fetched.source_record_id == listed.record.source_record_id == source_id
