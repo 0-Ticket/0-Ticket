@@ -1,4 +1,5 @@
 import json
+from http.client import BadStatusLine
 from io import BytesIO
 from urllib.error import HTTPError, URLError
 
@@ -68,11 +69,12 @@ def test_ollama_embedder_does_not_expose_provider_response_on_failure(monkeypatc
     assert "private endpoint detail" not in str(caught.value)
 
 
-def test_ollama_embedder_reports_http_status_without_exposing_response(monkeypatch):
+@pytest.mark.parametrize("status", [404, 500])
+def test_ollama_embedder_reports_http_status_without_exposing_response(monkeypatch, status):
     response_body = BytesIO(b"private server response")
     error = HTTPError(
         "http://localhost:11434/api/embed",
-        404,
+        status,
         "private server detail",
         {},
         response_body,
@@ -87,9 +89,23 @@ def test_ollama_embedder_reports_http_status_without_exposing_response(monkeypat
     with pytest.raises(EmbeddingError) as caught:
         embedder.embed("text")
 
-    assert str(caught.value) == "embedder_http_404"
+    assert str(caught.value) == f"embedder_http_{status}"
     assert "private" not in str(caught.value)
     assert response_body.closed
+
+
+def test_ollama_embedder_does_not_expose_bad_http_status_line(monkeypatch):
+    monkeypatch.setattr(
+        "soc.store.embedders.ollama.urlopen",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(BadStatusLine("private status detail")),
+    )
+    embedder = OllamaEmbedder("http://localhost:11434", "bge-m3", 3)
+
+    with pytest.raises(EmbeddingError) as caught:
+        embedder.embed("text")
+
+    assert str(caught.value) == "embedder_unavailable"
+    assert "private status detail" not in str(caught.value)
 
 
 @pytest.mark.parametrize(

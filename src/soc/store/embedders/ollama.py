@@ -3,6 +3,7 @@
 import json
 import math
 from collections.abc import Mapping
+from http.client import HTTPException
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -54,7 +55,7 @@ class OllamaEmbedder:
             status = error.code
             error.close()
             raise EmbeddingError(f"embedder_http_{status}") from None
-        except (URLError, TimeoutError, OSError) as error:
+        except (URLError, TimeoutError, OSError, HTTPException) as error:
             code = "embedder_timeout" if _is_timeout(error) else "embedder_unavailable"
             raise EmbeddingError(code) from None
         except (UnicodeDecodeError, json.JSONDecodeError, TypeError, ValueError):
