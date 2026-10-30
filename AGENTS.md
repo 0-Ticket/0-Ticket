@@ -70,7 +70,7 @@
 - `docs/data-contracts.md`의 필드나 확장 지점 인터페이스를 말없이 바꾸기
 - 생성된 계약 코드(`src/soc/contracts/generated/`, `frontend/src/contracts/generated/`)를 직접 고치기
 - 코어 코드에 특정 구현체(SIEM, 모델, DB 이름 등)를 직접 박아 넣기
-- 비밀 값을 코드, 테스트, 로그, 커밋, PR에 쓰기. `.env` 커밋하기
+- 비밀 값을 코드, 테스트, 로그, 커밋, PR에 쓰기(최초 관리자 비밀번호 1회 출력은 예외, D-042). `.env` 커밋하기
 - 실제 기업 로그나 공개 데이터셋 원본을 커밋하기
 - `main` 브랜치에 직접 커밋하기
 - GitHub에 쓰기: `git push`, PR·이슈 생성, 댓글, 리뷰, 머지, `gh api`
