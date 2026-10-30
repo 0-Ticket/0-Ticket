@@ -159,7 +159,7 @@ flowchart TB
 | F4 | Case | 22 | |
 | F5 | 헌팅 결과, 룰 제안 | 23, 24 | v1 기준(L3가 룰 제안, 별도 룰 승인). 후속 이슈 |
 | F6 | 지표 대시보드 | 4, 10, 18 ~ 24 | D-026 |
-| F7 | SIEM 연결 설정 (`/settings/siem`, 관리자) | 3, 15 | D-043 ~ D-045, #138 |
+| F7 | SIEM 연결 설정 (`/settings/siem`, `admin`만 접근) | 3, 15 | D-043 ~ D-045, #138 |
 | 실제 API 연결 | 화면용 API(`src/soc/api/`) | 화면마다 관련 박스 | D-027 |
 
 각 박스의 확인 항목은 `tests/checklist.md`에 있다.
