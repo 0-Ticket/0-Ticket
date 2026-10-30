@@ -159,7 +159,12 @@ def _stored_alert_pair(records):
     sample = _json("store/alert_records.json")[0]
     alerts = []
     for alert_id in ("al_commit_target", "al_commit_duplicate"):
-        content = {"kind": "alert", "scenario": "commit_test", "raw_ids": [], "fields": {}}
+        content = {
+            "kind": "alert",
+            "mapping_profile": "commit_test",
+            "raw_ids": [],
+            "fields": {},
+        }
         content["fields"]["alert"] = alert_id
         source = validate_contract(
             "SiemAlert", {**content, "source_record_id": source_record_id(content)}

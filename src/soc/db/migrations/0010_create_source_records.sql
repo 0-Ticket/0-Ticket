@@ -1,6 +1,7 @@
 -- Boxes 6, 7 (#50): C2 SiemAlert as it came from the SIEM connector. Never updated.
--- content holds kind, source_record_id, scenario, raw_ids and fields. It is json,
--- not jsonb, so the text is kept as written, \u0000 included.
+-- Current content holds kind, source_record_id, mapping_profile, raw_ids and fields.
+-- Older immutable rows may still use scenario. It is json, not jsonb, so the
+-- text is kept as written, \u0000 included.
 CREATE TABLE source_records (
     source_record_id text PRIMARY KEY CHECK (source_record_id LIKE 'src\_%'),
     kind text NOT NULL CHECK (kind IN ('alert', 'event')),

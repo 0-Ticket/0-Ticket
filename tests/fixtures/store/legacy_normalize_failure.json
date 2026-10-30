@@ -1,0 +1,8 @@
+{
+  "scenario": "legacy_profile",
+  "raw_ids": ["raw_legacy_1"],
+  "reason": "unknown_scenario",
+  "missing_fields": [],
+  "detail": "no alias table",
+  "failed_at": 1791849600000
+}

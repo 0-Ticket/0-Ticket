@@ -1,0 +1,6 @@
+{
+  "kind": "alert",
+  "scenario": "legacy_profile",
+  "raw_ids": ["raw_legacy_1"],
+  "fields": {"message": "legacy"}
+}

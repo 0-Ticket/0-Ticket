@@ -56,6 +56,16 @@ def _validate_stored_record(contract: str, record):
     return validate_contract(contract, record)
 
 
+def _with_mapping_profile(record):
+    """Expose legacy scenario-keyed C2/C12 rows through the current field name."""
+    if isinstance(record, Mapping) and "mapping_profile" not in record and "scenario" in record:
+        return {
+            **{key: value for key, value in record.items() if key != "scenario"},
+            "mapping_profile": record["scenario"],
+        }
+    return record
+
+
 # Per normalized kind: table, ID column, contract name.
 _TABLES = {
     "alert": ("alert_records", "alert_id", "AlertRecord"),
@@ -109,7 +119,7 @@ class PostgresRecordStore:
         row = self._one(
             "SELECT content FROM source_records WHERE source_record_id = %s", (source_record_id,)
         )
-        return validate_contract("SiemAlert", row[0]) if row else None
+        return validate_contract("SiemAlert", _with_mapping_profile(row[0])) if row else None
 
     def list_source_records(
         self, kind: Literal["alert", "event"], after_seq: int | None, limit: int
@@ -121,7 +131,9 @@ class PostgresRecordStore:
             (kind, after_seq or 0, limit),
         )
         return tuple(
-            StoredSource(seq, ingested_at, validate_contract("SiemAlert", content))
+            StoredSource(
+                seq, ingested_at, validate_contract("SiemAlert", _with_mapping_profile(content))
+            )
             for seq, ingested_at, content in rows
         )
 
@@ -268,7 +280,7 @@ class PostgresRecordStore:
             "SELECT record FROM normalize_failures WHERE source_record_id = %s",
             (source_record_id,),
         )
-        return validate_contract("NormalizeFailure", row[0]) if row else None
+        return validate_contract("NormalizeFailure", _with_mapping_profile(row[0])) if row else None
 
     # Entity branching (box 25)
 

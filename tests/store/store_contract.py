@@ -42,8 +42,8 @@ def load_event_records():
     return [validate_contract("EventRecord", item) for item in data]
 
 
-def c2(kind, scenario, fields):
-    content = {"kind": kind, "scenario": scenario, "raw_ids": [], "fields": fields}
+def c2(kind, mapping_profile, fields):
+    content = {"kind": kind, "mapping_profile": mapping_profile, "raw_ids": [], "fields": fields}
     return validate_contract(
         "SiemAlert", {**content, "source_record_id": source_record_id(content)}
     )
@@ -53,7 +53,7 @@ def failure(reason="unknown_scenario", raw_ids=("raw_suricata_eve.jsonl_1",)):
     return validate_contract(
         "NormalizeFailure",
         {
-            "scenario": "ait_suricata_alert",
+            "mapping_profile": "ait_suricata_alert",
             "raw_ids": list(raw_ids),
             "reason": reason,
             "missing_fields": [],

@@ -4,6 +4,7 @@ Marked `db`: needs PostgreSQL through DATABASE_URL (`docker compose up -d`), and
 runs in CI against the service container with `uv run pytest -m db`.
 """
 
+import hashlib
 import json
 import os
 import uuid
@@ -111,6 +112,75 @@ def test_legacy_event_record_reads_with_null_http_bytes(conn):
     if isinstance(persisted, str):
         persisted = json.loads(persisted)
     assert "http_bytes" not in persisted
+
+
+def _legacy_source_id(content):
+    canonical = json.dumps(
+        {key: content[key] for key in ("kind", "scenario", "raw_ids", "fields")},
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+        allow_nan=False,
+    ).encode("utf-8")
+    return "src_" + hashlib.sha256(canonical).hexdigest()
+
+
+def test_legacy_source_records_read_as_mapping_profile_without_rewrite(conn):
+    legacy = json.loads(
+        (Path(__file__).resolve().parents[1] / "fixtures/store/legacy_siem_alert.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    source_id = _legacy_source_id(legacy)
+    conn.execute(
+        "INSERT INTO source_records (source_record_id, kind, content, ingested_at)"
+        " VALUES (%s, 'alert', %s::json, %s)",
+        (source_id, json.dumps(legacy), 1791849600000),
+    )
+
+    store = PostgresRecordStore(conn, 0, Clock())
+    fetched = store.get_source_record(source_id)
+    [listed] = store.list_source_records("alert", None, 10)
+    assert fetched.mapping_profile == "legacy_profile"
+    assert listed.record.mapping_profile == "legacy_profile"
+    assert fetched.source_record_id == listed.record.source_record_id == source_id
+    duplicate = store.save_source_records([fetched], "legacy", None)
+    assert (duplicate.inserted, duplicate.duplicates) == (0, 1)
+
+    persisted = conn.execute(
+        "SELECT content FROM source_records WHERE source_record_id = %s", (source_id,)
+    ).fetchone()[0]
+    if isinstance(persisted, str):
+        persisted = json.loads(persisted)
+    assert persisted == legacy
+
+
+def test_legacy_normalize_failure_reads_as_mapping_profile_without_rewrite(conn):
+    root = Path(__file__).resolve().parents[1] / "fixtures/store"
+    source = json.loads((root / "legacy_siem_alert.json").read_text(encoding="utf-8"))
+    failure = json.loads((root / "legacy_normalize_failure.json").read_text(encoding="utf-8"))
+    source_id = _legacy_source_id(source)
+    conn.execute(
+        "INSERT INTO source_records (source_record_id, kind, content, ingested_at)"
+        " VALUES (%s, 'alert', %s::json, %s)",
+        (source_id, json.dumps(source), 1791849600000),
+    )
+    conn.execute(
+        "INSERT INTO normalize_failures (source_record_id, source_kind, reason, failed_at, record)"
+        " VALUES (%s, 'alert', %s, %s, %s::json)",
+        (source_id, failure["reason"], failure["failed_at"], json.dumps(failure)),
+    )
+
+    store = PostgresRecordStore(conn, 0, Clock())
+    fetched = store.get_normalize_failure(source_id)
+    assert fetched.mapping_profile == "legacy_profile"
+    assert fetched.reason == "unknown_scenario"
+    persisted = conn.execute(
+        "SELECT record FROM normalize_failures WHERE source_record_id = %s", (source_id,)
+    ).fetchone()[0]
+    if isinstance(persisted, str):
+        persisted = json.loads(persisted)
+    assert persisted == failure
 
 
 @pytest.mark.parametrize("table", ["alert_records", "event_records"])
