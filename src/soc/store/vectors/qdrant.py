@@ -5,7 +5,7 @@ import uuid
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from httpx import TransportError
+from httpx import NetworkError, TimeoutException
 from qdrant_client import QdrantClient, models
 from qdrant_client.http.exceptions import ResponseHandlingException, UnexpectedResponse
 
@@ -24,14 +24,16 @@ _SCROLL_PAGE_SIZE = 256
 
 
 def _transient_dependency_error(error: Exception) -> BaseException | None:
-    if isinstance(error, TransportError):
+    if isinstance(error, (NetworkError, TimeoutException)):
         return error
     if isinstance(error, UnexpectedResponse) and (
         error.status_code == 429
         or (error.status_code is not None and 500 <= error.status_code <= 599)
     ):
         return error
-    if isinstance(error, ResponseHandlingException) and isinstance(error.source, TransportError):
+    if isinstance(error, ResponseHandlingException) and isinstance(
+        error.source, (NetworkError, TimeoutException)
+    ):
         return error.source
     return None
 

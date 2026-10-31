@@ -101,7 +101,7 @@ model = "my-larger-model"
 | 헌팅 쿼리 | 23 | (파일) | 기본 기준선 쿼리 | 자사 환경 기준선 |
 | 룰 변환 대상 | 24 | `rule_targets` | 연결된 SIEM 어댑터를 따름 | 다른 SIEM 쿼리 언어 |
 
-`vector_stores` 어댑터는 인식된 일시적 종속 서비스 실패를 공통 `VectorStoreUnavailableError`로 알린다. Qdrant에서는 전송·연결·시간 초과와 HTTP 5xx·429 응답만 이 유형으로 바꾼다. 잘못된 URL, 인증·권한 거부, 컬렉션 설정·스키마 불일치, 레지스트리 오류와 프로그래밍 오류는 원래 예외를 유지한다.
+`vector_stores` 어댑터는 인식된 일시적 종속 서비스 실패를 공통 `VectorStoreUnavailableError`로 알린다. Qdrant에서는 네트워크 연결·시간 초과와 HTTP 5xx·429 응답만 이 유형으로 바꾼다. 잘못된 URL이나 프로토콜, 인증·권한 거부, 컬렉션 설정·스키마 불일치, 레지스트리 오류와 프로그래밍 오류는 원래 예외를 유지한다.
 
 Qdrant 클라이언트를 연 뒤 어댑터 생성이나 컬렉션 준비에 실패하면 획득한 리소스를 한 번 닫는다. 정리가 성공하면 원래 초기화 예외(일시적 실패는 `VectorStoreUnavailableError`)를 다시 던진다. 정리도 실패하면 별도 유형인 `VectorStoreInitializationCleanupError`를 던진다. 이 유형은 가용성 오류가 아니므로 호출자가 가용성 오류로 재시도하지 않게 한다. `VectorTicketService.from_settings`도 저장소를 연 뒤 임베더 생성이나 서비스 생성에 실패하면 같은 정리 규칙을 적용한다.
 

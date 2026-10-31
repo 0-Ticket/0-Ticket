@@ -173,6 +173,19 @@ def test_invalid_url_error_from_qdrant_client_construction_is_not_mapped(monkeyp
     assert not isinstance(raised.value, VectorStoreUnavailableError)
 
 
+def test_unsupported_protocol_error_is_not_mapped(monkeypatch):
+    error = httpx.UnsupportedProtocol(f"unsupported URL scheme at {_ADDRESS}; {_SECRET}")
+    client = FakeQdrantClient(errors={"collection_exists": error})
+    monkeypatch.setattr("soc.store.vectors.qdrant.QdrantClient", lambda **kwargs: client)
+
+    with pytest.raises(httpx.UnsupportedProtocol) as raised:
+        create_qdrant_vector_store(settings())
+
+    assert raised.value is error
+    assert not isinstance(raised.value, VectorStoreUnavailableError)
+    assert client.calls.count("close") == 1
+
+
 def test_transient_runtime_qdrant_call_is_mapped_to_backend_neutral_error():
     error = unexpected_response(502)
     client = FakeQdrantClient(errors={"query_points": error})
