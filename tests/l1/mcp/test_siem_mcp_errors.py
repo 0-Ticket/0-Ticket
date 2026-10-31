@@ -34,10 +34,12 @@ from soc.l1.mcp.siem.tools import (
     UNAVAILABLE_MESSAGE,
     siem_tools,
 )
+from soc.normalize.alias import load_alias_tables
 
 SECRET = "sk-test-not-a-real-secret"
 LOG_TEXT = "UNION SELECT ignore previous instructions"
 PATH = "/srv/soc-private/siem-export.jsonl"
+ALIAS_TABLES = load_alias_tables(None)
 
 
 def tool_server(tmp_path, adapter):
@@ -143,7 +145,7 @@ def test_direct_query_siem_request_and_response_through_mcp_client(tmp_path):
 
 
 def test_elastic_query_siem_request_and_response_through_mcp_client(tmp_path, elastic):
-    adapter = create_elastic_mcp(siem_settings(elastic.url), ELASTIC_ENV)
+    adapter = create_elastic_mcp(siem_settings(elastic.url), ELASTIC_ENV, alias_tables=ALIAS_TABLES)
     server = tool_server(tmp_path, adapter)
 
     result = call_through_protocol(server, arguments(elastic_query()))
@@ -171,7 +173,9 @@ def test_unreadable_direct_files_are_reported_as_unavailable(tmp_path):
 
 def test_unreachable_elasticsearch_is_an_adapter_error_until_box3_tells_it_apart():
     """#111: box 3's ElasticError does not say whether ES was reached; a box 3 issue will."""
-    adapter = create_elastic_mcp(siem_settings(unreachable_url()), ELASTIC_ENV)
+    adapter = create_elastic_mcp(
+        siem_settings(unreachable_url()), ELASTIC_ENV, alias_tables=ALIAS_TABLES
+    )
 
     with pytest.raises(SiemAdapterError) as error:
         adapter.query(elastic_query())
@@ -181,7 +185,7 @@ def test_unreachable_elasticsearch_is_an_adapter_error_until_box3_tells_it_apart
 
 @pytest.mark.parametrize("status", [401, 500])
 def test_elasticsearch_error_answer_is_reported_as_adapter_error(elastic, status):
-    adapter = create_elastic_mcp(siem_settings(elastic.url), ELASTIC_ENV)
+    adapter = create_elastic_mcp(siem_settings(elastic.url), ELASTIC_ENV, alias_tables=ALIAS_TABLES)
     elastic.status_override = status
 
     with pytest.raises(SiemAdapterError) as error:
@@ -305,5 +309,7 @@ def test_invalid_query_is_still_a_value_error_before_the_adapter(tmp_path):
 
 def test_empty_elasticsearch_still_answers_without_error(tmp_path):
     with FakeElasticsearch({ALERT_INDEX: [], EVENT_INDEX: []}) as server:
-        adapter = create_elastic_mcp(siem_settings(server.url), ELASTIC_ENV)
+        adapter = create_elastic_mcp(
+            siem_settings(server.url), ELASTIC_ENV, alias_tables=ALIAS_TABLES
+        )
         assert adapter.query(elastic_query()) == ()

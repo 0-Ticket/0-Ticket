@@ -164,6 +164,4 @@ def _configured_factory(
     )
 
 
-MAPPING_AWARE_DIRECT_MCP_FACTORY = MappingAwareFactory(
-    create_direct_mcp, _mapping_selections, _configured_factory
-)
+MAPPING_AWARE_DIRECT_MCP_FACTORY = MappingAwareFactory(_mapping_selections, _configured_factory)

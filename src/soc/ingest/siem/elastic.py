@@ -51,7 +51,6 @@ from soc.normalize.alias import (
     CompiledAliasTable,
     MappingAwareFactory,
     MappingSelection,
-    load_alias_tables,
     mapping_profile_for,
 )
 
@@ -310,22 +309,32 @@ class ElasticSiemConnector:
         client: ElasticClient,
         settings: ElasticSiemSettings,
         *,
-        alias_tables: Mapping[str, CompiledAliasTable] | None = None,
+        alias_tables: Mapping[str, CompiledAliasTable],
     ):
         self._client = client
-        tables = load_alias_tables(None) if alias_tables is None else alias_tables
         self._sources = (
             _Source(
                 "alert",
                 settings.alert_index,
-                mapping_profile_for(tables, settings.alert_tool, settings.alert_log_type, "alert"),
+                mapping_profile_for(
+                    alias_tables, settings.alert_tool, settings.alert_log_type, "alert"
+                ),
             ),
             _Source(
                 "event",
                 settings.event_index,
-                mapping_profile_for(tables, settings.event_tool, settings.event_log_type, "event"),
+                mapping_profile_for(
+                    alias_tables, settings.event_tool, settings.event_log_type, "event"
+                ),
             ),
         )
+
+    def mapping_profile_for_kind(self, kind: str) -> str:
+        """Return the mapping profile already resolved for one configured source kind."""
+        for source in self._sources:
+            if source.kind == kind:
+                return source.mapping_profile
+        raise KeyError(kind)
 
     def fetch(self, cursor: str | None, limit: int) -> FetchBatch:
         if limit < 1:
@@ -407,7 +416,7 @@ def create_elastic(
     settings: SiemSettings,
     environ: Mapping[str, str],
     *,
-    alias_tables: Mapping[str, CompiledAliasTable] | None = None,
+    alias_tables: Mapping[str, CompiledAliasTable],
 ) -> ElasticSiemConnector:
     """Factory registered as ``elastic``. The API key comes from ``siem.token_env``."""
     return ElasticSiemConnector(
@@ -430,9 +439,7 @@ def _configured_factory(
     return create_elastic(settings.siem, environ, alias_tables=tables)
 
 
-MAPPING_AWARE_ELASTIC_FACTORY = MappingAwareFactory(
-    create_elastic, _mapping_selections, _configured_factory
-)
+MAPPING_AWARE_ELASTIC_FACTORY = MappingAwareFactory(_mapping_selections, _configured_factory)
 
 
 def open_client(settings: SiemSettings, environ: Mapping[str, str]) -> ElasticClient:

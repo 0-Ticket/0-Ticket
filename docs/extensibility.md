@@ -152,7 +152,7 @@ web_specialist = ["query_records", "get_alert", "query_http_flow"]
 
 ### 새 SIEM 붙이기
 
-1. `src/soc/ingest/siem/base.py`의 커넥터 인터페이스를 구현한다. 그 SIEM에서 알럿·이벤트를 가져와 C2 SiemAlert 내용(`kind`, `mapping_profile`, `raw_ids`, `fields`)을 내보내면 된다. 선택형 `mapping_selections` metadata를 제공하면 코어가 커넥터를 만들기 전에 C20 프로필을 검사한다. metadata가 없는 기존 플러그인은 이전 factory 호출을 그대로 쓴다. 어댑터는 `source_record_id` 없이 C2 내용을 돌려주고, 코어가 ID를 붙인다(넣어 보내면 거부된다). `tests/ingest/adapter_contract.py`의 공통 계약 테스트를 통과해야 한다. 같은 SIEM용 SIEM MCP 어댑터(읽기 전용)도 함께 만든다.
+1. `src/soc/ingest/siem/base.py`의 커넥터 인터페이스를 구현한다. 그 SIEM에서 알럿·이벤트를 가져와 C2 SiemAlert 내용(`kind`, `mapping_profile`, `raw_ids`, `fields`)을 내보내면 된다. C20 프로필을 사전 검사할 플러그인은 `mapping_selections()`와 `create_with_alias_tables()`를 제공하는 매핑 인식 wrapper를 쓴다. 코어는 selector를 검사한 뒤 설정된 표를 wrapper에 넘겨 생성한다. 이 wrapper는 일반 factory callable 경로를 제공하지 않는다. 일반 플러그인은 selector metadata 없이도 `factory(siem_settings, environ)` callable을 등록해 기존 생성 경로를 계속 쓸 수 있다. 어댑터는 `source_record_id` 없이 C2 내용을 돌려주고, 코어가 ID를 붙인다(넣어 보내면 거부된다). `tests/ingest/adapter_contract.py`의 공통 계약 테스트를 통과해야 한다. 같은 SIEM용 SIEM MCP 어댑터(읽기 전용)도 함께 만든다.
 2. 레포에 기여하면 같은 폴더에 두고, 사내 전용이면 별도 패키지로 만들어 `zero_ticket_soc.siem` entry point로 등록한다.
 3. 설정의 `[siem] adapter`를 새 이름으로 바꾼다. 한 번에 하나의 SIEM만 연결한다.
 4. 그 SIEM의 소스별 `tool`·`log_type` 쌍과 C20 매핑 프로필을 추가한다(박스 4).

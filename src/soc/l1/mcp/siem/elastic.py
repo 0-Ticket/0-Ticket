@@ -50,8 +50,6 @@ from soc.normalize.alias import (
     CompiledAliasTable,
     MappingAwareFactory,
     MappingSelection,
-    load_alias_tables,
-    mapping_profile_for,
 )
 
 logger = logging.getLogger(__name__)
@@ -140,27 +138,19 @@ class ElasticSiemMcp:
         client: ElasticClient,
         settings: ElasticSiemSettings,
         *,
-        alias_tables: Mapping[str, CompiledAliasTable] | None = None,
+        alias_tables: Mapping[str, CompiledAliasTable],
     ):
         self._client = client
         self._indices = {"alert": settings.alert_index, "event": settings.event_index}
-        tables = load_alias_tables(None) if alias_tables is None else alias_tables
-        self._profiles = {
-            "alert": mapping_profile_for(
-                tables, settings.alert_tool, settings.alert_log_type, "alert"
-            ),
-            "event": mapping_profile_for(
-                tables, settings.event_tool, settings.event_log_type, "event"
-            ),
-        }
         # Health is the connector's check: the same two indices, the same probe.
-        self._connector = ElasticSiemConnector(client, settings, alias_tables=tables)
+        self._connector = ElasticSiemConnector(client, settings, alias_tables=alias_tables)
 
     def query(self, query: SiemQuery) -> tuple[Mapping[str, Any], ...]:
         body = search_body(query)
         if body is None:
             return ()
         index = self._indices[query.kind]
+        mapping_profile = self._connector.mapping_profile_for_kind(query.kind)
         try:
             answer = self._client.search(index, body)
             hits = search_hits(answer)
@@ -175,7 +165,7 @@ class ElasticSiemMcp:
                 reasons.append("is not an object")
                 continue
             try:
-                records.append(hit_to_c2(hit, query.kind, self._profiles[query.kind]))
+                records.append(hit_to_c2(hit, query.kind, mapping_profile))
             except UnusableHitError as reason:
                 reasons.append(str(reason))
         if reasons:
@@ -195,7 +185,7 @@ def create_elastic_mcp(
     settings: SiemSettings,
     environ: Mapping[str, str],
     *,
-    alias_tables: Mapping[str, CompiledAliasTable] | None = None,
+    alias_tables: Mapping[str, CompiledAliasTable],
 ) -> ElasticSiemMcp:
     """Factory registered as ``elastic``. The API key comes from ``siem.token_env``."""
     return ElasticSiemMcp(
@@ -218,6 +208,4 @@ def _configured_factory(
     return create_elastic_mcp(settings.siem, environ, alias_tables=tables)
 
 
-MAPPING_AWARE_ELASTIC_MCP_FACTORY = MappingAwareFactory(
-    create_elastic_mcp, _mapping_selections, _configured_factory
-)
+MAPPING_AWARE_ELASTIC_MCP_FACTORY = MappingAwareFactory(_mapping_selections, _configured_factory)

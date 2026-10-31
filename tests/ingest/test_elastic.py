@@ -2,6 +2,7 @@
 
 import base64
 import copy
+import inspect
 import json
 import logging
 from urllib.parse import unquote
@@ -24,14 +25,17 @@ from soc.ingest.siem.base import InvalidCursorError
 from soc.ingest.siem.elastic import (
     MUTABLE_ALERT_FIELDS,
     ElasticError,
+    ElasticSiemConnector,
     create_elastic,
     hit_to_c2,
 )
+from soc.normalize.alias import load_alias_tables
 
 ENV = {"SIEM_TOKEN": API_KEY}
 BIG = 10_000
 ATTACKER = "198.51.100.23"
 LOG_TEXT = "UNION SELECT"
+ALIAS_TABLES = load_alias_tables(None)
 
 
 def siem_settings(base_url: str):
@@ -58,7 +62,7 @@ def fake():
 
 @pytest.fixture
 def elastic(fake):
-    return create_elastic(siem_settings(fake.url), ENV)
+    return create_elastic(siem_settings(fake.url), ENV, alias_tables=ALIAS_TABLES)
 
 
 class TestElasticContract(AdapterContract):
@@ -68,7 +72,7 @@ class TestElasticContract(AdapterContract):
 
     @pytest.fixture
     def unhealthy_connector(self):
-        return create_elastic(siem_settings(unreachable_url()), ENV)
+        return create_elastic(siem_settings(unreachable_url()), ENV, alias_tables=ALIAS_TABLES)
 
     @pytest.fixture
     def forbidden_text(self):
@@ -138,7 +142,9 @@ def test_kibana_status_changes_do_not_change_the_source_record_id():
 def test_bad_hits_are_counted_as_skipped_without_logging_content(caplog):
     caplog.set_level(logging.DEBUG)
     with FakeElasticsearch(lab_indices(extra_events=load_hits("bad_hits.json"))) as fake:
-        batch = create_elastic(siem_settings(fake.url), ENV).fetch(None, BIG)
+        batch = create_elastic(siem_settings(fake.url), ENV, alias_tables=ALIAS_TABLES).fetch(
+            None, BIG
+        )
     assert batch.skipped == 2
     assert len(batch.items) == 8
     for text in ("192.0.2.90", "192.0.2.91", "'an'", "bad-array", "bad-conflict"):
@@ -149,7 +155,7 @@ def test_bad_hits_are_counted_as_skipped_without_logging_content(caplog):
 def test_skipped_hits_still_move_the_cursor():
     bad = load_hits("bad_hits.json")
     with FakeElasticsearch({ALERT_INDEX: [], EVENT_INDEX: bad}) as fake:
-        connector = create_elastic(siem_settings(fake.url), ENV)
+        connector = create_elastic(siem_settings(fake.url), ENV, alias_tables=ALIAS_TABLES)
         first = connector.fetch(None, 1)
         assert (first.items, first.skipped) == ((), 1)
         assert first.next_cursor is not None
@@ -260,7 +266,7 @@ def test_invalid_cursor_is_rejected(elastic, cursor):
 
 def test_missing_api_key_fails_at_start():
     with pytest.raises(MissingSecretError):
-        create_elastic(siem_settings("http://127.0.0.1:9200"), {})
+        create_elastic(siem_settings("http://127.0.0.1:9200"), {}, alias_tables=ALIAS_TABLES)
 
 
 @pytest.mark.parametrize(
@@ -268,7 +274,7 @@ def test_missing_api_key_fails_at_start():
 )
 def test_bad_base_url_is_a_config_error(base_url):
     with pytest.raises(ConfigError) as error:
-        create_elastic(siem_settings(base_url), ENV)
+        create_elastic(siem_settings(base_url), ENV, alias_tables=ALIAS_TABLES)
     assert "pw" not in str(error.value)
 
 
@@ -301,12 +307,20 @@ def test_index_name_with_path_characters_is_rejected(tmp_path, name):
 
 def test_elastic_is_chosen_by_setting_only(fake, tmp_path):
     factory = SIEM_CONNECTORS.get("elastic")
-    assert factory.factory is create_elastic
+    assert not callable(factory)
+    assert not hasattr(factory, "factory")
     assert factory.mapping_selections(siem_settings(fake.url))
     org = _org_file(tmp_path, f'[siem]\nadapter = "elastic"\nbase_url = "{fake.url}"\n')
     ingest = open_connector(load_config(org, environ={}), ENV)
     assert isinstance(ingest, SiemIngest)
     assert len(ingest.fetch(None).items) == 8
+
+
+def test_elastic_mapping_tables_are_required_keyword_only_arguments():
+    for factory in (ElasticSiemConnector, create_elastic):
+        parameter = inspect.signature(factory).parameters["alias_tables"]
+        assert parameter.kind is inspect.Parameter.KEYWORD_ONLY
+        assert parameter.default is inspect.Parameter.empty
 
 
 def test_unmapped_elastic_selector_fails_before_connector_factory():

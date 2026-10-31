@@ -4,6 +4,7 @@
 (D-037), so both read the same indices and give a document the same C2 ID.
 """
 
+import inspect
 import json
 import logging
 from pathlib import Path
@@ -24,11 +25,12 @@ from siem_mcp_contract import SiemMcpAdapterContract
 from soc.config import load_config
 from soc.contracts import Entity
 from soc.ingest.connector import open_connector, to_c2
-from soc.ingest.siem.elastic import MUTABLE_ALERT_FIELDS, create_elastic
+from soc.ingest.siem.elastic import MUTABLE_ALERT_FIELDS, ElasticSiemConnector, create_elastic
 from soc.l1.mcp import build_tool_server
 from soc.l1.mcp.siem import SIEM_MCP_ADAPTERS
 from soc.l1.mcp.siem.base import SiemQuery, to_c2_records
-from soc.l1.mcp.siem.elastic import create_elastic_mcp
+from soc.l1.mcp.siem.elastic import ElasticSiemMcp, create_elastic_mcp
+from soc.normalize.alias import load_alias_tables
 
 ROOT = Path(__file__).resolve().parents[3]
 DEMO_ELK = ROOT / "config" / "demo-elk" / "settings.toml"
@@ -41,6 +43,7 @@ BIG = 10_000
 WINDOW_START = to_ms("2026-10-21T01:01:00.000Z")
 WINDOW_END = to_ms("2026-10-21T01:01:40.000Z")
 DAY_END = to_ms("2026-10-22T00:00:00.000Z")
+ALIAS_TABLES = load_alias_tables(None)
 
 
 def siem_settings(base_url):
@@ -91,7 +94,7 @@ def fake():
 
 @pytest.fixture
 def mcp(fake):
-    return create_elastic_mcp(siem_settings(fake.url), ENV)
+    return create_elastic_mcp(siem_settings(fake.url), ENV, alias_tables=ALIAS_TABLES)
 
 
 class TestElasticSiemMcp(SiemMcpAdapterContract):
@@ -101,7 +104,7 @@ class TestElasticSiemMcp(SiemMcpAdapterContract):
 
     @pytest.fixture
     def unhealthy_adapter(self):
-        return create_elastic_mcp(siem_settings(unreachable_url()), ENV)
+        return create_elastic_mcp(siem_settings(unreachable_url()), ENV, alias_tables=ALIAS_TABLES)
 
     @pytest.fixture
     def forbidden_text(self):
@@ -115,12 +118,18 @@ class TestElasticSiemMcp(SiemMcpAdapterContract):
 def test_registered_as_elastic_like_the_connector():
     """One siem.adapter name selects the connector and the SIEM MCP (D-037)."""
     assert "elastic" in SIEM_MCP_ADAPTERS.names()
-    assert SIEM_MCP_ADAPTERS.get("elastic").factory is create_elastic_mcp
+    factory = SIEM_MCP_ADAPTERS.get("elastic")
+    assert not callable(factory)
+    assert not hasattr(factory, "factory")
 
 
 def test_query_and_ingest_give_the_same_source_record_id(fake, mcp):
     """The same document read at ingest (box 3) and through the SIEM MCP gets the same C2 ID."""
-    ingested = create_elastic(siem_settings(fake.url), ENV).fetch(None, BIG).items
+    ingested = (
+        create_elastic(siem_settings(fake.url), ENV, alias_tables=ALIAS_TABLES)
+        .fetch(None, BIG)
+        .items
+    )
     ingest_ids = {to_c2(item).source_record_id for item in ingested}
     alerts = to_c2_records(mcp.query(query()))
     events = to_c2_records(mcp.query(query(kind="event")))
@@ -267,7 +276,7 @@ def test_destination_ip_matches_too():
     hit = load_hits("event_hits.json")[0]
     hit["_source"]["destination"] = {"ip": "192.0.2.200"}
     with FakeElasticsearch({ALERT_INDEX: [], EVENT_INDEX: [hit]}) as server:
-        mcp = create_elastic_mcp(siem_settings(server.url), ENV)
+        mcp = create_elastic_mcp(siem_settings(server.url), ENV, alias_tables=ALIAS_TABLES)
         assert doc_ids(mcp.query(query("192.0.2.200", kind="event", start=0, end=DAY_END))) == [
             "ev-1"
         ]
@@ -282,12 +291,35 @@ def test_unusable_hits_are_skipped_and_only_counted(caplog):
     """bad_hits.json: one document gives source.address twice (192.0.2.90 and .91)."""
     hits = [*load_hits("bad_hits.json"), *load_hits("event_hits.json")]
     with FakeElasticsearch({ALERT_INDEX: [], EVENT_INDEX: hits}) as server:
-        mcp = create_elastic_mcp(siem_settings(server.url), ENV)
+        mcp = create_elastic_mcp(siem_settings(server.url), ENV, alias_tables=ALIAS_TABLES)
         with caplog.at_level(logging.WARNING):
             records = mcp.query(query("192.0.2.90", kind="event", start=0, end=DAY_END))
     assert records == ()
     assert "Skipped 1 Elasticsearch hit(s)" in caplog.text
     assert "192.0.2" not in caplog.text
+
+
+def test_elastic_mcp_mapping_tables_are_required_keyword_only_arguments():
+    for factory in (ElasticSiemConnector, create_elastic, ElasticSiemMcp, create_elastic_mcp):
+        parameter = inspect.signature(factory).parameters["alias_tables"]
+        assert parameter.kind is inspect.Parameter.KEYWORD_ONLY
+        assert parameter.default is inspect.Parameter.empty
+
+
+def test_query_reads_mapping_profile_from_connector_once_before_hits(mcp, monkeypatch):
+    original = getattr(ElasticSiemConnector, "mapping_profile_for_kind", None)
+    assert callable(original)
+    calls = []
+
+    def record_profile(connector, kind):
+        calls.append(kind)
+        return original(connector, kind)
+
+    monkeypatch.setattr(ElasticSiemConnector, "mapping_profile_for_kind", record_profile)
+    records = mcp.query(query("192.0.2.50", kind="event", start=0, end=DAY_END))
+    assert len(records) == 2
+    assert calls == ["event"]
+    assert not hasattr(mcp, "_profiles")
 
 
 def test_demo_elk_settings_build_the_tool_server(fake, tmp_path, monkeypatch):
@@ -331,7 +363,7 @@ def test_org_alias_selector_is_shared_by_ingest_and_mcp(fake, tmp_path, monkeypa
     settings_text = settings_text.replace(
         'alert_log_type = "security_alert"', 'alert_log_type = "edr_alert"'
     )
-    settings_text += f'\n[normalize]\nalias_dir = "{alias_dir}"\n'
+    settings_text += f'\n[normalize]\nalias_dir = "{alias_dir.as_posix()}"\n'
     org.write_text(settings_text, encoding="utf-8")
     settings = load_config(org, environ=ENV)
 

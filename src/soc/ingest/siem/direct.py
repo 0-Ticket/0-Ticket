@@ -215,6 +215,4 @@ def _configured_factory(
     return create_direct(settings.siem, environ, alias_tables=tables)
 
 
-MAPPING_AWARE_DIRECT_FACTORY = MappingAwareFactory(
-    create_direct, _mapping_selections, _configured_factory
-)
+MAPPING_AWARE_DIRECT_FACTORY = MappingAwareFactory(_mapping_selections, _configured_factory)

@@ -4,7 +4,9 @@ The default tables ship in ``soc/normalize/aliases/``. ``[normalize] alias_dir``
 names an organization folder; a ``<mapping_profile>.toml`` there replaces the default
 file of the same name whole (docs/extensibility.md 6). Every table is checked
 when loaded, so a broken table stops the run before any record is touched.
-Errors name the file and the key, never a value from it.
+Validation errors may name a field key and filename. Duplicate-pair diagnostics may also
+include the ``tool`` and ``log_type`` selector values and both filenames; other TOML values,
+raw-record values and secrets are never included.
 """
 
 import re
@@ -94,16 +96,10 @@ class MappingAwareFactory:
 
     The selector callback reads configuration only. ``configured_factory`` is
     called after the core validates those selectors against loaded C20 tables.
-    The ordinary callable remains available for integrations using the legacy
-    ``factory(siem_settings, environ)`` path.
     """
 
-    factory: Callable[[Any, Mapping[str, str]], Any]
     selectors: Callable[[Any], Sequence[MappingSelection]]
     configured_factory: Callable[[Any, Mapping[str, str], Mapping[str, CompiledAliasTable]], Any]
-
-    def __call__(self, settings: Any, environ: Mapping[str, str]) -> Any:
-        return self.factory(settings, environ)
 
     def mapping_selections(self, settings: Any) -> Sequence[MappingSelection]:
         return self.selectors(settings)
@@ -132,15 +128,18 @@ def load_alias_tables(org_dir: str | Path | None) -> dict[str, CompiledAliasTabl
             raise ConfigError(f"normalize.alias_dir is not a folder: {folder}")
         files_by_name.update({entry.name: entry for entry in folder.glob("*.toml")})
     tables = {}
+    pairs: dict[tuple[str, str], str] = {}
     for name, entry in sorted(files_by_name.items()):
         compiled = _load_file(name, entry.read_text(encoding="utf-8"))
-        tables[compiled.table.mapping_profile] = compiled
-    pairs: set[tuple[str, str]] = set()
-    for compiled in tables.values():
         pair = (compiled.table.tool, compiled.table.log_type)
-        if pair in pairs:
-            raise AliasTableError("C20: tool/log_type pair is already mapped")
-        pairs.add(pair)
+        first_name = pairs.get(pair)
+        if first_name is not None:
+            tool, log_type = pair
+            raise AliasTableError(
+                f"C20: tool={tool!r} log_type={log_type!r} is mapped by {first_name} and {name}"
+            )
+        pairs[pair] = name
+        tables[compiled.table.mapping_profile] = compiled
     return tables
 
 

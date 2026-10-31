@@ -122,5 +122,8 @@ def test_duplicate_tool_log_type_pair_is_rejected(tmp_path):
     second = VALID.replace('mapping_profile = "x_case"', 'mapping_profile = "y_case"')
     directory = write(tmp_path / "org", "x_case.toml", first)
     (directory / "y_case.toml").write_text(second, encoding="utf-8")
-    with pytest.raises(AliasTableError, match="pair is already mapped"):
+    with pytest.raises(AliasTableError) as error:
         load_alias_tables(directory)
+    message = str(error.value)
+    assert "test_web" in message and "alert" in message
+    assert "x_case.toml" in message and "y_case.toml" in message

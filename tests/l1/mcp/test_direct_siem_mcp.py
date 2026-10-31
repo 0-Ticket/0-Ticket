@@ -20,7 +20,7 @@ from soc.ingest.siem.direct import DirectSiemConnector
 from soc.l1.mcp import build_tool_server
 from soc.l1.mcp.siem import SIEM_MCP_ADAPTERS
 from soc.l1.mcp.siem.base import SiemQuery, to_c2_records
-from soc.l1.mcp.siem.direct import DirectSiemMcp, create_direct_mcp
+from soc.l1.mcp.siem.direct import DirectSiemMcp
 from soc.normalize.alias import load_alias_tables
 from soc.normalize.normalizer import Normalizer
 
@@ -127,7 +127,9 @@ class TestDirectSiemMcp(SiemMcpAdapterContract):
 
 def test_direct_is_registered_for_siem_mcp():
     assert "direct" in SIEM_MCP_ADAPTERS.names()
-    assert SIEM_MCP_ADAPTERS.get("direct").factory is create_direct_mcp
+    factory = SIEM_MCP_ADAPTERS.get("direct")
+    assert not callable(factory)
+    assert not hasattr(factory, "factory")
 
 
 def test_query_and_ingest_give_the_same_source_record_id():
@@ -244,11 +246,11 @@ def test_registered_direct_mcp_uses_the_configured_org_alias_dir(tmp_path, monke
     org.write_text(
         '[siem]\nadapter = "direct"\n\n'
         "[[siem.direct.files]]\n"
-        f'path = "{OWN / "records.jsonl"}"\n'
+        f'path = "{(OWN / "records.jsonl").as_posix()}"\n'
         'kind = "alert"\ntool = "test_web"\n'
         'log_type = "security_alert"\nsource_type = "web"\nformat = "jsonl"\n\n'
         "[normalize]\n"
-        f'alias_dir = "{OWN / "aliases"}"\n\n'
+        f'alias_dir = "{(OWN / "aliases").as_posix()}"\n\n'
         '[mcp.allowed_tools]\nl1 = ["query_siem"]\n',
         encoding="utf-8",
     )
