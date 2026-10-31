@@ -1,6 +1,7 @@
 import json
+from http.client import BadStatusLine
 from io import BytesIO
-from urllib.error import URLError
+from urllib.error import HTTPError, URLError
 
 import pytest
 
@@ -66,6 +67,66 @@ def test_ollama_embedder_does_not_expose_provider_response_on_failure(monkeypatc
 
     assert str(caught.value) == "embedder_unavailable"
     assert "private endpoint detail" not in str(caught.value)
+
+
+@pytest.mark.parametrize("status", [404, 500])
+def test_ollama_embedder_reports_http_status_without_exposing_response(monkeypatch, status):
+    response_body = BytesIO(b"private server response")
+    error = HTTPError(
+        "http://localhost:11434/api/embed",
+        status,
+        "private server detail",
+        {},
+        response_body,
+    )
+
+    def raise_http_error(*_args, **_kwargs):
+        raise error
+
+    monkeypatch.setattr("soc.store.embedders.ollama.urlopen", raise_http_error)
+    embedder = OllamaEmbedder("http://localhost:11434", "bge-m3", 3)
+
+    with pytest.raises(EmbeddingError) as caught:
+        embedder.embed("text")
+
+    assert str(caught.value) == f"embedder_http_{status}"
+    assert "private" not in str(caught.value)
+    assert response_body.closed
+
+
+def test_ollama_embedder_does_not_expose_bad_http_status_line(monkeypatch):
+    monkeypatch.setattr(
+        "soc.store.embedders.ollama.urlopen",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(BadStatusLine("private status detail")),
+    )
+    embedder = OllamaEmbedder("http://localhost:11434", "bge-m3", 3)
+
+    with pytest.raises(EmbeddingError) as caught:
+        embedder.embed("text")
+
+    assert str(caught.value) == "embedder_unavailable"
+    assert "private status detail" not in str(caught.value)
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        TimeoutError("private timeout detail"),
+        URLError(TimeoutError("private timeout detail")),
+    ],
+)
+def test_ollama_embedder_reports_timeout_without_exposing_details(monkeypatch, error):
+    def raise_timeout(*_args, **_kwargs):
+        raise error
+
+    monkeypatch.setattr("soc.store.embedders.ollama.urlopen", raise_timeout)
+    embedder = OllamaEmbedder("http://localhost:11434", "bge-m3", 3)
+
+    with pytest.raises(EmbeddingError) as caught:
+        embedder.embed("text")
+
+    assert str(caught.value) == "embedder_timeout"
+    assert "private timeout detail" not in str(caught.value)
 
 
 def test_fake_embedder_replaces_configured_default():

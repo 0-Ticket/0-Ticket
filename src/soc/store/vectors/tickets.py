@@ -89,11 +89,16 @@ class VectorTicketService:
         vector_registry: PluginRegistry | None = None,
         embedder_registry: PluginRegistry | None = None,
     ) -> "VectorTicketService":
-        return cls(
-            open_vector_store(settings, registry=vector_registry),
-            open_embedder(settings, registry=embedder_registry),
-            settings,
-        )
+        store = open_vector_store(settings, registry=vector_registry)
+        try:
+            embedder = open_embedder(settings, registry=embedder_registry)
+        except BaseException as error:
+            try:
+                store.close()
+            except Exception as close_error:
+                error.add_note(f"VectorStore cleanup failed ({type(close_error).__name__})")
+            raise
+        return cls(store, embedder, settings)
 
     def add_decided_ticket(self, ticket: Mapping[str, Any]) -> None:
         """Embed and upsert a Ticket only after the C6 decision is final."""
