@@ -106,11 +106,13 @@ class Normalizer:
         """One stored C2 to C3 (alert) or C13 (event), or C12 stamped ``now``."""
         compiled = self._tables.get(source.mapping_profile)
         if compiled is None:
-            return _failure(source, now, "unknown_scenario", [], "no alias table for this profile")
+            return _failure(
+                source, now, "unknown_mapping_profile", [], "no alias table for this profile"
+            )
         table = compiled.table
         if table.kind != source.kind:
             detail = f"alias table is for {table.kind} records, not {source.kind}"
-            return _failure(source, now, "unknown_scenario", [], detail)
+            return _failure(source, now, "unknown_mapping_profile", [], detail)
 
         view = copy.deepcopy(source.fields)
         draft = _Draft()

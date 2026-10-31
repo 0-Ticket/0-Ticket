@@ -151,7 +151,7 @@ SIEM 어댑터가 낸 알럿 또는 이벤트. 시나리오마다 필드명이 �
 - 선택 정수 필드(C3 `src_port`·`dst_port`·`http_status`, C13 `http_status`·`http_bytes`)의 값이 정수로 바뀌지 않으면 그 필드만 `null`로 두고 나머지를 계속 정규화한다. C13 `http_bytes`는 0 이상만 유효하고 음수도 같은 방식으로 처리한다. 0 같은 다른 값으로 바꾸지 않는다. 원본 값은 쓰지 않은 것으로 보아 `unmapped`의 원래 자리에 원래 모양으로 남는다. 다음 후보는 찾지 않는다(앞에서 처음 값이 있는 후보만 쓴다).
 - 시간대가 없는 시간은 추측하지 않고 실패(`bad_value`)로 둔다.
 - `parse` 정규식은 공격자가 만든 문자열에 적용되므로 역추적이 폭발하지 않게 쓴다(중첩 반복 금지). 대상 값이 설정 `normalize.max_parse_length`보다 길면 정규식을 적용하지 않고 C12(`bad_value`)를 만든다. 정규식이 맞지 않으면 필수 필드를 못 찾은 것으로 본다(`missing_required`).
-- C2의 `mapping_profile`에 맞는 표가 없거나 표의 `kind`가 C2와 다르면 C12(`unknown_scenario`), 필수 필드를 못 찾으면 C12(`missing_required`), 시간·심각도 변환이나 선택 정수 필드가 아닌 필드의 형 변환에 실패하면 C12(`bad_value`)를 만든다. `unknown_scenario`는 저장된 예전 실패 레코드/API 호환을 위해 enum에 남기며, 새 프로필 선택에는 쓰지 않는다.
+- C2의 `mapping_profile`에 맞는 표가 없거나 표의 `kind`가 C2와 다르면 C12(`unknown_mapping_profile`), 필수 필드를 못 찾으면 C12(`missing_required`), 시간·심각도 변환이나 선택 정수 필드가 아닌 필드의 형 변환에 실패하면 C12(`bad_value`)를 만든다. `unknown_scenario`는 저장된 예전 실패 레코드/API 호환을 위해 enum에 남기며, 새 프로필 선택에는 쓰지 않는다.
 - C12는 저장소에 남기고, 운영자가 별칭 표를 고칠 때 근거로 본다.
 
 ## C3 · NormalizedAlert
@@ -190,7 +190,7 @@ OCSF 경로는 OCSF 1.9.0 Detection Finding, 프로필 없음 기준이다.
 |---|---|---|---|
 | mapping_profile | str | ✅ | C2에서 그대로. 이전 저장 레코드의 `scenario`는 읽기 시 메모리에서 변환하며 원본 JSON은 바꾸지 않는다 |
 | raw_ids | list[str] | ✅ | C2에서 그대로 |
-| reason | enum | ✅ | `unknown_scenario`(별칭 표 없음), `missing_required`(필수 필드 없음), `bad_value`(시간·심각도 변환 실패, 선택 정수 필드가 아닌 필드의 형 변환 실패, `parse` 대상 길이 초과) |
+| reason | enum | ✅ | `unknown_mapping_profile`(별칭 표 없음 또는 표의 `kind` 불일치), `unknown_scenario`(이전 저장 레코드 호환용), `missing_required`(필수 필드 없음), `bad_value`(시간·심각도 변환 실패, 선택 정수 필드가 아닌 필드의 형 변환 실패, `parse` 대상 길이 초과) |
 | missing_fields | list[str] | ✅ | 비어 있던 C3·C13 필수 필드 이름. 없으면 `[]` |
 | detail | str | 선택 | 실패 내용 한 줄 |
 | failed_at | int | ✅ | |

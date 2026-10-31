@@ -13,7 +13,7 @@ class NormalizeFailure(BaseModel):
     )
     mapping_profile: constr(min_length=1, strict=True)
     raw_ids: list[constr(pattern=r"^raw_", strict=True)]
-    reason: Literal["unknown_scenario", "missing_required", "bad_value"]
+    reason: Literal["unknown_scenario", "unknown_mapping_profile", "missing_required", "bad_value"]
     missing_fields: list[StrictStr]
     detail: StrictStr | None
     failed_at: StrictInt

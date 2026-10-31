@@ -11,6 +11,7 @@ RANGES = {
     "create_source_records": (10, 19),
     "create_normalized_records": (10, 19),
     "create_normalize_state": (50, 59),
+    "add_unknown_mapping_profile_reason": (50, 59),
     "create_lookup_tables": (60, 69),
     "create_branch_results": (90, 99),
     "create_l1_decisions": (90, 99),

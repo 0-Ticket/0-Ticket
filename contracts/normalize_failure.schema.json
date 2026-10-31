@@ -19,6 +19,7 @@
       "type": "string",
       "enum": [
         "unknown_scenario",
+        "unknown_mapping_profile",
         "missing_required",
         "bad_value"
       ]

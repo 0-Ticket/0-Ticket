@@ -323,6 +323,16 @@ class RecordStoreContract:
         assert store.load_normalize_position("event") == 9
         assert store.get_event_record(load_event_records()[0].event_id) is not None
 
+    @pytest.mark.parametrize("reason", ["unknown_scenario", "unknown_mapping_profile"])
+    def test_normalize_failure_reasons_round_trip_through_store(self, store, reason):
+        source = next(item for item in load_c2() if item.kind == "alert")
+        store.save_source_records([source], CURSOR_KEY, "c1")
+        result = failure(reason, source.raw_ids)
+
+        store.save_normalize_batch("alert", [], [SourceFailure(source.source_record_id, result)], 1)
+
+        assert dump(store.get_normalize_failure(source.source_record_id)) == dump(result)
+
     def test_unknown_failure_is_none(self, store):
         assert store.get_normalize_failure("src_" + "0" * 64) is None
 

@@ -201,6 +201,20 @@ def test_failures_become_c12(normalizer, case):
     assert result.detail
 
 
+def test_kind_mismatch_uses_unknown_mapping_profile(normalizer):
+    case = next(
+        item
+        for item in read_json(NORMALIZE / "failures_c2.json")
+        if item["case"] == "table_kind_differs"
+    )
+    result = normalizer.normalize(
+        make_c2(case["kind"], case["mapping_profile"], case["fields"]), NOW
+    )
+
+    assert isinstance(result, NormalizeFailure)
+    assert result.reason == "unknown_mapping_profile"
+
+
 @pytest.mark.parametrize(
     "case", read_json(NORMALIZE / "failures_c2.json"), ids=lambda case: case["case"]
 )

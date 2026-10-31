@@ -105,9 +105,10 @@ def test_mapping_selectors_are_non_empty(name, field):
     assert not validator(name).is_valid(fixture(name) | {field: ""})
 
 
-def test_normalize_failure_keeps_legacy_reason_for_stored_records():
-    schema = schemas()["normalize_failure.schema.json"]
-    assert "unknown_scenario" in schema["properties"]["reason"]["enum"]
+@pytest.mark.parametrize("reason", ["unknown_scenario", "unknown_mapping_profile"])
+def test_normalize_failure_accepts_legacy_and_mapping_profile_reasons(reason):
+    value = fixture("normalize_failure") | {"reason": reason}
+    validator("normalize_failure").validate(value)
 
 
 REGISTERED = {

@@ -3,7 +3,7 @@
 export interface NormalizeFailure {
   mapping_profile: string;
   raw_ids: string[];
-  reason: 'unknown_scenario' | 'missing_required' | 'bad_value';
+  reason: 'unknown_scenario' | 'unknown_mapping_profile' | 'missing_required' | 'bad_value';
   missing_fields: string[];
   detail: string | null;
   failed_at: number;

@@ -18,6 +18,7 @@ from store_contract import (
     Clock,
     RecordStoreContract,
     dump,
+    failure,
     load_alert_records,
     load_c2,
 )
@@ -26,6 +27,7 @@ from test_ingest_run import direct_ingest, run_until_done, stored_sources
 from soc.config import load_config
 from soc.db import apply_migrations, connect
 from soc.store.ingest import ingest_once
+from soc.store.records.base import SourceFailure
 from soc.store.records.postgres import PostgresRecordStore
 
 pytestmark = pytest.mark.db
@@ -187,6 +189,25 @@ def test_legacy_normalize_failure_reads_as_mapping_profile_without_rewrite(conn)
     if isinstance(persisted, str):
         persisted = json.loads(persisted)
     assert persisted == failure
+
+
+def test_unknown_mapping_profile_failure_persists_after_migration(conn):
+    source = next(item for item in load_c2() if item.kind == "alert")
+    store = PostgresRecordStore(conn, 0, Clock())
+    store.save_source_records([source], CURSOR_KEY, "c1")
+    result = failure("unknown_mapping_profile", source.raw_ids)
+
+    store.save_normalize_batch("alert", [], [SourceFailure(source.source_record_id, result)], 1)
+
+    assert store.get_normalize_failure(source.source_record_id).reason == "unknown_mapping_profile"
+    reason, record = conn.execute(
+        "SELECT reason, record FROM normalize_failures WHERE source_record_id = %s",
+        (source.source_record_id,),
+    ).fetchone()
+    if isinstance(record, str):
+        record = json.loads(record)
+    assert reason == "unknown_mapping_profile"
+    assert record == dump(result)
 
 
 @pytest.mark.parametrize("table", ["alert_records", "event_records"])

@@ -4,7 +4,7 @@
     "kind": "alert",
     "mapping_profile": "no_such_scenario",
     "fields": {"timestamp": "2022-01-18T10:05:41+0000", "src_ip": "198.51.100.23"},
-    "reason": "unknown_scenario",
+    "reason": "unknown_mapping_profile",
     "missing_fields": []
   },
   {
@@ -12,7 +12,7 @@
     "kind": "alert",
     "mapping_profile": "ait_apache_access",
     "fields": {"message": "198.51.100.23 - - [18/Jan/2022:10:05:41 +0000] \"GET / HTTP/1.1\" 200 1 \"-\" \"-\""},
-    "reason": "unknown_scenario",
+    "reason": "unknown_mapping_profile",
     "missing_fields": []
   },
   {

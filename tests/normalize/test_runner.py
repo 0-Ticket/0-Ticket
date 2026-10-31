@@ -107,7 +107,7 @@ def test_failures_are_stored_with_their_source(store, normalizer, enricher):
     result = run(store, normalizer, enricher, "alert")
     assert (result.read, result.normalized, result.failed) == (3, 2, 1)
     failure = store.get_normalize_failure(bad.source_record_id)
-    assert failure.reason == "unknown_scenario"
+    assert failure.reason == "unknown_mapping_profile"
     assert failure.failed_at == NOW
     assert "secretmarker" not in str(dump(failure))
 

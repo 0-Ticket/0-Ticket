@@ -87,6 +87,7 @@ describe('documented API contracts', () => {
       data.rules.filter((item) => item.status === 'deployed'),
     );
     expect((await api.normalizeFailures({ reason: 'unknown_scenario' })).items).toEqual([]);
+    expect((await api.normalizeFailures({ reason: 'unknown_mapping_profile' })).items).toEqual([]);
   });
 
   it('serves every documented read endpoint with its documented envelope', async () => {
