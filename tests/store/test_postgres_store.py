@@ -210,6 +210,92 @@ def test_unknown_mapping_profile_failure_persists_after_migration(conn):
     assert record == dump(result)
 
 
+def test_mapping_profile_migration_upgrades_existing_normalize_failures(conn):
+    root = Path(__file__).resolve().parents[1] / "fixtures/store"
+    source_bytes = (root / "legacy_siem_alert.json").read_bytes()
+    failure_bytes = (root / "legacy_normalize_failure.json").read_bytes()
+    source = json.loads(source_bytes)
+    old_failure = json.loads(failure_bytes)
+    source_id = _legacy_source_id(source)
+    assert source_id == source["source_record_id"]
+
+    recorded_before = {
+        row[0] for row in conn.execute("SELECT version FROM schema_migrations").fetchall()
+    }
+    assert 51 in recorded_before
+    assert max(recorded_before) > 51
+
+    # Recreate the state before 0051 in this migrated test schema, including an old C12 row.
+    with conn.transaction():
+        conn.execute("DELETE FROM schema_migrations WHERE version = 51")
+        conn.execute(
+            "ALTER TABLE normalize_failures DROP CONSTRAINT normalize_failures_reason_check"
+        )
+        conn.execute(
+            "ALTER TABLE normalize_failures ADD CONSTRAINT normalize_failures_reason_check "
+            "CHECK (reason IN ('unknown_scenario', 'missing_required', 'bad_value'))"
+        )
+        conn.execute(
+            "INSERT INTO source_records (source_record_id, kind, content, ingested_at) "
+            "VALUES (%s, 'alert', %s::json, %s)",
+            (source_id, source_bytes.decode("utf-8"), 1791849600000),
+        )
+        conn.execute(
+            "INSERT INTO normalize_failures "
+            "(source_record_id, source_kind, reason, failed_at, record) "
+            "VALUES (%s, 'alert', %s, %s, %s::json)",
+            (
+                source_id,
+                old_failure["reason"],
+                old_failure["failed_at"],
+                failure_bytes.decode("utf-8"),
+            ),
+        )
+
+    applied = apply_migrations(conn)
+    assert [(migration.version, migration.name) for migration in applied] == [
+        (51, "add_unknown_mapping_profile_reason")
+    ]
+    recorded_after = {
+        row[0] for row in conn.execute("SELECT version FROM schema_migrations").fetchall()
+    }
+    assert 51 in recorded_after
+    assert max(recorded_after) > 51
+
+    store = PostgresRecordStore(conn, 0, Clock())
+    fetched = store.get_normalize_failure(source_id)
+    assert fetched.mapping_profile == "legacy_profile"
+    assert fetched.reason == "unknown_scenario"
+    old_reason, old_record = conn.execute(
+        "SELECT reason, record::text FROM normalize_failures WHERE source_record_id = %s",
+        (source_id,),
+    ).fetchone()
+    assert old_reason == "unknown_scenario"
+    assert old_record.encode("utf-8") == failure_bytes
+    assert json.loads(old_record) == old_failure
+
+    new_source = next(item for item in load_c2() if item.kind == "alert")
+    store.save_source_records([new_source], CURSOR_KEY, "c1")
+    new_failure = failure("unknown_mapping_profile", new_source.raw_ids)
+    store.save_normalize_batch(
+        "alert",
+        [],
+        [SourceFailure(new_source.source_record_id, new_failure)],
+        1,
+    )
+    assert store.get_normalize_failure(new_source.source_record_id).reason == (
+        "unknown_mapping_profile"
+    )
+    new_reason, new_record = conn.execute(
+        "SELECT reason, record FROM normalize_failures WHERE source_record_id = %s",
+        (new_source.source_record_id,),
+    ).fetchone()
+    if isinstance(new_record, str):
+        new_record = json.loads(new_record)
+    assert new_reason == "unknown_mapping_profile"
+    assert new_record == dump(new_failure)
+
+
 @pytest.mark.parametrize("table", ["alert_records", "event_records"])
 def test_entity_time_indexes_exist(conn, table):
     rows = conn.execute(
