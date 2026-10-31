@@ -1,4 +1,6 @@
 import json
+import logging
+import traceback
 from pathlib import Path
 
 import pytest
@@ -6,7 +8,12 @@ import pytest
 from soc.config import load_config
 from soc.contracts import validate_contract
 from soc.l1.tickets import TicketNotDecidedError
-from soc.store.vectors.base import VectorSearchHit
+from soc.plugins import PluginNotFoundError, PluginRegistry
+from soc.store.vectors.base import (
+    VectorSearchHit,
+    VectorStoreInitializationCleanupError,
+    VectorStoreUnavailableError,
+)
 from soc.store.vectors.tickets import VectorTicketService, build_ticket_vector_doc
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -184,6 +191,31 @@ def test_from_settings_closes_store_and_reraises_embedder_initialization_error(m
     assert store.close_calls == 1
 
 
+def test_from_settings_closes_store_when_service_construction_fails(monkeypatch):
+    store = FakeVectorStore()
+    embedder = FakeEmbedder()
+    construction_error = RuntimeError("service_construction_failed")
+    monkeypatch.setattr(
+        "soc.store.vectors.tickets.open_vector_store",
+        lambda *_args, **_kwargs: store,
+    )
+    monkeypatch.setattr(
+        "soc.store.vectors.tickets.open_embedder",
+        lambda *_args, **_kwargs: embedder,
+    )
+
+    def fail_service_construction(*_args, **_kwargs):
+        raise construction_error
+
+    monkeypatch.setattr(VectorTicketService, "__init__", fail_service_construction)
+
+    with pytest.raises(RuntimeError) as raised:
+        VectorTicketService.from_settings(load_small_dimension_settings())
+
+    assert raised.value is construction_error
+    assert store.close_calls == 1
+
+
 def test_from_settings_closes_store_and_reraises_keyboard_interrupt(monkeypatch):
     store = FakeVectorStore()
     interrupt = KeyboardInterrupt("embedder_initialization_interrupted")
@@ -204,13 +236,16 @@ def test_from_settings_closes_store_and_reraises_keyboard_interrupt(monkeypatch)
     assert store.close_calls == 1
 
 
-def test_from_settings_preserves_embedder_error_when_store_close_fails(monkeypatch):
+def test_from_settings_raises_sanitized_fatal_error_when_store_close_fails(monkeypatch, caplog):
     store = FakeVectorStore()
-    embedder_error = RuntimeError("embedder_initialization_failed")
+    secret = "synthetic-secret-marker"
+    address = "https://203.0.113.77:6333/private-path"
+    embedder_error = RuntimeError(f"embedder failed at {address}; {secret}")
+    close_error = OSError(f"store close failed at {address}; {secret}")
 
     def fail_close():
         store.close_calls += 1
-        raise OSError("store_close_failed")
+        raise close_error
 
     store.close = fail_close
     monkeypatch.setattr(
@@ -223,12 +258,53 @@ def test_from_settings_preserves_embedder_error_when_store_close_fails(monkeypat
 
     monkeypatch.setattr("soc.store.vectors.tickets.open_embedder", fail_embedder)
 
-    with pytest.raises(RuntimeError) as raised:
-        VectorTicketService.from_settings(load_small_dimension_settings())
+    with caplog.at_level(logging.DEBUG):
+        with pytest.raises(VectorStoreInitializationCleanupError) as raised:
+            VectorTicketService.from_settings(load_small_dimension_settings())
 
-    assert raised.value is embedder_error
-    assert raised.value.__notes__ == ["VectorStore cleanup failed (OSError)"]
+    assert str(raised.value) == "vector_store_initialization_cleanup_failed"
+    assert raised.value.initialization_error_type == "RuntimeError"
+    assert raised.value.cleanup_error_type == "OSError"
+    assert not isinstance(raised.value, VectorStoreUnavailableError)
+    assert raised.value.__cause__ is None
+    assert raised.value.__suppress_context__
     assert store.close_calls == 1
+    output = "".join(traceback.format_exception(raised.value)) + caplog.text
+    assert str(embedder_error) not in output
+    assert str(close_error) not in output
+    assert secret not in output
+    assert address not in output
+
+
+@pytest.mark.parametrize("failure", ["availability", "configuration", "unregistered"])
+def test_from_settings_preserves_vector_store_open_failures(failure):
+    settings = load_small_dimension_settings()
+    backend = "not_registered"
+    registry = PluginRegistry("vector_stores")
+    error = None
+    if failure != "unregistered":
+        backend = "failing"
+        error = (
+            VectorStoreUnavailableError(TimeoutError("synthetic dependency timeout"))
+            if failure == "availability"
+            else ValueError("invalid vector store configuration")
+        )
+        registry.register(backend, lambda *_args: (_ for _ in ()).throw(error))
+    settings = settings.model_copy(
+        update={"vector_store": settings.vector_store.model_copy(update={"backend": backend})}
+    )
+
+    expected = (
+        VectorStoreUnavailableError
+        if failure == "availability"
+        else ValueError
+        if failure == "configuration"
+        else PluginNotFoundError
+    )
+    with pytest.raises(expected) as raised:
+        VectorTicketService.from_settings(settings, vector_registry=registry)
+    if error is not None:
+        assert raised.value is error
 
 
 def test_from_settings_returns_service_when_store_and_embedder_open(monkeypatch):

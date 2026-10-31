@@ -12,6 +12,7 @@ from soc.l1.tickets import DECIDED_TICKET_STATUSES, TicketNotDecidedError
 from soc.plugins import PluginRegistry
 from soc.store.embedders import Embedder, open_embedder
 from soc.store.vectors import VectorStore, open_vector_store
+from soc.store.vectors.base import VectorStoreInitializationCleanupError
 
 from .fusion import fuse_search_results
 
@@ -92,13 +93,15 @@ class VectorTicketService:
         store = open_vector_store(settings, registry=vector_registry)
         try:
             embedder = open_embedder(settings, registry=embedder_registry)
-        except BaseException as error:
+            return cls(store, embedder, settings)
+        except BaseException as initialization_error:
             try:
                 store.close()
-            except Exception as close_error:
-                error.add_note(f"VectorStore cleanup failed ({type(close_error).__name__})")
+            except BaseException as cleanup_error:
+                raise VectorStoreInitializationCleanupError(
+                    initialization_error, cleanup_error
+                ) from None
             raise
-        return cls(store, embedder, settings)
 
     def add_decided_ticket(self, ticket: Mapping[str, Any]) -> None:
         """Embed and upsert a Ticket only after the C6 decision is final."""

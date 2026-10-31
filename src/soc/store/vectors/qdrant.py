@@ -5,16 +5,45 @@ import uuid
 from collections.abc import Mapping, Sequence
 from typing import Any
 
+from httpx import TransportError
 from qdrant_client import QdrantClient, models
+from qdrant_client.http.exceptions import ResponseHandlingException, UnexpectedResponse
 
 from soc.config import Settings
 from soc.contracts import validate_contract
 
-from .base import VectorSearchHit
+from .base import (
+    VectorSearchHit,
+    VectorStoreInitializationCleanupError,
+    VectorStoreUnavailableError,
+)
 
 _TICKET_COLLECTION = "closed_tickets"
 _TICKET_SOURCE_KIND = "ticket"
 _SCROLL_PAGE_SIZE = 256
+
+
+def _transient_dependency_error(error: Exception) -> BaseException | None:
+    if isinstance(error, TransportError):
+        return error
+    if isinstance(error, UnexpectedResponse) and (
+        error.status_code == 429
+        or (error.status_code is not None and 500 <= error.status_code <= 599)
+    ):
+        return error
+    if isinstance(error, ResponseHandlingException) and isinstance(error.source, TransportError):
+        return error.source
+    return None
+
+
+def _qdrant_call(function, *args, **kwargs):
+    try:
+        return function(*args, **kwargs)
+    except Exception as error:
+        transient_error = _transient_dependency_error(error)
+        if transient_error is not None:
+            raise VectorStoreUnavailableError(transient_error) from None
+        raise
 
 
 def _positive_limit(limit: int) -> None:
@@ -58,8 +87,9 @@ class QdrantVectorStore:
     def ensure_collection(self) -> None:
         """Create the configured collection or verify its vector size and indexes."""
         self._ensure_open()
-        if not self._client.collection_exists(self._collection):
-            self._client.create_collection(
+        if not _qdrant_call(self._client.collection_exists, self._collection):
+            _qdrant_call(
+                self._client.create_collection,
                 collection_name=self._collection,
                 vectors_config=models.VectorParams(
                     size=self._dimensions,
@@ -67,7 +97,7 @@ class QdrantVectorStore:
                 ),
             )
         else:
-            info = self._client.get_collection(self._collection)
+            info = _qdrant_call(self._client.get_collection, self._collection)
             vectors = info.config.params.vectors
             if not isinstance(vectors, models.VectorParams) or vectors.size != self._dimensions:
                 raise ValueError("qdrant_collection_dimension_mismatch")
@@ -75,7 +105,8 @@ class QdrantVectorStore:
                 raise ValueError("qdrant_collection_distance_mismatch")
 
         for field_name in ("collection", "source_kind", "keywords"):
-            self._client.create_payload_index(
+            _qdrant_call(
+                self._client.create_payload_index,
                 collection_name=self._collection,
                 field_name=field_name,
                 field_schema=models.PayloadSchemaType.KEYWORD,
@@ -92,7 +123,8 @@ class QdrantVectorStore:
         ):
             raise ValueError("only_closed_ticket_vector_docs_are_supported")
         point_id = uuid.uuid5(uuid.NAMESPACE_URL, f"0-ticket-soc:{validated['doc_id']}")
-        self._client.upsert(
+        _qdrant_call(
+            self._client.upsert,
             collection_name=self._collection,
             points=[
                 models.PointStruct(
@@ -108,7 +140,8 @@ class QdrantVectorStore:
         """Return the nearest finalized Ticket documents for one embedding."""
         self._ensure_open()
         _positive_limit(limit)
-        result = self._client.query_points(
+        result = _qdrant_call(
+            self._client.query_points,
             collection_name=self._collection,
             query=_vector_values(vector, self._dimensions),
             query_filter=self._ticket_filter(),
@@ -142,7 +175,8 @@ class QdrantVectorStore:
         offset = None
         scores: list[VectorSearchHit] = []
         while True:
-            records, next_offset = self._client.scroll(
+            records, next_offset = _qdrant_call(
+                self._client.scroll,
                 collection_name=self._collection,
                 scroll_filter=query_filter,
                 limit=_SCROLL_PAGE_SIZE,
@@ -200,16 +234,30 @@ class QdrantVectorStore:
 def create_qdrant_vector_store(settings: Settings) -> QdrantVectorStore:
     """Build the configured Qdrant adapter, registered as the default backend."""
     configured = settings.vector_store
-    client = QdrantClient(url=configured.url, timeout=configured.timeout_seconds)
-    store = QdrantVectorStore(
-        client,
-        collection=configured.collection,
-        dimensions=settings.embedder.dimensions,
-        owns_client=True,
+    client = _qdrant_call(
+        QdrantClient,
+        url=configured.url,
+        timeout=configured.timeout_seconds,
     )
+
+    store: QdrantVectorStore | None = None
     try:
+        store = QdrantVectorStore(
+            client,
+            collection=configured.collection,
+            dimensions=settings.embedder.dimensions,
+            owns_client=True,
+        )
         store.ensure_collection()
-    except Exception:
-        store.close()
+    except BaseException as initialization_error:
+        try:
+            if store is None:
+                client.close()
+            else:
+                store.close()
+        except BaseException as cleanup_error:
+            raise VectorStoreInitializationCleanupError(
+                initialization_error, cleanup_error
+            ) from None
         raise
     return store

@@ -3,7 +3,12 @@
 from soc.config import Settings
 from soc.plugins import PluginRegistry
 
-from .base import VectorSearchHit, VectorStore
+from .base import (
+    VectorSearchHit,
+    VectorStore,
+    VectorStoreInitializationCleanupError,
+    VectorStoreUnavailableError,
+)
 
 VECTOR_STORES = PluginRegistry("vector_stores")
 
@@ -15,4 +20,11 @@ def open_vector_store(settings: Settings, registry: PluginRegistry | None = None
     return factory(settings)
 
 
-__all__ = ["VECTOR_STORES", "VectorSearchHit", "VectorStore", "open_vector_store"]
+__all__ = [
+    "VECTOR_STORES",
+    "VectorSearchHit",
+    "VectorStore",
+    "VectorStoreInitializationCleanupError",
+    "VectorStoreUnavailableError",
+    "open_vector_store",
+]
