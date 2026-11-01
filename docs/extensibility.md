@@ -91,7 +91,7 @@ model = "my-larger-model"
 | LLM 제공자 | 11, 13, 14, 19, 23, 24 | `llm_providers` | OpenAI 호환 제공자. 데모 기본값: 서빙 도구 Ollama, 모델 `granite4:micro` (로컬 서빙, D-009) | 상용 모델, 사내 모델, 로컬 모델 |
 | 전문 에이전트 | 13, 14 | `specialists` | `web`: Web 전문가 Agent(#63). 인터페이스 `src/soc/l1/specialists/base.py`의 `SpecialistContext`를 받아 C22 요청 하나를 C14로 답하는 함수. C22 `domain` 값이 구현체 이름이고(도메인이 없으면 `web`), 코어는 `soc.l1.specialists.open_specialist(domain, context)`로 연다. Cloud(13)는 등록 한 줄 (D-005 확정 후) | Cloud, 엔드포인트, 메일, 네트워크 전문 에이전트 추가 |
 | 프롬프트 | 11, 13, 14, 19, 23, 24 | (파일) | 기본 프롬프트 | 자사 판정 기준, 언어 |
-| MCP 도구 | 15 | `mcp_servers` | 내부 데이터 조회, Web 도메인. 공식 Python MCP SDK로 구현 (D-041) | 사내 도구 연결 |
+| MCP 도구 | 15 | `mcp_servers` | 에이전트 도구(15)의 도구 묶음: 내부 데이터 조회(`query_records`, `get_alert`), HTTP 흐름 조회(`query_http_flow`), SSH MCP(D-043, #187에서 추가). SIEM 도구(`query_siem`)는 아래 SIEM MCP 어댑터에서 온다. 공식 Python MCP SDK로 구현 (D-041). 새 도구는 "새 에이전트 도구 붙이기" | 사내 도구 연결 |
 | SIEM MCP 어댑터 | 15 | `siem_mcp_adapters` | Wazuh (초기, D-035). 선택된 SIEM을 따라간다. 읽기 전용. `direct`(개발·테스트·시연용, 운영 대상 아님): `siem.direct.files`를 수집과 같은 방식으로 읽고 기본 별칭 표로 엔티티·시간을 찾는다. `elastic`(ELK, #99): 커넥터와 같은 인덱스를 `_search`로 읽는다. ip는 `source.address`(IP 값이면 `destination.ip`도), host는 `host.name`, user는 `user.name`에 term으로 건다. 시간은 이벤트는 `@timestamp`, 알럿은 `kibana.alert.original_time`(없으면 `@timestamp`)이다. 질의 실패는 SIEM에 닿지 못하면 `SiemUnavailableError`, 답을 쓸 수 없으면 `SiemAdapterError`로 알린다(`src/soc/l1/mcp/siem/base.py`, #111). 답을 쓸 수 없음에는 어댑터가 돌려준 레코드의 C2 변환 실패도 포함된다. `query_siem` 도구는 두 오류를 같은 타입·고정 메시지로 다시 만들고, 다른 예외는 고정 메시지의 `SiemAdapterError`로 바꾼다. elastic은 아직 연결 불가를 구분하지 못해 모든 실패가 `SiemAdapterError`다(박스 3 별도 이슈) | Splunk |
 | 증거 요청 큐 | 26, 27 | `evidence_queues` | PostgreSQL 테이블 큐 (D-034). 구현체 이름 `postgresql`, `[evidence_queue] backend`로 고르고 코어는 `soc.l1.evidence.open_evidence_queue`로 연다. 백엔드는 이름 두 개를 등록한다: `<백엔드>`(큐 작업자가 쓰는 연결)와 `<백엔드>.readonly`(같은 행을 읽기 전용으로 읽는 연결). 화면용 API(27)는 `open_evidence_queue(..., readonly=True)`로 뒤쪽만 연다 | 다른 큐 백엔드 |
 | 사람 검토 채널 | 21 | `review_channels` | 웹 화면 (D-013, `docs/frontend.md`) | 메신저, 사내 포털 |
@@ -158,6 +158,16 @@ web_specialist = ["query_records", "get_alert", "query_http_flow"]
 4. 그 SIEM의 시나리오용 별칭 표를 추가한다(박스 4).
 
 사례: ELK(`elastic`, #99)는 커넥터 `src/soc/ingest/siem/elastic.py`, SIEM MCP 어댑터 `src/soc/l1/mcp/siem/elastic.py`, 설정 `[siem.elastic]`의 인덱스 두 개, 별칭 표 `elastic_security_alert`·`elastic_access_event`만 더했다. 코어 코드는 바꾸지 않았다. 시연 설정은 `config/demo-elk/`.
+
+### 새 에이전트 도구 붙이기
+
+에이전트 도구는 모두 박스 15 안에 두고, 도구마다 새 박스를 만들지 않는다(`docs/architecture.md` 15절, #182). 자체 데이터 흐름이나 저장소가 있는 구성요소만 새 박스 번호를 받는다. 새 도구는 아래 세 가지만 더한다.
+
+1. 결정 대장 한 줄: `docs/decisions.md`에 대상, 읽기 전용 여부, 비밀, 허용 범위를 적는다(예: D-043 SSH MCP).
+2. 도구 등록: `ToolContext`를 받아 `ToolSpec` 목록을 돌려주는 도구 묶음 함수를 `mcp_servers` 그룹에 등록한다. 레포에 기여하면 `src/soc/mcp/`(#184에서 `src/soc/l1/mcp/`에서 옮김)에 두고, 사내 전용이면 별도 패키지로 만들어 `zero_ticket_soc.mcp_servers` entry point로 등록한다. 이미 등록된 도구 이름은 쓸 수 없다.
+3. 단계별 허용 설정: 도구를 쓸 단계의 `[mcp.allowed_tools]` 목록에 도구 이름을 넣는다. 기본값은 비어 있어서 넣지 않으면 호출이 거부된다.
+
+모든 도구는 15의 공통 규칙을 지킨다. 읽기 전용이고, 출력은 로그 원문과 같은 데이터로만 다루며, 비밀은 환경변수로만 읽는다. 허용 목록에 없는 호출은 거부하고, 모든 호출을 Agent Log에 기록한다.
 
 ### 다른 LLM 쓰기
 
