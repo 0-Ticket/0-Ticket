@@ -76,7 +76,7 @@ ELK (attack-to-alert 랩, 외부 SIEM)
 
 ## 이슈 사이 인터페이스
 
-아래 코드 블록은 이슈 본문 그대로다. 바꾸려면 담당자들과 먼저 합의한 뒤 이 문서를 함께 고친다.
+아래 코드 블록은 이슈 본문의 코드와 같다. 레포 포맷 검사(`ruff format`)에 맞춰 공백과 줄바꿈만 바뀌었다. 바꾸려면 담당자들과 먼저 합의한 뒤 이 문서를 함께 고친다.
 
 ### 공통 에이전트 (#184 → #185, #186, #187, #188)
 
@@ -84,27 +84,35 @@ ELK (attack-to-alert 랩, 외부 SIEM)
 # soc.agent
 @dataclass(frozen=True)
 class AgentTask:
-    level: Literal["l1", "l2", "l3"]   # 프롬프트 오버라이딩과 허용 도구를 고른다
-    task: str                           # 예: "l1_promotion", "l1_ticket_verdict", "l2_classify", "l2_analyze", "l3_hunt"
-    instructions: str                   # 각 레인이 소유한 작업 프롬프트 내용
-    data: Mapping[str, Any]             # 입력 데이터. 코어가 구분자로 감싸 '데이터'로만 전달한다
-    output_contract: str                # validate_contract()에 넘길 계약 이름
-    subject_type: str                   # Agent Log 주체: alert / ticket / incident / hunt
+    level: Literal["l1", "l2", "l3"]  # 프롬프트 오버라이딩과 허용 도구를 고른다
+    task: str  # 예: "l1_promotion", "l1_ticket_verdict", "l2_classify", "l2_analyze", "l3_hunt"
+    instructions: str  # 각 레인이 소유한 작업 프롬프트 내용
+    data: Mapping[str, Any]  # 입력 데이터. 코어가 구분자로 감싸 '데이터'로만 전달한다
+    output_contract: str  # validate_contract()에 넘길 계약 이름
+    subject_type: str  # Agent Log 주체: alert / ticket / incident / hunt
     subject_id: str
-    allowed_evidence_ids: frozenset[str] = frozenset()  # 출력의 근거 ID는 여기나 도구 결과에 있어야 한다
+    allowed_evidence_ids: frozenset[str] = (
+        frozenset()
+    )  # 출력의 근거 ID는 여기나 도구 결과에 있어야 한다
+
 
 @dataclass(frozen=True)
 class AgentResult:
     ok: bool
-    output: Any | None                  # 계약 검증을 통과한 생성 모델
-    failure: str | None                 # format_error / evidence_id_error / budget_exceeded / provider_error / tool_error
+    output: Any | None  # 계약 검증을 통과한 생성 모델
+    failure: (
+        str | None
+    )  # format_error / evidence_id_error / budget_exceeded / provider_error / tool_error
+
 
 def run_agent(task: AgentTask, *, settings: Settings | None = None) -> AgentResult: ...
 
-class AgentWorker(Protocol):            # 각 레인이 agent_workers 플러그인 그룹에 등록한다
+
+class AgentWorker(Protocol):  # 각 레인이 agent_workers 플러그인 그룹에 등록한다
     level: str
-    def poll(self, limit: int) -> Sequence[str]: ...   # 판정이 필요한 주체 ID
-    def handle(self, subject_id: str) -> None: ...     # run_agent 호출 + 결과 기록
+
+    def poll(self, limit: int) -> Sequence[str]: ...  # 판정이 필요한 주체 ID
+    def handle(self, subject_id: str) -> None: ...  # run_agent 호출 + 결과 기록
 ```
 
 - 작업별 프롬프트는 각 레인 폴더(`src/soc/l1/prompts/`, `src/soc/l2/prompts/`, `src/soc/l3/prompts/`)에 두고 `AgentTask.instructions`로 넘긴다. 공통·단계별 프롬프트는 `src/soc/agent/prompts/`에 있다.
@@ -125,15 +133,17 @@ class AgentWorker(Protocol):            # 각 레인이 agent_workers 플러그�
 ```python
 @dataclass(frozen=True)
 class IncidentContext:
-    incident: Incident                  # Incident 계약
-    tickets: list[Ticket]               # 소속 Ticket
-    alerts: list[AlertRecord]           # 소속 Ticket의 알럿
-    rejection: L2Review | None          # 마지막 반려(없으면 None)
+    incident: Incident  # Incident 계약
+    tickets: list[Ticket]  # 소속 Ticket
+    alerts: list[AlertRecord]  # 소속 Ticket의 알럿
+    rejection: L2Review | None  # 마지막 반려(없으면 None)
+
 
 class IncidentService:
-    def pending_analysis(self, limit: int) -> list[str]: ...           # "분석 필요" Incident ID
+    def pending_analysis(self, limit: int) -> list[str]: ...  # "분석 필요" Incident ID
     def analysis_input(self, incident_id: str) -> IncidentContext: ...
-    def finish_analysis(self, incident_id: str, *, failed: bool) -> None: ...
+    def finish_analysis(self, incident_id: str, *, failed: bool) -> None:
+        ...
         # "분석 필요" 해제. 성공이면 review_state = awaiting_review, review_round 증가
 ```
 
