@@ -88,16 +88,16 @@ model = "my-larger-model"
 | 벡터 저장소 | 8 | `vector_stores` | Qdrant (D-003). Ticket, Case만 | 다른 벡터 DB |
 | 임베딩 제공자 | 8 | `embedders` | bge-m3, 로컬 실행 (D-010) | 상용 임베딩 API |
 | 검색 결과 융합 | 8 | `FUSION_FUNCTIONS` 함수 맵 | RRF (`[vector_search] fusion_method`) | `keyword_first`, `weighted_rrf`, `dbsf`, `weighted_score` 중 선택하거나 함수를 추가 |
-| LLM 제공자 | 11, 13, 14, 19, 23, 24 | `llm_providers` | OpenAI 호환 제공자. 데모 기본값: 서빙 도구 Ollama, 모델 `granite4:micro` (로컬 서빙, D-009) | 상용 모델, 사내 모델, 로컬 모델 |
+| LLM 제공자 | 11, 19, 23, 24, 28 | `llm_providers` | OpenAI 호환 제공자. 지금 설정 기본값: 서빙 도구 Ollama, 모델 `granite4:micro` (로컬 서빙). D-009 변경으로 기본값은 Groq `openai/gpt-oss-120b`가 되고, 설정 전환은 #184에서 한다 | 상용 모델, 사내 모델, 로컬 모델 |
 | 전문 에이전트 | 13, 14 | `specialists` | `web`: Web 전문가 Agent(#63). 인터페이스 `src/soc/l1/specialists/base.py`의 `SpecialistContext`를 받아 C22 요청 하나를 C14로 답하는 함수. C22 `domain` 값이 구현체 이름이고(도메인이 없으면 `web`), 코어는 `soc.l1.specialists.open_specialist(domain, context)`로 연다. Cloud(13)는 등록 한 줄 (D-005 확정 후) | Cloud, 엔드포인트, 메일, 네트워크 전문 에이전트 추가 |
-| 프롬프트 | 11, 13, 14, 19, 23, 24 | (파일) | 기본 프롬프트 | 자사 판정 기준, 언어 |
+| 프롬프트 | 11, 19, 23, 24, 28 | (파일) | 기본 프롬프트 | 자사 판정 기준, 언어 |
 | MCP 도구 | 15 | `mcp_servers` | 에이전트 도구(15)의 도구 묶음: 내부 데이터 조회(`query_records`, `get_alert`), HTTP 흐름 조회(`query_http_flow`), SSH MCP(D-043, #187에서 추가). SIEM 도구(`query_siem`)는 아래 SIEM MCP 어댑터에서 온다. 공식 Python MCP SDK로 구현 (D-041). 새 도구는 "새 에이전트 도구 붙이기" | 사내 도구 연결 |
 | SIEM MCP 어댑터 | 15 | `siem_mcp_adapters` | Wazuh (초기, D-035). 선택된 SIEM을 따라간다. 읽기 전용. `direct`(개발·테스트·시연용, 운영 대상 아님): `siem.direct.files`를 수집과 같은 방식으로 읽고 기본 별칭 표로 엔티티·시간을 찾는다. `elastic`(ELK, #99): 커넥터와 같은 인덱스를 `_search`로 읽는다. ip는 `source.address`(IP 값이면 `destination.ip`도), host는 `host.name`, user는 `user.name`에 term으로 건다. 시간은 이벤트는 `@timestamp`, 알럿은 `kibana.alert.original_time`(없으면 `@timestamp`)이다. 질의 실패는 SIEM에 닿지 못하면 `SiemUnavailableError`, 답을 쓸 수 없으면 `SiemAdapterError`로 알린다(`src/soc/l1/mcp/siem/base.py`, #111). 답을 쓸 수 없음에는 어댑터가 돌려준 레코드의 C2 변환 실패도 포함된다. `query_siem` 도구는 두 오류를 같은 타입·고정 메시지로 다시 만들고, 다른 예외는 고정 메시지의 `SiemAdapterError`로 바꾼다. elastic은 아직 연결 불가를 구분하지 못해 모든 실패가 `SiemAdapterError`다(박스 3 별도 이슈) | Splunk |
 | 증거 요청 큐 | 26, 27 | `evidence_queues` | PostgreSQL 테이블 큐 (D-034). 구현체 이름 `postgresql`, `[evidence_queue] backend`로 고르고 코어는 `soc.l1.evidence.open_evidence_queue`로 연다. 백엔드는 이름 두 개를 등록한다: `<백엔드>`(큐 작업자가 쓰는 연결)와 `<백엔드>.readonly`(같은 행을 읽기 전용으로 읽는 연결). 화면용 API(27)는 `open_evidence_queue(..., readonly=True)`로 뒤쪽만 연다 | 다른 큐 백엔드 |
 | 사람 검토 채널 | 21 | `review_channels` | 웹 화면 (D-013, `docs/frontend.md`) | 메신저, 사내 포털 |
 | 티켓·케이스 시스템 | 10, 22 | `case_systems` | 내부 저장과 내부 UI (D-012) | 외부 티켓·케이스 관리 도구와 동기화 |
 | 알림 채널 | 사용자 접점 | (제안: notification_channels) | Slack (D-033) | 메신저, 메일 |
-| 엔티티 분기 규칙 | 25 | (파일) | 공격 대상 시나리오 목록, 공용 엔티티 기준, Incident 매칭 기준 | 자사 공격 시나리오, 자사 공용 자산 |
+| 엔티티 분기 규칙 | 25 | (파일) | 승격 대상(공격 대상) 시나리오 목록(`src/soc/branch/rules/scenarios.toml`), 공용 엔티티 기준. Incident 매칭은 L2 에이전트가 한다(D-044) | 자사 공격 시나리오, 자사 공용 자산 |
 | 헌팅 쿼리 | 23 | (파일) | 기본 기준선 쿼리 | 자사 환경 기준선 |
 | 룰 변환 대상 | 24 | `rule_targets` | 연결된 SIEM 어댑터를 따름 | 다른 SIEM 쿼리 언어 |
 

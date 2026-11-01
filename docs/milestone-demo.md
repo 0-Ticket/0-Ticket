@@ -9,8 +9,8 @@
 ```
 ELK (attack-to-alert 랩, 외부 SIEM)
   → 수집 · 정규화 · 분기 (코드, 연속 실행)
-       Alert·Event (RDB, 원본) → OCSF 정규화 → Lookup → 중복 Alert 제거 → 시나리오 분기
-       ├─ 승격 대상 시나리오 → 시나리오 Ticket
+       Alert·Event (RDB, 원본) → OCSF 정규화 → Lookup → 중복 Alert 제거 → 엔티티 추출·공용 엔티티 제거 → 시나리오 분기
+       ├─ 승격 대상(공격 대상) 시나리오 → 시나리오 Ticket
        └─ 그 외 시나리오     → L1 승격 판단 → L1 승격 Ticket / 보류
   → L1 티켓 판정 → 오탐 종결 / 보류 / 이상 행위: Ticket을 L2 상태로
   → L2 Incident 분류 (새 Incident / 기존 Incident 추가)
@@ -34,7 +34,7 @@ ELK (attack-to-alert 랩, 외부 SIEM)
 | | OCSF 정규화 바로잡기(정규화 전·후 계약 분리, OCSF 원형 저장) | 4 | #189 |
 | | 공통 에이전트 코어(OpenAI Agents SDK, 프롬프트 오버라이딩, 스레드 실행기, `fake` 백엔드), 에이전트 도구 위치 이동(`src/soc/mcp/`) | 28, 12, 15 | #184 |
 | | L1 승격 판단·티켓 판정을 공통 에이전트로 전환, 판정 끝난 Ticket의 Qdrant 저장 유지 | 10, 11, 27 | #185 |
-| | L2 입구, Incident 분류, Human 승인 화면 연결, Case 저장(RDB + Qdrant) | 18, 19, 21, 22 | #186 |
+| | L2 입구, Incident 분류(공용 엔티티 제거 함수 구현 포함, D-044), Human 승인 화면 연결, Case 저장(RDB + Qdrant) | 18, 19, 21, 22, 25 | #186 |
 | | L2 분석(Incident Artifact, 탐지 룰·대응 방안 제안) | 19, 20, 24 | #187 |
 | | SSH MCP | 15 | #187 |
 | | 보안 뉴스 수집, L3 수동 헌팅, 헌팅 기록 화면 조회 | 23, 29 | #188 |
@@ -57,7 +57,7 @@ ELK (attack-to-alert 랩, 외부 SIEM)
 | #184 | Pandyo | 공통 에이전트 코어(`python -m soc.agent`), MCP 코드를 `src/soc/mcp/`로 이동(첫 커밋), 첫날 안에 `fake` 백엔드까지 머지 | 없음 | 없음 |
 | #189 | uptime-zero | OCSF 정규화 바로잡기 | 병렬 진행, PR과 머지는 #183 뒤 | `0095`~`0099` |
 | #185 | uptime-zero | L1 승격 판단·티켓 판정을 공통 에이전트로 전환, 증거 요청 큐·전문가 코드 삭제 | #183, #184 머지 후 | 없음 |
-| #186 | Interludeal | L2 입구·Incident 분류·승인·Case 저장과 화면 연결 | 바로 시작, 에이전트 연결은 #184 뒤 | `0100`~`0109` |
+| #186 | Interludeal | L2 입구·Incident 분류·승인·Case 저장과 화면 연결. 공용 엔티티 제거 함수(25 쪽, `src/soc/l1/entities.py` 옆)를 구현해 L2 분류 입력에 쓴다 | 바로 시작, 에이전트 연결은 #184 뒤 | `0100`~`0109` |
 | #187 | Juhyeok0603 | L2 분석과 SSH MCP | 바로 시작, 에이전트 연결은 #184 뒤, 실데이터 확인은 #186 뒤 | `0110`~`0119` |
 | #188 | Pandyo | 보안 뉴스 수집 계층과 L3 가설 헌팅 | #184(`run_agent`), #186(L2 입구) | `0120`~`0129` |
 
