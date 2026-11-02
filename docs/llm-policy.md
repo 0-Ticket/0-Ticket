@@ -69,11 +69,11 @@ LLM 없이 규칙으로 해야 하는 곳: 4(실행 중 정규화), 5, 6, 7, 25(
 
 | 객체 | 실패 시 |
 |---|---|
-| C7 Verdict | `verdict: unknown`, `confidence: 0`. v2에서 L1은 사람에게 넘기지 않고 이 Ticket을 보류한다(D-036). 보류 건은 L3 헌팅 데이터 풀로 간다. `needs_human` 필드 정리는 후속 계약 이슈 |
+| C7 Verdict | **v3: D-036으로 대체. 보류는 L1의 끝 상태이고 L3로 넘기지 않는다. 본문 수정은 #184.** `verdict: unknown`, `confidence: 0`. v2에서 L1은 사람에게 넘기지 않고 이 Ticket을 보류한다(D-036). 보류 건은 L3 헌팅 데이터 풀로 간다. `needs_human` 필드 정리는 후속 계약 이슈 |
 | C14 SpecialistFinding | **현재 코드에 남아 있음(#185에서 제거) / 새 작업에서는 쓰지 않음(D-034).** `succeeded: unknown`, `confidence: 0`, `needs_human: true`. L1은 이 결과를 판정 근거로 쓰지 않는다 |
-| C11 IncidentArtifact | 만든 부분까지 저장하고 `needs_human: true`. Incident는 `investigating`에 머문다 |
+| C11 IncidentArtifact | **v3: 이슈 사이 규칙 3(D-039)으로 대체. 실패하면 저장하지 않고 "분석 필요"를 유지한다(#187 `finish_analysis(failed=True)`). 본문 수정은 #184.** 만든 부분까지 저장하고 `needs_human: true`. Incident는 `investigating`에 머문다 |
 | C17 HuntFinding | **v3: 이슈 사이 규칙 11(D-046)로 대체. 본문 수정은 #184.** `is_anomaly: false`, `rule_candidate: false`, `needs_human: true` |
-| C18 RuleProposal | `status: draft`, `needs_human: true`. 승인 대상에 올리지 않는다 |
+| C18 RuleProposal | **v3: 이슈 사이 규칙 3(D-039)으로 대체. 실패하면 저장하지 않고 "분석 필요"를 유지한다(#187 `finish_analysis(failed=True)`). 본문 수정은 #184.** `status: draft`, `needs_human: true`. 승인 대상에 올리지 않는다 |
 
 6. LLM 출력이 어떤 도구를 실행할지, 어떤 대응을 할지 직접 정하지 못하게 한다. 출력은 데이터로만 쓰고, 다음 동작은 코드가 정한다.
 
@@ -83,7 +83,7 @@ LLM 없이 규칙으로 해야 하는 곳: 4(실행 중 정규화), 5, 6, 7, 25(
 - 유사 사례는 5~7건.
 - 문자열 필드 하나는 2,000자에서 자른다.
 - 호출 하나의 입력(시스템 프롬프트 + 구분자 안 데이터) 상한은 설정 값이다. L1과 Web 전문가(현재 코드에 남아 있음(#185에서 제거) / 새 작업에서는 쓰지 않음(D-034))는 `[l1] max_input_chars`(기본 16,000자, 약 5천 토큰)를 쓴다. 증거는 먼저 요약하고(건수, 상위 rule, 처음·마지막 시각, 대표 레코드), 그래도 넘으면 대표 레코드·흐름 줄부터 빼고 뺀 수를 `omitted`로 표시한다. 그래도 넘는 입력은 보내지 않고 LLM 실패(예산 초과)로 처리한다. 근거는 입력에 보인 ID만 인용할 수 있다(#91, `docs/architecture.md` 11·14).
-- 작업(티켓, Incident, 헌팅) 하나당 최대 단계 수와 토큰 한도를 설정 값으로 둔다. 넘으면 멈추고 그 작업 객체의 `needs_human`을 `true`로 둔다(헌팅은 v3: 이슈 사이 규칙 11(D-046)로 대체. 본문 수정은 #184). 단 L1 Ticket은 사람에게 넘기지 않고 위 C7 실패 처리를 따른다.
+- 작업(티켓, Incident, 헌팅) 하나당 최대 단계 수와 토큰 한도를 설정 값으로 둔다. 넘으면 멈추고 그 작업 객체의 `needs_human`을 `true`로 둔다(Incident는 v3: 이슈 사이 규칙 3(D-039)으로 대체. 실패하면 저장하지 않고 "분석 필요"를 유지한다(#187 `finish_analysis(failed=True)`). 본문 수정은 #184. 헌팅은 v3: 이슈 사이 규칙 11(D-046)로 대체. 본문 수정은 #184). 단 L1 Ticket은 사람에게 넘기지 않고 위 C7 실패 처리를 따른다.
 
 ## 6. 재현성
 

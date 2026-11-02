@@ -283,7 +283,7 @@ L1이 처리하는 업무 단위.
 | updated_at | int | ✅ | |
 | awaiting_human_at | int | 선택 | `awaiting_human` 상태에 진입한 UTC epoch 밀리초. 아직 진입하지 않았다면 `null`. 상태를 벗어나도 진입 시각을 유지한다 |
 
-v2 상태 전이: `new → triaging → on_hold | closed_benign | closed_fp | l2_escalated`. `on_hold`는 L1 보류 결과로 L3 풀에 전달되고, `l2_escalated`는 박스 25의 L2 입구로 간다. `awaiting_human`과 `escalated` 값은 기존 데이터 호환을 위해 계약에 남기며 v2 흐름에서는 새로 만들지 않는다. `handling_type`과 `awaiting_human_at`도 발표 후 정리 전까지 유지한다.
+v2 상태 전이: `new → triaging → on_hold | closed_benign | closed_fp | l2_escalated`. `on_hold`는 L1 보류 결과로 L3 풀에 전달되고, `l2_escalated`는 박스 25의 L2 입구로 간다(v3: D-036으로 대체. 보류는 L1의 끝 상태이고 L3로 넘기지 않는다. L2 입구는 D-044. 본문 수정은 #188의 C6 전이 계약 변경과 함께). `awaiting_human`과 `escalated` 값은 기존 데이터 호환을 위해 계약에 남기며 v2 흐름에서는 새로 만들지 않는다. `handling_type`과 `awaiting_human_at`도 발표 후 정리 전까지 유지한다.
 
 `awaiting_human_at`은 공통 규칙에 따라 필드 자체는 필수이고 값만 nullable이다.
 미진입 시 `null`, `awaiting_human` 진입 시 해당 시각 `t1`, 상태 종료 후에도 `t1`을 유지한다.
