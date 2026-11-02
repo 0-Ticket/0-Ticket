@@ -62,7 +62,7 @@ LLM 없이 규칙으로 해야 하는 곳: 4(실행 중 정규화), 5, 6, 7, 25(
 ## 4. 출력 검증
 
 1. 출력은 JSON만 받는다. 앞뒤 설명 문장이 붙으면 실패로 본다.
-2. JSON을 해석한 출력 객체는 `soc.contracts.validate_contract(name, data)`로 검증한다. 원본 Schema 검증 후 생성 Pydantic 모델로 변환하는 한 경로만 사용하며, 생성 모델 직접 생성을 검증으로 삼지 않는다. L1은 C7 `Verdict`, 전문 에이전트는 C14 `SpecialistFinding`, L2는 C11 `IncidentArtifact`, L3는 C17 `HuntFinding`, 룰 제안은 C18 `RuleProposal`이다.
+2. JSON을 해석한 출력 객체는 `soc.contracts.validate_contract(name, data)`로 검증한다. 원본 Schema 검증 후 생성 Pydantic 모델로 변환하는 한 경로만 사용하며, 생성 모델 직접 생성을 검증으로 삼지 않는다. L1은 C7 `Verdict`, 전문 에이전트는 C14 `SpecialistFinding`(현재 코드에 남아 있음(#185에서 제거) / 새 작업에서는 쓰지 않음(D-034)), L2는 C11 `IncidentArtifact`, L3는 C17 `HuntFinding`, 룰 제안은 C18 `RuleProposal`이다.
 3. 실패하면 `ContractValidationError`의 필드 경로(`path`)와 규칙(`rule`)만 붙여 **한 번만** 다시 요청한다. 입력값이나 원본 검증 예외는 오류 내용에 넣지 않는다.
 4. 근거(`evidence`)의 `ref_id`가 실제로 존재하는지 코드로 확인한다.
 5. 다시 요청해도 실패하거나, 없는 근거 ID가 하나라도 있으면 아래처럼 처리한다. 위 객체들은 모두 `needs_human`과 `human_reason` 필드를 갖는다.
@@ -70,7 +70,7 @@ LLM 없이 규칙으로 해야 하는 곳: 4(실행 중 정규화), 5, 6, 7, 25(
 | 객체 | 실패 시 |
 |---|---|
 | C7 Verdict | `verdict: unknown`, `confidence: 0`. v2에서 L1은 사람에게 넘기지 않고 이 Ticket을 보류한다(D-036). 보류 건은 L3 헌팅 데이터 풀로 간다. `needs_human` 필드 정리는 후속 계약 이슈 |
-| C14 SpecialistFinding | `succeeded: unknown`, `confidence: 0`, `needs_human: true`. L1은 이 결과를 판정 근거로 쓰지 않는다 |
+| C14 SpecialistFinding | **현재 코드에 남아 있음(#185에서 제거) / 새 작업에서는 쓰지 않음(D-034).** `succeeded: unknown`, `confidence: 0`, `needs_human: true`. L1은 이 결과를 판정 근거로 쓰지 않는다 |
 | C11 IncidentArtifact | 만든 부분까지 저장하고 `needs_human: true`. Incident는 `investigating`에 머문다 |
 | C17 HuntFinding | `is_anomaly: false`, `rule_candidate: false`, `needs_human: true` |
 | C18 RuleProposal | `status: draft`, `needs_human: true`. 승인 대상에 올리지 않는다 |
@@ -82,7 +82,7 @@ LLM 없이 규칙으로 해야 하는 곳: 4(실행 중 정규화), 5, 6, 7, 25(
 - 원본 로그를 대량으로 넣지 않는다. 규칙과 쿼리로 먼저 좁힌 결과만 넣는다.
 - 유사 사례는 5~7건.
 - 문자열 필드 하나는 2,000자에서 자른다.
-- 호출 하나의 입력(시스템 프롬프트 + 구분자 안 데이터) 상한은 설정 값이다. L1과 Web 전문가는 `[l1] max_input_chars`(기본 16,000자, 약 5천 토큰)를 쓴다. 증거는 먼저 요약하고(건수, 상위 rule, 처음·마지막 시각, 대표 레코드), 그래도 넘으면 대표 레코드·흐름 줄부터 빼고 뺀 수를 `omitted`로 표시한다. 그래도 넘는 입력은 보내지 않고 LLM 실패(예산 초과)로 처리한다. 근거는 입력에 보인 ID만 인용할 수 있다(#91, `docs/architecture.md` 11·14).
+- 호출 하나의 입력(시스템 프롬프트 + 구분자 안 데이터) 상한은 설정 값이다. L1과 Web 전문가(현재 코드에 남아 있음(#185에서 제거) / 새 작업에서는 쓰지 않음(D-034))는 `[l1] max_input_chars`(기본 16,000자, 약 5천 토큰)를 쓴다. 증거는 먼저 요약하고(건수, 상위 rule, 처음·마지막 시각, 대표 레코드), 그래도 넘으면 대표 레코드·흐름 줄부터 빼고 뺀 수를 `omitted`로 표시한다. 그래도 넘는 입력은 보내지 않고 LLM 실패(예산 초과)로 처리한다. 근거는 입력에 보인 ID만 인용할 수 있다(#91, `docs/architecture.md` 11·14).
 - 작업(티켓, Incident, 헌팅) 하나당 최대 단계 수와 토큰 한도를 설정 값으로 둔다. 넘으면 멈추고 그 작업 객체의 `needs_human`을 `true`로 둔다. 단 L1 Ticket은 사람에게 넘기지 않고 위 C7 실패 처리를 따른다.
 
 ## 6. 재현성
@@ -101,7 +101,7 @@ LLM 없이 규칙으로 해야 하는 곳: 4(실행 중 정규화), 5, 6, 7, 25(
 설정 키는 아래와 같다(형식은 TOML, D-015). 기본 제공자는 `openai_compatible`이다. 모델 이름과 `base_url`은 설정 값이고 코드에 쓰지 않는다(D-009).
 
 - 작은 로컬 모델(데모 기본값)은 JSON 형식 준수와 도구 호출이 불안정할 수 있다. 실패하면 4항의 실패 처리(L1은 보류, D-036)를 따른다.
-- 확신도 값이 보정되지 않았을 수 있으므로 임계값(초기 0.8)은 AIT 샘플로 먼저 확인한다.
+- 확신도 값이 보정되지 않았을 수 있으므로 임계값(초기 0.8)은 ELK 랩 데이터로 먼저 확인한다(D-036).
 - 더 큰 모델로 바꿀 때는 아래 설정만 바꾼다.
 
 ```toml

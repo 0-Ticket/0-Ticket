@@ -12,7 +12,7 @@
 
 - 인터페이스: `src/soc/<그룹>/<확장 지점>/base.py`
 - 기본 구현체: 같은 폴더의 `<이름>.py`
-- 예: `src/soc/ingest/siem/base.py`(SIEM 커넥터 인터페이스), `src/soc/ingest/siem/direct.py`(SIEM 없이 데이터셋을 재생하는 개발·데모용 구현체), `src/soc/ingest/siem/<SIEM 이름>.py`(외부 SIEM 커넥터)
+- 예: `src/soc/ingest/siem/base.py`(SIEM 커넥터 인터페이스), `src/soc/ingest/siem/<SIEM 이름>.py`(외부 SIEM 커넥터, 예: `elastic.py`)
 
 ### 2. 코어는 구현체 이름을 모른다
 
@@ -46,7 +46,7 @@ entry point 그룹 이름은 `zero_ticket_soc.<확장 지점>`이다. 아래 "�
 ```toml
 # 조직 설정 예시
 [siem]
-adapter = "acme_siem"         # 등록된 어댑터 이름. SIEM이 없으면 "direct"
+adapter = "acme_siem"         # 등록된 어댑터 이름
 base_url = "https://siem.example.com"
 token_env = "SIEM_TOKEN"      # 값은 .env의 SIEM_TOKEN
 
@@ -81,9 +81,9 @@ model = "my-larger-model"
 |---|---|---|---|---|
 | 소스 커넥터 | 1 (외부) | `sources` | **현재 코드에 남아 있음(#183에서 제거) / 새 작업에서는 쓰지 않음(D-042).** 파일 (`direct` 어댑터의 데이터셋 재생 입력, 개발·테스트·데모용) | 다른 데이터셋 형식. 운영 로그 소스는 외부 SIEM에 붙인다 |
 | 원본 저장소 | 2 (외부) | `raw_stores` | **현재 코드에 남아 있음(#183에서 제거) / 새 작업에서는 쓰지 않음(D-042).** 로컬 파일 (`direct` 재생용) | 운영 원본 로그 보관은 외부 SIEM 소관 |
-| SIEM 커넥터 | 3 | `siem` (기존 그룹을 그대로 쓰는 것을 제안) | Wazuh (초기 구현 대상, D-037), `elastic`(ELK: Elasticsearch + Kibana Security. `_search`로 `[siem.elastic] alert_index`·`event_index`를 읽는다. 시나리오 `elastic_security_alert`·`elastic_access_event`, #99), `direct`(현재 코드에 남아 있음(#183에서 제거) / 새 작업에서는 쓰지 않음, D-042. SIEM 없이 데이터셋을 재생해 C1을 C2로 넘김. 개발·테스트·데모용, 운영 대상 아님). 운영에서는 외부 SIEM 하나를 설정으로 선택 | Splunk |
+| SIEM 커넥터 | 3 | `siem` (기존 그룹을 그대로 쓰는 것을 제안) | Wazuh(이후 확장, D-006), `elastic`(ELK: Elasticsearch + Kibana Security. `_search`로 `[siem.elastic] alert_index`·`event_index`를 읽는다. 시나리오 `elastic_security_alert`·`elastic_access_event`, #99), `direct`(현재 코드에 남아 있음(#183에서 제거) / 새 작업에서는 쓰지 않음, D-042. SIEM 없이 데이터셋을 재생해 C1을 C2로 넘김. 개발·테스트·데모용, 운영 대상 아님). 운영에서는 외부 SIEM 하나를 설정으로 선택 | Splunk |
 | 별칭 표 | 4 | (파일) | 기본 시나리오 별칭 표 `src/soc/normalize/aliases/<scenario>.toml`. 조직 폴더는 `[normalize] alias_dir`이고, 같은 이름 파일이 기본 표를 통째로 바꾼다. 텍스트 한 줄 원본은 `parse`(이름 붙은 그룹 정규식)로 나눈다. parse 정규식은 공격자가 만든 문자열에 적용되므로 역추적이 폭발하지 않게 쓴다(중첩 반복 금지). 대상 값이 `normalize.max_parse_length`보다 길면 적용하지 않는다 | 자사 SIEM 시나리오, 새 로그 형식 |
-| 룩업 제공자 | 5 | `lookups` | `csv`: CSV로 적재한 자산·계정 표(RDB, `postgresql.lookups`)를 읽는다(#60). `none`(항상 찾지 못함)도 설정으로 고를 수 있다. 인터페이스 `src/soc/normalize/lookup/base.py`의 `find_asset(value, at)`, `find_user(user, at)`. `[lookup] provider`로 고르고 코어는 `soc.normalize.lookup.open_lookup`으로 연다. 정규화 결합(`LookupEnricher`)과 증거 요청 큐의 lookup 처리자가 같은 제공자를 쓴다 | CMDB, 디렉터리 서비스, 위협 인텔 평판 서비스 |
+| 룩업 제공자 | 5 | `lookups` | `csv`: CSV로 적재한 자산·계정 표(RDB, `postgresql.lookups`)를 읽는다(#60). `none`(항상 찾지 못함)도 설정으로 고를 수 있다. 인터페이스 `src/soc/normalize/lookup/base.py`의 `find_asset(value, at)`, `find_user(user, at)`. `[lookup] provider`로 고르고 코어는 `soc.normalize.lookup.open_lookup`으로 연다. 정규화 결합(`LookupEnricher`)과 증거 요청 큐의 lookup 처리자(현재 코드에 남아 있음(#185에서 제거) / 새 작업에서는 쓰지 않음(D-034))가 같은 제공자를 쓴다 | CMDB, 디렉터리 서비스, 위협 인텔 평판 서비스 |
 | 저장소 백엔드 | 5, 6, 7, 10, 12, 18, 20, 22, 24 | `stores` | PostgreSQL (D-002). Event도 RDB. 구현체 이름은 `<백엔드>.<저장소 종류>`(예: `postgresql.records`, `postgresql.tickets`)이고, `[store] backend` 하나로 고르며 코어는 `soc.store.open_store(<종류>, ...)`에 종류만 넘긴다 | 다른 RDB, 별도 로그 저장소(이벤트) |
 | 벡터 저장소 | 8 | `vector_stores` | Qdrant (D-003). Ticket, Case만 | 다른 벡터 DB |
 | 임베딩 제공자 | 8 | `embedders` | bge-m3, 로컬 실행 (D-010) | 상용 임베딩 API |
@@ -92,7 +92,7 @@ model = "my-larger-model"
 | 전문 에이전트 | 13, 14 | `specialists` | **현재 코드에 남아 있음(#185에서 제거) / 새 작업에서는 쓰지 않음(D-034).** `web`: Web 전문가 Agent(#63). 인터페이스 `src/soc/l1/specialists/base.py`의 `SpecialistContext`를 받아 C22 요청 하나를 C14로 답하는 함수. C22 `domain` 값이 구현체 이름이고(도메인이 없으면 `web`), 코어는 `soc.l1.specialists.open_specialist(domain, context)`로 연다. Cloud(13)는 등록 한 줄 (D-005 확정 후) | Cloud, 엔드포인트, 메일, 네트워크 전문 에이전트 추가 |
 | 프롬프트 | 11, 19, 23, 24, 28 | (파일) | 기본 프롬프트 | 자사 판정 기준, 언어 |
 | MCP 도구 | 15 | `mcp_servers` | 에이전트 도구(15)의 도구 묶음: 내부 데이터 조회(`query_records`, `get_alert`), HTTP 흐름 조회(`query_http_flow`), SSH MCP(D-043, #187에서 추가). SIEM 도구(`query_siem`)는 아래 SIEM MCP 어댑터에서 온다. 공식 Python MCP SDK로 구현 (D-041). 새 도구는 "새 에이전트 도구 붙이기" | 사내 도구 연결 |
-| SIEM MCP 어댑터 | 15 | `siem_mcp_adapters` | Wazuh (초기, D-035). 선택된 SIEM을 따라간다. 읽기 전용. `direct`(현재 코드에 남아 있음(#183에서 제거) / 새 작업에서는 쓰지 않음, D-042. 개발·테스트·시연용, 운영 대상 아님): `siem.direct.files`를 수집과 같은 방식으로 읽고 기본 별칭 표로 엔티티·시간을 찾는다. `elastic`(ELK, #99): 커넥터와 같은 인덱스를 `_search`로 읽는다. ip는 `source.address`(IP 값이면 `destination.ip`도), host는 `host.name`, user는 `user.name`에 term으로 건다. 시간은 이벤트는 `@timestamp`, 알럿은 `kibana.alert.original_time`(없으면 `@timestamp`)이다. 질의 실패는 SIEM에 닿지 못하면 `SiemUnavailableError`, 답을 쓸 수 없으면 `SiemAdapterError`로 알린다(`src/soc/l1/mcp/siem/base.py`, #111). 답을 쓸 수 없음에는 어댑터가 돌려준 레코드의 C2 변환 실패도 포함된다. `query_siem` 도구는 두 오류를 같은 타입·고정 메시지로 다시 만들고, 다른 예외는 고정 메시지의 `SiemAdapterError`로 바꾼다. elastic은 아직 연결 불가를 구분하지 못해 모든 실패가 `SiemAdapterError`다(박스 3 별도 이슈) | Splunk |
+| SIEM MCP 어댑터 | 15 | `siem_mcp_adapters` | Wazuh(이후 확장, D-006·D-035). 선택된 SIEM을 따라간다. 읽기 전용. `direct`(현재 코드에 남아 있음(#183에서 제거) / 새 작업에서는 쓰지 않음, D-042. 개발·테스트·시연용, 운영 대상 아님): `siem.direct.files`를 수집과 같은 방식으로 읽고 기본 별칭 표로 엔티티·시간을 찾는다. `elastic`(ELK, #99): 커넥터와 같은 인덱스를 `_search`로 읽는다. ip는 `source.address`(IP 값이면 `destination.ip`도), host는 `host.name`, user는 `user.name`에 term으로 건다. 시간은 이벤트는 `@timestamp`, 알럿은 `kibana.alert.original_time`(없으면 `@timestamp`)이다. 질의 실패는 SIEM에 닿지 못하면 `SiemUnavailableError`, 답을 쓸 수 없으면 `SiemAdapterError`로 알린다(`src/soc/l1/mcp/siem/base.py`, #111). 답을 쓸 수 없음에는 어댑터가 돌려준 레코드의 C2 변환 실패도 포함된다. `query_siem` 도구는 두 오류를 같은 타입·고정 메시지로 다시 만들고, 다른 예외는 고정 메시지의 `SiemAdapterError`로 바꾼다. elastic은 아직 연결 불가를 구분하지 못해 모든 실패가 `SiemAdapterError`다(박스 3 별도 이슈) | Splunk |
 | 증거 요청 큐 | 26, 27 | `evidence_queues` | **현재 코드에 남아 있음(#185에서 제거) / 새 작업에서는 쓰지 않음(D-034).** PostgreSQL 테이블 큐 (D-034). 구현체 이름 `postgresql`, `[evidence_queue] backend`로 고르고 코어는 `soc.l1.evidence.open_evidence_queue`로 연다. 백엔드는 이름 두 개를 등록한다: `<백엔드>`(큐 작업자가 쓰는 연결)와 `<백엔드>.readonly`(같은 행을 읽기 전용으로 읽는 연결). 화면용 API(27)는 `open_evidence_queue(..., readonly=True)`로 뒤쪽만 연다 | 다른 큐 백엔드 |
 | 사람 검토 채널 | 21 | `review_channels` | 웹 화면 (D-013, `docs/frontend.md`) | 메신저, 사내 포털 |
 | 티켓·케이스 시스템 | 10, 22 | `case_systems` | 내부 저장과 내부 UI (D-012) | 외부 티켓·케이스 관리 도구와 동기화 |
@@ -136,11 +136,10 @@ SIEM 커넥터와 SIEM MCP 어댑터는 설정의 `[siem] adapter` 값 하나로
 
 ```toml
 [mcp.allowed_tools]
-l1 = ["query_siem", "query_records", "get_alert"]
-web_specialist = ["query_records", "get_alert", "query_http_flow"]
+l1 = ["query_siem", "query_records", "get_alert", "query_http_flow"]
 ```
 
-기본 구현체 중 "로컬 파일", "CSV", `direct`는 외부 도구 없이 표준 라이브러리만으로 만드는 기본값이라 결정 대장에 따로 두지 않는다. 외부 도구를 쓰는 기본 구현체는 결정 대장의 ID를 따른다.
+기본 구현체 중 "CSV"(룩업)는 외부 도구 없이 표준 라이브러리만으로 만드는 기본값이라 결정 대장에 따로 두지 않는다. 외부 도구를 쓰는 기본 구현체는 결정 대장의 ID를 따른다.
 
 웹 화면도 확장 구조를 따른다. 등록형 값과 `extensions`는 화면 코드에 고정하지 않고 받은 그대로 보여 준다. 플러그인이 새 값이나 필드를 더해도 화면을 고치지 않아도 된다(`docs/frontend.md` "공통").
 

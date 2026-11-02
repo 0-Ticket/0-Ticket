@@ -14,6 +14,8 @@
 > - C19 VectorDoc: 기본 컬렉션 중 `closed_incidents`, `assets`, `alerts_summary`, `events_rare`와 `source_kind`의 `incident`, `asset`, `alert`, `event`는 v2에서 VDB에 넣지 않는다
 > - C11 IncidentArtifact·C10: L2 "증거 수집 실패" 표시(D-034)가 없다
 
+> **v3 (#182).** D-034 폐기로 C11·C10의 "증거 수집 실패" 항목은 대상이 아니다. C14, C22, C6 `specialist`, C23 `evidence_request_failure`는 현재 코드에 남아 있고(#185에서 코드 제거, API 응답 모양 유지) 새 작업에서는 쓰지 않는다. C6 전이 설명의 "L3 풀"은 D-036, "박스 25의 L2 입구"와 C10의 "엔티티 분기(25)의 결과"는 D-044로 대체된다. C1·C2의 `direct` 설명은 D-042로 폐기된다. 세부 계약 수정은 #186·#188에서 한다.
+
 ## 공통 규칙
 
 - 필드명은 `snake_case`
@@ -74,7 +76,7 @@ Schema로 옮길 때 지킬 것:
 
 | ID | 객체 | 만드는 박스 → 쓰는 박스 |
 |---|---|---|
-| C1 | RawRecord | 1 → 2, 3 (박스 1·2는 외부. `direct` 어댑터의 재생 입력) |
+| C1 | RawRecord | 1 → 2, 3 (박스 1·2는 외부. `direct` 어댑터의 재생 입력. 현재 코드에 남아 있음(#183에서 제거) / 새 작업에서는 쓰지 않음(D-042)) |
 | C2 | SiemAlert | 3 → 4, 6, 7 |
 | C20 | AliasTable (설정) | 사람 → 4 |
 | C3 | NormalizedAlert | 4 → 5 |
@@ -88,7 +90,7 @@ Schema로 옮길 때 지킬 것:
 | C9 | HumanReview | (v1 객체. v2에서 제거 예정. 위 "v2 불일치") |
 | C10 | Incident | 25, 18, 19 → 19 |
 | C11 | IncidentArtifact | 19 → 20, 21 |
-| C14 | SpecialistFinding | 13, 14 → 11, 19 |
+| C14 | SpecialistFinding | 13, 14 → 11, 19 (현재 코드에 남아 있음(#185에서 제거) / 새 작업에서는 쓰지 않음(D-034)) |
 | C15 | L2Review | 21 → 22 |
 | C16 | Case | 22 → 8, 23 |
 | C17 | HuntFinding | 23 (v2에서 헌팅 결과는 C6으로 L2에 들어감. 위 "v2 불일치") |
@@ -114,13 +116,13 @@ Schema로 옮길 때 지킬 것:
 
 ## C2 · SiemAlert
 
-SIEM 어댑터가 낸 알럿 또는 이벤트. 시나리오마다 필드명이 달라도 그대로 둔다. `source_record_id`는 저장된 불변 원본 행을 식별하며, 정규화 결과가 이 값을 FK로 보존한다. `raw_ids`는 별도 원본 로그(C1) 참조로 유지한다. SIEM 없이 받을 때(개발·테스트·데모용 데이터셋 재생)는 `direct` 어댑터가 C1을 이 형식으로 바꾼다.
+SIEM 어댑터가 낸 알럿 또는 이벤트. 시나리오마다 필드명이 달라도 그대로 둔다. `source_record_id`는 저장된 불변 원본 행을 식별하며, 정규화 결과가 이 값을 FK로 보존한다. `raw_ids`는 별도 원본 로그(C1) 참조로 유지한다. SIEM 없이 받을 때(개발·테스트·데모용 데이터셋 재생)는 `direct` 어댑터가 C1을 이 형식으로 바꾼다(현재 코드에 남아 있음(#183에서 제거) / 새 작업에서는 쓰지 않음(D-042)).
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
 | kind | enum | ✅ | `alert`(박스 4가 C3로 바꿈), `event`(C13으로 바꿈) |
 | source_record_id | str | ✅ | `src_` 접두어. 저장되는 C2 원본 행의 고유 ID. 코어가 `src_` + sha256(정규화된 JSON: `kind`, `scenario`, `raw_ids`, `fields`만, 키 정렬, 공백 없음, UTF-8) 16진수 전체로 부여한다(`docs/architecture.md` 박스 3). 어댑터는 이 필드를 채우지 않는다 |
-| scenario | str | ✅ | 탐지 시나리오 또는 이벤트 종류 이름. 정규화 시 C20 별칭 표를 고르는 키. `direct` 어댑터는 설정에서 정한 이름을 쓴다 |
+| scenario | str | ✅ | 탐지 시나리오 또는 이벤트 종류 이름. 정규화 시 C20 별칭 표를 고르는 키. `direct` 어댑터는 설정에서 정한 이름을 쓴다(현재 코드에 남아 있음(#183에서 제거) / 새 작업에서는 쓰지 않음(D-042)) |
 | raw_ids | list[str] | ✅ | 근거가 된 RawRecord ID |
 | fields | dict | ✅ | SIEM 알럿 JSON 원본 그대로. ES 계열 어댑터(`elastic`)는 `_source`의 점 표기 키(`"a.b": 1`)를 중첩 객체(`{"a": {"b": 1}}`)로 펼쳐 넣는다. ES 안에서 두 표기는 같은 뜻이고, 값은 바꾸지 않는다 |
 
@@ -271,7 +273,7 @@ L1이 처리하는 업무 단위.
 | origin | enum | ✅ | `l1_escalated`(L1 승격), `l3_escalated`(L3 승격), `scenario`(시나리오) (D-038) |
 | status | enum | ✅ | `new`, `triaging`, `awaiting_human`, `on_hold`, `closed_benign`, `closed_fp`, `escalated`, `l2_escalated` |
 | handling_type | 등록형 | ✅ | 기본 `web_attack`, `scan`, `cloud`, `other` |
-| specialist | 등록형 | ✅ | 전문 에이전트 이름. 기본 `none`, `web`, `cloud` |
+| specialist | 등록형 | ✅ | 전문 에이전트 이름. 기본 `none`, `web`, `cloud`. 현재 코드에 남아 있음(#185에서 제거) / 새 작업에서는 쓰지 않음(D-034) |
 | priority | int | ✅ | `severity_id × 대상 자산 criticality`. 대상 자산은 `dst_asset`, 없으면 `src_asset`, 둘 다 없으면 criticality 1로 계산 |
 | alert_ids | list[str] | ✅ | 하나 이상 |
 | entities | list[Entity] | ✅ | 공통 객체 Entity. 엔티티 분기(25)가 이 값을 본다 |
@@ -440,6 +442,8 @@ L2의 분석 결과물. 사람이 읽는 보고서는 이 객체로부터 만든
 
 ## C14 · SpecialistFinding
 
+> 현재 코드에 남아 있음(#185에서 제거) / 새 작업에서는 쓰지 않음(D-034).
+
 전문 에이전트(Cloud, Web)가 L1의 질문에 답한 분석 결과. LLM 출력은 이 형식으로 검증한다.
 
 | 필드 | 타입 | 필수 | 설명 |
@@ -589,6 +593,8 @@ Vector DB에 넣는 문서 한 건. 임베딩할 문장과 원본 연결 정보.
 `reason` 객체의 `rule_id`는 선택 문자열, `entity`는 선택 Entity이며 둘 다 없을 수는 없다. 분기 규칙 ID와 분기에 사용한 엔티티를 보존한다.
 
 ## C22 · EvidenceRequest
+
+> 현재 코드에 남아 있음(#185에서 제거) / 새 작업에서는 쓰지 않음(D-034).
 
 박스 26 증거 요청 큐의 한 항목. 재시도 횟수는 최초 요청 뒤 다시 시도한 횟수다.
 

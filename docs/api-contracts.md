@@ -104,10 +104,10 @@
 
 - `alerts`: `ticket.alert_ids` 순서대로 담는다. 저장소에 없는 `alert_id`는 `alerts`에서 빠지고
   `ticket.alert_ids`에는 남는다(500이 아니다). 화면은 남은 ID를 그대로 보여 준다.
-- `findings`: `status`가 `completed`인 `specialist_agent` 요청의 `result.finding`이다. 그런 요청이
+- `findings`: **현재 코드에 남아 있음(#185에서 제거) / 새 작업에서는 쓰지 않음(D-034).** #185 이후에는 응답 모양을 그대로 두고 항상 `[]`이며, 도구 호출은 `steps`로 본다. 지금은 `status`가 `completed`인 `specialist_agent` 요청의 `result.finding`이다. 그런 요청이
   없으면 `[]`.
 - `decisions`: 이 티켓이 주체인 C23만, 새것부터. 연결된 알럿의 C23은 "알럿 L1 상세"에서 본다.
-- `evidence_requests`: 이 티켓이 요청자인 C22 전체를 들어온 순서대로. `failed` 요청의
+- `evidence_requests`: **현재 코드에 남아 있음(#185에서 제거) / 새 작업에서는 쓰지 않음(D-034).** #185 이후에는 항상 `[]`이다. 지금은 이 티켓이 요청자인 C22 전체를 들어온 순서대로. `failed` 요청의
   `failure_reason`이 증거 수집 실패 표시다(박스 26, D-034).
 - `steps`: 티켓 단계와 `alert_ids`가 가리키는 알럿 단계를 합쳐 `created_at` 순으로 돌려준다(#44).
   C8 필드만 담고, 큰 결과의 보관 파일 경로·해시는 내보내지 않는다.

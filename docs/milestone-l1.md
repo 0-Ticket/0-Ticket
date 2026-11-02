@@ -1,5 +1,7 @@
 # 중간 발표 범위 (L1 시연)
 
+> **중간 발표(종료) 기록이다.** 데모 범위는 `docs/milestone-demo.md`가 기준이다. 이 문서의 `direct`·AIT 데이터셋·증거 요청 큐·전문가 Agent는 현재 코드에 남아 있음(#183·#185에서 제거) / 새 작업에서는 쓰지 않음(D-004, D-042, D-034).
+
 중간 발표까지 만들 범위다. 이 범위 밖의 박스는 발표 후에 한다. 박스 설명은 `docs/architecture.md`, 계약은 `docs/data-contracts.md`, 결정은 `docs/decisions.md`가 기준이다.
 
 ## 목표와 시연 흐름

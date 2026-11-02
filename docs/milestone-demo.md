@@ -150,10 +150,11 @@ class IncidentService:
 ```
 
 - 공용 엔티티 제거 함수는 25 쪽(`src/soc/l1/entities.py` 옆)에 두고, 이번 데모에서는 L2 분류 입력에서만 호출한다. 알럿 분기 흐름(25의 0단계)에 연결하는 것은 데모 범위 밖이다(D-044).
-- 재분석 기준은 D-039를 따른다. 새 엔티티나 새 증거 ID(붙은 Ticket의 새 알럿 ID 포함)가 늘면 분석 요청을 만든다. 자동 재분석은 최대 `[l2] max_reruns`(기본 5)까지이고, 한도에 걸리면 정보는 계속 붙이고 표시만 남긴다.
+- 재분석 기준은 D-039를 따른다. 새 엔티티나 새 증거 ID(붙은 Ticket의 새 알럿 ID 포함)가 늘면 분석 요청을 만든다. 자동 재분석은 최대 `[l2] max_reruns`(기본 5)까지이고, 한도에 걸리면 정보는 계속 붙이고 표시만 남긴다. 반려에 따른 재분석은 이 횟수에 넣지 않는다(#186).
 - `finish_analysis`는 `review_state`가 `analyzing`일 때만 `awaiting_review`로 바꾼다.
 - `review_state = human_handling`인 Incident에는 정보만 붙이고, 분석 요청과 새 검토 기회를 만들지 않는다.
 - 승인된 Incident(`review_state = approved`, `status = escalated_to_case`)는 열린 Incident 목록(L2 분류 입력)에 들어가지 않는다.
+- 열린 Incident는 `status`가 `open`·`investigating`인 Incident다. `human_handling` Incident도 포함되며 정보만 붙는다.
 
 L2 분석 이슈는 `src/soc/l2/analysis/`에 `ArtifactReader.get(incident_id)`와 `ArtifactReader.rule_proposals(incident_id)`를 제공한다.
 
