@@ -27,7 +27,7 @@
 |---|---|---|
 | D-001 | 백엔드는 Python 3.13 + uv. 린트·포맷 ruff, 테스트 pytest | CI와 같은 명령 |
 | D-002 | 설정 파일은 TOML. 기본 설정 위에 조직 설정 파일을 덮어쓴다 | 비밀 값은 넣지 않고 환경변수 이름만 적는다. 조직 설정 파일은 `config/local.toml`처럼 `config/local.*` 이름을 쓰고 커밋하지 않는다 |
-| D-003 | 데이터 계약의 원본은 JSON Schema. Python(Pydantic)·TypeScript 코드는 생성하고, 생성 코드는 직접 고치지 않는다 | 이전 하네스에서는 `contracts/`(draft-07)에 두고 datamodel-code-generator·json-schema-to-typescript로 생성했다. 위치·도구는 첫 계약 이슈에서 정한다 |
+| D-003 | 데이터 계약의 원본은 JSON Schema. Python(Pydantic)·TypeScript 코드는 생성하고, 생성 코드는 직접 고치지 않는다 | 위치·도구는 첫 계약 이슈에서 정한다 |
 | D-004 | 라이선스는 Apache-2.0 | |
 
 ### 수집 · 정규화
