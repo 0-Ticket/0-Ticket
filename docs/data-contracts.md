@@ -265,6 +265,8 @@ C3에 룩업 결과와 저장 정보를 더한 것. Alert 저장소의 한 행. 
 
 ## C6 · Ticket
 
+> v3 (#182, 이슈 사이 규칙 15~17. 필드 행과 Schema는 #188에서 바꾼다): C6 `hunt_id`는 문자열이고 C17 `hunt_id`와 같은 형식(`ht_`로 시작)이다. 일반 Ticket은 `null`이고, `origin = l3_escalated`이면 필수다. 계약 행과 Schema는 #188에서 추가한다. L3 승격 Ticket의 `entities`는 코드가 만든다. `HuntFinding.evidence`가 가리키는 알럿·이벤트 레코드에서 기존 엔티티 추출 규칙(`src/soc/l1/entities.py`: `src_ip`·`dst_ip` → ip, `host`, `user`)으로 뽑는다. 이벤트용 추출 함수는 같은 파일에 #188이 더한다. LLM이 출력한 엔티티는 쓰지 않는다. 공용 엔티티 제거는 L2 분류 때 한다(D-044). L3 승격 Ticket은 생성할 때 VDB에 넣지 않는다. VDB에는 판정이 끝난 Ticket만 넣는다는 D-003 기준에 해당하지 않기 때문이다. 그 사건은 L2 승인 뒤 Case로 VDB에 들어간다.
+
 L1이 처리하는 업무 단위.
 
 | 필드 | 타입 | 필수 | 설명 |
@@ -511,6 +513,8 @@ L2의 분석 결과물. 사람이 읽는 보고서는 이 객체로부터 만든
 | status | enum | ✅ | `todo`, `doing`, `done` |
 
 ## C17 · HuntFinding
+
+> v3 (#182, 이슈 사이 규칙 12. 필드 행과 Schema는 #188에서 바꾼다): 보안 뉴스 ID를 가설 출처로 남기기 위해 C17 HuntFinding에 `source_news_ids: list[str]`(보안 뉴스 ID 목록, 비어도 됨) 필드를 추가한다. `evidence`(위협 근거)와 구분하며, 헌팅 API는 C17을 그대로 돌려주므로 응답에 포함된다. 계약 변경은 #188에서 한다. L3는 탐지 룰을 제안하지 않으므로 `rule_candidate`는 `false`로 둔다.
 
 L3 헌팅 한 번의 결과.
 

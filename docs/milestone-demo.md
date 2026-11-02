@@ -186,9 +186,12 @@ class HuntReader:
 9. **재분석·연속 실패 횟수** (D-039, #186): 재분석 횟수(`max_reruns`)는 새 정보로 다시 돌린 분석 중 성공한 것만 센다. 반려로 다시 돌린 분석은 세지 않는다. 연속 실패 횟수(`analysis_max_retries`)는 분석 요청 하나 안에서 연속으로 실패한 횟수이고, 성공하거나 새 정보·반려로 새 분석 요청이 생기면 0으로 돌아간다. 두 카운터는 #186의 L2 내부 테이블(`0100`~`0109`)에 둔다. 화면 표시(재분석 한도 멈춤, 분석 실패 멈춤, 검토 중 새 정보)는 #186에서 C10 계약 필드로 추가한다(`docs/data-contracts.md` "v2 불일치"의 재실행 한도 표시 항목을 여기서 해소).
 10. **Case 저장 기준** (D-003, #186): Case 승인은 RDB 저장이 기준이다. Qdrant 저장이 실패해도 승인은 성공으로 두고, `case_id`로 덮어쓰기(같은 ID면 한 건)해 다음 주기에 다시 시도한다.
 11. **L3 실행 실패** (D-046, #188): L3 `run_agent`가 실패하면 HuntFinding을 남기지 않고 Agent Log에 실패를 기록한다. 수동 명령은 실패를 출력하고 0이 아닌 종료 코드로 끝난다.
-12. **가설 출처 필드** (D-045, #188): 보안 뉴스 ID를 가설 출처로 남기기 위해 C17 HuntFinding에 가설 출처(보안 뉴스 ID 목록) 필드를 추가한다. 계약 변경은 #188에서 한다.
+12. **가설 출처 필드** (D-045, #188): 보안 뉴스 ID를 가설 출처로 남기기 위해 C17 HuntFinding에 `source_news_ids: list[str]`(보안 뉴스 ID 목록, 비어도 됨) 필드를 추가한다. `evidence`(위협 근거)와 구분하며, 헌팅 API는 C17을 그대로 돌려주므로 응답에 포함된다. 계약 변경은 #188에서 한다. L3는 탐지 룰을 제안하지 않으므로 `rule_candidate`는 `false`로 둔다.
 13. **에이전트 입력 한도·실행기** (D-008, #184): 에이전트 입력 한도는 모델 호출 한 번의 입력 전체(쌓인 도구 결과 포함)에 적용하고, 반복은 최대 턴 수로 막는다. 데모는 에이전트 실행기 하나만 지원한다. 실행기를 여러 개 띄우면 같은 건을 두 번 처리할 수 있다.
 14. **L3 승격 Ticket의 심각도** (D-038, #186·#188): 알럿 없는 L3 승격 Ticket의 심각도는 `hunt_id`가 가리키는 HuntFinding의 `severity_id`에서 온다. Ticket `priority` = HuntFinding `severity_id` × 자산 criticality(자산 정보가 없으면 1)로 #188이 Ticket을 만들 때 계산한다. Incident `severity_id`를 계산할 때 `alert_ids`가 빈 Ticket은 HuntFinding의 `severity_id`를 쓴다(#186). L3 에이전트가 정한 `severity_id`는 0~6이고, `HuntFinding.evidence`에 우리 데이터 근거가 하나 이상 있어야 Ticket을 만든다(#188).
+15. **C6 `hunt_id` 형식** (D-038, #188): C6 `hunt_id`는 문자열이고 C17 `hunt_id`와 같은 형식(`ht_`로 시작)이다. 일반 Ticket은 `null`이고, `origin = l3_escalated`이면 필수다. 계약 행과 Schema는 #188에서 추가한다.
+16. **L3 승격 Ticket의 엔티티** (D-038, #188): L3 승격 Ticket의 `entities`는 코드가 만든다. `HuntFinding.evidence`가 가리키는 알럿·이벤트 레코드에서 기존 엔티티 추출 규칙(`src/soc/l1/entities.py`: `src_ip`·`dst_ip` → ip, `host`, `user`)으로 뽑는다. 이벤트용 추출 함수는 같은 파일에 #188이 더한다. LLM이 출력한 엔티티는 쓰지 않는다. 공용 엔티티 제거는 L2 분류 때 한다(D-044).
+17. **L3 승격 Ticket과 VDB** (D-038, #188): L3 승격 Ticket은 생성할 때 VDB에 넣지 않는다. VDB에는 판정이 끝난 Ticket만 넣는다는 D-003 기준에 해당하지 않기 때문이다. 그 사건은 L2 승인 뒤 Case로 VDB에 들어간다.
 
 ## 관련 결정
 
