@@ -8,7 +8,7 @@
 >
 > - C6의 `handling_type`, `awaiting_human` 및 `awaiting_human_at`, C9 HumanReview, C7 `needs_human`은 발표 후 정리 대상으로 유지한다. v2 경로에서 사람 검토나 라우팅에 사용하지 않는다.
 > - C10 Incident: `created_by`의 `correlation`, IncidentMember `source`(`l1`, `human_l1`, `l3`), `member_type`의 `hunt`, `rule`은 폐기된 Correlation(17) 기준
-> - C10: L2 재실행이 한도(D-039)에 걸려 멈췄다는 표시가 없다. `review_state`·`review_round`와 C15 반려는 v2에서도 유지한다(D-039)
+> - C10: L2 재실행이 한도(D-039)에 걸려 멈췄다는 표시가 없다. `review_state`·`review_round`와 C15 반려는 v2에서도 유지한다(D-039). v3: 재분석 한도 멈춤·분석 실패 멈춤·검토 중 새 정보 표시는 #186에서 C10 계약 필드로 추가해 해소한다(`docs/milestone-demo.md` 이슈 사이 규칙 9)
 > - C17 HuntFinding: v2에서 헌팅 결과는 Ticket(C6)으로 L2에 들어간다
 > - C18 RuleProposal: `hunt_id`·`case_id` 대신 Incident·Artifact에서 나온다. 별도 승인 `status` 대신 21의 승인에 포함된다
 > - C19 VectorDoc: 기본 컬렉션 중 `closed_incidents`, `assets`, `alerts_summary`, `events_rare`와 `source_kind`의 `incident`, `asset`, `alert`, `event`는 v2에서 VDB에 넣지 않는다
@@ -382,7 +382,7 @@ awaiting_review ──reject (두 번째 반려)──▶ human_handling
 - 상태를 바꾸고 회차를 부여하는 것은 코어(박스 21)다. 화면과 검토 채널은 계산하지 않는다.
 - 첫 검토 기회는 round 1이다. 새 기회가 열릴 때마다 코어가 다음 회차를 부여하며, 같은 Incident에서 회차는 단조 증가한다.
 - 검토 기회 하나에는 검토(C15)가 하나만 남는다. 처리된 기회에는 다시 제출할 수 없다.
-- `human_handling`은 L2 자동 검토 흐름의 끝일 뿐, Incident 생명주기의 끝이 아니다. 그 뒤 Case로 넘길지 종결할지는 `status`와 박스 22가 정한다. 이 상태에서는 새 L2 검토 기회를 열지 않는다.
+- `human_handling`은 L2 자동 검토 흐름의 끝일 뿐, Incident 생명주기의 끝이 아니다. 그 뒤 Case로 넘길지 종결할지는 `status`와 박스 22가 정한다. 이 상태에서는 새 L2 검토 기회를 열지 않는다. v3 데모: 시스템 안 처리 경로 없음(규칙 7).
 - 반려 후 `analyzing`으로 돌아가 재분석하는 동안 `status`는 `investigating`을 유지한다. 이 흐름은 `status` 값이나 전이를 바꾸지 않는다.
 - 화면은 검토 건수, C15 `round`, C11 `generated_at`, 그 밖의 시각으로 새 검토 기회를 추론하지 않는다. `review_state`와 `review_round`만 본다.
 

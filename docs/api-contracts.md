@@ -239,7 +239,7 @@ C10 Incident에 `review_state`, `review_round`가 필수 필드로 추가됐다(
 `POST /api/incidents/{incident_id}/reviews` 처리 순서:
 
 1. Incident가 없으면 `not_found`
-2. `review_state`가 `awaiting_review`가 아니면 `conflict` (승인됨, 재분석 중, 사람 직접 처리)
+2. `review_state`가 `awaiting_review`가 아니면 `conflict` (승인됨, 재분석 중, 사람 직접 처리). 사람 직접 처리(`human_handling`)는 v3 데모: 시스템 안 처리 경로 없음(규칙 7)
 3. 본문 검증에 걸리면 `invalid_input`. `expected_review_round` 누락·정수 아님 포함
 4. `expected_review_round`가 지금 C10 `review_round`와 다르면 `conflict` (예: 다른 탭이 이미 답했고 새 기회가 열림)
 5. 통과하면 코어가 C15를 기록하고 `round`에 그 기회의 회차를 넣는다. 같은 기회에는 한 건만 기록되며, 동시에 온 요청 중 하나만 성공한다
@@ -248,5 +248,5 @@ C10 Incident에 `review_state`, `review_round`가 필수 필드로 추가됐다(
 기회가 열려 있으면 본문 오류(`invalid_input`)를 회차 불일치(`conflict`)보다 먼저 알린다. 기존 C9 티켓 검토의 "이미 처리됨 → `conflict`, 그다음 본문 검증" 순서와 같다.
 
 - 화면은 GET에서 받은 `review_round`를 계산 없이 `expected_review_round`로 보낸다. 클라이언트가 회차를 정하는 값이 아니다.
-- 성공 후 `review_state`는 승인이면 `approved`, 첫 번째 반려면 `analyzing`, 두 번째 반려면 `human_handling`이 되고 `review_round`는 `null`이 된다. `status`는 바뀌지 않는다.
+- 성공 후 `review_state`는 승인이면 `approved`, 첫 번째 반려면 `analyzing`, 두 번째 반려면 `human_handling`이 되고 `review_round`는 `null`이 된다. `status`는 바뀌지 않는다. `human_handling`은 v3 데모: 시스템 안 처리 경로 없음(규칙 7).
 - 검토 채널 플러그인(`review_channels`)도 같은 규칙을 따른다.
