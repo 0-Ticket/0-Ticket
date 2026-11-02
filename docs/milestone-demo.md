@@ -125,7 +125,7 @@ class AgentWorker(Protocol):  # 각 레인이 agent_workers 플러그인 그룹�
 ### Ticket 상태와 출처 (L1 → L2, L3 → L2)
 
 - L1 티켓 판정이 이상 행위면 Ticket 상태를 `l2_escalated`로 바꾼다(#185). 오탐은 `closed_fp`, 미만·실패는 보류다.
-- L3 헌팅에서 위협이 존재하면(`is_anomaly = true`) 근거가 알럿이든 이벤트든 L3 승격 Ticket(`origin = l3_escalated`, 상태 `l2_escalated`)을 만든다. Ticket의 `entities`에는 헌팅에서 찾은 엔티티를, `verdict.evidence`에는 근거가 된 알럿·이벤트 참조(`ref_type` `alert` 또는 `event`)를 담는다. 근거 ID는 우리 데이터만 인정한다(규칙 6). 헌팅 결과는 위협 여부와 관계없이 HuntFinding으로 남긴다. C6 계약 변경(#188): `origin = l3_escalated`이면 `alert_ids`가 비어도 되고, 생성 시 바로 `l2_escalated`가 되는 전이를 더한다. L2는 `alert_ids`가 빈 Ticket도 `entities`로 분류하고(#186), 분석 때 `verdict.evidence`의 이벤트를 근거로 쓴다(#187). 아래 "이슈 사이 규칙" 2.
+- L3 헌팅에서 위협이 존재하면(`is_anomaly = true`) 근거가 알럿이든 이벤트든 L3 승격 Ticket(`origin = l3_escalated`, 상태 `l2_escalated`)을 만든다. 헌팅 결과는 위협 여부와 관계없이 HuntFinding(C17)으로 남기고, L3 승격 Ticket은 `hunt_id`로 자기를 만든 HuntFinding을 가리킨다. 근거는 `HuntFinding.evidence`에 담고 우리 데이터(알럿·이벤트 참조)만 인정한다(규칙 6). L3 승격 Ticket의 `verdict`는 비워 둔다(C7은 L1 판정 결과로만 쓴다). Ticket의 `entities`에는 헌팅에서 찾은 엔티티를 담는다. C6 계약 변경(#188): `hunt_id` 추가(비어도 됨), `origin = l3_escalated`이면 `alert_ids`가 비어도 됨, 생성 시 바로 `l2_escalated` 전이. 아래 "이슈 사이 규칙" 2·14.
 - L2 워커(level `l2`)는 상태가 `l2_escalated`이고 아직 어떤 IncidentMember도 아닌 Ticket만 같은 입구로 `poll`한다(#186). 아래 "이슈 사이 규칙" 5.
 
 ### L2 입구 ↔ L2 분석 (#186 ↔ #187)
@@ -158,12 +158,24 @@ class IncidentService:
 
 L2 분석 이슈는 `src/soc/l2/analysis/`에 `ArtifactReader.get(incident_id)`와 `ArtifactReader.rule_proposals(incident_id)`를 제공한다.
 
+### L3 헌팅 결과 → L2 (#188 → #186, #187)
+
+```python
+class HuntReader:
+    def get(self, hunt_id: str) -> HuntFinding | None: ...
+```
+
+- #188이 `HuntReader.get(hunt_id) -> HuntFinding | None`을 제공한다.
+- #186의 `IncidentContext`에 `hunts: list[HuntFinding]`(소속 Ticket의 `hunt_id`로 읽은 HuntFinding)를 더한다. 위 #186 코드 블록은 이슈 본문 그대로라 이 필드가 아직 없다. #186 본문을 고치면 코드 블록도 맞춘다.
+- #187은 `alert_ids`가 빈 Ticket의 근거로 `IncidentContext.hunts`의 `evidence`를 쓴다.
+- #188 머지 전에는 #186·#187이 가짜 HuntReader로 개발한다.
+
 ## 이슈 사이 규칙 (#182 검토 결정)
 
 2026-11-02 #182 독립 검토에서 정한 규칙이다. 같은 문장을 `docs/decisions.md`의 관련 결정 메모에도 적었다. 바꾸려면 결정 대장과 이 절을 함께 고친다.
 
 1. **근거 ID** (D-008, #184·#187·#188): 근거로 인정하는 ID는 (1) 작업 입력에 코드가 넣은 ID, (2) 도구가 구조화된 결과의 ID 필드로 돌려준 레코드 ID뿐이다. 로그 본문이나 SSH 출력 같은 텍스트 안의 문자열은 근거 ID로 인정하지 않는다. 텍스트형 도구 결과(SSH 출력 등)는 근거로 인용하지 않고, 참고 정보로만 Artifact 설명에 쓸 수 있다.
-2. **L3 승격 Ticket** (D-038, #186·#187·#188): L3 헌팅에서 위협이 존재하면(`is_anomaly = true`) 근거가 알럿이든 이벤트든 L3 승격 Ticket(`origin = l3_escalated`, 상태 `l2_escalated`)을 만든다. Ticket의 `entities`에는 헌팅에서 찾은 엔티티를, `verdict.evidence`에는 근거가 된 알럿·이벤트 참조(`ref_type` `alert` 또는 `event`)를 담는다. 근거 ID는 우리 데이터만 인정한다(규칙 6). 헌팅 결과는 위협 여부와 관계없이 HuntFinding으로 남긴다. C6 계약 변경(#188): `origin = l3_escalated`이면 `alert_ids`가 비어도 되고, 생성 시 바로 `l2_escalated`가 되는 전이를 더한다. L2는 `alert_ids`가 빈 Ticket도 `entities`로 분류하고(#186), 분석 때 `verdict.evidence`의 이벤트를 근거로 쓴다(#187).
+2. **L3 승격 Ticket** (D-038, #186·#187·#188): L3 헌팅에서 위협이 존재하면(`is_anomaly = true`) 근거가 알럿이든 이벤트든 L3 승격 Ticket(`origin = l3_escalated`, 상태 `l2_escalated`)을 만든다. 헌팅 결과는 위협 여부와 관계없이 HuntFinding(C17)으로 남기고, L3 승격 Ticket은 `hunt_id`로 자기를 만든 HuntFinding을 가리킨다. 근거는 `HuntFinding.evidence`에 담고 우리 데이터(알럿·이벤트 참조)만 인정한다(규칙 6). L3 승격 Ticket의 `verdict`는 비워 둔다(C7은 L1 판정 결과로만 쓴다). Ticket의 `entities`에는 헌팅에서 찾은 엔티티를 담는다. C6 계약 변경(#188): `hunt_id` 추가(비어도 됨), `origin = l3_escalated`이면 `alert_ids`가 비어도 됨, 생성 시 바로 `l2_escalated` 전이.
 3. **L2 분석 실패** (D-039, #186·#187): L2 분석이 실패하면 "분석 필요"를 유지하고 다음 주기에 다시 시도한다. 연속 실패가 `[l2] analysis_max_retries`(기본 3)에 걸리면 실패를 표시하고 자동 재시도를 멈춘다(설정 키는 #186이 추가한다).
 4. **검토 중 새 정보** (D-039, #186): `awaiting_review` 중에 새 정보가 붙으면 정보만 붙이고 분석 요청은 반려 뒤로 미룬다. 검토 중 새 정보가 붙었다는 표시를 승인 화면에 보여 준다(#186).
 5. **L2 입구** (D-044, #186): L2 입구는 상태가 `l2_escalated`이고 아직 어떤 IncidentMember도 아닌 Ticket만 poll한다. 분류 재시도가 한도를 넘으면 그 Ticket만으로 새 Incident를 만든다.
@@ -175,6 +187,7 @@ L2 분석 이슈는 `src/soc/l2/analysis/`에 `ArtifactReader.get(incident_id)`�
 11. **L3 실행 실패** (D-046, #188): L3 `run_agent`가 실패하면 HuntFinding을 남기지 않고 Agent Log에 실패를 기록한다. 수동 명령은 실패를 출력하고 0이 아닌 종료 코드로 끝난다.
 12. **가설 출처 필드** (D-045, #188): 보안 뉴스 ID를 가설 출처로 남기기 위해 C17 HuntFinding에 가설 출처(보안 뉴스 ID 목록) 필드를 추가한다. 계약 변경은 #188에서 한다.
 13. **에이전트 입력 한도·실행기** (D-008, #184): 에이전트 입력 한도는 모델 호출 한 번의 입력 전체(쌓인 도구 결과 포함)에 적용하고, 반복은 최대 턴 수로 막는다. 데모는 에이전트 실행기 하나만 지원한다. 실행기를 여러 개 띄우면 같은 건을 두 번 처리할 수 있다.
+14. **L3 승격 Ticket의 심각도** (D-038, #186·#188): 알럿 없는 L3 승격 Ticket의 심각도는 `hunt_id`가 가리키는 HuntFinding의 `severity_id`에서 온다. Ticket `priority` = HuntFinding `severity_id` × 자산 criticality(자산 정보가 없으면 1)로 #188이 Ticket을 만들 때 계산한다. Incident `severity_id`를 계산할 때 `alert_ids`가 빈 Ticket은 HuntFinding의 `severity_id`를 쓴다(#186). L3 에이전트가 정한 `severity_id`는 0~6이고, `HuntFinding.evidence`에 우리 데이터 근거가 하나 이상 있어야 Ticket을 만든다(#188).
 
 ## 관련 결정
 

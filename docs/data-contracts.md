@@ -274,16 +274,16 @@ L1이 처리하는 업무 단위.
 | status | enum | ✅ | `new`, `triaging`, `awaiting_human`, `on_hold`, `closed_benign`, `closed_fp`, `escalated`, `l2_escalated` |
 | handling_type | 등록형 | ✅ | 기본 `web_attack`, `scan`, `cloud`, `other` |
 | specialist | 등록형 | ✅ | 전문 에이전트 이름. 기본 `none`, `web`, `cloud`. 현재 코드에 남아 있음(#185에서 제거) / 새 작업에서는 쓰지 않음(D-034) |
-| priority | int | ✅ | `severity_id × 대상 자산 criticality`. 대상 자산은 `dst_asset`, 없으면 `src_asset`, 둘 다 없으면 criticality 1로 계산 |
-| alert_ids | list[str] | ✅ | 하나 이상. v3: `origin = l3_escalated`이면 비어도 된다(이슈 사이 규칙 2, C6 계약 변경(#188): `origin = l3_escalated`이면 `alert_ids`가 비어도 되고, 생성 시 바로 `l2_escalated`가 되는 전이를 더한다) |
+| priority | int | ✅ | `severity_id × 대상 자산 criticality`. 대상 자산은 `dst_asset`, 없으면 `src_asset`, 둘 다 없으면 criticality 1로 계산. v3: 알럿 없는 L3 승격 Ticket은 HuntFinding `severity_id` × 자산 criticality(자산 정보가 없으면 1)로 #188이 계산한다(이슈 사이 규칙 14) |
+| alert_ids | list[str] | ✅ | 하나 이상. v3: `origin = l3_escalated`이면 비어도 된다(이슈 사이 규칙 2, C6 계약 변경(#188): `hunt_id` 추가(비어도 됨), `origin = l3_escalated`이면 `alert_ids`가 비어도 됨, 생성 시 바로 `l2_escalated` 전이) |
 | entities | list[Entity] | ✅ | 공통 객체 Entity. 엔티티 분기(25)가 이 값을 본다 |
-| verdict | Verdict | 선택 | 판정 전에는 `null` |
+| verdict | Verdict | 선택 | 판정 전에는 `null`. v3: L3 승격 Ticket은 비워 둔다(C7은 L1 판정 결과로만 쓴다, 이슈 사이 규칙 2) |
 | extensions | dict | ✅ | 조직·플러그인 추가 필드. 외부 티켓 시스템 ID 등. 없으면 `{}` |
 | created_at | int | ✅ | |
 | updated_at | int | ✅ | |
 | awaiting_human_at | int | 선택 | `awaiting_human` 상태에 진입한 UTC epoch 밀리초. 아직 진입하지 않았다면 `null`. 상태를 벗어나도 진입 시각을 유지한다 |
 
-v2 상태 전이: `new → triaging → on_hold | closed_benign | closed_fp | l2_escalated`. `on_hold`는 L1 보류 결과로 L3 풀에 전달되고, `l2_escalated`는 박스 25의 L2 입구로 간다(v3: D-036으로 대체. 보류는 L1의 끝 상태이고 L3로 넘기지 않는다. L2 입구는 D-044. L3 승격 Ticket은 이슈 사이 규칙 2: C6 계약 변경(#188): `origin = l3_escalated`이면 `alert_ids`가 비어도 되고, 생성 시 바로 `l2_escalated`가 되는 전이를 더한다. 본문 수정은 #188의 C6 전이 계약 변경과 함께). `awaiting_human`과 `escalated` 값은 기존 데이터 호환을 위해 계약에 남기며 v2 흐름에서는 새로 만들지 않는다. `handling_type`과 `awaiting_human_at`도 발표 후 정리 전까지 유지한다.
+v2 상태 전이: `new → triaging → on_hold | closed_benign | closed_fp | l2_escalated`. `on_hold`는 L1 보류 결과로 L3 풀에 전달되고, `l2_escalated`는 박스 25의 L2 입구로 간다(v3: D-036으로 대체. 보류는 L1의 끝 상태이고 L3로 넘기지 않는다. L2 입구는 D-044. L3 승격 Ticket은 이슈 사이 규칙 2: C6 계약 변경(#188): `hunt_id` 추가(비어도 됨), `origin = l3_escalated`이면 `alert_ids`가 비어도 됨, 생성 시 바로 `l2_escalated` 전이. 본문 수정은 #188의 C6 전이 계약 변경과 함께). `awaiting_human`과 `escalated` 값은 기존 데이터 호환을 위해 계약에 남기며 v2 흐름에서는 새로 만들지 않는다. `handling_type`과 `awaiting_human_at`도 발표 후 정리 전까지 유지한다.
 
 `awaiting_human_at`은 공통 규칙에 따라 필드 자체는 필수이고 값만 nullable이다.
 미진입 시 `null`, `awaiting_human` 진입 시 해당 시각 `t1`, 상태 종료 후에도 `t1`을 유지한다.
@@ -295,7 +295,7 @@ v2 상태 전이: `new → triaging → on_hold | closed_benign | closed_fp | l2
 
 ## C7 · Verdict
 
-L1의 판정 결과. LLM 출력이 이 형식을 통과하지 못하면 판정으로 쓰지 않는다(`docs/llm-policy.md`).
+L1의 판정 결과. LLM 출력이 이 형식을 통과하지 못하면 판정으로 쓰지 않는다(`docs/llm-policy.md`). v3: C7은 L1 판정 결과로만 쓴다. L3 승격 Ticket의 `verdict`는 비워 두고 근거는 HuntFinding(C17)에 둔다(이슈 사이 규칙 2).
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
@@ -350,7 +350,7 @@ L1의 판정 결과. LLM 출력이 이 형식을 통과하지 못하면 판정�
 | title | str | ✅ | |
 | status | enum | ✅ | `open`, `investigating`, `closed_benign`, `escalated_to_case` |
 | created_by | enum | ✅ | `correlation`(규칙이 묶음), `manual`(사람이 직접 묶음). 묶음 항목의 출처는 IncidentMember `source` |
-| severity_id | int | ✅ | 0~6. `excluded`가 아닌 묶음 항목 중 가장 높은 값. 티켓 항목은 소속 알럿(C5)의 `severity_id`, 헌팅 항목은 C17의 `severity_id`를 쓴다 |
+| severity_id | int | ✅ | 0~6. `excluded`가 아닌 묶음 항목 중 가장 높은 값. 티켓 항목은 소속 알럿(C5)의 `severity_id`, 헌팅 항목은 C17의 `severity_id`를 쓴다. v3: `alert_ids`가 빈 L3 승격 Ticket은 `hunt_id`가 가리키는 HuntFinding의 `severity_id`를 쓴다(이슈 사이 규칙 14, #186) |
 | first_seen | int | ✅ | |
 | last_seen | int | ✅ | |
 | tactics | list[str] | ✅ | ATT&CK 전술 ID. 예: `TA0001` |
