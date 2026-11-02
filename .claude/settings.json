@@ -51,7 +51,16 @@
       "Bash(gh pr unlock *)",
       "Bash(gh pr update-branch *)",
       "Bash(gh gist *)",
-      "Bash(gh project *)"
+      "Bash(gh project *)",
+      "Bash(gh pr revert *)",
+      "Bash(gh repo unarchive *)",
+      "Bash(gh repo deploy-key *)",
+      "Bash(gh repo autolink *)",
+      "Bash(gh cache delete *)",
+      "Bash(gh agent-task *)",
+      "Bash(gh codespace *)",
+      "Bash(gh ssh-key *)",
+      "Bash(gh gpg-key *)"
     ]
   }
 }
