@@ -5,6 +5,9 @@
 # 공개 데이터셋 원본 (커밋 금지)
 data/
 
+# 조직 설정 (내부 주소·접속 대상, 커밋 금지)
+config/local.*
+
 # Python · uv
 .venv/
 __pycache__/
