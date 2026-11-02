@@ -57,7 +57,7 @@ ELK (attack-to-alert 랩, 외부 SIEM)
 | #183 | uptime-zero | 데이터셋 재생 삭제, 수집 파이프라인 연속 실행(`python -m soc.pipeline`) | 없음 | 없음 | 없음 |
 | #184 | Pandyo | 공통 에이전트 코어(`python -m soc.agent`), MCP 코드를 `src/soc/mcp/`로 이동(첫 커밋), 첫날 안에 `fake` 백엔드까지 머지 | 없음 | 없음 | 없음 |
 | #189 | uptime-zero | OCSF 정규화 바로잡기 | 병렬 진행, PR과 머지는 #183 뒤 | `0095`~`0099` | 없음 |
-| #185 | uptime-zero | L1 승격 판단·티켓 판정을 공통 에이전트로 전환, 증거 요청 큐·전문가 코드 삭제 | #183, #184 머지 후 | 없음 | `provider_error`·`tool_error` 보류를 C23 `reason`에 어떻게 기록할지(기존 값 `llm_failure`를 쓸지, 계약을 바꿀지) |
+| #185 | uptime-zero | L1 승격 판단·티켓 판정을 공통 에이전트로 전환, 증거 요청 큐·전문가 코드 삭제 | #183, #184 머지 후 | 없음 | 없음 |
 | #186 | Interludeal | L2 입구·Incident 분류·승인·Case 저장과 화면 연결. 공용 엔티티 제거 함수(25 쪽, `src/soc/l1/entities.py` 옆)를 구현해 L2 분류 입력에서만 호출한다 | 바로 시작, 에이전트 연결은 #184 뒤 | `0100`~`0109` | Case 저장에서 RDB 저장 뒤 Qdrant 저장이 실패할 때의 처리 |
 | #187 | Juhyeok0603 | L2 분석과 SSH MCP | 바로 시작, 에이전트 연결은 #184 뒤, 실데이터 확인은 #186 뒤 | `0110`~`0119` | 없음 |
 | #188 | Pandyo | 보안 뉴스 수집 계층과 L3 가설 헌팅 | #184(`run_agent`), #186(L2 입구) | `0120`~`0129` | L3 헌팅에서 `run_agent`가 실패할 때 HuntFinding을 남길지와 수동 실행 출력 |
@@ -94,7 +94,7 @@ class AgentTask:
     subject_id: str
     allowed_evidence_ids: frozenset[str] = (
         frozenset()
-    )  # 출력의 근거 ID는 여기나 도구 결과에 있어야 한다
+    )  # 출력의 근거 ID는 여기나 도구의 구조화된 결과 ID 필드에 있어야 한다
 
 
 @dataclass(frozen=True)
@@ -146,7 +146,7 @@ class IncidentService:
     def analysis_input(self, incident_id: str) -> IncidentContext: ...
     def finish_analysis(self, incident_id: str, *, failed: bool) -> None:
         ...
-        # "분석 필요" 해제. review_state가 analyzing일 때만, 성공이면 awaiting_review로 바꾸고 review_round 증가
+        # 성공이면 "분석 필요" 해제, review_state가 analyzing일 때만 awaiting_review로 바꾸고 review_round 증가. 실패면 "분석 필요"를 유지한다(이슈 사이 규칙 3)
 ```
 
 - 공용 엔티티 제거 함수는 25 쪽(`src/soc/l1/entities.py` 옆)에 두고, 이번 데모에서는 L2 분류 입력에서만 호출한다. 알럿 분기 흐름(25의 0단계)에 연결하는 것은 데모 범위 밖이다(D-044).
