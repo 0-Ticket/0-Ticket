@@ -411,7 +411,7 @@ L2의 분석 결과물. 사람이 읽는 보고서는 이 객체로부터 만든
 | iocs | list[Ioc] | ✅ | 아래 Ioc |
 | suspected_cause | str | ✅ | |
 | recommendations | list[Recommendation] | ✅ | 아래 Recommendation |
-| needs_human | bool | ✅ | 사람 확인이 필요하면 `true`. LLM 출력 실패 처리는 `docs/llm-policy.md` 4항 |
+| needs_human | bool | ✅ | 사람 확인이 필요하면 `true`. LLM 출력 실패 처리는 `docs/llm-policy.md` 4항. v3: 이슈 사이 규칙 3(D-039)으로 대체. 본문 수정은 #184 |
 | human_reason | str | 선택 | `needs_human`이 `true`일 때 이유 |
 | generated_at | int | ✅ | |
 
@@ -547,7 +547,7 @@ L3 헌팅 한 번의 결과.
 | backtest | Backtest | 선택 | 아래 Backtest. 아직 안 돌렸으면 `null` |
 | status | enum | ✅ | `draft`, `approved`, `rejected`, `deployed` |
 | reviewer | str | 선택 | 사람 검토자 |
-| needs_human | bool | ✅ | 사람 확인이 필요하면 `true`. LLM 출력 실패 처리는 `docs/llm-policy.md` 4항 |
+| needs_human | bool | ✅ | 사람 확인이 필요하면 `true`. LLM 출력 실패 처리는 `docs/llm-policy.md` 4항. v3: 이슈 사이 규칙 3(D-039)으로 대체. 본문 수정은 #184 |
 | human_reason | str | 선택 | `needs_human`이 `true`일 때 이유 |
 | created_at | int | ✅ | |
 
