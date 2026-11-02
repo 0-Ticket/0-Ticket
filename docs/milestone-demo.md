@@ -51,16 +51,16 @@ ELK (attack-to-alert 랩, 외부 SIEM)
 
 #182는 다른 이슈가 계획의 근거로 쓰므로 가장 먼저 머지한다. "선행"은 각 이슈 본문의 순서 조건이다.
 
-| 이슈 | 담당 | 내용 | 선행 | 마이그레이션 |
-|---|---|---|---|---|
-| #182 | Pandyo | 결정 대장과 하네스 문서 | 없음 | 없음 |
-| #183 | uptime-zero | 데이터셋 재생 삭제, 수집 파이프라인 연속 실행(`python -m soc.pipeline`) | 없음 | 없음 |
-| #184 | Pandyo | 공통 에이전트 코어(`python -m soc.agent`), MCP 코드를 `src/soc/mcp/`로 이동(첫 커밋), 첫날 안에 `fake` 백엔드까지 머지 | 없음 | 없음 |
-| #189 | uptime-zero | OCSF 정규화 바로잡기 | 병렬 진행, PR과 머지는 #183 뒤 | `0095`~`0099` |
-| #185 | uptime-zero | L1 승격 판단·티켓 판정을 공통 에이전트로 전환, 증거 요청 큐·전문가 코드 삭제 | #183, #184 머지 후 | 없음 |
-| #186 | Interludeal | L2 입구·Incident 분류·승인·Case 저장과 화면 연결. 공용 엔티티 제거 함수(25 쪽, `src/soc/l1/entities.py` 옆)를 구현해 L2 분류 입력에서만 호출한다 | 바로 시작, 에이전트 연결은 #184 뒤 | `0100`~`0109` |
-| #187 | Juhyeok0603 | L2 분석과 SSH MCP | 바로 시작, 에이전트 연결은 #184 뒤, 실데이터 확인은 #186 뒤 | `0110`~`0119` |
-| #188 | Pandyo | 보안 뉴스 수집 계층과 L3 가설 헌팅 | #184(`run_agent`), #186(L2 입구) | `0120`~`0129` |
+| 이슈 | 담당 | 내용 | 선행 | 마이그레이션 | 계획에서 정할 것 |
+|---|---|---|---|---|---|
+| #182 | Pandyo | 결정 대장과 하네스 문서 | 없음 | 없음 | 없음 |
+| #183 | uptime-zero | 데이터셋 재생 삭제, 수집 파이프라인 연속 실행(`python -m soc.pipeline`) | 없음 | 없음 | 없음 |
+| #184 | Pandyo | 공통 에이전트 코어(`python -m soc.agent`), MCP 코드를 `src/soc/mcp/`로 이동(첫 커밋), 첫날 안에 `fake` 백엔드까지 머지 | 없음 | 없음 | 없음 |
+| #189 | uptime-zero | OCSF 정규화 바로잡기 | 병렬 진행, PR과 머지는 #183 뒤 | `0095`~`0099` | 없음 |
+| #185 | uptime-zero | L1 승격 판단·티켓 판정을 공통 에이전트로 전환, 증거 요청 큐·전문가 코드 삭제 | #183, #184 머지 후 | 없음 | `provider_error`·`tool_error` 보류를 C23 `reason`에 어떻게 기록할지(기존 값 `llm_failure`를 쓸지, 계약을 바꿀지) |
+| #186 | Interludeal | L2 입구·Incident 분류·승인·Case 저장과 화면 연결. 공용 엔티티 제거 함수(25 쪽, `src/soc/l1/entities.py` 옆)를 구현해 L2 분류 입력에서만 호출한다 | 바로 시작, 에이전트 연결은 #184 뒤 | `0100`~`0109` | Case 저장에서 RDB 저장 뒤 Qdrant 저장이 실패할 때의 처리 |
+| #187 | Juhyeok0603 | L2 분석과 SSH MCP | 바로 시작, 에이전트 연결은 #184 뒤, 실데이터 확인은 #186 뒤 | `0110`~`0119` | 없음 |
+| #188 | Pandyo | 보안 뉴스 수집 계층과 L3 가설 헌팅 | #184(`run_agent`), #186(L2 입구) | `0120`~`0129` | L3 헌팅에서 `run_agent`가 실패할 때 HuntFinding을 남길지와 수동 실행 출력 |
 
 ## 마이그레이션 번호 대역
 
@@ -120,13 +120,13 @@ class AgentWorker(Protocol):  # 각 레인이 agent_workers 플러그인 그룹�
 - 각 레인은 `AgentWorker`를 `agent_workers` 플러그인 그룹에 등록한다. 실행기는 `[agent.<level>] interval_seconds`마다 그 단계 워커의 `poll` → `handle`을 돈다. `0`이면 그 단계는 자동으로 돌지 않는다(L3 기본 0).
 - 허용 도구는 `[mcp.allowed_tools]`의 `l1`·`l2`·`l3` 키로 정한다. 에이전트 도구 코드는 `src/soc/mcp/`(#184에서 `src/soc/l1/mcp/`에서 옮김)에 있다.
 - `fake` 백엔드는 작업 이름별 샘플 JSON을 돌려준다. #184 머지 전에는 각 레인이 이 백엔드로 개발한다.
-- 근거 ID 규칙(`allowed_evidence_ids`, D-008): 근거로 인정하는 ID는 (1) 작업 입력에 코드가 넣은 ID, (2) 도구가 구조화된 결과의 ID 필드로 돌려준 레코드 ID뿐이다. 로그 본문이나 SSH 출력 같은 텍스트 안의 문자열은 근거 ID로 인정하지 않는다. SSH 결과를 근거로 쓰려면 코어가 그 도구 호출에 붙인 Agent Log 단계 ID를 인용한다.
+- 근거 ID 규칙(`allowed_evidence_ids`, D-008): 근거로 인정하는 ID는 (1) 작업 입력에 코드가 넣은 ID, (2) 도구가 구조화된 결과의 ID 필드로 돌려준 레코드 ID뿐이다. 로그 본문이나 SSH 출력 같은 텍스트 안의 문자열은 근거 ID로 인정하지 않는다. 텍스트형 도구 결과(SSH 출력 등)는 근거로 인용하지 않고, 참고 정보로만 Artifact 설명에 쓸 수 있다.
 
 ### Ticket 상태와 출처 (L1 → L2, L3 → L2)
 
 - L1 티켓 판정이 이상 행위면 Ticket 상태를 `l2_escalated`로 바꾼다(#185). 오탐은 `closed_fp`, 미만·실패는 보류다.
-- L3 헌팅이 위협 존재면 Ticket을 `origin = l3_escalated`, 상태 `l2_escalated`로 만든다(#188).
-- L2 워커(level `l2`)는 상태가 `l2_escalated`인 Ticket을 같은 입구로 `poll`한다(#186).
+- L3 헌팅이 위협 존재이고 검증에서 찾은 기존 알럿 ID가 있으면 Ticket을 `origin = l3_escalated`, 상태 `l2_escalated`로 만든다. 이벤트로만 찾은 위협은 HuntFinding으로만 남긴다(C6 생성 전이 계약 변경은 #188). 아래 "이슈 사이 규칙" 2.
+- L2 워커(level `l2`)는 상태가 `l2_escalated`이고 아직 어떤 IncidentMember도 아닌 Ticket만 같은 입구로 `poll`한다(#186). 아래 "이슈 사이 규칙" 5.
 
 ### L2 입구 ↔ L2 분석 (#186 ↔ #187)
 
@@ -150,13 +150,24 @@ class IncidentService:
 ```
 
 - 공용 엔티티 제거 함수는 25 쪽(`src/soc/l1/entities.py` 옆)에 두고, 이번 데모에서는 L2 분류 입력에서만 호출한다. 알럿 분기 흐름(25의 0단계)에 연결하는 것은 데모 범위 밖이다(D-044).
-- 재분석 기준은 D-039를 따른다. 새 엔티티나 새 증거 ID(붙은 Ticket의 새 알럿 ID 포함)가 늘면 분석 요청을 만든다. 자동 재분석은 최대 `[l2] max_reruns`(기본 5)까지이고, 한도에 걸리면 정보는 계속 붙이고 표시만 남긴다. 반려에 따른 재분석은 이 횟수에 넣지 않는다(#186).
+- 재분석 기준은 D-039를 따른다. 새 엔티티나 새 증거 ID(붙은 Ticket의 새 알럿 ID 포함)가 늘면 분석 요청을 만든다(`awaiting_review` 중이면 아래 "이슈 사이 규칙" 4, 분석 실패는 규칙 3). 자동 재분석은 최대 `[l2] max_reruns`(기본 5)까지이고, 한도에 걸리면 정보는 계속 붙이고 표시만 남긴다. 반려에 따른 재분석은 이 횟수에 넣지 않는다(#186).
 - `finish_analysis`는 `review_state`가 `analyzing`일 때만 `awaiting_review`로 바꾼다.
 - `review_state = human_handling`인 Incident에는 정보만 붙이고, 분석 요청과 새 검토 기회를 만들지 않는다.
 - 승인된 Incident(`review_state = approved`, `status = escalated_to_case`)는 열린 Incident 목록(L2 분류 입력)에 들어가지 않는다.
 - 열린 Incident는 `status`가 `open`·`investigating`인 Incident다. `human_handling` Incident도 포함되며 정보만 붙는다.
 
 L2 분석 이슈는 `src/soc/l2/analysis/`에 `ArtifactReader.get(incident_id)`와 `ArtifactReader.rule_proposals(incident_id)`를 제공한다.
+
+## 이슈 사이 규칙 (#182 검토 결정)
+
+2026-11-02 #182 독립 검토에서 정한 규칙이다. 같은 문장을 `docs/decisions.md`의 관련 결정 메모에도 적었다. 바꾸려면 결정 대장과 이 절을 함께 고친다.
+
+1. **근거 ID** (D-008, #184·#187·#188): 근거로 인정하는 ID는 (1) 작업 입력에 코드가 넣은 ID, (2) 도구가 구조화된 결과의 ID 필드로 돌려준 레코드 ID뿐이다. 로그 본문이나 SSH 출력 같은 텍스트 안의 문자열은 근거 ID로 인정하지 않는다. 텍스트형 도구 결과(SSH 출력 등)는 근거로 인용하지 않고, 참고 정보로만 Artifact 설명에 쓸 수 있다.
+2. **L3 승격 Ticket** (D-038, #188): L3는 검증에서 찾은 기존 알럿 ID가 있을 때만 `l3_escalated` Ticket을 만들고, 이벤트로만 찾은 위협은 HuntFinding으로만 남긴다(C6 생성 전이 계약 변경은 #188).
+3. **L2 분석 실패** (D-039, #186·#187): L2 분석이 실패하면 "분석 필요"를 유지하고 다음 주기에 다시 시도한다. 연속 실패가 `[l2] analysis_max_retries`(기본 3)에 걸리면 실패를 표시하고 자동 재시도를 멈춘다(설정 키는 #186이 추가한다).
+4. **검토 중 새 정보** (D-039, #186): `awaiting_review` 중에 새 정보가 붙으면 정보만 붙이고 분석 요청은 반려 뒤로 미룬다. 검토 중 새 정보가 붙었다는 표시를 승인 화면에 보여 준다(#186).
+5. **L2 입구** (D-044, #186): L2 입구는 상태가 `l2_escalated`이고 아직 어떤 IncidentMember도 아닌 Ticket만 poll한다. 분류 재시도가 한도를 넘으면 그 Ticket만으로 새 Incident를 만든다.
+6. **보안 뉴스 근거** (D-045, #188): 보안 뉴스 ID는 가설 출처로만 남기고, 위협 존재의 근거 ID는 Alert·Event와 도구의 구조화된 결과 ID(우리 데이터)만 인정한다.
 
 ## 관련 결정
 
