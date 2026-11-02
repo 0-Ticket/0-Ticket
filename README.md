@@ -30,3 +30,7 @@ docker compose up -d    # 개발용 PostgreSQL·Qdrant
 ## 기여하기
 
 개발 흐름, 브랜치 규칙, AI 코딩 도구와 함께 일하는 방법은 [CONTRIBUTING.md](CONTRIBUTING.md)에 있습니다.
+
+## 라이선스
+
+Apache-2.0. [LICENSE](LICENSE)를 보세요.

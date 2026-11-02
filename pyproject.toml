@@ -3,6 +3,7 @@ name = "0-ticket-soc"
 version = "0.1.0"
 description = "AI 에이전트 기반 SOC 파이프라인"
 readme = "README.md"
+license = "Apache-2.0"
 requires-python = ">=3.13"
 dependencies = []
 

@@ -22,7 +22,7 @@ docker compose up -d    # 개발용 PostgreSQL·Qdrant (.env의 POSTGRES_* 필�
 | 문서 | 내용 | 바꿀 때 |
 |---|---|---|
 | [docs/architecture.md](docs/architecture.md) | 무엇을 만드는지, 원칙, 큰 흐름 | 팀 논의 |
-| [docs/decisions.md](docs/decisions.md) | 쓰는 도구와 방식, 논의 중인 안건 | 결정할 때 |
+| [docs/decisions.md](docs/decisions.md) | 쓰는 도구와 방식, 아직 정하지 않은 안건 | 결정할 때 |
 | [docs/security.md](docs/security.md) | 비밀, 데이터, 화면 표시 규칙 | 팀 논의 |
 | [docs/plans/](docs/plans/) | 이슈마다 확정한 계획 | 이슈마다 하나씩 쌓임 |
 | [docs/notes/](docs/notes/) | 이슈마다 개발하며 알게 된 것 | 이슈마다 하나씩 쌓임 |
@@ -67,7 +67,7 @@ docker compose up -d    # 개발용 PostgreSQL·Qdrant (.env의 POSTGRES_* 필�
 
 ## 정할 것이 생겼을 때
 
-도구나 방식처럼 팀이 정해야 하는 것은 [docs/decisions.md](docs/decisions.md) "논의 중"에 한 줄을 올리거나 이슈의 "어떻게"에 적습니다. 정해지면 "확정"으로 옮기고 "기록"에 한 줄을 남깁니다.
+도구나 방식처럼 팀이 정해야 하는 것은 이슈의 "어떻게"에 적습니다. 정해지면 [docs/decisions.md](docs/decisions.md)의 해당 행을 "확정"으로 옮기고 "기록"에 한 줄을 남깁니다.
 
 ## 브랜치 이름
 

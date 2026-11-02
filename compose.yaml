@@ -1,4 +1,4 @@
-# 개발용 PostgreSQL(D-005)과 Qdrant(D-006). 운영 배포용이 아니다.
+# 개발용 PostgreSQL(D-012)과 Qdrant(D-013). 운영 배포용이 아니다.
 # 실행: cp .env.example .env (POSTGRES_* 값 채움) → docker compose up -d
 # 포트는 이 컴퓨터(127.0.0.1)에서만 열린다.
 name: zero-ticket-soc

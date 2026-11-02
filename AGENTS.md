@@ -63,7 +63,7 @@
 ## 완료 기준
 
 1. 확정된 계획의 "완료 기준"을 모두 충족한다.
-2. `uv run ruff format --check .`, `uv run ruff check .`, `uv run pytest`가 통과한다. 화면 작업이면 화면 검사도 통과한다(화면 명령은 D-013을 확정하는 이슈에서 정한다).
+2. `uv run ruff format --check .`, `uv run ruff check .`, `uv run pytest`가 통과한다. 화면 작업이면 화면 검사도 통과한다(화면 명령은 첫 화면 이슈에서 정한다).
 3. 바꾼 동작을 `tests/fixtures/`의 샘플로 확인하는 테스트가 있다.
 4. 새 환경변수는 `.env.example`에 이름만 있다.
 5. `docs/plans/`에 확정 계획, `docs/notes/`에 개발 기록이 있다.
