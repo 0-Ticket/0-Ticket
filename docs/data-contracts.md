@@ -526,7 +526,7 @@ L3 헌팅 한 번의 결과.
 | severity_id | int | ✅ | 0~6 (C3와 같은 척도). L3가 이상 징후의 심각도를 정한다. `is_anomaly`가 `false`면 0(Unknown) |
 | incident_id | str | 선택 | Incident로 묶였으면 그 ID (v1 Correlation 기준) |
 | rule_candidate | bool | ✅ | 반복 가능한 패턴이라 룰 제안으로 넘길지 |
-| needs_human | bool | ✅ | 사람 확인이 필요하면 `true`. LLM 출력 실패 처리는 `docs/llm-policy.md` 4항 |
+| needs_human | bool | ✅ | 사람 확인이 필요하면 `true`. LLM 출력 실패 처리는 `docs/llm-policy.md` 4항. v3: 이슈 사이 규칙 11(D-046)로 대체. 본문 수정은 #184 |
 | human_reason | str | 선택 | `needs_human`이 `true`일 때 이유 |
 | created_at | int | ✅ | |
 
