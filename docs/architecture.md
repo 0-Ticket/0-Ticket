@@ -117,7 +117,7 @@ flowchart TB
 | 그룹 | 박스 | 그림의 이름 | 코드 위치 | v3에서 바뀐 뜻 |
 |---|---|---|---|---|
 | 수집 | 3 (1, 2는 외부) | Event Source(1), Raw Log(2), SIEM(외부 SIEM, 박스 아님), SIEM → Alert·Event 화살표(3) | `src/soc/ingest/` | 3: 개발·데모는 ELK(`elastic`)부터. `direct` 어댑터 제거(D-042) |
-| 정규화 · 저장 · 분기 | 4, 5, 6, 7, 8, 25 | Alert(6), Event(7), OCSF(4), OCSF Alert(4의 정규화 결과), Lookup(5), 중복 Alert 제거·그 외 시나리오·승격 대상(공격 대상) 시나리오(25). 8은 그림의 Ticket·Case "VDB" | `src/soc/normalize/` (4, 5), `src/soc/branch/` (25), `src/soc/store/` (6, 7, 8) | 25: 중복 제거, 엔티티 추출, 공용 엔티티 제거, 시나리오 분기를 그대로 맡는다. Incident 존재 판단만 L2 에이전트(19)로 넘어갔다(D-044). 공용 엔티티 제거 함수는 `src/soc/l1/entities.py` 옆에 두고 L2 분류 입력에도 쓴다(#186) |
+| 정규화 · 저장 · 분기 | 4, 5, 6, 7, 8, 25 | Alert(6), Event(7), OCSF(4), OCSF Alert(4의 정규화 결과), Lookup(5), 중복 Alert 제거·그 외 시나리오·승격 대상(공격 대상) 시나리오(25). 8은 그림의 Ticket·Case "VDB" | `src/soc/normalize/` (4, 5), `src/soc/branch/` (25), `src/soc/store/` (6, 7, 8) | 25: 중복 제거, 엔티티 추출, 공용 엔티티 제거, 시나리오 분기를 그대로 맡는다. Incident 존재 판단만 L2 에이전트(19)로 넘어갔다(D-044). 공용 엔티티 제거 함수는 `src/soc/l1/entities.py` 옆에 두고, 이번 데모에서는 L2 분류 입력에서만 호출한다(#186) |
 | L1 | 10, 11, 12, 27 | Ticket (RDB + VDB)·Ticket (L2 상태)(10), 승격 판단·티켓 판정·L1 프롬프트 오버라이딩·이상 행위 (L2)·오탐 · 보류(11). 12, 27은 그림에 없음 | `src/soc/l1/`. 12는 L2·L3도 쓴다. 27의 화면 쪽은 `src/soc/api/`, `frontend/` | 11: 공통 에이전트(28)의 L1 프롬프트 오버라이딩. 보류는 L1의 끝 상태(D-036) |
 | 에이전트 도구 | 15 | SIEM MCP, SSH MCP | `src/soc/mcp/` (#184에서 `src/soc/l1/mcp/`에서 옮김) | 15: 에이전트 도구(MCP) 묶음. SIEM MCP, 내부 데이터 조회, HTTP 흐름 조회, SSH MCP(D-043)와 앞으로 추가할 MCP를 모두 15에 두고 도구마다 새 박스를 만들지 않는다. L1·L2·L3가 같이 쓴다 |
 | L2 | 18, 19, 20, 21, 22, 24 | Incident(18), Incident 분류 및 분석·L2 프롬프트 오버라이딩(19), Incident Artifact(20), 탐지 룰 및 대응방안 제안(24), Human(21), Case(22) | `src/soc/l2/` | 19: 공통 에이전트(28)의 L2 프롬프트 오버라이딩. Incident 분류를 포함한다(D-044) |
@@ -256,7 +256,7 @@ flowchart TB
 
 ### 25 · 엔티티 분기
 
-- **v3 변경 (#182, D-044)**: Incident 존재 판단(0단계의 "Incident에 존재" 경로와 L2 입구 분기)만 L2 에이전트(19)의 Incident 분류로 넘어갔다. 중복 제거, 엔티티 추출, 공용 엔티티 제거, 시나리오 분기는 25가 그대로 맡는다. 공용 엔티티 제거 함수는 `src/soc/l1/entities.py` 옆에 두고, 이번 데모에서는 #186이 구현해 L2 분류 입력에도 쓴다. 아래의 Incident 관련 문장은 구현 PR(#186)에서 고친다.
+- **v3 변경 (#182, D-044)**: Incident 존재 판단(0단계의 "Incident에 존재" 경로와 L2 입구 분기)만 L2 에이전트(19)의 Incident 분류로 넘어갔다. 중복 제거, 엔티티 추출, 공용 엔티티 제거, 시나리오 분기는 25가 그대로 맡는다. 공용 엔티티 제거 함수는 `src/soc/l1/entities.py` 옆에 두고, 이번 데모에서는 #186이 구현해 L2 분류 입력에서만 호출한다. 알럿 분기 흐름(0단계)에 연결하는 것은 데모 범위 밖이다(`docs/milestone-demo.md`). 아래의 Incident 관련 문장은 구현 PR(#186)에서 고친다.
 - **하는 일**: 알럿과 Ticket이 어디로 갈지 규칙으로 정한다. LLM을 쓰지 않는다. 두 곳에서 쓴다.
 - **입력 → 출력**:
   - **0단계 (알럿)**: C5 → C21 BranchResult (중복 제거 → 엔티티 추출 → 공용 엔티티 제거 → 분기)

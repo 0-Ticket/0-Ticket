@@ -9,11 +9,11 @@
 ```
 ELK (attack-to-alert 랩, 외부 SIEM)
   → 수집 · 정규화 · 분기 (코드, 연속 실행)
-       Alert·Event (RDB, 원본) → OCSF 정규화 → Lookup → 중복 Alert 제거 → 엔티티 추출·공용 엔티티 제거 → 시나리오 분기
+       Alert·Event (RDB, 원본) → OCSF 정규화 → Lookup → 중복 Alert 제거 → 엔티티 추출 → 시나리오 분기
        ├─ 승격 대상(공격 대상) 시나리오 → 시나리오 Ticket
        └─ 그 외 시나리오     → L1 승격 판단 → L1 승격 Ticket / 보류
   → L1 티켓 판정 → 오탐 종결 / 보류 / 이상 행위: Ticket을 L2 상태로
-  → L2 Incident 분류 (새 Incident / 기존 Incident 추가)
+  → L2 Incident 분류 (공용 엔티티 제거 후 새 Incident / 기존 Incident 추가)
   → L2 분석 (타임라인·ATT&CK, 영향 범위·원인, 탐지 룰·대응 방안) → Incident Artifact
   → Human 승인 (웹 화면) → Case (RDB + Qdrant)
   → L3 수동 헌팅 (보안 뉴스 + Case + Alert·Event) → 가설 기각 / 위협 존재
@@ -45,6 +45,7 @@ ELK (attack-to-alert 랩, 외부 SIEM)
 | | 대응 실행 | | |
 | | 탐지 룰 자동 배포 | 24 | |
 | | 화면에서 헌팅을 시키는 기능 (D-046) | 23 | |
+| | 공용 엔티티 제거를 알럿 분기 흐름(25의 0단계)에 연결하기. 데모에서는 L2 분류 입력에서만 호출한다(D-044) | 25 | |
 
 ## 이슈별 담당과 순서
 
@@ -57,7 +58,7 @@ ELK (attack-to-alert 랩, 외부 SIEM)
 | #184 | Pandyo | 공통 에이전트 코어(`python -m soc.agent`), MCP 코드를 `src/soc/mcp/`로 이동(첫 커밋), 첫날 안에 `fake` 백엔드까지 머지 | 없음 | 없음 |
 | #189 | uptime-zero | OCSF 정규화 바로잡기 | 병렬 진행, PR과 머지는 #183 뒤 | `0095`~`0099` |
 | #185 | uptime-zero | L1 승격 판단·티켓 판정을 공통 에이전트로 전환, 증거 요청 큐·전문가 코드 삭제 | #183, #184 머지 후 | 없음 |
-| #186 | Interludeal | L2 입구·Incident 분류·승인·Case 저장과 화면 연결. 공용 엔티티 제거 함수(25 쪽, `src/soc/l1/entities.py` 옆)를 구현해 L2 분류 입력에 쓴다 | 바로 시작, 에이전트 연결은 #184 뒤 | `0100`~`0109` |
+| #186 | Interludeal | L2 입구·Incident 분류·승인·Case 저장과 화면 연결. 공용 엔티티 제거 함수(25 쪽, `src/soc/l1/entities.py` 옆)를 구현해 L2 분류 입력에서만 호출한다 | 바로 시작, 에이전트 연결은 #184 뒤 | `0100`~`0109` |
 | #187 | Juhyeok0603 | L2 분석과 SSH MCP | 바로 시작, 에이전트 연결은 #184 뒤, 실데이터 확인은 #186 뒤 | `0110`~`0119` |
 | #188 | Pandyo | 보안 뉴스 수집 계층과 L3 가설 헌팅 | #184(`run_agent`), #186(L2 입구) | `0120`~`0129` |
 
@@ -119,6 +120,7 @@ class AgentWorker(Protocol):  # 각 레인이 agent_workers 플러그인 그룹�
 - 각 레인은 `AgentWorker`를 `agent_workers` 플러그인 그룹에 등록한다. 실행기는 `[agent.<level>] interval_seconds`마다 그 단계 워커의 `poll` → `handle`을 돈다. `0`이면 그 단계는 자동으로 돌지 않는다(L3 기본 0).
 - 허용 도구는 `[mcp.allowed_tools]`의 `l1`·`l2`·`l3` 키로 정한다. 에이전트 도구 코드는 `src/soc/mcp/`(#184에서 `src/soc/l1/mcp/`에서 옮김)에 있다.
 - `fake` 백엔드는 작업 이름별 샘플 JSON을 돌려준다. #184 머지 전에는 각 레인이 이 백엔드로 개발한다.
+- 근거 ID 규칙(`allowed_evidence_ids`, D-008): 근거로 인정하는 ID는 (1) 작업 입력에 코드가 넣은 ID, (2) 도구가 구조화된 결과의 ID 필드로 돌려준 레코드 ID뿐이다. 로그 본문이나 SSH 출력 같은 텍스트 안의 문자열은 근거 ID로 인정하지 않는다. SSH 결과를 근거로 쓰려면 코어가 그 도구 호출에 붙인 Agent Log 단계 ID를 인용한다.
 
 ### Ticket 상태와 출처 (L1 → L2, L3 → L2)
 
@@ -146,6 +148,12 @@ class IncidentService:
         ...
         # "분석 필요" 해제. 성공이면 review_state = awaiting_review, review_round 증가
 ```
+
+- 공용 엔티티 제거 함수는 25 쪽(`src/soc/l1/entities.py` 옆)에 두고, 이번 데모에서는 L2 분류 입력에서만 호출한다. 알럿 분기 흐름(25의 0단계)에 연결하는 것은 데모 범위 밖이다(D-044).
+- 재분석 기준은 D-039를 따른다. 새 엔티티나 새 증거 ID(붙은 Ticket의 새 알럿 ID 포함)가 늘면 분석 요청을 만든다. 자동 재분석은 최대 `[l2] max_reruns`(기본 5)까지이고, 한도에 걸리면 정보는 계속 붙이고 표시만 남긴다.
+- `finish_analysis`는 `review_state`가 `analyzing`일 때만 `awaiting_review`로 바꾼다.
+- `review_state = human_handling`인 Incident에는 정보만 붙이고, 분석 요청과 새 검토 기회를 만들지 않는다.
+- 승인된 Incident(`review_state = approved`, `status = escalated_to_case`)는 열린 Incident 목록(L2 분류 입력)에 들어가지 않는다.
 
 L2 분석 이슈는 `src/soc/l2/analysis/`에 `ArtifactReader.get(incident_id)`와 `ArtifactReader.rule_proposals(incident_id)`를 제공한다.
 
