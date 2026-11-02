@@ -139,6 +139,7 @@ class IncidentContext:
     tickets: list[Ticket]  # 소속 Ticket
     alerts: list[AlertRecord]  # 소속 Ticket의 알럿
     rejection: L2Review | None  # 마지막 반려(없으면 None)
+    hunts: list[HuntFinding]  # 소속 L3 Ticket의 hunt_id로 읽은 HuntFinding
 
 
 class IncidentService:
@@ -166,7 +167,7 @@ class HuntReader:
 ```
 
 - #188이 `HuntReader.get(hunt_id) -> HuntFinding | None`을 제공한다.
-- #186의 `IncidentContext`에 `hunts: list[HuntFinding]`(소속 Ticket의 `hunt_id`로 읽은 HuntFinding)를 더한다. 위 #186 코드 블록은 이슈 본문 그대로라 이 필드가 아직 없다. #186 본문을 고치면 코드 블록도 맞춘다.
+- #186의 `IncidentContext`에 `hunts: list[HuntFinding]`(소속 Ticket의 `hunt_id`로 읽은 HuntFinding)를 더한다.
 - #187은 `alert_ids`가 빈 Ticket의 근거로 `IncidentContext.hunts`의 `evidence`를 쓴다.
 - #188 머지 전에는 #186·#187이 가짜 HuntReader로 개발한다.
 
