@@ -1,4 +1,0 @@
-user,dept,privileged,valid_from,valid_to,acme.employee_id
-alice@example.com,web,false,,,e-100
-admin@example.com,it,true,,,e-001
-bob@example.com,sales,false,2020-01-01T00:00:00Z,2021-06-30T00:00:00Z,e-200

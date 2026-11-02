@@ -24,6 +24,7 @@
       "Bash(gh release *)",
       "Bash(gh label *)",
       "Bash(gh secret *)",
+      "Bash(gh variable *)",
       "Bash(gh run rerun *)",
       "Bash(gh run cancel *)",
       "Bash(gh run delete *)",
@@ -33,9 +34,24 @@
       "Bash(gh repo fork *)",
       "Bash(gh repo rename *)",
       "Bash(gh repo archive *)",
+      "Bash(gh repo sync *)",
       "Bash(gh workflow run *)",
       "Bash(gh workflow enable *)",
-      "Bash(gh workflow disable *)"
+      "Bash(gh workflow disable *)",
+      "Bash(gh issue reopen *)",
+      "Bash(gh issue delete *)",
+      "Bash(gh issue transfer *)",
+      "Bash(gh issue lock *)",
+      "Bash(gh issue unlock *)",
+      "Bash(gh issue pin *)",
+      "Bash(gh issue unpin *)",
+      "Bash(gh issue develop *)",
+      "Bash(gh pr reopen *)",
+      "Bash(gh pr lock *)",
+      "Bash(gh pr unlock *)",
+      "Bash(gh pr update-branch *)",
+      "Bash(gh gist *)",
+      "Bash(gh project *)"
     ]
   }
 }

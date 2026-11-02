@@ -1,6 +1,0 @@
-raw_id,rule_id,src_ip,dst_ip,expected_path,expected_alert_decision,expected_ticket_decision,group
-raw_wazuh_alert.jsonl_1,5706,198.51.100.23,192.0.2.81,l1_entity_lookup,l1_escalated,closed_fp,B
-raw_wazuh_alert.jsonl_2,31101,198.51.100.23,192.0.2.80,l1_entity_lookup,l1_escalated,l2_escalated,A
-raw_wazuh_alert.jsonl_5,31104,198.51.100.23,192.0.2.80,scenario_ticket,-,l2_escalated,A
-raw_wazuh_alert.jsonl_6,31516,198.51.100.23,192.0.2.80,l1_entity_lookup,l1_escalated,held,A
-raw_wazuh_alert.jsonl_7,86601,192.0.2.80,198.51.100.23,l1_entity_lookup,held,-,C

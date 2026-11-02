@@ -1,9 +1,0 @@
-{
-  "incident_id": "in_sample",
-  "reviewer": "sample-reviewer",
-  "decision": "approve",
-  "reject_type": null,
-  "comment": null,
-  "round": 1,
-  "created_at": 1791849600000
-}

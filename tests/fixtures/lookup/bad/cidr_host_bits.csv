@@ -1,2 +1,0 @@
-match,hostname,criticality,shared
-192.0.2.1/24,office-net,2,false
