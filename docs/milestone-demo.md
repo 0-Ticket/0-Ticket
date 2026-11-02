@@ -146,7 +146,7 @@ class IncidentService:
     def analysis_input(self, incident_id: str) -> IncidentContext: ...
     def finish_analysis(self, incident_id: str, *, failed: bool) -> None:
         ...
-        # "분석 필요" 해제. 성공이면 review_state = awaiting_review, review_round 증가
+        # "분석 필요" 해제. review_state가 analyzing일 때만, 성공이면 awaiting_review로 바꾸고 review_round 증가
 ```
 
 - 공용 엔티티 제거 함수는 25 쪽(`src/soc/l1/entities.py` 옆)에 두고, 이번 데모에서는 L2 분류 입력에서만 호출한다. 알럿 분기 흐름(25의 0단계)에 연결하는 것은 데모 범위 밖이다(D-044).
