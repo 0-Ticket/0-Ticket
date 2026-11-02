@@ -125,7 +125,7 @@ class AgentWorker(Protocol):  # 각 레인이 agent_workers 플러그인 그룹�
 ### Ticket 상태와 출처 (L1 → L2, L3 → L2)
 
 - L1 티켓 판정이 이상 행위면 Ticket 상태를 `l2_escalated`로 바꾼다(#185). 오탐은 `closed_fp`, 미만·실패는 보류다.
-- L3 헌팅이 위협 존재이고 검증에서 찾은 기존 알럿 ID가 있으면 Ticket을 `origin = l3_escalated`, 상태 `l2_escalated`로 만든다. 이벤트로만 찾은 위협은 HuntFinding으로만 남긴다(C6 생성 전이 계약 변경은 #188). 아래 "이슈 사이 규칙" 2.
+- L3 헌팅에서 위협이 존재하면(`is_anomaly = true`) 근거가 알럿이든 이벤트든 L3 승격 Ticket(`origin = l3_escalated`, 상태 `l2_escalated`)을 만든다. Ticket의 `entities`에는 헌팅에서 찾은 엔티티를, `verdict.evidence`에는 근거가 된 알럿·이벤트 참조(`ref_type` `alert` 또는 `event`)를 담는다. 근거 ID는 우리 데이터만 인정한다(규칙 6). 헌팅 결과는 위협 여부와 관계없이 HuntFinding으로 남긴다. C6 계약 변경(#188): `origin = l3_escalated`이면 `alert_ids`가 비어도 되고, 생성 시 바로 `l2_escalated`가 되는 전이를 더한다. L2는 `alert_ids`가 빈 Ticket도 `entities`로 분류하고(#186), 분석 때 `verdict.evidence`의 이벤트를 근거로 쓴다(#187). 아래 "이슈 사이 규칙" 2.
 - L2 워커(level `l2`)는 상태가 `l2_escalated`이고 아직 어떤 IncidentMember도 아닌 Ticket만 같은 입구로 `poll`한다(#186). 아래 "이슈 사이 규칙" 5.
 
 ### L2 입구 ↔ L2 분석 (#186 ↔ #187)
@@ -163,7 +163,7 @@ L2 분석 이슈는 `src/soc/l2/analysis/`에 `ArtifactReader.get(incident_id)`�
 2026-11-02 #182 독립 검토에서 정한 규칙이다. 같은 문장을 `docs/decisions.md`의 관련 결정 메모에도 적었다. 바꾸려면 결정 대장과 이 절을 함께 고친다.
 
 1. **근거 ID** (D-008, #184·#187·#188): 근거로 인정하는 ID는 (1) 작업 입력에 코드가 넣은 ID, (2) 도구가 구조화된 결과의 ID 필드로 돌려준 레코드 ID뿐이다. 로그 본문이나 SSH 출력 같은 텍스트 안의 문자열은 근거 ID로 인정하지 않는다. 텍스트형 도구 결과(SSH 출력 등)는 근거로 인용하지 않고, 참고 정보로만 Artifact 설명에 쓸 수 있다.
-2. **L3 승격 Ticket** (D-038, #188): L3는 검증에서 찾은 기존 알럿 ID가 있을 때만 `l3_escalated` Ticket을 만들고, 이벤트로만 찾은 위협은 HuntFinding으로만 남긴다(C6 생성 전이 계약 변경은 #188).
+2. **L3 승격 Ticket** (D-038, #186·#187·#188): L3 헌팅에서 위협이 존재하면(`is_anomaly = true`) 근거가 알럿이든 이벤트든 L3 승격 Ticket(`origin = l3_escalated`, 상태 `l2_escalated`)을 만든다. Ticket의 `entities`에는 헌팅에서 찾은 엔티티를, `verdict.evidence`에는 근거가 된 알럿·이벤트 참조(`ref_type` `alert` 또는 `event`)를 담는다. 근거 ID는 우리 데이터만 인정한다(규칙 6). 헌팅 결과는 위협 여부와 관계없이 HuntFinding으로 남긴다. C6 계약 변경(#188): `origin = l3_escalated`이면 `alert_ids`가 비어도 되고, 생성 시 바로 `l2_escalated`가 되는 전이를 더한다. L2는 `alert_ids`가 빈 Ticket도 `entities`로 분류하고(#186), 분석 때 `verdict.evidence`의 이벤트를 근거로 쓴다(#187).
 3. **L2 분석 실패** (D-039, #186·#187): L2 분석이 실패하면 "분석 필요"를 유지하고 다음 주기에 다시 시도한다. 연속 실패가 `[l2] analysis_max_retries`(기본 3)에 걸리면 실패를 표시하고 자동 재시도를 멈춘다(설정 키는 #186이 추가한다).
 4. **검토 중 새 정보** (D-039, #186): `awaiting_review` 중에 새 정보가 붙으면 정보만 붙이고 분석 요청은 반려 뒤로 미룬다. 검토 중 새 정보가 붙었다는 표시를 승인 화면에 보여 준다(#186).
 5. **L2 입구** (D-044, #186): L2 입구는 상태가 `l2_escalated`이고 아직 어떤 IncidentMember도 아닌 Ticket만 poll한다. 분류 재시도가 한도를 넘으면 그 Ticket만으로 새 Incident를 만든다.

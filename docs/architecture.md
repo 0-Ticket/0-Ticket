@@ -47,7 +47,7 @@ flowchart TB
   subgraph L3G["SOC (L3)"]
     AE["Alert/Event (RDB)"] --> HUNT["가설 헌팅"]
     NEWS["Case 수집 (위협 시나리오)<br/>보안 뉴스"] --> HUNT
-    HR["헌팅 결과 (Ticket)"] --> THREAT["위협 존재"]
+    HR["헌팅 결과 (HuntFinding)"] --> THREAT["위협 존재"]
     HR --> REJ["가설 기각"]
   end
 
@@ -95,7 +95,9 @@ flowchart TB
 
 | 남은 미정 사항 | 기준 위치 | 남은 이유 |
 |---|---|---|
-| 확장 지점 그룹 이름 3개: SIEM 커넥터(기존 `siem` 재사용), SIEM MCP 어댑터, 알림 채널 | `docs/extensibility.md` | 문서의 이름은 제안이다. 플러그인 레지스트리 이슈에서 정한다 |
+| 확장 지점 그룹 이름: 알림 채널(제안 `notification_channels`) | `docs/extensibility.md` | `src/soc/plugins.py`에 없다. Slack 알림(D-033)이 데모 범위 밖이라 알림을 구현하는 이슈에서 정한다 |
+
+SIEM 커넥터 그룹 `siem`과 SIEM MCP 어댑터 그룹 `siem_mcp_adapters`(D-035, #41)는 `src/soc/plugins.py`에 등록돼 쓰이고 있어 미정이 아니다(#182).
 
 ## 저장소 구성
 
@@ -120,7 +122,7 @@ flowchart TB
 | L1 | 10, 11, 12, 27 | Ticket (RDB + VDB)·Ticket (L2 상태)(10), 승격 판단·티켓 판정·L1 프롬프트 오버라이딩·이상 행위 (L2)·오탐 · 보류(11). 12, 27은 그림에 없음 | `src/soc/l1/`. 12는 L2·L3도 쓴다. 27의 화면 쪽은 `src/soc/api/`, `frontend/` | 11: 공통 에이전트(28)의 L1 프롬프트 오버라이딩. 보류는 L1의 끝 상태(D-036) |
 | 에이전트 도구 | 15 | SIEM MCP, SSH MCP | `src/soc/mcp/` (#184에서 `src/soc/l1/mcp/`에서 옮김) | 15: 에이전트 도구(MCP) 묶음. SIEM MCP, 내부 데이터 조회, HTTP 흐름 조회, SSH MCP(D-043)와 앞으로 추가할 MCP를 모두 15에 두고 도구마다 새 박스를 만들지 않는다. L1·L2·L3가 같이 쓴다 |
 | L2 | 18, 19, 20, 21, 22, 24 | Incident(18), Incident 분류 및 분석·L2 프롬프트 오버라이딩(19), Incident Artifact(20), 탐지 룰 및 대응방안 제안(24), Human(21), Case(22) | `src/soc/l2/` | 19: 공통 에이전트(28)의 L2 프롬프트 오버라이딩. Incident 분류를 포함한다(D-044) |
-| L3 | 23, 29 | 가설 헌팅·L3 프롬프트 오버라이딩·헌팅 결과 (Ticket)·위협 존재·가설 기각(23), Case 수집 (위협 시나리오)(29). Case는 Case → 가설 헌팅 화살표로 따로 들어간다 | `src/soc/l3/` (23), `src/soc/l3/news/` (29) | 23: 공통 에이전트(28)의 L3 프롬프트 오버라이딩. 입력은 Alert·Event(RDB), Case, 보안 뉴스(D-045). 데모는 수동 명령으로 실행하고 주기 실행은 설정으로 켠다(D-046). 29: 새 번호, 보안 뉴스 수집(코드, 에이전트 아님) |
+| L3 | 23, 29 | 가설 헌팅·L3 프롬프트 오버라이딩·헌팅 결과 (HuntFinding)·위협 존재 (알럿·이벤트 근거)·가설 기각(23), Case 수집 (위협 시나리오)(29). Case는 Case → 가설 헌팅 화살표로 따로 들어간다 | `src/soc/l3/` (23), `src/soc/l3/news/` (29) | 23: 공통 에이전트(28)의 L3 프롬프트 오버라이딩. 입력은 Alert·Event(RDB), Case, 보안 뉴스(D-045). 데모는 수동 명령으로 실행하고 주기 실행은 설정으로 켠다(D-046). 29: 새 번호, 보안 뉴스 수집(코드, 에이전트 아님) |
 | 공통 에이전트 | 28 | 에이전트 하나 (Agent SDK) | `src/soc/agent/` | 28: 새 번호, 공통 에이전트 코어(D-008). L1·L2·L3를 각각 스레드로 비동기 실행한다 |
 | 계약 | 전체 | | `contracts/` (원본 Schema). 생성 코드는 `src/soc/contracts/generated/`, `frontend/src/contracts/generated/` | |
 | 사용자 접점 | 박스 없음 (27 조회 화면, 21 승인 화면 포함) | | `frontend/` (웹 화면), `src/soc/api/` (화면용 API) | |
