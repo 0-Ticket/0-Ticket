@@ -1,0 +1,112 @@
+[
+  {
+    "case": "seq_zero",
+    "violations": [{"path": "seq", "rule": "minimum"}],
+    "data": {
+      "id": "agl_01a19f93-1150-7000-8000-000000000001",
+      "run_id": "run_01a19f93-1150-7000-8000-000000000001",
+      "stage": "l1",
+      "subject_type": "alert",
+      "subject_id": "alt_01a19f93-1150-7000-8000-000000000004",
+      "seq": 0,
+      "kind": "model",
+      "name": "openai/gpt-oss-120b",
+      "input": {},
+      "output": {},
+      "outcome": "ok",
+      "tokens_in": 10,
+      "tokens_out": 1,
+      "started_at": 1793678638000,
+      "duration_ms": 100,
+      "details": {}
+    }
+  },
+  {
+    "case": "run_id_free_string",
+    "violations": [{"path": "run_id", "rule": "pattern"}],
+    "data": {
+      "id": "agl_01a19f93-1150-7000-8000-000000000001",
+      "run_id": "l1-run-1",
+      "stage": "l1",
+      "subject_type": "alert",
+      "subject_id": "alt_01a19f93-1150-7000-8000-000000000004",
+      "seq": 1,
+      "kind": "model",
+      "name": "openai/gpt-oss-120b",
+      "input": {},
+      "output": {},
+      "outcome": "ok",
+      "tokens_in": 10,
+      "tokens_out": 1,
+      "started_at": 1793678638000,
+      "duration_ms": 100,
+      "details": {}
+    }
+  },
+  {
+    "case": "stage_not_in_list",
+    "violations": [{"path": "stage", "rule": "enum"}],
+    "data": {
+      "id": "agl_01a19f93-1150-7000-8000-000000000001",
+      "run_id": "run_01a19f93-1150-7000-8000-000000000001",
+      "stage": "ingest",
+      "subject_type": "alert",
+      "subject_id": "alt_01a19f93-1150-7000-8000-000000000004",
+      "seq": 1,
+      "kind": "model",
+      "name": "openai/gpt-oss-120b",
+      "input": {},
+      "output": {},
+      "outcome": "ok",
+      "tokens_in": 10,
+      "tokens_out": 1,
+      "started_at": 1793678638000,
+      "duration_ms": 100,
+      "details": {}
+    }
+  },
+  {
+    "case": "subject_type_not_in_list",
+    "violations": [{"path": "subject_type", "rule": "enum"}],
+    "data": {
+      "id": "agl_01a19f93-1150-7000-8000-000000000001",
+      "run_id": "run_01a19f93-1150-7000-8000-000000000001",
+      "stage": "l2",
+      "subject_type": "case",
+      "subject_id": "cas_01a19f93-1150-7000-8000-000000000001",
+      "seq": 1,
+      "kind": "tool",
+      "name": "siem_search",
+      "input": {},
+      "output": [],
+      "outcome": "ok",
+      "tokens_in": null,
+      "tokens_out": null,
+      "started_at": 1793678638000,
+      "duration_ms": 100,
+      "details": {}
+    }
+  },
+  {
+    "case": "negative_tokens",
+    "violations": [{"path": "tokens_in", "rule": "minimum"}],
+    "data": {
+      "id": "agl_01a19f93-1150-7000-8000-000000000001",
+      "run_id": "run_01a19f93-1150-7000-8000-000000000001",
+      "stage": "l1",
+      "subject_type": "alert",
+      "subject_id": "alt_01a19f93-1150-7000-8000-000000000004",
+      "seq": 1,
+      "kind": "model",
+      "name": "openai/gpt-oss-120b",
+      "input": {},
+      "output": {},
+      "outcome": "ok",
+      "tokens_in": -5,
+      "tokens_out": 1,
+      "started_at": 1793678638000,
+      "duration_ms": 100,
+      "details": {}
+    }
+  }
+]

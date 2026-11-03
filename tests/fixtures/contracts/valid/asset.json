@@ -1,0 +1,10 @@
+[
+  {
+    "case": "all_fields",
+    "data": {"entity_value": "web-01", "name": "웹서버", "criticality": 5, "owner": "인프라팀"}
+  },
+  {
+    "case": "unknown_fields_null",
+    "data": {"entity_value": "192.0.2.15", "name": null, "criticality": null, "owner": null}
+  }
+]

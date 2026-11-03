@@ -1,0 +1,26 @@
+[
+  {
+    "case": "malicious_with_tool_evidence",
+    "data": {
+      "decision": "malicious",
+      "confidence": 1,
+      "reason": "같은 주소에서 로그인 실패가 반복된 뒤 성공했다",
+      "evidence_ids": [
+        "alt_01a19f93-1150-7000-8000-000000000001",
+        "evt_01a19f93-1150-7000-8000-000000000001",
+        "agl_01a19f93-1150-7000-8000-000000000002"
+      ],
+      "decided_at": 1793678700000
+    }
+  },
+  {
+    "case": "undetermined_without_evidence",
+    "data": {
+      "decision": "undetermined",
+      "confidence": 0,
+      "reason": "판단할 근거가 부족하다",
+      "evidence_ids": [],
+      "decided_at": 1793678700000
+    }
+  }
+]

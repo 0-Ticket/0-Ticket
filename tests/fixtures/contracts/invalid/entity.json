@@ -1,0 +1,22 @@
+[
+  {
+    "case": "type_not_in_list",
+    "violations": [{"path": "type", "rule": "enum"}],
+    "data": {"type": "email", "value": "jung.ops@example.com", "role": null}
+  },
+  {
+    "case": "empty_value",
+    "violations": [{"path": "value", "rule": "minLength"}],
+    "data": {"type": "ip", "value": "", "role": "src"}
+  },
+  {
+    "case": "role_not_in_list",
+    "violations": [{"path": "role", "rule": "enum"}],
+    "data": {"type": "user", "value": "jung.ops", "role": "victim"}
+  },
+  {
+    "case": "missing_role",
+    "violations": [{"path": "role", "rule": "required"}],
+    "data": {"type": "ip", "value": "192.0.2.15"}
+  }
+]

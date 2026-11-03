@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "common/asset.schema.json",
+  "title": "Asset",
+  "description": "Lookup으로 붙인 자산 정보",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["entity_value", "name", "criticality", "owner"],
+  "properties": {
+    "entity_value": {
+      "description": "어느 엔티티의 자산 정보인지(Entity.value)",
+      "type": "string"
+    },
+    "name": {
+      "description": "자산 이름",
+      "type": ["string", "null"]
+    },
+    "criticality": {
+      "description": "중요도 1~5. 5가 가장 중요",
+      "anyOf": [
+        {"type": "integer", "minimum": 1, "maximum": 5},
+        {"type": "null"}
+      ]
+    },
+    "owner": {
+      "description": "담당 부서·사람",
+      "type": ["string", "null"]
+    }
+  }
+}

@@ -1,0 +1,90 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "agent_log.schema.json",
+  "title": "AgentLog",
+  "description": "에이전트의 모델 호출·도구 호출 한 번. 같은 작업의 호출은 run_id로 묶고 seq로 순서를 둔다. 비밀 값은 넣지 않는다",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "run_id",
+    "stage",
+    "subject_type",
+    "subject_id",
+    "seq",
+    "kind",
+    "name",
+    "input",
+    "output",
+    "outcome",
+    "tokens_in",
+    "tokens_out",
+    "started_at",
+    "duration_ms",
+    "details"
+  ],
+  "properties": {
+    "id": {"$ref": "common/types.schema.json#/definitions/agent_log_id"},
+    "run_id": {"$ref": "common/types.schema.json#/definitions/run_id"},
+    "stage": {
+      "type": "string",
+      "enum": ["l1", "l2", "l3"]
+    },
+    "subject_type": {
+      "description": "alert는 L1 1차 판정",
+      "type": "string",
+      "enum": ["alert", "ticket", "incident", "hunt"]
+    },
+    "subject_id": {
+      "description": "대상 ID",
+      "type": "string"
+    },
+    "seq": {
+      "description": "작업 안 순번. (run_id, seq)는 유일",
+      "type": "integer",
+      "minimum": 1
+    },
+    "kind": {
+      "type": "string",
+      "enum": ["model", "tool"]
+    },
+    "name": {
+      "description": "모델 이름 또는 도구 이름",
+      "type": "string"
+    },
+    "input": {
+      "description": "입력 전체(JSON 값). 공격자가 쓴 문자열이 들어갈 수 있다"
+    },
+    "output": {
+      "description": "출력 전체(JSON 값). 실패해 출력이 없으면 null"
+    },
+    "outcome": {
+      "type": "string",
+      "enum": ["ok", "error"]
+    },
+    "tokens_in": {
+      "description": "모델 호출만. 도구 호출은 null",
+      "anyOf": [
+        {"type": "integer", "minimum": 0},
+        {"type": "null"}
+      ]
+    },
+    "tokens_out": {
+      "description": "모델 호출만. 도구 호출은 null",
+      "anyOf": [
+        {"type": "integer", "minimum": 0},
+        {"type": "null"}
+      ]
+    },
+    "started_at": {"$ref": "common/types.schema.json#/definitions/epoch_ms"},
+    "duration_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "details": {
+      "description": "계약에 없는 값. 다른 단계는 읽지 않는다",
+      "type": "object",
+      "additionalProperties": true
+    }
+  }
+}

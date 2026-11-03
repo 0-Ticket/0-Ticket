@@ -1,0 +1,46 @@
+[
+  {
+    "case": "ocsf_class_mismatch",
+    "violations": [{"path": "ocsf.class_uid", "rule": "equals_ocsf_class"}],
+    "data": {
+      "id": "evt_01a19f93-1150-7000-8000-000000000001",
+      "raw_id": "raw_01a19f93-1150-7000-8000-000000000101",
+      "time": 1793678577500,
+      "ocsf_class": 4002,
+      "summary": "GET /login.php 500",
+      "entities": [],
+      "assets": [],
+      "ocsf": {"class_uid": 4001},
+      "details": {}
+    }
+  },
+  {
+    "case": "missing_summary",
+    "violations": [{"path": "summary", "rule": "required"}],
+    "data": {
+      "id": "evt_01a19f93-1150-7000-8000-000000000001",
+      "raw_id": "raw_01a19f93-1150-7000-8000-000000000101",
+      "time": 1793678577500,
+      "ocsf_class": 4002,
+      "entities": [],
+      "assets": [],
+      "ocsf": {"class_uid": 4002},
+      "details": {}
+    }
+  },
+  {
+    "case": "raw_id_wrong_prefix",
+    "violations": [{"path": "raw_id", "rule": "pattern"}],
+    "data": {
+      "id": "evt_01a19f93-1150-7000-8000-000000000001",
+      "raw_id": "alt_01a19f93-1150-7000-8000-000000000101",
+      "time": 1793678577500,
+      "ocsf_class": 4002,
+      "summary": "GET /login.php 500",
+      "entities": [],
+      "assets": [],
+      "ocsf": {"class_uid": 4002},
+      "details": {}
+    }
+  }
+]

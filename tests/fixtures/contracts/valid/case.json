@@ -1,0 +1,36 @@
+[
+  {
+    "case": "open_summary_null",
+    "data": {
+      "id": "cas_01a19f93-1150-7000-8000-000000000001",
+      "incident_id": "inc_01a19f93-1150-7000-8000-000000000004",
+      "title": "의심 도메인 통신",
+      "summary": null,
+      "severity": 0,
+      "entities": [{"type": "domain", "value": "update-check.example.com", "role": "dst"}],
+      "confirmed_by": "park.analyst",
+      "confirmed_at": 1793679100000,
+      "status": "open",
+      "assignee": null,
+      "resolved_at": null,
+      "details": {}
+    }
+  },
+  {
+    "case": "resolved",
+    "data": {
+      "id": "cas_01a19f93-1150-7000-8000-000000000002",
+      "incident_id": "inc_01a19f93-1150-7000-8000-000000000002",
+      "title": "업무 PC 악성 PowerShell 실행",
+      "summary": "ws-07에서 인코딩된 PowerShell이 외부 주소에서 파일을 내려받아 실행했다",
+      "severity": 5,
+      "entities": [{"type": "host", "value": "ws-07", "role": "target"}],
+      "confirmed_by": "park.analyst",
+      "confirmed_at": 1793679200000,
+      "status": "resolved",
+      "assignee": "choi.analyst",
+      "resolved_at": 1793682800000,
+      "details": {}
+    }
+  }
+]

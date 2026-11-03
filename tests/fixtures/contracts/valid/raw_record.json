@@ -1,0 +1,37 @@
+[
+  {
+    "case": "elk_alert",
+    "data": {
+      "id": "raw_01a19f93-1150-7000-8000-000000000001",
+      "kind": "alert",
+      "siem_profile": "elk-dev",
+      "siem_ref": ".internal.alerts-security.alerts-default-000001/8f2c1a9e",
+      "fetched_at": 1793678580000,
+      "original": {
+        "@timestamp": "2026-11-03T04:02:58.000Z",
+        "kibana.alert.rule.name": "SQL Injection Attempt",
+        "kibana.alert.rule.uuid": "9f1e2d3c-4b5a-6789-0abc-def012345678",
+        "kibana.alert.severity": "high",
+        "source": {"ip": "203.0.113.10"},
+        "destination": {"ip": "198.51.100.5"},
+        "host": {"name": "web-01"}
+      }
+    }
+  },
+  {
+    "case": "elk_event",
+    "data": {
+      "id": "raw_01a19f93-1150-7000-8000-000000000101",
+      "kind": "event",
+      "siem_profile": "elk-dev",
+      "siem_ref": "logs-nginx.access-default/3b7d9e21",
+      "fetched_at": 1793678580000,
+      "original": {
+        "@timestamp": "2026-11-03T04:02:57.500Z",
+        "url": {"original": "/login.php?id=1' OR '1'='1"},
+        "source": {"ip": "203.0.113.10"},
+        "http": {"response": {"status_code": 500}}
+      }
+    }
+  }
+]

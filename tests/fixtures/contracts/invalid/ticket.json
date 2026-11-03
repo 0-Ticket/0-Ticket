@@ -1,0 +1,135 @@
+[
+  {
+    "case": "auto_without_alerts",
+    "violations": [{"path": "alert_ids", "rule": "minItems"}],
+    "data": {
+      "id": "tkt_01a19f93-1150-7000-8000-000000000001",
+      "origin": "auto",
+      "status": "new",
+      "alert_ids": [],
+      "entities": [],
+      "verdict": null,
+      "created_at": 1793678581000,
+      "updated_at": 1793678581000,
+      "details": {}
+    }
+  },
+  {
+    "case": "scenario_without_alerts",
+    "violations": [{"path": "alert_ids", "rule": "minItems"}],
+    "data": {
+      "id": "tkt_01a19f93-1150-7000-8000-000000000002",
+      "origin": "scenario",
+      "status": "new",
+      "alert_ids": [],
+      "entities": [],
+      "verdict": null,
+      "created_at": 1793678581100,
+      "updated_at": 1793678581100,
+      "details": {}
+    }
+  },
+  {
+    "case": "l1_without_alerts",
+    "violations": [{"path": "alert_ids", "rule": "minItems"}],
+    "data": {
+      "id": "tkt_01a19f93-1150-7000-8000-000000000003",
+      "origin": "l1",
+      "status": "new",
+      "alert_ids": [],
+      "entities": [],
+      "verdict": null,
+      "created_at": 1793678641000,
+      "updated_at": 1793678641000,
+      "details": {}
+    }
+  },
+  {
+    "case": "new_with_verdict",
+    "violations": [{"path": "verdict", "rule": "type"}],
+    "data": {
+      "id": "tkt_01a19f93-1150-7000-8000-000000000001",
+      "origin": "auto",
+      "status": "new",
+      "alert_ids": ["alt_01a19f93-1150-7000-8000-000000000001"],
+      "entities": [],
+      "verdict": {
+        "decision": "malicious",
+        "confidence": 0.8,
+        "reason": "SQL 인젝션 패턴",
+        "evidence_ids": ["alt_01a19f93-1150-7000-8000-000000000001"],
+        "decided_at": 1793678700000
+      },
+      "created_at": 1793678581000,
+      "updated_at": 1793678700000,
+      "details": {}
+    }
+  },
+  {
+    "case": "origin_not_in_list",
+    "violations": [{"path": "origin", "rule": "enum"}],
+    "data": {
+      "id": "tkt_01a19f93-1150-7000-8000-000000000001",
+      "origin": "manual",
+      "status": "new",
+      "alert_ids": ["alt_01a19f93-1150-7000-8000-000000000001"],
+      "entities": [],
+      "verdict": null,
+      "created_at": 1793678581000,
+      "updated_at": 1793678581000,
+      "details": {}
+    }
+  },
+  {
+    "case": "status_not_in_list",
+    "violations": [{"path": "status", "rule": "enum"}],
+    "data": {
+      "id": "tkt_01a19f93-1150-7000-8000-000000000001",
+      "origin": "auto",
+      "status": "open",
+      "alert_ids": ["alt_01a19f93-1150-7000-8000-000000000001"],
+      "entities": [],
+      "verdict": null,
+      "created_at": 1793678581000,
+      "updated_at": 1793678581000,
+      "details": {}
+    }
+  },
+  {
+    "case": "extra_field_in_verdict",
+    "violations": [{"path": "verdict", "rule": "additionalProperties"}],
+    "data": {
+      "id": "tkt_01a19f93-1150-7000-8000-000000000005",
+      "origin": "auto",
+      "status": "closed",
+      "alert_ids": ["alt_01a19f93-1150-7000-8000-000000000007"],
+      "entities": [],
+      "verdict": {
+        "decision": "benign",
+        "confidence": 0.88,
+        "reason": "야간 배포",
+        "evidence_ids": [],
+        "decided_at": 1793678700000,
+        "model": "openai/gpt-oss-120b"
+      },
+      "created_at": 1793678581200,
+      "updated_at": 1793678700000,
+      "details": {}
+    }
+  },
+  {
+    "case": "alert_id_wrong_prefix",
+    "violations": [{"path": "alert_ids[0]", "rule": "pattern"}],
+    "data": {
+      "id": "tkt_01a19f93-1150-7000-8000-000000000001",
+      "origin": "auto",
+      "status": "new",
+      "alert_ids": ["evt_01a19f93-1150-7000-8000-000000000001"],
+      "entities": [],
+      "verdict": null,
+      "created_at": 1793678581000,
+      "updated_at": 1793678581000,
+      "details": {}
+    }
+  }
+]

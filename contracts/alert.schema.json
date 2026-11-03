@@ -1,0 +1,96 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "alert.schema.json",
+  "title": "Alert",
+  "description": "OCSF 1.9.0 Detection Finding(class_uid 2004)으로 정규화한 알럿",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "raw_id",
+    "time",
+    "severity",
+    "title",
+    "rule_id",
+    "entities",
+    "assets",
+    "triage",
+    "ocsf",
+    "details"
+  ],
+  "properties": {
+    "id": {"$ref": "common/types.schema.json#/definitions/alert_id"},
+    "raw_id": {"$ref": "common/types.schema.json#/definitions/raw_id"},
+    "time": {"$ref": "common/types.schema.json#/definitions/epoch_ms"},
+    "severity": {"$ref": "common/types.schema.json#/definitions/severity"},
+    "title": {
+      "description": "한 줄 요약(룰 이름 등)",
+      "type": "string"
+    },
+    "rule_id": {
+      "description": "알럿을 만든 SIEM 탐지 룰 ID. 없으면 null",
+      "type": ["string", "null"]
+    },
+    "entities": {
+      "type": "array",
+      "items": {"$ref": "common/entity.schema.json"}
+    },
+    "assets": {
+      "type": "array",
+      "items": {"$ref": "common/asset.schema.json"}
+    },
+    "triage": {
+      "description": "시나리오 모드에서 일치하지 않은 알럿의 L1 1차 판정. 그 밖에는 null",
+      "anyOf": [
+        {"$ref": "#/definitions/triage"},
+        {"type": "null"}
+      ]
+    },
+    "ocsf": {
+      "description": "OCSF Detection Finding 전체",
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["class_uid"],
+      "properties": {
+        "class_uid": {"const": 2004}
+      }
+    },
+    "details": {
+      "description": "계약에 없는 값. 다른 단계는 읽지 않는다",
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "definitions": {
+    "triage": {
+      "title": "Triage",
+      "description": "L1 1차 판정 상태",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "verdict"],
+      "properties": {
+        "status": {
+          "description": "pending: 1차 판정 대기, promoted: Ticket으로 승격, held: 보류(Ticket 없음)",
+          "type": "string",
+          "enum": ["pending", "promoted", "held"]
+        },
+        "verdict": {
+          "anyOf": [
+            {"$ref": "common/verdict.schema.json"},
+            {"type": "null"}
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {"required": ["status"], "properties": {"status": {"const": "pending"}}},
+          "then": {"properties": {"verdict": {"type": "null"}}}
+        },
+        {
+          "if": {"required": ["status"], "properties": {"status": {"const": "promoted"}}},
+          "then": {"properties": {"verdict": {"type": "object"}}}
+        }
+      ]
+    }
+  }
+}

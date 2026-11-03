@@ -1,0 +1,84 @@
+[
+  {
+    "case": "auto_new",
+    "data": {
+      "id": "tkt_01a19f93-1150-7000-8000-000000000001",
+      "origin": "auto",
+      "status": "new",
+      "alert_ids": ["alt_01a19f93-1150-7000-8000-000000000001"],
+      "entities": [
+        {"type": "ip", "value": "203.0.113.10", "role": "src"},
+        {"type": "host", "value": "web-01", "role": "dst"}
+      ],
+      "verdict": null,
+      "created_at": 1793678581000,
+      "updated_at": 1793678581000,
+      "details": {}
+    }
+  },
+  {
+    "case": "scenario_new",
+    "data": {
+      "id": "tkt_01a19f93-1150-7000-8000-000000000002",
+      "origin": "scenario",
+      "status": "new",
+      "alert_ids": ["alt_01a19f93-1150-7000-8000-000000000002"],
+      "entities": [{"type": "user", "value": "kim.admin", "role": "actor"}],
+      "verdict": null,
+      "created_at": 1793678581100,
+      "updated_at": 1793678581100,
+      "details": {}
+    }
+  },
+  {
+    "case": "l1_new",
+    "data": {
+      "id": "tkt_01a19f93-1150-7000-8000-000000000003",
+      "origin": "l1",
+      "status": "new",
+      "alert_ids": ["alt_01a19f93-1150-7000-8000-000000000004"],
+      "entities": [{"type": "host", "value": "ws-07", "role": "target"}],
+      "verdict": null,
+      "created_at": 1793678641000,
+      "updated_at": 1793678641000,
+      "details": {}
+    }
+  },
+  {
+    "case": "l3_escalated",
+    "data": {
+      "id": "tkt_01a19f93-1150-7000-8000-000000000004",
+      "origin": "l3",
+      "status": "escalated",
+      "alert_ids": [],
+      "entities": [{"type": "domain", "value": "update-check.example.com", "role": "dst"}],
+      "verdict": null,
+      "created_at": 1793679000000,
+      "updated_at": 1793679000000,
+      "details": {}
+    }
+  },
+  {
+    "case": "closed_with_tool_evidence",
+    "data": {
+      "id": "tkt_01a19f93-1150-7000-8000-000000000005",
+      "origin": "auto",
+      "status": "closed",
+      "alert_ids": ["alt_01a19f93-1150-7000-8000-000000000007"],
+      "entities": [{"type": "user", "value": "lee.dev", "role": "actor"}],
+      "verdict": {
+        "decision": "benign",
+        "confidence": 0.88,
+        "reason": "야간 배포 일정에 맞춘 개발자 로그인이다",
+        "evidence_ids": [
+          "alt_01a19f93-1150-7000-8000-000000000007",
+          "agl_01a19f93-1150-7000-8000-000000000002"
+        ],
+        "decided_at": 1793678700000
+      },
+      "created_at": 1793678581200,
+      "updated_at": 1793678700000,
+      "details": {}
+    }
+  }
+]

@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "raw_record.schema.json",
+  "title": "RawRecord",
+  "description": "SIEM에서 가져온 Alert·Event 원본. 바꾸지 않고 그대로 보관한다",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "kind", "siem_profile", "siem_ref", "fetched_at", "original"],
+  "properties": {
+    "id": {"$ref": "common/types.schema.json#/definitions/raw_id"},
+    "kind": {
+      "type": "string",
+      "enum": ["alert", "event"]
+    },
+    "siem_profile": {
+      "description": "가져온 SIEM 연결 프로필 이름",
+      "type": "string"
+    },
+    "siem_ref": {
+      "description": "SIEM 안에서 문서 하나를 가리키는 값. ELK는 <_index>/<_id>",
+      "type": "string"
+    },
+    "fetched_at": {"$ref": "common/types.schema.json#/definitions/epoch_ms"},
+    "original": {
+      "description": "SIEM이 준 JSON 그대로",
+      "type": "object",
+      "additionalProperties": true
+    }
+  }
+}

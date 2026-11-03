@@ -1,0 +1,131 @@
+[
+  {
+    "case": "class_uid_not_detection_finding",
+    "violations": [{"path": "ocsf.class_uid", "rule": "const"}],
+    "data": {
+      "id": "alt_01a19f93-1150-7000-8000-000000000001",
+      "raw_id": "raw_01a19f93-1150-7000-8000-000000000001",
+      "time": 1793678578000,
+      "severity": 4,
+      "title": "SQL Injection Attempt",
+      "rule_id": "9f1e2d3c-4b5a-6789-0abc-def012345678",
+      "entities": [],
+      "assets": [],
+      "triage": null,
+      "ocsf": {"class_uid": 2003},
+      "details": {}
+    }
+  },
+  {
+    "case": "triage_status_not_in_list",
+    "violations": [{"path": "triage.status", "rule": "enum"}],
+    "data": {
+      "id": "alt_01a19f93-1150-7000-8000-000000000003",
+      "raw_id": "raw_01a19f93-1150-7000-8000-000000000003",
+      "time": 1793678578200,
+      "severity": 2,
+      "title": "Port Scan Detected",
+      "rule_id": "net-portscan-007",
+      "entities": [],
+      "assets": [],
+      "triage": {"status": "closed", "verdict": null},
+      "ocsf": {"class_uid": 2004},
+      "details": {}
+    }
+  },
+  {
+    "case": "pending_with_verdict",
+    "violations": [{"path": "triage.verdict", "rule": "type"}],
+    "data": {
+      "id": "alt_01a19f93-1150-7000-8000-000000000003",
+      "raw_id": "raw_01a19f93-1150-7000-8000-000000000003",
+      "time": 1793678578200,
+      "severity": 2,
+      "title": "Port Scan Detected",
+      "rule_id": "net-portscan-007",
+      "entities": [],
+      "assets": [],
+      "triage": {
+        "status": "pending",
+        "verdict": {
+          "decision": "benign",
+          "confidence": 0.9,
+          "reason": "정기 스캔",
+          "evidence_ids": [],
+          "decided_at": 1793678640000
+        }
+      },
+      "ocsf": {"class_uid": 2004},
+      "details": {}
+    }
+  },
+  {
+    "case": "promoted_without_verdict",
+    "violations": [{"path": "triage.verdict", "rule": "type"}],
+    "data": {
+      "id": "alt_01a19f93-1150-7000-8000-000000000004",
+      "raw_id": "raw_01a19f93-1150-7000-8000-000000000004",
+      "time": 1793678578300,
+      "severity": 4,
+      "title": "Suspicious PowerShell Execution",
+      "rule_id": "win-ps-encoded-012",
+      "entities": [],
+      "assets": [],
+      "triage": {"status": "promoted", "verdict": null},
+      "ocsf": {"class_uid": 2004},
+      "details": {}
+    }
+  },
+  {
+    "case": "severity_out_of_range",
+    "violations": [{"path": "severity", "rule": "maximum"}],
+    "data": {
+      "id": "alt_01a19f93-1150-7000-8000-000000000001",
+      "raw_id": "raw_01a19f93-1150-7000-8000-000000000001",
+      "time": 1793678578000,
+      "severity": 7,
+      "title": "SQL Injection Attempt",
+      "rule_id": null,
+      "entities": [],
+      "assets": [],
+      "triage": null,
+      "ocsf": {"class_uid": 2004},
+      "details": {}
+    }
+  },
+  {
+    "case": "extra_top_level_field",
+    "violations": [{"path": "(root)", "rule": "additionalProperties"}],
+    "data": {
+      "id": "alt_01a19f93-1150-7000-8000-000000000001",
+      "raw_id": "raw_01a19f93-1150-7000-8000-000000000001",
+      "time": 1793678578000,
+      "severity": 4,
+      "title": "SQL Injection Attempt",
+      "rule_id": null,
+      "entities": [],
+      "assets": [],
+      "triage": null,
+      "ocsf": {"class_uid": 2004},
+      "details": {},
+      "score": 3
+    }
+  },
+  {
+    "case": "extra_field_in_entity",
+    "violations": [{"path": "entities[0]", "rule": "additionalProperties"}],
+    "data": {
+      "id": "alt_01a19f93-1150-7000-8000-000000000001",
+      "raw_id": "raw_01a19f93-1150-7000-8000-000000000001",
+      "time": 1793678578000,
+      "severity": 4,
+      "title": "SQL Injection Attempt",
+      "rule_id": null,
+      "entities": [{"type": "ip", "value": "203.0.113.10", "role": "src", "port": 443}],
+      "assets": [],
+      "triage": null,
+      "ocsf": {"class_uid": 2004},
+      "details": {}
+    }
+  }
+]

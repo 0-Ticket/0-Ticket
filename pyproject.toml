@@ -5,10 +5,15 @@ description = "AI 에이전트 기반 SOC 파이프라인"
 readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "jsonschema>=4.26.0",
+    "psycopg[binary]>=3.3.7",
+    "pydantic>=2.14.2",
+]
 
 [dependency-groups]
 dev = [
+    "datamodel-code-generator>=0.88.0",
     "pytest>=8",
     "ruff>=0.17.0",
 ]
@@ -27,6 +32,10 @@ target-version = "py313"
 [tool.ruff.lint]
 # E/F: 기본 오류, I: import 정렬, B: 흔한 버그, UP: 최신 문법
 select = ["E", "F", "I", "B", "UP"]
+
+[tool.ruff.lint.per-file-ignores]
+# 생성 코드는 손으로 고칠 수 없고, schema 설명 문장이 한 줄로 생성돼 100자를 넘는다(D-038).
+"src/soc/contracts/generated/**" = ["E501"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
