@@ -70,5 +70,16 @@
       ],
       "decided_at": 1793678700000
     }
+  },
+  {
+    "case": "evidence_id_trailing_newline",
+    "violations": [{"path": "evidence_ids[0]", "rule": "pattern"}],
+    "data": {
+      "decision": "malicious",
+      "confidence": 0.9,
+      "reason": "근거",
+      "evidence_ids": ["alt_01a19f93-1150-7000-8000-000000000001\n"],
+      "decided_at": 1793678700000
+    }
   }
 ]

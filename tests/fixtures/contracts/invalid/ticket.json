@@ -170,5 +170,20 @@
       "updated_at": 1793678581000,
       "details": {}
     }
+  },
+  {
+    "case": "alert_id_trailing_newline",
+    "violations": [{"path": "alert_ids[0]", "rule": "pattern"}],
+    "data": {
+      "id": "tkt_01a19f93-1150-7000-8000-000000000001",
+      "origin": "auto",
+      "status": "new",
+      "alert_ids": ["alt_01a19f93-1150-7000-8000-000000000001\n"],
+      "entities": [],
+      "verdict": null,
+      "created_at": 1793678581000,
+      "updated_at": 1793678581000,
+      "details": {}
+    }
   }
 ]

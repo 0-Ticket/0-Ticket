@@ -9,14 +9,16 @@ NaN·Infinity는 계약이 막지 않지만 PostgreSQL은 거부한다. 바꿔 �
 """
 
 import json
+import re
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from functools import cache
 from pathlib import Path
 from typing import Any
 
-from jsonschema import Draft7Validator
+from jsonschema import Draft7Validator, validators
 from jsonschema.exceptions import ValidationError
+from jsonschema.protocols import Validator
 from pydantic import BaseModel
 from pydantic import ValidationError as PydanticValidationError
 from referencing import Registry, Resource
@@ -110,7 +112,35 @@ def _extra_violations(name: str, data: dict[str, Any]) -> list[Violation]:
 
 
 @cache
-def _validators() -> dict[str, Draft7Validator]:
+def _compile_pattern(pattern: str) -> re.Pattern[str]:
+    """schema pattern을 Python 정규식으로 컴파일한다. 끝의 $는 \\Z로 바꾼다.
+
+    jsonschema는 pattern을 re.search로 검사하는데, Python의 $는 마지막 \\n 앞에서도 맞는다.
+    그래서 "alt_<uuid>\\n"이 ^alt_…$를 통과한다. schema에 \\Z를 쓰지 않는 것은 ECMA 정규식과
+    Rust regex(Pydantic)가 \\Z를 모르기 때문이다.
+    이스케이프된 \\$(앞의 백슬래시가 홀수 개)는 그대로 둔다.
+    """
+    if pattern.endswith("$"):
+        body = pattern[:-1]
+        if (len(body) - len(body.rstrip("\\"))) % 2 == 0:
+            pattern = body + r"\Z"
+    return re.compile(pattern)
+
+
+def _pattern(
+    validator: Validator, pattern: str, instance: Any, schema: Any
+) -> Iterator[ValidationError]:
+    if validator.is_type(instance, "string") and not _compile_pattern(pattern).search(instance):
+        # 메시지에 입력 값을 넣지 않는다.
+        yield ValidationError(f"does not match {pattern!r}")
+
+
+# pattern 검사만 바꾼 Draft 7 검사기. 위반 rule 이름은 그대로 "pattern"이다.
+_ContractValidator = validators.extend(Draft7Validator, {"pattern": _pattern})
+
+
+@cache
+def _validators() -> dict[str, Validator]:
     if not SCHEMA_DIR.is_dir():
         raise RuntimeError(f"계약 schema 폴더가 없다: {SCHEMA_DIR}")
     resources = []
@@ -121,7 +151,7 @@ def _validators() -> dict[str, Draft7Validator]:
         )
     registry = Registry().with_resources(resources)
     return {
-        name: Draft7Validator(registry.contents(schema_file), registry=registry)
+        name: _ContractValidator(registry.contents(schema_file), registry=registry)
         for name, (schema_file, _) in _CONTRACTS.items()
     }
 

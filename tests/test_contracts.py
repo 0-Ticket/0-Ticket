@@ -2,6 +2,7 @@
 
 import copy
 import json
+from collections.abc import Iterator
 from datetime import UTC, datetime
 
 import pytest
@@ -17,6 +18,7 @@ from jsonschema import Draft7Validator
 
 from soc.contracts import ContractError, validate_contract
 from soc.contracts.generated.ticket_schema import Ticket
+from soc.contracts.validate import _compile_pattern
 
 VALID = cases("valid")
 INVALID = cases("invalid")
@@ -38,6 +40,55 @@ def test_schemas_are_draft7_with_matching_ids() -> None:
         Draft7Validator.check_schema(schema)
         assert schema["$schema"] == "http://json-schema.org/draft-07/schema#"
         assert schema["$id"] == path.relative_to(SCHEMA_DIR).as_posix()
+
+
+def schema_patterns(node: object) -> Iterator[str]:
+    if isinstance(node, dict):
+        for key, value in node.items():
+            if key == "pattern" and isinstance(value, str):
+                yield value
+            else:
+                yield from schema_patterns(value)
+    elif isinstance(node, list):
+        for item in node:
+            yield from schema_patterns(item)
+
+
+def test_schema_patterns_are_anchored_at_both_ends() -> None:
+    """validate_contract()는 끝의 $를 \\Z로 바꿔 검사한다.
+
+    그러려면 모든 pattern이 ^로 시작하고 이스케이프되지 않은 $로 끝나야 한다.
+    """
+    patterns = [
+        pattern
+        for path in sorted(SCHEMA_DIR.rglob("*.schema.json"))
+        for pattern in schema_patterns(json.loads(path.read_text(encoding="utf-8")))
+    ]
+
+    assert patterns
+    for pattern in patterns:
+        assert pattern.startswith("^"), pattern
+        assert pattern.endswith("$"), pattern
+        body = pattern[:-1]
+        assert (len(body) - len(body.rstrip("\\"))) % 2 == 0, f"끝의 $가 이스케이프됐다: {pattern}"
+
+
+@pytest.mark.parametrize(
+    ("pattern", "matches", "rejects"),
+    [
+        ("^a$", ["a"], ["a\n"]),
+        ("^a\\$", ["a$"], ["a"]),  # 이스케이프된 $는 글자 $다
+        ("^a\\\\$", ["a\\"], ["a\\\n"]),  # \\ 뒤의 $는 끝을 뜻한다
+    ],
+    ids=["anchor", "escaped_dollar", "escaped_backslash_then_anchor"],
+)
+def test_pattern_end_anchor_rejects_trailing_newline(
+    pattern: str, matches: list[str], rejects: list[str]
+) -> None:
+    compiled = _compile_pattern(pattern)
+
+    assert all(compiled.search(text) for text in matches)
+    assert not any(compiled.search(text) for text in rejects)
 
 
 @pytest.mark.parametrize(("name", "sample"), VALID, ids=case_ids(VALID))
