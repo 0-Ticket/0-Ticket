@@ -35,6 +35,7 @@ CREATE TABLE alerts (
     details jsonb NOT NULL CHECK (jsonb_typeof(details) <> 'null')
 );
 
+CREATE INDEX alerts_raw_id_idx ON alerts (raw_id);
 CREATE INDEX alerts_rule_id_idx ON alerts (rule_id);
 -- L1이 1차 판정 대기(triage.status = pending) 알럿을 찾는다
 CREATE INDEX alerts_triage_status_idx ON alerts ((triage ->> 'status'));
@@ -50,6 +51,8 @@ CREATE TABLE events (
     ocsf jsonb NOT NULL CHECK (jsonb_typeof(ocsf) <> 'null'),
     details jsonb NOT NULL CHECK (jsonb_typeof(details) <> 'null')
 );
+
+CREATE INDEX events_raw_id_idx ON events (raw_id);
 
 CREATE TABLE tickets (
     id text PRIMARY KEY,

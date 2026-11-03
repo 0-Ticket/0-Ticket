@@ -160,6 +160,33 @@ def test_failed_migration_rolls_back_only_that_file(temp_database: str, tmp_path
         assert versions == [(1,)]
 
 
+def test_migrate_stops_when_applied_file_was_renamed(temp_database: str, tmp_path: Path) -> None:
+    (tmp_path / "0001_first.sql").write_text("CREATE TABLE first_table (id int);")
+    migrate(temp_database, tmp_path)
+    (tmp_path / "0001_first.sql").rename(tmp_path / "0001_renamed.sql")
+    (tmp_path / "0002_second.sql").write_text("CREATE TABLE second_table (id int);")
+
+    with pytest.raises(MigrationError, match="0001_first.sql.*0001_renamed.sql"):
+        migrate(temp_database, tmp_path)
+
+    with psycopg.connect(temp_database) as conn:
+        assert table_names(conn) == {"first_table", "schema_migrations"}  # 0002도 돌리지 않는다
+
+
+@pytest.mark.parametrize("table", ["alerts", "events"])
+def test_raw_id_is_indexed(migrated: str, table: str) -> None:
+    with psycopg.connect(migrated) as conn:
+        definitions = [
+            row[0]
+            for row in conn.execute(
+                "SELECT indexdef FROM pg_indexes WHERE schemaname = 'public' AND tablename = %s",
+                (table,),
+            )
+        ]
+
+    assert any(d.endswith("(raw_id)") for d in definitions), definitions
+
+
 def test_same_siem_document_is_rejected(migrated: str) -> None:
     first = load("valid", "raw_record")[0]["data"]
     second = {**first, "id": "raw_01a19f93-1150-7000-8000-0000000000ff"}

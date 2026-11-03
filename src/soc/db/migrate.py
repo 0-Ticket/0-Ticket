@@ -7,6 +7,7 @@
 - 파일 하나를 트랜잭션 하나로 실행하고, schema_migrations 기록도 같은 트랜잭션에 넣는다.
   실패하면 그 파일만 되돌리고 멈춘다.
 - 적용한 파일은 고치지 않고 새 번호를 만든다. 파일은 자기보다 작은 번호의 테이블만 참조한다.
+- 이미 적용한 번호의 파일 이름이 기록과 다르면 아무것도 실행하지 않고 멈춘다.
 - DB 주소(비밀번호 포함)는 출력·로그·예외 메시지에 넣지 않는다.
 """
 
@@ -76,10 +77,19 @@ def migrate(database_url: str, directory: Path = MIGRATIONS_DIR) -> list[str]:
     with conn:
         try:
             conn.execute(_CREATE_HISTORY)
-            done = {row[0] for row in conn.execute("SELECT version FROM schema_migrations")}
+            done = dict(conn.execute("SELECT version, name FROM schema_migrations").fetchall())
         except psycopg.Error as exc:
             reason = exc.diag.message_primary or type(exc).__name__
             raise MigrationError(f"schema_migrations를 준비하지 못했다: {reason}") from None
+        renamed = [
+            f"{m.version:04d}번(기록 {done[m.version]}, 지금 {m.name})"
+            for m in migrations
+            if m.version in done and done[m.version] != m.name
+        ]
+        if renamed:
+            raise MigrationError(
+                f"이미 적용한 번호의 파일 이름이 기록과 다르다: {'; '.join(renamed)}"
+            )
         for migration in migrations:
             if migration.version in done:
                 continue
