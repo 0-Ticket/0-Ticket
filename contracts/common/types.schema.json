@@ -5,9 +5,10 @@
   "description": "여러 계약이 함께 쓰는 값의 정의. ID는 접두사 + UUIDv7(소문자 16진수).",
   "definitions": {
     "epoch_ms": {
-      "description": "UTC epoch 밀리초",
+      "description": "UTC epoch 밀리초. 상한은 9999-12-31T23:59:59.999Z",
       "type": "integer",
-      "minimum": 0
+      "minimum": 0,
+      "maximum": 253402300799999
     },
     "severity": {
       "description": "OCSF severity_id. 0 Unknown, 1 Informational, 2 Low, 3 Medium, 4 High, 5 Critical, 6 Fatal",

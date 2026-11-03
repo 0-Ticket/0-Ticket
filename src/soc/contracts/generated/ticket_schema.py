@@ -41,6 +41,20 @@ class Ticket(BaseModel):
         verdict_schema.Verdict | None,
         Field(description="L1 Ticket 판정. status가 new이면 null"),
     ]
-    created_at: Annotated[int, Field(description="UTC epoch 밀리초", ge=0)]
-    updated_at: Annotated[int, Field(description="UTC epoch 밀리초", ge=0)]
+    created_at: Annotated[
+        int,
+        Field(
+            description="UTC epoch 밀리초. 상한은 9999-12-31T23:59:59.999Z",
+            ge=0,
+            le=253402300799999,
+        ),
+    ]
+    updated_at: Annotated[
+        int,
+        Field(
+            description="UTC epoch 밀리초. 상한은 9999-12-31T23:59:59.999Z",
+            ge=0,
+            le=253402300799999,
+        ),
+    ]
     details: Annotated[dict[str, Any], Field(description="계약에 없는 값. 다른 단계는 읽지 않는다")]

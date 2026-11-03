@@ -42,7 +42,8 @@
     "seq": {
       "description": "작업 안 순번. (run_id, seq)는 유일",
       "type": "integer",
-      "minimum": 1
+      "minimum": 1,
+      "maximum": 2147483647
     },
     "kind": {
       "type": "string",
@@ -65,21 +66,22 @@
     "tokens_in": {
       "description": "모델 호출만. 도구 호출은 null",
       "anyOf": [
-        {"type": "integer", "minimum": 0},
+        {"type": "integer", "minimum": 0, "maximum": 2147483647},
         {"type": "null"}
       ]
     },
     "tokens_out": {
       "description": "모델 호출만. 도구 호출은 null",
       "anyOf": [
-        {"type": "integer", "minimum": 0},
+        {"type": "integer", "minimum": 0, "maximum": 2147483647},
         {"type": "null"}
       ]
     },
     "started_at": {"$ref": "common/types.schema.json#/definitions/epoch_ms"},
     "duration_ms": {
       "type": "integer",
-      "minimum": 0
+      "minimum": 0,
+      "maximum": 2147483647
     },
     "details": {
       "description": "계약에 없는 값. 다른 단계는 읽지 않는다",

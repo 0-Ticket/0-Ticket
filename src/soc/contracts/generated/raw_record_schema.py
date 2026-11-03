@@ -17,9 +17,19 @@ class RawRecord(BaseModel):
         Field(pattern="^raw_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"),
     ]
     kind: Literal["alert", "event"]
-    siem_profile: Annotated[str, Field(description="가져온 SIEM 연결 프로필 이름")]
+    siem_profile: Annotated[str, Field(description="가져온 SIEM 연결 프로필 이름", min_length=1)]
     siem_ref: Annotated[
-        str, Field(description="SIEM 안에서 문서 하나를 가리키는 값. ELK는 <_index>/<_id>")
+        str,
+        Field(
+            description="SIEM 안에서 문서 하나를 가리키는 값. ELK는 <_index>/<_id>", min_length=1
+        ),
     ]
-    fetched_at: Annotated[int, Field(description="UTC epoch 밀리초", ge=0)]
+    fetched_at: Annotated[
+        int,
+        Field(
+            description="UTC epoch 밀리초. 상한은 9999-12-31T23:59:59.999Z",
+            ge=0,
+            le=253402300799999,
+        ),
+    ]
     original: Annotated[dict[str, Any], Field(description="SIEM이 준 JSON 그대로")]

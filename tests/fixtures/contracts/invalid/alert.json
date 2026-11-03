@@ -51,7 +51,7 @@
           "decision": "benign",
           "confidence": 0.9,
           "reason": "정기 스캔",
-          "evidence_ids": [],
+          "evidence_ids": ["alt_01a19f93-1150-7000-8000-000000000003"],
           "decided_at": 1793678640000
         }
       },
@@ -84,6 +84,23 @@
       "raw_id": "raw_01a19f93-1150-7000-8000-000000000001",
       "time": 1793678578000,
       "severity": 7,
+      "title": "SQL Injection Attempt",
+      "rule_id": null,
+      "entities": [],
+      "assets": [],
+      "triage": null,
+      "ocsf": {"class_uid": 2004},
+      "details": {}
+    }
+  },
+  {
+    "case": "time_in_microseconds",
+    "violations": [{"path": "time", "rule": "maximum"}],
+    "data": {
+      "id": "alt_01a19f93-1150-7000-8000-000000000001",
+      "raw_id": "raw_01a19f93-1150-7000-8000-000000000001",
+      "time": 1793678578000000,
+      "severity": 4,
       "title": "SQL Injection Attempt",
       "rule_id": null,
       "entities": [],

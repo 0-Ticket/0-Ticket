@@ -59,12 +59,14 @@
     "analysis_round": {
       "description": "L2 분석 횟수",
       "type": "integer",
-      "minimum": 0
+      "minimum": 0,
+      "maximum": 2147483647
     },
     "review_round": {
       "description": "사람 검토 횟수",
       "type": "integer",
-      "minimum": 0
+      "minimum": 0,
+      "maximum": 2147483647
     },
     "created_at": {"$ref": "common/types.schema.json#/definitions/epoch_ms"},
     "updated_at": {"$ref": "common/types.schema.json#/definitions/epoch_ms"},

@@ -16,7 +16,14 @@ type Types = Annotated[
 ]
 
 
-type EpochMs = Annotated[int, Field(description="UTC epoch 밀리초", ge=0)]
+type EpochMs = Annotated[
+    int,
+    Field(
+        description="UTC epoch 밀리초. 상한은 9999-12-31T23:59:59.999Z",
+        ge=0,
+        le=253402300799999,
+    ),
+]
 
 
 type Severity = Annotated[

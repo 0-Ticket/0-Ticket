@@ -66,5 +66,26 @@
       "duration_ms": 5000,
       "details": {"error": "timeout"}
     }
+  },
+  {
+    "case": "limits_at_upper_bounds",
+    "data": {
+      "id": "agl_01a19f93-1150-7000-8000-000000000004",
+      "run_id": "run_01a19f93-1150-7000-8000-000000000003",
+      "stage": "l2",
+      "subject_type": "incident",
+      "subject_id": "inc_01a19f93-1150-7000-8000-000000000001",
+      "seq": 2147483647,
+      "kind": "model",
+      "name": "openai/gpt-oss-120b",
+      "input": {},
+      "output": {},
+      "outcome": "ok",
+      "tokens_in": 2147483647,
+      "tokens_out": 2147483647,
+      "started_at": 253402300799999,
+      "duration_ms": 2147483647,
+      "details": {}
+    }
   }
 ]

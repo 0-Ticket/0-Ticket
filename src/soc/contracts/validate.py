@@ -2,6 +2,10 @@
 
 생성된 Pydantic 모델은 if/then 규칙과 schema 밖 검사를 모른다. 모델을 직접 만들어 DB에 쓰면
 계약을 건너뛰게 되므로, 모델을 만들었으면 model_dump(mode="json")으로 다시 이 함수를 거친다.
+
+계약을 통과해도 INSERT가 된다는 뜻은 아니다. 문자열 안의 NUL 문자(U+0000)와 자유 객체 안의
+NaN·Infinity는 계약이 막지 않지만 PostgreSQL은 거부한다. 바꿔 넣을지 그 레코드만 거부할지는
+수집·정규화 이슈에서 정한다.
 """
 
 import json

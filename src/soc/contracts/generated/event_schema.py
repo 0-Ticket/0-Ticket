@@ -29,12 +29,20 @@ class Event(BaseModel):
         str,
         Field(pattern="^raw_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"),
     ]
-    time: Annotated[int, Field(description="UTC epoch 밀리초", ge=0)]
+    time: Annotated[
+        int,
+        Field(
+            description="UTC epoch 밀리초. 상한은 9999-12-31T23:59:59.999Z",
+            ge=0,
+            le=253402300799999,
+        ),
+    ]
     ocsf_class: Annotated[
         int,
         Field(
             description="OCSF class_uid. ocsf.class_uid와 같아야 한다(validate_contract 추가 검사)",
             ge=0,
+            le=2147483647,
         ),
     ]
     summary: Annotated[str, Field(description="한 줄 요약")]

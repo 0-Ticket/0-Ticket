@@ -108,9 +108,30 @@
         "decision": "benign",
         "confidence": 0.88,
         "reason": "야간 배포",
-        "evidence_ids": [],
+        "evidence_ids": ["alt_01a19f93-1150-7000-8000-000000000007"],
         "decided_at": 1793678700000,
         "model": "openai/gpt-oss-120b"
+      },
+      "created_at": 1793678581200,
+      "updated_at": 1793678700000,
+      "details": {}
+    }
+  },
+  {
+    "case": "closed_benign_without_evidence",
+    "violations": [{"path": "verdict.evidence_ids", "rule": "minItems"}],
+    "data": {
+      "id": "tkt_01a19f93-1150-7000-8000-000000000005",
+      "origin": "auto",
+      "status": "closed",
+      "alert_ids": ["alt_01a19f93-1150-7000-8000-000000000007"],
+      "entities": [],
+      "verdict": {
+        "decision": "benign",
+        "confidence": 0.88,
+        "reason": "야간 배포",
+        "evidence_ids": [],
+        "decided_at": 1793678700000
       },
       "created_at": 1793678581200,
       "updated_at": 1793678700000,

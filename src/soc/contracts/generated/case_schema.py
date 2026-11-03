@@ -29,7 +29,14 @@ class Case(BaseModel):
     ]
     entities: Annotated[list[entity_schema.Entity], Field(description="승인 시점 엔티티")]
     confirmed_by: Annotated[str, Field(description="승인한 사람")]
-    confirmed_at: Annotated[int, Field(description="UTC epoch 밀리초", ge=0)]
+    confirmed_at: Annotated[
+        int,
+        Field(
+            description="UTC epoch 밀리초. 상한은 9999-12-31T23:59:59.999Z",
+            ge=0,
+            le=253402300799999,
+        ),
+    ]
     status: Annotated[
         Literal["open", "in_progress", "resolved"],
         Field(description="open → in_progress → resolved. 사람이 화면에서 바꾼다"),

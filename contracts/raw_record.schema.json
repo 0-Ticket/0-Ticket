@@ -14,11 +14,13 @@
     },
     "siem_profile": {
       "description": "가져온 SIEM 연결 프로필 이름",
-      "type": "string"
+      "type": "string",
+      "minLength": 1
     },
     "siem_ref": {
       "description": "SIEM 안에서 문서 하나를 가리키는 값. ELK는 <_index>/<_id>",
-      "type": "string"
+      "type": "string",
+      "minLength": 1
     },
     "fetched_at": {"$ref": "common/types.schema.json#/definitions/epoch_ms"},
     "original": {

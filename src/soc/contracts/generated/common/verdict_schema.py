@@ -19,6 +19,15 @@ class Verdict(BaseModel):
     reason: Annotated[str, Field(description="판정 이유")]
     evidence_ids: Annotated[
         list[types_schema.EvidenceId],
-        Field(description="판정 근거가 된 Alert·Event ID와 도구 호출 기록 ID"),
+        Field(
+            description="판정 근거가 된 Alert·Event ID와 도구 호출 기록 ID. decision이 benign·malicious이면 1개 이상"
+        ),
     ]
-    decided_at: Annotated[int, Field(description="UTC epoch 밀리초", ge=0)]
+    decided_at: Annotated[
+        int,
+        Field(
+            description="UTC epoch 밀리초. 상한은 9999-12-31T23:59:59.999Z",
+            ge=0,
+            le=253402300799999,
+        ),
+    ]

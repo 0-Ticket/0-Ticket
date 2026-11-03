@@ -14,7 +14,9 @@ class Asset(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    entity_value: Annotated[str, Field(description="어느 엔티티의 자산 정보인지(Entity.value)")]
+    entity_value: Annotated[
+        str, Field(description="어느 엔티티의 자산 정보인지(Entity.value)", min_length=1)
+    ]
     name: Annotated[str | None, Field(description="자산 이름")]
     criticality: Annotated[Criticality | None, Field(description="중요도 1~5. 5가 가장 중요")]
     owner: Annotated[str | None, Field(description="담당 부서·사람")]

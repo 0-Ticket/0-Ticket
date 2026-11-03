@@ -42,7 +42,14 @@ class Alert(BaseModel):
         str,
         Field(pattern="^raw_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"),
     ]
-    time: Annotated[int, Field(description="UTC epoch 밀리초", ge=0)]
+    time: Annotated[
+        int,
+        Field(
+            description="UTC epoch 밀리초. 상한은 9999-12-31T23:59:59.999Z",
+            ge=0,
+            le=253402300799999,
+        ),
+    ]
     severity: Annotated[
         int,
         Field(

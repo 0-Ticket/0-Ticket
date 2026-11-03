@@ -9,7 +9,8 @@
   "properties": {
     "entity_value": {
       "description": "어느 엔티티의 자산 정보인지(Entity.value)",
-      "type": "string"
+      "type": "string",
+      "minLength": 1
     },
     "name": {
       "description": "자산 이름",

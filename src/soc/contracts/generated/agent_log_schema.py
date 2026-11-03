@@ -7,10 +7,14 @@ from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-type TokensIn = Annotated[int, Field(description="모델 호출만. 도구 호출은 null", ge=0)]
+type TokensIn = Annotated[
+    int, Field(description="모델 호출만. 도구 호출은 null", ge=0, le=2147483647)
+]
 
 
-type TokensOut = Annotated[int, Field(description="모델 호출만. 도구 호출은 null", ge=0)]
+type TokensOut = Annotated[
+    int, Field(description="모델 호출만. 도구 호출은 null", ge=0, le=2147483647)
+]
 
 
 class AgentLog(BaseModel):
@@ -31,7 +35,9 @@ class AgentLog(BaseModel):
         Field(description="alert는 L1 1차 판정"),
     ]
     subject_id: Annotated[str, Field(description="대상 ID")]
-    seq: Annotated[int, Field(description="작업 안 순번. (run_id, seq)는 유일", ge=1)]
+    seq: Annotated[
+        int, Field(description="작업 안 순번. (run_id, seq)는 유일", ge=1, le=2147483647)
+    ]
     kind: Literal["model", "tool"]
     name: Annotated[str, Field(description="모델 이름 또는 도구 이름")]
     input: Annotated[
@@ -41,6 +47,13 @@ class AgentLog(BaseModel):
     outcome: Literal["ok", "error"]
     tokens_in: Annotated[TokensIn | None, Field(description="모델 호출만. 도구 호출은 null")]
     tokens_out: Annotated[TokensOut | None, Field(description="모델 호출만. 도구 호출은 null")]
-    started_at: Annotated[int, Field(description="UTC epoch 밀리초", ge=0)]
-    duration_ms: Annotated[int, Field(ge=0)]
+    started_at: Annotated[
+        int,
+        Field(
+            description="UTC epoch 밀리초. 상한은 9999-12-31T23:59:59.999Z",
+            ge=0,
+            le=253402300799999,
+        ),
+    ]
+    duration_ms: Annotated[int, Field(ge=0, le=2147483647)]
     details: Annotated[dict[str, Any], Field(description="계약에 없는 값. 다른 단계는 읽지 않는다")]

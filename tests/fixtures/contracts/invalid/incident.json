@@ -76,6 +76,25 @@
     }
   },
   {
+    "case": "review_round_above_int32",
+    "violations": [{"path": "review_round", "rule": "maximum"}],
+    "data": {
+      "id": "inc_01a19f93-1150-7000-8000-000000000001",
+      "title": "웹서버 SQL 인젝션 시도",
+      "summary": null,
+      "status": "analyzing",
+      "ticket_ids": ["tkt_01a19f93-1150-7000-8000-000000000001"],
+      "entities": [],
+      "severity": 4,
+      "assessed_severity": null,
+      "analysis_round": 0,
+      "review_round": 2147483648,
+      "created_at": 1793678800000,
+      "updated_at": 1793678800000,
+      "details": {}
+    }
+  },
+  {
     "case": "missing_summary",
     "violations": [{"path": "summary", "rule": "required"}],
     "data": {

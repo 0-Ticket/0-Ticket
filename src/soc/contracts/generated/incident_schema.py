@@ -36,8 +36,22 @@ class Incident(BaseModel):
     assessed_severity: Annotated[
         types_schema.Severity | None, Field(description="L2 분석이 판단한 심각도. 분석 전 null")
     ]
-    analysis_round: Annotated[int, Field(description="L2 분석 횟수", ge=0)]
-    review_round: Annotated[int, Field(description="사람 검토 횟수", ge=0)]
-    created_at: Annotated[int, Field(description="UTC epoch 밀리초", ge=0)]
-    updated_at: Annotated[int, Field(description="UTC epoch 밀리초", ge=0)]
+    analysis_round: Annotated[int, Field(description="L2 분석 횟수", ge=0, le=2147483647)]
+    review_round: Annotated[int, Field(description="사람 검토 횟수", ge=0, le=2147483647)]
+    created_at: Annotated[
+        int,
+        Field(
+            description="UTC epoch 밀리초. 상한은 9999-12-31T23:59:59.999Z",
+            ge=0,
+            le=253402300799999,
+        ),
+    ]
+    updated_at: Annotated[
+        int,
+        Field(
+            description="UTC epoch 밀리초. 상한은 9999-12-31T23:59:59.999Z",
+            ge=0,
+            le=253402300799999,
+        ),
+    ]
     details: Annotated[dict[str, Any], Field(description="계약에 없는 값. 다른 단계는 읽지 않는다")]
