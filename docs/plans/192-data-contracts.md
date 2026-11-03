@@ -524,3 +524,4 @@ src/soc/contracts/generated/ ← Python(Pydantic v2). 직접 수정 금지
 - 2026-11-04 · (계약, PR #193 리뷰) Ticket `alert_ids`, Incident `ticket_ids`, Verdict `evidence_ids`는 중복 ID를 거부한다(`uniqueItems`).
 - 2026-11-04 · (계약, PR #193 리뷰) Agent Log에서 `kind = tool`이면 `tokens_in`, `tokens_out`은 null이다(if/then).
 - 2026-11-04 · (계약, PR #193 리뷰) Agent Log `subject_id`는 `subject_type`에 맞는 ID다(if/then): `alert` → `alt_`, `ticket` → `tkt_`, `incident` → `inc_`. `hunt`는 Hunt ID 형식이 아직 없어 빈 문자열만 거부하고(`minLength: 1`), L3 이슈에서 Hunt ID를 정할 때 바꾼다.
+- 2026-11-04 · (검증 함수) `json.dumps`가 내는 `ValueError`(순환 참조)도 `TypeError`와 같이 `(root): json` 위반으로 `ContractError`를 낸다. NaN·Infinity는 `allow_nan` 기본값이라 오류가 나지 않으므로 지금처럼 수집·정규화 이슈에서 정한다.
