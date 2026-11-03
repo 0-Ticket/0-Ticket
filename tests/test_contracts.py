@@ -13,6 +13,7 @@ from contract_samples import (
     case_ids,
     cases,
     load,
+    with_depth,
 )
 from jsonschema import Draft7Validator
 
@@ -251,6 +252,42 @@ def test_emoji_in_contract_text_field_passes() -> None:
     data = {**load("valid", "alert")[0]["data"], "title": "SQL Injection 😀"}
 
     assert validate_contract("alert", data).model_dump(mode="json") == data
+
+
+# JSON 사전 검사의 깊이 한도. dict·list가 겹친 수이고 data 최상위 dict가 1이다.
+DEPTH_LIMIT = 100
+
+
+def depth_of(value: object) -> int:
+    """with_depth()가 만든 값의 깊이를 따로 센다(샘플을 잘못 만들지 않았는지 본다)."""
+    if isinstance(value, dict):
+        return 1 + max(map(depth_of, value.values()), default=0)
+    if isinstance(value, list):
+        return 1 + max(map(depth_of, value), default=0)
+    return 0
+
+
+@pytest.mark.parametrize(("name", "field"), FREE_OBJECTS, ids=[f"{n}.{f}" for n, f in FREE_OBJECTS])
+def test_free_object_at_depth_limit_passes(name: str, field: str) -> None:
+    data = with_depth(name, field, DEPTH_LIMIT)
+    assert depth_of(data) == DEPTH_LIMIT
+
+    assert validate_contract(name, data).model_dump(mode="json") == data
+
+
+@pytest.mark.parametrize(("name", "field"), FREE_OBJECTS, ids=[f"{n}.{f}" for n, f in FREE_OBJECTS])
+def test_free_object_past_depth_limit_is_rejected(name: str, field: str) -> None:
+    data = with_depth(name, field, DEPTH_LIMIT + 1)
+    assert depth_of(data) == DEPTH_LIMIT + 1
+
+    assert_rejected_as_json(name, data)
+
+
+def test_very_deep_value_is_rejected_as_json_not_recursion_error() -> None:
+    """json.dumps가 RecursionError를 내는 깊이도 (root): json으로 거부한다."""
+    data = with_depth("ticket", "details", 20_000)
+
+    assert_rejected_as_json("ticket", data)
 
 
 def test_non_object_data_is_rejected() -> None:

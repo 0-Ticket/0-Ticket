@@ -8,7 +8,7 @@ from typing import Any
 
 import psycopg
 import pytest
-from contract_samples import load, load_schema
+from contract_samples import load, load_schema, with_depth
 from psycopg import sql
 from psycopg.types.json import Jsonb
 
@@ -415,6 +415,17 @@ def test_emoji_text_is_stored_and_read_back(migrated: str) -> None:
         insert(conn, "alerts", data)
 
         assert select(conn, "alerts", data["id"]) == data
+
+
+def test_value_at_depth_limit_is_stored_and_read_back(migrated: str) -> None:
+    """깊이 한도(100)에 딱 맞는 값은 validate_contract()를 통과하고, 그 dict 그대로 들어간다."""
+    data = with_depth("raw_record", "original", 100)
+    validate_contract("raw_record", data)
+
+    with psycopg.connect(migrated) as conn:
+        insert(conn, "raw_records", data)
+
+        assert select(conn, "raw_records", data["id"]) == data
 
 
 @pytest.mark.parametrize(

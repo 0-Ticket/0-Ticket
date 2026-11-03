@@ -5,7 +5,8 @@
 
 목표: 이 함수를 통과한 값은 값 때문에 PostgreSQL INSERT가 실패하지 않는다(외래 키·유일 제약은 별개).
 그래서 JSON으로 나타낼 수 없는 값, NaN·Infinity, NUL 문자(U+0000), 짝 없는 서로게이트
-(U+D800~U+DFFF), 문자열이 아닌 dict 키를 (root): json으로 거부한다.
+(U+D800~U+DFFF), 문자열이 아닌 dict 키, 깊이가 MAX_JSON_DEPTH(100)를 넘는 값을
+(root): json으로 거부한다.
 """
 
 import json
@@ -54,6 +55,9 @@ _CONTRACTS: dict[str, tuple[str, type[BaseModel]]] = {
 
 CONTRACT_NAMES = tuple(_CONTRACTS)
 
+# JSON 사전 검사에서 받는 가장 깊은 중첩. 정의는 _is_storable_json()에 있다.
+MAX_JSON_DEPTH = 100
+
 
 @dataclass(frozen=True, order=True)
 class Violation:
@@ -76,7 +80,8 @@ class ContractError(ValueError):
 def validate_contract(name: str, data: Any) -> BaseModel:
     """data가 계약 name에 맞는지 검사하고 생성된 Pydantic 모델로 돌려준다.
 
-    순서: ① JSON 사전 검사(JSON 값인지, NaN·Infinity, NUL, 짝 없는 서로게이트, 문자열이 아닌 키)
+    순서: ① JSON 사전 검사(JSON 값인지, NaN·Infinity, NUL, 짝 없는 서로게이트, 문자열이 아닌 키,
+    깊이 한도)
     ② JSON Schema 검사(if/then 포함) ③ schema로 쓸 수 없는 규칙 ④ Pydantic 모델로 변환.
     맞지 않으면 ContractError를 낸다.
     """
@@ -107,33 +112,42 @@ def validate_contract(name: str, data: Any) -> BaseModel:
 def _is_storable_json(data: Any) -> bool:
     """data가 PostgreSQL에 그대로 넣을 수 있는 JSON 값인지 본다.
 
-    ① json.dumps(allow_nan=False): bytes·datetime·set(TypeError), 순환 참조·NaN·Infinity(ValueError)
-    ② ①을 통과한 뒤 모든 dict 키가 문자열인지, 키와 문자열 값을 UTF-8로 저장할 수 있는지 본다.
+    ① json.dumps(allow_nan=False): bytes·datetime·set(TypeError), 순환 참조·NaN·Infinity
+       (ValueError), 아주 깊은 중첩(RecursionError. 몇 단계에서 나는지는 Python 버전과 설정에
+       따라 다르다)
+    ② ①을 통과한 뒤 모든 dict 키가 문자열인지, 키와 문자열 값을 UTF-8로 저장할 수 있는지,
+       깊이가 MAX_JSON_DEPTH 이하인지 본다.
        json.dumps는 int·float·bool·None 키를 문자열로 바꿔 통과시킨다. NUL은 PostgreSQL이
        text와 jsonb 모두 거부한다. 짝 없는 서로게이트는 json.dumps(ensure_ascii=True)가
        \\ud800으로 이스케이프해 ①을 지나지만, psycopg는 text로 보내지 못하고(UnicodeEncodeError)
        PostgreSQL은 jsonb에서 거부한다. 이모지 같은 BMP 밖 글자는 한 글자라 통과한다.
-       순환 참조는 ①에서 걸렀으므로 ②는 끝난다. 깊게 중첩된 값에서 RecursionError가 나지 않게
-       재귀 함수 대신 스택으로 돈다.
+       깊이는 dict·list(tuple 포함)가 겹친 수다. data 최상위 dict가 1이고, 그 안의 자유 객체
+       (details 등)는 2, 자유 객체 안의 dict·list는 3부터다. 빈 dict·list도 한 겹이고 문자열·숫자는
+       세지 않는다. 한도가 있어 결과가 Python 재귀 한도에 따라 바뀌지 않는다.
+       ②는 재귀 함수 대신 스택으로 돈다. 순환 참조는 ①에서 걸렀고 깊이에 한도가 있어 끝난다.
     """
     try:
         json.dumps(data, allow_nan=False)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, RecursionError):
         return False
 
-    stack = [data]
+    stack = [(data, 1)]  # (값, 그 값이 dict·list일 때의 깊이)
     while stack:
-        value = stack.pop()
+        value, depth = stack.pop()
         if isinstance(value, str):
             if not _is_storable_text(value):
                 return False
         elif isinstance(value, dict):
+            if depth > MAX_JSON_DEPTH:
+                return False
             for key, item in value.items():
                 if not isinstance(key, str) or not _is_storable_text(key):
                     return False
-                stack.append(item)
+                stack.append((item, depth + 1))
         elif isinstance(value, list | tuple):
-            stack.extend(value)
+            if depth > MAX_JSON_DEPTH:
+                return False
+            stack.extend((item, depth + 1) for item in value)
     return True
 
 
