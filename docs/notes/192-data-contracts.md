@@ -23,16 +23,17 @@ L1·L2·L3를 여러 사람이 동시에 개발하기 전에, 단계끼리 주�
   틀리면 필드 경로와 어긴 규칙만 담은 `ContractError`를 낸다.
 - 계약 규칙 중 몇 가지: benign·malicious 판정은 근거 ID가 1개 이상이어야 한다. DB `integer` 컬럼에 대응하는 정수는 int32 상한을, 시각은 9999-12-30T23:59:59.999Z 상한을 둔다. SIEM 프로필·문서 참조·자산 엔티티 값은 빈 문자열을 거부한다. ID 목록(`alert_ids`, `ticket_ids`, `evidence_ids`)은 중복을 거부한다. Agent Log에서 도구 호출은 토큰이 null이고, `subject_id`는 `subject_type`에 맞는 ID여야 한다.
 - `soc.ids.new_id(prefix)`는 접두사 + UUIDv7 ID를 만든다. `soc.contracts.to_datetime()`과 `to_epoch_ms()`는 계약의 밀리초와 DB의 `timestamptz`를 서로 바꾼다.
-- `uv run python -m soc.db.migrate`는 `src/soc/db/migrations/`의 순번 SQL을 적용한다. 첫 파일 `0001_common_tables.sql`이 공통 테이블 7개를 만든다. DB CHECK는 최상위 목록 값, triage의 모양과 status, jsonb 칸의 모양(객체·목록), ID 목록(`alert_ids`, `ticket_ids`)의 NULL 원소와 개수까지 확인한다. 안쪽 필드는 validate_contract()가 확인한다. jsonb 칸은 JSON null도 거부한다. 실행기는 번호가 겹치거나, 파일 이름이 바뀌었거나, 적용한 파일이 없거나, 적용한 파일 내용이 바뀌면 아무것도 실행하지 않고 멈춘다. 내용은 `schema_migrations.checksum`에 적용할 때 기록한 해시(UTF-8로 읽어 `\r\n`을 `\n`으로 바꾼 뒤의 SHA-256 hex)와 비교한다. `.gitattributes`로 `*.sql`을 LF로 둔다. 기록된 가장 큰 번호보다 작은 미적용 파일(대역 사이 순서)은 멈추지 않고 적용하되 경고 한 줄을 낸다. UTF-8이 아닌 SQL 파일은 번호·파일 이름을 담은 `MigrationError`로 멈춘다.
+- `uv run python -m soc.db.migrate`는 `src/soc/db/migrations/`의 순번 SQL을 적용한다. 첫 파일 `0001_common_tables.sql`이 공통 테이블 7개를 만든다. DB CHECK는 최상위 목록 값, triage의 모양과 status, jsonb 칸의 모양(객체·목록), ID 목록(`alert_ids`, `ticket_ids`)의 NULL 원소와 개수까지 확인한다. 안쪽 필드는 validate_contract()가 확인한다. jsonb 칸은 JSON null도 거부한다. 실행기는 번호가 겹치거나, 파일 이름이 바뀌었거나, 적용한 파일이 없거나, 적용한 파일 내용이 바뀌면 아무것도 실행하지 않고 멈춘다. 내용은 `schema_migrations.checksum`에 적용할 때 기록한 해시(UTF-8로 읽어 `\r\n`을 `\n`으로 바꾼 뒤의 SHA-256 hex)와 비교한다. `.gitattributes`로 `*.sql`을 LF로 둔다. 기록된 가장 큰 번호보다 작은 미적용 파일(대역 사이 순서)은 멈추지 않고 적용하되 경고 한 줄을 낸다. UTF-8이 아닌 SQL 파일은 번호·파일 이름을 담은 `MigrationError`로 멈춘다. 파일은 DB에 접속하기 전에 모두 읽으므로 이때는 아무것도 적용하지 않는다.
 - Ticket 생성 모드(`auto`/`scenario`)는 동작 없이 필드(`Alert.rule_id`, `Alert.triage`, `Ticket.origin`)와 설정 키 이름(`[ticketing] mode`, `scenario_rule_ids`)만 정했다.
 - CI에 생성 코드 차이 검사와 `db` job(PostgreSQL 17.6 서비스 컨테이너)을 추가했다. `docs/architecture.md`를 계획대로 고쳤다.
 
 ## 계획과 달라진 점
 
-- 사람이 정한 변경(JSON null 거부, OCSF 클래스별 검증 위치, 근거 필수, 정수·시각 상한과 시각 상한 조정, 빈 문자열 거부, `raw_id` 인덱스, 실행기의 파일 이름 비교, triage·jsonb 모양 제약, JSON이 아닌 값 거부, 실행기의 빠진 파일 확인, ID 목록 제약, 중복 ID 거부, 도구 호출 토큰, 대상 ID 모양, pattern 끝 `$` 처리, JSON 사전 검사 확장, 마이그레이션 내용 해시, 짝 없는 서로게이트 거부, JSON 깊이 한도, integer는 int만, 대역 사이 적용 순서 경고, UTF-8이 아닌 SQL 오류)은 계획 파일 "바뀐 점"에 있다.
-- **`agent_log` `tokens_in = 10.0` 샘플의 rule은 `type`이 아니라 `anyOf`다.** 사람이 정할 때 기대한 rule은 `type`이었다. 하지만 `tokens_in`·`tokens_out`은 `anyOf[integer, null]`이고, 값의 타입이 어느 갈래와도 맞지 않으면 지금 매핑(`_branch_matching_type`)이 `anyOf`를 낸다. 고치기 전에도 `"x"`·`true`는 `anyOf`로 나왔다. 매핑은 바꾸지 않았다. 나머지 float 샘플(`time`, `severity`, `analysis_round`)은 `type`이다.
+- 사람이 정한 변경(JSON null 거부, OCSF 클래스별 검증 위치, 근거 필수, 정수·시각 상한과 시각 상한 조정, 빈 문자열 거부, `raw_id` 인덱스, 실행기의 파일 이름 비교, triage·jsonb 모양 제약, JSON이 아닌 값 거부, 실행기의 빠진 파일 확인, ID 목록 제약, 중복 ID 거부, 도구 호출 토큰, 대상 ID 모양, pattern 끝 `$` 처리, JSON 사전 검사 확장, 마이그레이션 내용 해시, 짝 없는 서로게이트 거부, JSON 깊이 한도, integer는 int만, 대역 사이 적용 순서 경고, UTF-8이 아닌 SQL 오류, 마이그레이션 파일 미리 읽기)은 계획 파일 "바뀐 점"에 있다.
+- **`agent_log` `tokens_in = 10.0` 샘플의 rule은 `type`이 아니라 `anyOf`다. 그대로 두기로 정함(2026-11-04).** 처음 정할 때 기대한 rule은 `type`이었다. 하지만 `tokens_in`·`tokens_out`은 `anyOf[integer, null]`이고, 값의 타입이 어느 갈래와도 맞지 않으면 지금 매핑(`_branch_matching_type`)이 `anyOf`를 낸다. 고치기 전에도 `"x"`·`true`는 `anyOf`로 나왔다. 오류 매핑과 schema는 바꾸지 않는다. 나머지 float 샘플(`time`, `severity`, `analysis_round`)은 `type`이다.
 - **integer 반영에 보호용 테스트를 더했다.** `number` 필드(`verdict.confidence`의 1과 0.5)와 자유 객체 안의 float(`ticket.details`의 4.0)가 그대로 통과하는지 본다. 요청에는 없었고, integer만 좁혔는지 지키려고 넣었다.
 - **실행기의 `_read_sql()`은 경로 대신 `Migration`을 받는다.** 오류 메시지에 번호와 파일 이름을 넣으려는 것이다(내부 함수).
+- **미리 읽은 마이그레이션 내용은 `Migration`에 담지 않고 `migrate()` 안의 번호 → (SQL, 해시) dict로 따로 둔다.** `Migration`에 담으면 이름만 검사하는 목록 함수 `find_migrations()`(테스트도 그 목록을 쓴다)가 파일까지 읽어야 해서다.
 - **공통 정의 파일 `contracts/common/types.schema.json`을 추가했다.** ID 패턴 9개, 시각, 심각도를 한 곳에 둔다. UUIDv7 정규식을 schema 20여 곳에 복사하지 않기 위해서다. 계약이 아니라서 `validate_contract()`의 이름으로는 쓸 수 없다.
 - **생성 옵션을 이렇게 골랐다.**
   - `--use-type-alias`: 목록 안의 ID와 null 가능한 숫자가 RootModel 대신 일반 `str`·`int`로 나온다. 이 옵션이 없으면 `ticket.alert_ids[0]`이 RootModel이라 `.root`를 붙여야 했다.
@@ -64,7 +65,7 @@ L1·L2·L3를 여러 사람이 동시에 개발하기 전에, 단계끼리 주�
 - **schema를 고치면 생성 코드도 같이 커밋한다.** `uv run python scripts/generate_contracts.py`를 실행한 결과를 함께 올린다. 공통 계약 변경이라 L1·L2·L3 담당자 전원의 승인이 필요하다.
 - **마이그레이션 실행기에는 잠금이 없다.** 같은 대역에서 두 사람이 같은 번호를 쓰면 실행기는 아무것도 실행하지 않고 실패한다. 머지 전에 번호를 확인한다. 이미 적용한 번호의 파일 이름을 바꾸거나, 그 번호의 파일이 없거나, 내용을 고쳐도 멈춘다. 적용한 파일은 주석 한 글자도 고치지 않고 새 번호를 만든다(줄바꿈 `\r\n`↔`\n`만은 같은 내용으로 본다). 해시를 강제로 고치는 옵션은 없다. 개발 DB 하나를 여러 브랜치에서 같이 쓰면 다른 브랜치에서 적용한 번호의 파일이 없어 멈출 수 있으니, 그때는 새 DB를 쓴다. 실행기 두 개를 동시에 돌리면 막지 못한다.
 - **마이그레이션은 자기 대역의 테이블만 바꾼다.** 번호 대역(0001~0099 공통, 0100~0199 수집·정규화·L1, 0200~0299 L2, 0300~0399 L3)은 병렬로 머지되므로 DB마다 대역 사이 적용 순서가 다를 수 있다. 0200을 적용한 DB에 늦게 머지된 0105가 들어오면, 실행기는 멈추지 않고 0105를 적용하면서 stderr에 `경고: 0105번(0105_….sql)은 이미 적용한 가장 큰 번호 0200번보다 작지만 적용한다(…)` 한 줄을 낸다. 새 DB는 번호 순서대로 적용되고 경고가 없다. 다른 대역의 테이블을 바꾸면 DB마다 스키마가 달라질 수 있다. 멈추게 하지 않은 것은, 하위 대역 PR이 늦게 머지될 때마다 모든 개발 DB를 다시 만들어야 하기 때문이다.
-- **SQL 파일은 UTF-8로 저장한다.** UTF-8이 아니면(예: Windows 한글 편집기의 CP949) `0002번(0002_….sql)을 UTF-8로 읽지 못했다(N번째 바이트)` `MigrationError`를 내고 `python -m soc.db.migrate`는 트레이스백 없이 exit 1로 끝난다. 파일은 DB에 접속한 뒤 해시를 비교하거나 적용할 때 읽으므로, 그 앞 번호의 미적용 파일은 이미 적용됐을 수 있다. 그래서 이 테스트는 `db` 마커다.
+- **SQL 파일은 UTF-8로 저장한다.** UTF-8이 아니면(예: Windows 한글 편집기의 CP949) `0002번(0002_….sql)을 UTF-8로 읽지 못했다(N번째 바이트)` `MigrationError`를 내고 `python -m soc.db.migrate`는 트레이스백 없이 exit 1로 끝난다. 실행기는 DB에 접속하기 전에 파일을 모두 읽으므로 이때는 아무것도 적용하지 않는다(`schema_migrations`도 만들지 않는다). 해시 비교와 적용은 이때 읽은 내용을 쓰고 파일을 다시 읽지 않는다. SQL 실행 오류는 다르다. 파일마다 따로 적용하므로 앞 번호는 적용된 채로 그 파일만 되돌리고 멈춘다.
 - **이 브랜치의 예전 실행기로 마이그레이션한 로컬 DB는 다시 만든다.** `schema_migrations`에 `checksum` 칸이 없어 실행기가 `schema_migrations를 준비하지 못했다: column "checksum" does not exist`로 멈춘다(exit 1). 머지 전이라 새 마이그레이션을 만들지 않고 테이블 정의를 바로 고쳤기 때문이다.
 - **마이그레이션 명령은 `.env`를 읽지 않는다.** `uv run --env-file .env python -m soc.db.migrate`처럼 환경변수를 넘긴다.
 - **`db` 테스트에는 DB 생성 권한이 필요하다.** `DATABASE_URL` 계정으로 `soc_test_<랜덤>` DB를 만들고, 끝나면 `DROP DATABASE ... WITH (FORCE)`로 지운다. compose 계정과 CI 계정은 이 권한이 있다.
@@ -81,11 +82,11 @@ L1·L2·L3를 여러 사람이 동시에 개발하기 전에, 단계끼리 주�
 ## 확인 방법
 
 - `uv run ruff format --check .`, `uv run ruff check .`: 통과
-- `uv run pytest`: 271개 통과(`db` 72개 제외). 주요 테스트:
+- `uv run pytest`: 272개 통과(`db` 71개 제외). 주요 테스트:
   - `tests/test_contracts.py`: 올바른 샘플 35개(상한 경계값 포함)가 통과하고, 모델로 바꿔도 필드가 빠지지 않는다. 틀린 샘플 77개(integer 칸의 float·bool 5개 포함)는 기대한 경로·규칙으로 거부되고, 위반 rule은 약속한 이름뿐이다. JSON 사전 검사 84개(자유 객체 5칸 × 15종, 자유 객체 5칸 × 깊이 101, 2만 단계 1개, `verdict.confidence` NaN, `alert.title` NUL·짝 없는 서로게이트)는 `(root): json`으로 거부되고 메시지에 입력 값이 없다. 이모지가 든 값·키 11개(자유 객체 5칸 × 값·키, `alert.title`), 자유 객체 5칸 × 깊이 정확히 100, `number` 필드·자유 객체의 float 3개는 통과한다. 모든 schema pattern이 `^…$` 모양이고, 끝 `$` 처리 3개(이스케이프 포함)를 확인한다.
   - `tests/test_ids.py`, `tests/test_times.py`, `tests/test_migrate.py`
-- `DATABASE_URL=<로컬 postgres:17.6 trust 컨테이너> uv run pytest -m db`: 72개 통과(`tests/test_db_tables.py`). 상한 경계값 샘플(int32 최댓값, 상한 시각)도 테이블에 들어가고, 세션 시간대 Pacific/Kiritimati(+14)·Asia/Seoul(+9)에서도 읽힌다. 이 시간대 테스트는 이전 상한(9999-12-31)에서 `timestamp too large (after year 10K)`로 실패하는 것을 확인했다. 끝난 뒤 남은 임시 DB 0개. JSON null 거부 테스트는 CHECK를 넣기 전 SQL에서 실패하는 것을 확인했다
-- `DATABASE_URL` 없이 `uv run pytest -m db`: 72개 오류(건너뛰지 않음)
+- `DATABASE_URL=<로컬 postgres:17.6 trust 컨테이너> uv run pytest -m db`: 71개 통과(`tests/test_db_tables.py`). 상한 경계값 샘플(int32 최댓값, 상한 시각)도 테이블에 들어가고, 세션 시간대 Pacific/Kiritimati(+14)·Asia/Seoul(+9)에서도 읽힌다. 이 시간대 테스트는 이전 상한(9999-12-31)에서 `timestamp too large (after year 10K)`로 실패하는 것을 확인했다. 끝난 뒤 남은 임시 DB 0개. JSON null 거부 테스트는 CHECK를 넣기 전 SQL에서 실패하는 것을 확인했다
+- `DATABASE_URL` 없이 `uv run pytest -m db`: 71개 오류(건너뛰지 않음)
 - triage·jsonb 모양 테스트: 새 제약을 넣기 전 SQL에서 실패하는 것을 확인했다. 리뷰 원안 식(`jsonb_typeof(triage) = 'object' AND triage ->> 'status' IN (...)`)으로는 `{}`, status 없음, status null이 여전히 통과해서 `IS TRUE`로 감쌌다
 - 두 번째 리뷰 반영(2026-11-04): 항목마다 새 테스트가 고치기 전에 실패하는 것을 확인했다.
   - JSON이 아닌 값 15개: `ContractError`가 나지 않아 실패
@@ -115,6 +116,11 @@ L1·L2·L3를 여러 사람이 동시에 개발하기 전에, 단계끼리 주�
   - 대역 사이 순서: 0001·0200을 적용한 뒤 0105를 더한 테스트는 경고가 없어 실패(0105는 고치기 전에도 적용됐다). 새 DB 번호 순서 테스트는 고치기 전후 모두 통과한다
   - UTF-8이 아닌 SQL(CP949) 2개: `UnicodeDecodeError`가 그대로 올라와 실패(`migrate()`, `main()`). 실행기가 DB에 접속한 뒤 파일을 읽어서 `db` 마커로 넣었다
 - 손으로 확인(임시 DB, `src/soc`를 `/tmp`에 복사해 CP949 파일을 더하고 `PYTHONPATH`로 실행, 레포는 건드리지 않음): `python -m soc.db.migrate`가 `마이그레이션 실패: 0002번(0002_cp949.sql)을 UTF-8로 읽지 못했다(…)`만 출력하고 트레이스백 없이 exit 1로 끝난다
+- 여섯 번째 리뷰 반영(2026-11-04, 마이그레이션 파일을 DB 접속 전에 읽기): 바꾼 테스트와 옮긴 테스트가 고치기 전에 실패하는 것을 확인했다.
+  - `db`: 0001과 CP949 파일 0002를 두고 실행하면 `MigrationError`(번호·파일 이름·4번째 바이트)가 나고 DB에 테이블이 하나도 없다(`schema_migrations`도 없다). 다섯 번째 반영의 "0001만 적용됨"을 확인하던 `test_non_utf8_migration_stops_with_number_and_name`을 이렇게 바꿨다(`test_non_utf8_migration_applies_nothing`). 고치기 전에는 `first_table`과 `schema_migrations`가 있어 실패
+  - `main()` 인코딩 오류 테스트를 `db` 마커 없는 `tests/test_migrate.py`로 옮겼다. `main()`은 `DATABASE_URL`이 있는지 먼저 보므로(없으면 exit 2) 환경변수를 빼지 않고 닫힌 포트의 가짜 주소를 넣는다. 접속을 먼저 하면 연결 오류가 나므로 접속 전에 읽는지도 함께 확인된다. 고치기 전에는 연결 오류 메시지만 나와 파일 이름이 없어 실패
+  - 보호용(새로 만들지 않음): SQL 실행 오류에서 앞 번호가 적용된 채 멈추는 `test_failed_migration_rolls_back_only_that_file`과 새 DB 번호 순서 적용 `test_new_db_applies_bands_in_number_order_without_warning`은 고치기 전후 모두 통과한다
+- 손으로 확인(같은 방식, 빈 임시 DB): `python -m soc.db.migrate`가 `마이그레이션 실패: 0002번(0002_cp949.sql)을 UTF-8로 읽지 못했다(4번째 바이트). …`만 출력하고 트레이스백 없이 exit 1로 끝난다. DB에 `schema_migrations`가 없고 테이블이 0개다
 - `uv run python scripts/generate_contracts.py --check`: 차이 없음. 생성 파일에 한 줄을 더하면 exit 1
 - 빈 DB에 `uv run python -m soc.db.migrate`를 두 번 실행: 1개 적용 → "적용할 마이그레이션이 없다"
 - 최신 uv로 `uv lock --check`: 통과
