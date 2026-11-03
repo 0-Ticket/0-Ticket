@@ -174,6 +174,22 @@ def test_migrate_stops_when_applied_file_was_renamed(temp_database: str, tmp_pat
         assert table_names(conn) == {"first_table", "schema_migrations"}  # 0002도 돌리지 않는다
 
 
+def test_migrate_stops_when_applied_number_has_no_file(temp_database: str, tmp_path: Path) -> None:
+    """번호만 바꾼 파일은 새 번호로 보여 다시 실행된다. 기록에 있는 번호의 파일이 없으면 멈춘다."""
+    # IF NOT EXISTS라 다시 실행돼도 오류 없이 지나간다
+    (tmp_path / "0001_first.sql").write_text("CREATE TABLE IF NOT EXISTS first_table (id int);")
+    migrate(temp_database, tmp_path)
+    (tmp_path / "0001_first.sql").rename(tmp_path / "0002_first.sql")
+    (tmp_path / "0003_third.sql").write_text("CREATE TABLE third_table (id int);")
+
+    with pytest.raises(MigrationError, match="0001_first.sql"):
+        migrate(temp_database, tmp_path)
+
+    with psycopg.connect(temp_database) as conn:
+        assert table_names(conn) == {"first_table", "schema_migrations"}  # 0003도 돌리지 않는다
+        assert conn.execute("SELECT version FROM schema_migrations").fetchall() == [(1,)]
+
+
 @pytest.mark.parametrize("table", ["alerts", "events"])
 def test_raw_id_is_indexed(migrated: str, table: str) -> None:
     with psycopg.connect(migrated) as conn:
