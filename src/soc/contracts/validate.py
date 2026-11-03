@@ -3,10 +3,11 @@
 생성된 Pydantic 모델은 if/then 규칙과 schema 밖 검사를 모른다. 모델을 직접 만들어 DB에 쓰면
 계약을 건너뛰게 되므로, 모델을 만들었으면 model_dump(mode="json")으로 다시 이 함수를 거친다.
 
-목표: 이 함수를 통과한 값은 값 때문에 PostgreSQL INSERT가 실패하지 않는다(외래 키·유일 제약은 별개).
+목표: 이 함수를 통과한 data는 돌려준 모델로 바꾸지 않고 그대로 INSERT해도 값 때문에 PostgreSQL
+INSERT가 실패하지 않는다(외래 키·유일 제약은 별개).
 그래서 JSON으로 나타낼 수 없는 값, NaN·Infinity, NUL 문자(U+0000), 짝 없는 서로게이트
 (U+D800~U+DFFF), 문자열이 아닌 dict 키, 깊이가 MAX_JSON_DEPTH(100)를 넘는 값을
-(root): json으로 거부한다.
+(root): json으로 거부한다. integer 필드는 Python int만 받는다(bool과 4.0 같은 float는 type 위반).
 """
 
 import json
@@ -193,8 +194,16 @@ def _pattern(
         yield ValidationError(f"does not match {pattern!r}")
 
 
-# pattern 검사만 바꾼 Draft 7 검사기. 위반 rule 이름은 그대로 "pattern"이다.
-_ContractValidator = validators.extend(Draft7Validator, {"pattern": _pattern})
+# pattern 검사와 integer 타입만 바꾼 Draft 7 검사기. 위반 rule 이름은 그대로 "pattern"·"type"이다.
+# Draft 7은 4.0 같은 float도 integer로 보지만, 생성 모델은 4로 바꿔 돌려주므로 검증한 dict와 모델이
+# 달라진다. 검증한 dict를 그대로 저장해도 되게 Python int만 받는다(bool은 원래대로 뺀다).
+_ContractValidator = validators.extend(
+    Draft7Validator,
+    {"pattern": _pattern},
+    type_checker=Draft7Validator.TYPE_CHECKER.redefine(
+        "integer", lambda _, value: isinstance(value, int) and not isinstance(value, bool)
+    ),
+)
 
 
 @cache

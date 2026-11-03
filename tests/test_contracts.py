@@ -290,6 +290,22 @@ def test_very_deep_value_is_rejected_as_json_not_recursion_error() -> None:
     assert_rejected_as_json("ticket", data)
 
 
+@pytest.mark.parametrize(
+    ("name", "field", "value"),
+    [
+        ("verdict", "confidence", 1),
+        ("verdict", "confidence", 0.5),
+        ("ticket", "details", {"score": 4.0}),
+    ],
+    ids=["number_int", "number_float", "free_object_float"],
+)
+def test_number_fields_and_free_objects_keep_floats(name: str, field: str, value: object) -> None:
+    """integer만 int로 좁혔다. number 필드와 자유 객체는 float를 그대로 받는다."""
+    data = {**load("valid", name)[0]["data"], field: value}
+
+    assert validate_contract(name, data).model_dump(mode="json") == data
+
+
 def test_non_object_data_is_rejected() -> None:
     with pytest.raises(ContractError) as excinfo:
         validate_contract("ticket", ["not", "an", "object"])

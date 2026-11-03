@@ -331,5 +331,27 @@
       "duration_ms": 100,
       "details": {}
     }
+  },
+  {
+    "case": "tokens_in_float",
+    "violations": [{"path": "tokens_in", "rule": "anyOf"}],
+    "data": {
+      "id": "agl_01a19f93-1150-7000-8000-000000000001",
+      "run_id": "run_01a19f93-1150-7000-8000-000000000001",
+      "stage": "l1",
+      "subject_type": "alert",
+      "subject_id": "alt_01a19f93-1150-7000-8000-000000000004",
+      "seq": 1,
+      "kind": "model",
+      "name": "openai/gpt-oss-120b",
+      "input": {},
+      "output": {},
+      "outcome": "ok",
+      "tokens_in": 10.0,
+      "tokens_out": 1,
+      "started_at": 1793678638000,
+      "duration_ms": 100,
+      "details": {}
+    }
   }
 ]
