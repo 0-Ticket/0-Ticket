@@ -18,6 +18,9 @@
   - 파일 내용의 해시가 기록과 다르다(이름은 두고 내용만 고치면 기존 DB와 새 DB의 스키마가
     갈라진다). 해시는 UTF-8로 읽어 \\r\\n을 \\n으로 바꾼 뒤의 SHA-256(hex)이다. Windows의
     core.autocrlf 체크아웃에서도 같은 값이 나오게 하려는 것이다. 강제로 해시를 고치는 옵션은 없다.
+- SQL 파일은 UTF-8로 저장한다. UTF-8이 아니면(예: CP949) 번호와 파일 이름을 담은
+  MigrationError로 멈춘다. 파일은 DB에 접속한 뒤 해시를 비교하거나 적용할 때 읽으므로, 그 앞의
+  미적용 파일은 이미 적용됐을 수 있다.
 - DB 주소(비밀번호 포함)는 출력·로그·예외 메시지에 넣지 않는다.
 """
 
@@ -74,9 +77,16 @@ def find_migrations(directory: Path = MIGRATIONS_DIR) -> list[Migration]:
     return [Migration(version, paths[0].name, paths[0]) for version, paths in sorted(found.items())]
 
 
-def _read_sql(path: Path) -> tuple[str, str]:
+def _read_sql(migration: Migration) -> tuple[str, str]:
     """(실행할 SQL, 내용 해시). 해시를 계산한 텍스트를 그대로 실행한다."""
-    sql = path.read_bytes().decode("utf-8").replace("\r\n", "\n")
+    try:
+        text = migration.path.read_bytes().decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise MigrationError(
+            f"{migration.version:04d}번({migration.name})을 UTF-8로 읽지 못했다"
+            f"({exc.start + 1}번째 바이트). 마이그레이션 파일은 UTF-8로 저장한다"
+        ) from None
+    sql = text.replace("\r\n", "\n")
     return sql, hashlib.sha256(sql.encode("utf-8")).hexdigest()
 
 
@@ -120,7 +130,7 @@ def migrate(database_url: str, directory: Path = MIGRATIONS_DIR) -> list[str]:
         changed = [
             f"{m.version:04d}번({m.name})"
             for m in migrations
-            if m.version in done and _read_sql(m.path)[1] != done[m.version][1]
+            if m.version in done and _read_sql(m)[1] != done[m.version][1]
         ]
         if changed:
             raise MigrationError(
@@ -138,7 +148,7 @@ def migrate(database_url: str, directory: Path = MIGRATIONS_DIR) -> list[str]:
                     "(대역 사이 적용 순서는 DB마다 다를 수 있다)",
                     file=sys.stderr,
                 )
-            sql, checksum = _read_sql(migration.path)
+            sql, checksum = _read_sql(migration)
             try:
                 with conn.transaction():
                     # 여러 문장이 든 SQL 파일이다.
