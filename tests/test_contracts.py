@@ -2,6 +2,7 @@
 
 import copy
 import json
+from datetime import UTC, datetime
 
 import pytest
 from contract_samples import (
@@ -91,6 +92,32 @@ def test_returns_generated_model_with_plain_values() -> None:
 def test_unknown_contract_name_is_rejected(name: str) -> None:
     with pytest.raises(ValueError):
         validate_contract(name, {})
+
+
+# 모양을 정하지 않은 자유 객체. schema는 안쪽 값을 보지 않는다.
+FREE_OBJECTS = [
+    ("raw_record", "original"),
+    ("alert", "ocsf"),
+    ("ticket", "details"),
+    ("agent_log", "input"),
+    ("agent_log", "output"),
+]
+
+
+@pytest.mark.parametrize(("name", "field"), FREE_OBJECTS, ids=[f"{n}.{f}" for n, f in FREE_OBJECTS])
+@pytest.mark.parametrize(
+    "value",
+    [b"\x00bytes", datetime(2026, 11, 3, tzinfo=UTC), {"set"}],
+    ids=["bytes", "datetime", "set"],
+)
+def test_values_that_are_not_json_are_rejected(name: str, field: str, value: object) -> None:
+    data = copy.deepcopy(load("valid", name)[0]["data"])
+    data[field] = {**data[field], "from_code": value}
+
+    with pytest.raises(ContractError) as excinfo:
+        validate_contract(name, data)
+
+    assert [(v.path, v.rule) for v in excinfo.value.violations] == [("(root)", "json")]
 
 
 def test_non_object_data_is_rejected() -> None:

@@ -74,12 +74,19 @@ class ContractError(ValueError):
 def validate_contract(name: str, data: Any) -> BaseModel:
     """data가 계약 name에 맞는지 검사하고 생성된 Pydantic 모델로 돌려준다.
 
-    순서: ① JSON Schema 검사(if/then 포함) ② schema로 쓸 수 없는 규칙 ③ Pydantic 모델로 변환.
-    맞지 않으면 ContractError를 낸다.
+    순서: ① JSON으로 바꿀 수 있는지 ② JSON Schema 검사(if/then 포함) ③ schema로 쓸 수 없는 규칙
+    ④ Pydantic 모델로 변환. 맞지 않으면 ContractError를 낸다.
     """
     if name not in _CONTRACTS:
         raise ValueError(f"알 수 없는 계약 이름이다. 쓸 수 있는 값: {', '.join(CONTRACT_NAMES)}")
     _, model = _CONTRACTS[name]
+
+    try:
+        # 자유 객체 안의 bytes·datetime·set은 schema 검사와 모델 변환을 그대로 지난다.
+        # NaN·Infinity는 JSON으로 바뀌므로 여기서 막지 않는다(수집·정규화 이슈에서 정한다).
+        json.dumps(data)
+    except TypeError:
+        raise ContractError(name, [Violation("(root)", "json")]) from None
 
     violations = [v for e in _validators()[name].iter_errors(data) for v in _from_schema_error(e)]
     if not violations:
