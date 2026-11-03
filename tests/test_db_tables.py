@@ -316,3 +316,86 @@ def test_agent_log_input_keeps_json_null(migrated: str) -> None:
             "SELECT jsonb_typeof(input) FROM agent_logs WHERE id = %s", (data["id"],)
         ).fetchone()
         assert row == ("null",)
+
+
+# jsonb 칸이 가져야 할 모양. DB는 모양만 보고, 안쪽 필드는 validate_contract()가 검사한다.
+OBJECT_COLUMNS = {"original", "ocsf", "details", "verdict"}
+ARRAY_COLUMNS = {"entities", "assets"}
+ANY_JSON_COLUMNS = {("agent_logs", "input"), ("agent_logs", "output")}
+
+
+def alert_sample(case: str) -> dict[str, Any]:
+    return next(s["data"] for s in load("valid", "alert") if s["case"] == case)
+
+
+@pytest.mark.parametrize(
+    "triage",
+    [{}, [], {"status": "unknown"}, {"verdict": None}, {"status": None}, "pending"],
+    ids=["empty_object", "array", "unknown_status", "no_status", "null_status", "string"],
+)
+def test_triage_must_be_object_with_known_status(migrated: str, triage: Any) -> None:
+    data = alert_sample("scenario_pending")
+
+    with psycopg.connect(migrated) as conn:
+        ensure_parents(conn, "alert", data)
+        with pytest.raises(psycopg.errors.CheckViolation):
+            insert(conn, "alerts", data, raw={"triage": Jsonb(triage)})
+
+
+@pytest.mark.parametrize(
+    "case",
+    ["default_mode", "scenario_pending", "scenario_promoted", "scenario_held_without_verdict"],
+)
+def test_triage_takes_sql_null_and_valid_objects(migrated: str, case: str) -> None:
+    data = alert_sample(case)
+
+    with psycopg.connect(migrated) as conn:
+        ensure_parents(conn, "alert", data)
+        insert(conn, "alerts", data)
+
+        assert select(conn, "alerts", data["id"])["triage"] == data["triage"]
+
+
+def test_jsonb_columns_reject_wrong_shape(migrated: str) -> None:
+    checked = []
+    with psycopg.connect(migrated) as conn:
+        for name, table in TABLES.items():
+            data = load("valid", name)[0]["data"]
+            ensure_parents(conn, name, data)
+            for column, (data_type, _) in columns_of(conn, table).items():
+                if (
+                    data_type != "jsonb"
+                    or column == "triage"
+                    or (table, column) in ANY_JSON_COLUMNS
+                ):
+                    continue
+                assert column in OBJECT_COLUMNS | ARRAY_COLUMNS, f"{table}.{column}의 모양을 정한다"
+                wrong_values = [[], "text"] if column in OBJECT_COLUMNS else [{}, "text"]
+                for value in wrong_values:
+                    with pytest.raises(psycopg.errors.CheckViolation), conn.transaction():
+                        insert(conn, table, data, raw={column: Jsonb(value)})
+                    checked.append(f"{table}.{column}={value!r}")
+
+    assert len(checked) == 34, checked  # 객체·목록 칸 17개 × 잘못된 값 2개
+
+
+@pytest.mark.parametrize("value", [{}, [], "text", 1, True], ids=repr)
+def test_agent_log_input_and_output_take_any_json(migrated: str, value: Any) -> None:
+    data = {**load("valid", "agent_log")[0]["data"], "input": value, "output": value}
+
+    with psycopg.connect(migrated) as conn:
+        insert(conn, "agent_logs", data)
+
+        assert select(conn, "agent_logs", data["id"]) == data
+
+
+def test_pending_alert_lookup_uses_triage_status_index(migrated: str) -> None:
+    """L1이 1차 판정 대기 알럿을 찾는 조회가 triage.status 식 인덱스를 쓴다."""
+    with psycopg.connect(migrated) as conn:
+        conn.execute("SET enable_seqscan = off")
+        rows = conn.execute(
+            "EXPLAIN SELECT id FROM alerts WHERE triage ->> 'status' = 'pending'"
+        ).fetchall()
+
+    plan = "\n".join(row[0] for row in rows)
+    assert "alerts_triage_status_idx" in plan, plan
