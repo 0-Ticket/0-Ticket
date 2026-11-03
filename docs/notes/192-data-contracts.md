@@ -15,8 +15,8 @@ L1·L2·L3를 여러 사람이 동시에 개발하기 전에, 단계끼리 주�
 - 단계끼리 주고받는 데이터 7가지(RawRecord, Alert, Event, Ticket, Incident, Case, Agent Log)와 공통 조각 3개(Entity, Asset, Verdict)의 계약을 `contracts/`에 JSON Schema(draft-07)로 만들었다.
 - `scripts/generate_contracts.py`가 schema로 Pydantic v2 모델을 `src/soc/contracts/generated/`에 만든다. CI는 `--check`로 커밋된 생성 코드가 schema와 같은지 검사한다.
 - `soc.contracts.validate_contract(name, data)`는 다음 순서로 검사한다.
-  1. JSON으로 바꿀 수 있는지(`json.dumps`)
-  2. JSON Schema 검사
+  1. JSON 사전 검사: `json.dumps(allow_nan=False)`로 JSON으로 나타낼 수 있는지(bytes·datetime·set·순환 참조·NaN·Infinity 거부) 본 뒤, 모든 dict 키가 문자열인지, 키와 문자열 값에 NUL(`\u0000`)이 없는지 본다
+  2. JSON Schema 검사. pattern 끝의 `$`는 `\Z`로 바꿔 검사한다(끝에 `\n`이 붙은 값 거부)
   3. schema로 쓸 수 없는 규칙(Event의 `ocsf_class`)
   4. 생성 모델로 변환
 
@@ -29,27 +29,28 @@ L1·L2·L3를 여러 사람이 동시에 개발하기 전에, 단계끼리 주�
 
 ## 계획과 달라진 점
 
-- 사람이 정한 변경(JSON null 거부, OCSF 클래스별 검증 위치, 근거 필수, 정수·시각 상한과 시각 상한 조정, 빈 문자열 거부, `raw_id` 인덱스, 실행기의 파일 이름 비교, triage·jsonb 모양 제약, JSON이 아닌 값 거부, 실행기의 빠진 파일 확인, ID 목록 제약, 중복 ID 거부, 도구 호출 토큰, 대상 ID 모양)은 계획 파일 "바뀐 점"에 있다.
+- 사람이 정한 변경(JSON null 거부, OCSF 클래스별 검증 위치, 근거 필수, 정수·시각 상한과 시각 상한 조정, 빈 문자열 거부, `raw_id` 인덱스, 실행기의 파일 이름 비교, triage·jsonb 모양 제약, JSON이 아닌 값 거부, 실행기의 빠진 파일 확인, ID 목록 제약, 중복 ID 거부, 도구 호출 토큰, 대상 ID 모양, pattern 끝 `$` 처리, JSON 사전 검사 확장)은 계획 파일 "바뀐 점"에 있다.
 - **공통 정의 파일 `contracts/common/types.schema.json`을 추가했다.** ID 패턴 9개, 시각, 심각도를 한 곳에 둔다. UUIDv7 정규식을 schema 20여 곳에 복사하지 않기 위해서다. 계약이 아니라서 `validate_contract()`의 이름으로는 쓸 수 없다.
 - **생성 옵션을 이렇게 골랐다.**
   - `--use-type-alias`: 목록 안의 ID와 null 가능한 숫자가 RootModel 대신 일반 `str`·`int`로 나온다. 이 옵션이 없으면 `ticket.alert_ids[0]`이 RootModel이라 `.root`를 붙여야 했다.
   - `--enum-field-as-literal=all`: 목록 값이 Enum 클래스 대신 `Literal` 문자열로 나온다.
   - 생성 모듈 이름은 schema 파일 이름에서 나온다(예: `soc.contracts.generated.ticket_schema.Ticket`).
-- **위반의 `rule` 이름은 JSON Schema 키워드다**(`required`, `enum`, `pattern`, `minItems` 등).
+- **위반의 `rule` 이름은 JSON Schema 키워드(`required`, `enum`, `pattern`, `minItems` 등), `json`, `equals_ocsf_class` 중 하나다.** 틀린 샘플 전체로 이 약속을 검사한다(`test_invalid_samples_break_only_promised_rules`).
   - 상태 짝 규칙은 if/then으로 썼으므로, 어기면 `type`으로 나온다. 예: `pending`인데 verdict가 있으면 `triage.verdict: type`.
   - schema 밖 규칙의 이름은 `equals_ocsf_class`다.
-  - JSON으로 바꿀 수 없는 값은 `(root): json`이다. 어느 칸인지는 나오지 않는다.
-  - 정의된 숫자 필드의 NaN(예: `verdict.confidence`)은 JSON Schema 검사를 지나 Pydantic 변환 단계에서 걸린다. 이때 `rule`은 Pydantic 오류 이름(`less_than_equal`)이다.
+  - JSON 사전 검사에 걸리면 `(root): json`이다. 어느 칸인지는 나오지 않는다(경로에 입력 키가 들어갈 수 있어서). 정의된 숫자 필드의 NaN(예: `verdict.confidence`)도 범위 검사가 아니라 여기서 걸린다.
+  - 모델 변환 단계는 방어 코드로 남겼다. 여기서 걸리면 rule이 Pydantic 오류 이름이라 약속 밖이다. 알려진 경우(끝에 `\n`이 붙은 ID의 `string_pattern_mismatch`, 숫자 NaN의 `less_than_equal`)는 앞 단계로 옮겼고, 남은 경우는 확인하지 못했다.
 - **함수 몇 개를 더 내보낸다.** `soc.contracts`는 `Violation`과 `CONTRACT_NAMES`도 내보낸다. 실행기에는 `find_migrations()`와 `MigrationError`가 있다.
 - **테스트를 하나 더 넣었다.** 계약 밖 값을 DB CHECK 제약이 거부하는지 확인하는 `db` 테스트다. 완료 기준에는 없었다.
 - **hunt 대상 Agent Log 올바른 샘플(`l3_hunt_tool_call`)을 더했다.** 리뷰가 요청한 것은 틀린 샘플뿐이지만, hunt 갈래가 빈 문자열 말고는 거부하지 않는지 확인하려고 넣었다.
 
 ## 다음 사람이 알아야 할 것
 
-- **DB에 쓰기 전에 `validate_contract()`를 거친다.** 생성 모델을 직접 만들면 if/then 규칙(상태 짝, `alert_ids` 개수, 도구 호출 토큰, `subject_id` 접두사), 중복 ID(`uniqueItems`), `ocsf_class` 비교, JSON이 아닌 값을 검사하지 않는다. 모델이 있으면 `validate_contract(name, model.model_dump(mode="json"))`로 다시 확인한다. 반환 타입은 `BaseModel`이다.
+- **DB에 쓰기 전에 `validate_contract()`를 거친다.** 생성 모델을 직접 만들면 if/then 규칙(상태 짝, `alert_ids` 개수, 도구 호출 토큰, `subject_id` 접두사), 중복 ID(`uniqueItems`), `ocsf_class` 비교, JSON 사전 검사를 하지 않는다. 모델이 있으면 `validate_contract(name, model.model_dump(mode="json"))`로 다시 확인한다. 반환 타입은 `BaseModel`이다.
 - **계약은 모양만 검사한다.** 근거 ID(`evidence_ids`)가 실제로 있는지, Incident `severity` 계산(소속 Alert 최대, 없으면 0), Case가 Incident 값을 그대로 복사했는지는 각 단계 코드가 확인한다.
-- **계약 통과 ≠ INSERT 가능.** 로그에서 온 문자열의 NUL(`\u0000`)과 자유 객체 안의 NaN·Infinity는 계약이 막지 않지만 PostgreSQL은 거부한다. 공격자가 일부러 넣어 저장을 실패시킬 수 있으므로, 바꿔 넣을지 그 레코드만 거부하고 다음으로 진행할지는 수집·정규화 이슈에서 반드시 정한다. SIEM 응답을 `json.loads`로 읽을 때 NaN이 섞여 들어올 수 있다.
-- **`validate_contract()`는 JSON으로 바꿀 수 없는 값을 거부한다.** 자유 객체(`details`, `ocsf`, `original`, `input`, `output`)에 bytes·datetime·set이나 순환 참조가 있는 dict를 넣으면 `(root): json`으로 거부되고, 어느 칸인지는 나오지 않는다. `json.dumps`의 `TypeError`와 `ValueError`를 모두 `ContractError`로 바꾼다. 시각은 `to_epoch_ms()`로, bytes는 문자열로 바꿔 넣는다.
+- **`validate_contract()`를 통과하면 INSERT도 된다.** 값 때문에 INSERT가 실패하지 않는 것이 목표다(외래 키·유일 제약 위반은 별개). JSON으로 나타낼 수 없는 값(bytes·datetime·set·순환 참조·NaN·Infinity), 키와 문자열의 NUL(`\u0000`), 문자열이 아닌 dict 키(int·float·bool·None)는 계약 안팎 어느 칸에 있든 `(root): json`으로 거부한다. 시각은 `to_epoch_ms()`로, bytes는 문자열로 바꿔 넣는다. SIEM 응답을 `json.loads`로 읽으면 NaN·NUL이 섞여 들어올 수 있으므로, 수집·정규화 이슈는 이렇게 거부된 레코드를 어떻게 처리할지(건너뛰고 다음으로 갈지 등) 정한다.
+- **예외: 짝 없는 서로게이트(U+D800~U+DFFF)는 아직 거부하지 않는다.** `json.loads('"\\ud800"')`가 그대로 만들어 내고, 계약을 통과한 뒤 INSERT에서 실패한다(text 칸은 `UnicodeEncodeError`, jsonb 칸은 `InvalidTextRepresentation`. 임시 DB에서 손으로 확인). 사전 검사에 넣을지는 사람이 정한다.
+- **schema pattern은 `^`로 시작하고 `$`로 끝나게 쓴다.** `validate_contract()`가 끝의 `$`를 `\Z`로 바꿔 검사해 끝에 `\n`이 붙은 값을 거부한다(Python의 `$`는 마지막 `\n` 앞에서도 맞는다). schema에 `\Z`를 직접 쓰지 않는 것은 ECMA 정규식과 Rust regex(Pydantic)가 모르기 때문이다. 테스트가 모든 pattern의 모양을 검사한다. `\d`·`\w`·`\s`는 Python에서 유니코드 글자까지 맞으니 `[0-9]`처럼 범위를 적는다(지금 pattern 9개에는 없다).
 - **Hunt 대상 Agent Log의 `subject_id`는 빈 문자열만 거부한다.** Hunt ID 형식이 아직 없어서다. L3 이슈에서 Hunt ID를 정할 때 `agent_log.schema.json`의 `hunt` 갈래(`minLength: 1`)를 그 ID 패턴으로 바꾼다. 공통 계약 변경이라 L1·L2·L3 담당자 전원의 승인이 필요하고, 접두사를 새로 만들면 `soc.ids.new_id()`와 `types.schema.json`에도 더한다.
 - **DB는 ID 목록의 NULL 원소와 개수만 확인한다.** 중복과 접두사는 `validate_contract()`만 검사하고, 가리키는 행이 실제로 있는지는 각 단계 코드가 확인한다. 2차원 배열은 `array_position`이 CHECK 위반이 아닌 `feature_not_supported`(0A000) 오류를 내서 들어가지 않는다.
 - **L1이 1차 판정 대기 알럿을 찾을 때는 `triage ->> 'status' = 'pending'`으로 쓴다.** 이 식이어야 식 인덱스 `alerts_triage_status_idx`를 탄다. `triage -> 'status' = '"pending"'`처럼 다른 식으로 쓰면 인덱스를 타지 않는다.
@@ -66,26 +67,32 @@ L1·L2·L3를 여러 사람이 동시에 개발하기 전에, 단계끼리 주�
 - **Ticket 생성 모드는 키 이름만 있다.** 설정을 읽는 코드, `config/default.toml`, 시나리오 일치 판단, Ticket 생성은 수집·정규화 이슈가 만든다.
 - **CI의 새 단계는 아직 돌지 않았다.** 생성 코드 차이 검사와 `db` job은 push 후 처음 돈다. 로컬에서는 같은 조건(`postgres:17.6`, trust 인증)의 임시 컨테이너로 확인했다.
 - **OCSF 클래스별 검증은 정규화 이슈에서 반드시 한다.** 이 계약은 `ocsf`를 자유 객체로 두고 Alert의 `class_uid = 2004`와 Event의 `ocsf_class = ocsf.class_uid`만 검사한다. 정규화 결과의 `ocsf`는 해당 class_uid의 OCSF 1.9.0 공식 JSON Schema로 검증해야 하며, 쓰는 클래스마다(최소 Detection Finding 2004, Base Event 0, 매핑하는 이벤트 클래스) 공식 스키마 파일을 생성해 레포에 두고 검증한다(OCSF 정규화, D-007).
-- **uv 버전에 주의한다.** `uv.lock`은 revision 3 형식이다. uv 0.12.23은 lock을 revision 5로 올려서, revision 3을 유지하는 uv 0.12.0(`uvx --from 'uv==0.12.0' uv lock`)으로 lock했다. 최신 uv(0.13.7)의 `uv lock --check`도 통과한다. 0.6처럼 오래된 uv로 `uv add`·`uv lock`을 하면 형식이 바뀔 수 있다.
-- **예전 브랜치의 `__pycache__` 폴더가 import를 방해할 수 있다.** git이 무시하는 `src/soc/*/__pycache__`만 남은 폴더가 있으면, 소스가 없어도 `soc.l1` 같은 이름이 namespace package로 import된다. 이상하게 import되면 확인한다.
+- **lock을 바꾸는 명령(`uv add`, `uv lock`, `uv remove`)은 uv 0.8.4~0.12.21로 한다.** `uv.lock`은 revision 3 형식이다. 임시 복사본에서 의존성을 하나 더해 확인했다. 0.8.4 미만(0.6.0·0.6.6·0.7.0·0.8.0·0.8.3)은 revision을 1·2로 내리고, 0.12.22 이상(최신 0.13.7 포함)은 5로 올린다. 예: `uvx --from 'uv==0.12.0' uv lock`. lock을 읽기만 하는 `uv lock --check`는 0.6.0부터 통과하고, revision 5 lock에서도 0.6.6·0.10.0·0.12.0의 `uv lock --check`가 통과한다(`uv sync --locked`는 버전별로 돌려 보지 않았다). revision 5로 옮기려면 팀이 함께 정한다.
+- **예전 브랜치(#191 이전)에서 넘어왔으면 소스 없이 `__pycache__`만 남은 폴더를 폴더째 지운다**(예: `src/soc/l1/`). git이 무시하는 폴더라 남아 있기 쉽고, 소스가 없어도 `soc.l1` 같은 이름이 namespace package로 import된다. `__pycache__`만 지우면 빈 폴더가 남아 여전히 import된다(손으로 확인).
 
 ## 확인 방법
 
 - `uv run ruff format --check .`, `uv run ruff check .`: 통과
-- `uv run pytest`: 174개 통과(`db` 62개 제외). 주요 테스트:
-  - `tests/test_contracts.py`: 올바른 샘플 35개(상한 경계값 포함)가 통과하고, 모델로 바꿔도 필드가 빠지지 않는다. 틀린 샘플 68개는 기대한 경로·규칙으로 거부된다. 자유 객체 5칸 × bytes·datetime·set·순환 참조 20개는 `(root): json`으로 거부된다.
+- `uv run pytest`: 230개 통과(`db` 62개 제외). 주요 테스트:
+  - `tests/test_contracts.py`: 올바른 샘플 35개(상한 경계값 포함)가 통과하고, 모델로 바꿔도 필드가 빠지지 않는다. 틀린 샘플 72개는 기대한 경로·규칙으로 거부되고, 위반 rule은 약속한 이름뿐이다. JSON 사전 검사 67개(자유 객체 5칸 × 13종, `verdict.confidence` NaN, `alert.title` NUL)는 `(root): json`으로 거부되고 메시지에 입력 값이 없다. 모든 schema pattern이 `^…$` 모양이고, 끝 `$` 처리 3개(이스케이프 포함)를 확인한다.
   - `tests/test_ids.py`, `tests/test_times.py`, `tests/test_migrate.py`
 - `DATABASE_URL=<로컬 postgres:17.6 trust 컨테이너> uv run pytest -m db`: 62개 통과(`tests/test_db_tables.py`). 상한 경계값 샘플(int32 최댓값, 상한 시각)도 테이블에 들어가고, 세션 시간대 Pacific/Kiritimati(+14)·Asia/Seoul(+9)에서도 읽힌다. 이 시간대 테스트는 이전 상한(9999-12-31)에서 `timestamp too large (after year 10K)`로 실패하는 것을 확인했다. 끝난 뒤 남은 임시 DB 0개. JSON null 거부 테스트는 CHECK를 넣기 전 SQL에서 실패하는 것을 확인했다
 - `DATABASE_URL` 없이 `uv run pytest -m db`: 62개 오류(건너뛰지 않음)
 - triage·jsonb 모양 테스트: 새 제약을 넣기 전 SQL에서 실패하는 것을 확인했다. 리뷰 원안 식(`jsonb_typeof(triage) = 'object' AND triage ->> 'status' IN (...)`)으로는 `{}`, status 없음, status null이 여전히 통과해서 `IS TRUE`로 감쌌다
 - 두 번째 리뷰 반영(2026-11-04): 항목마다 새 테스트가 고치기 전에 실패하는 것을 확인했다.
   - JSON이 아닌 값 15개: `ContractError`가 나지 않아 실패
-  - 순환 참조 5개(리뷰 뒤 사람이 추가로 정함): `json.dumps`의 `ValueError`가 그대로 올라와 실패. 고친 뒤에도 자유 객체 안의 NaN·Infinity는 지금처럼 이 검사를 지나는 것을 손으로 확인했다
+  - 순환 참조 5개(리뷰 뒤 사람이 추가로 정함): `json.dumps`의 `ValueError`가 그대로 올라와 실패
   - 번호만 바꾼 마이그레이션(`IF NOT EXISTS`라 다시 실행돼도 오류 없음): `MigrationError`가 나지 않아 실패
   - ID 목록 거부 7개(NULL 원소 3, 빈 목록 4): CHECK 위반이 나지 않아 실패. 같은 값을 계약도 거부하는지 함께 확인한다. 허용 4개(L3 빈 목록, ID 여러 개)는 고치기 전후 모두 통과한다(제약이 너무 좁아지지 않았는지 지킨다)
   - 중복 ID 3개, 도구 호출 토큰 1개, 대상 ID 모양 4개(종류·접두사 불일치 3, hunt 빈 문자열 1): 거부되지 않아 실패
 - 손으로 확인(임시 DB): 2차원 배열을 `alert_ids`·`ticket_ids`에 넣으면 `array_position`이 `feature_not_supported` 오류를 내서 들어가지 않는다
-- 손으로 확인(커밋하지 않은 스크립트, 임시 DB): 문자열의 NUL, `details`의 NaN·Infinity가 계약을 통과한 뒤 INSERT에서 실패한다
+- 세 번째 리뷰 반영(2026-11-04): 항목마다 새 테스트가 고치기 전에 실패하는 것을 확인했다.
+  - 끝에 `\n`이 붙은 ID 4개: `raw_record.id`·`ticket.alert_ids[0]`·`verdict.evidence_ids[0]`은 모델 단계의 `string_pattern_mismatch`로, `agent_log.subject_id`는 거부되지 않아 실패. pattern 모양 검사는 고치기 전후 모두 통과한다(새 pattern을 지킨다)
+  - JSON 사전 검사 47개(자유 객체 5칸 × NaN·inf·-inf·NUL 값·NUL 키·int·None·bool·float 키, `verdict.confidence` NaN, `alert.title` NUL): 거부되지 않거나 다른 위반(`string_type`, `less_than_equal`)으로 실패
+  - rule 약속 검사: 지금 코드에서는 통과한다. 1·2번 전 `validate.py`(1bf2ddb)를 임시 worktree에 두고 돌리면, `string_pattern_mismatch` 3건이 약속 밖으로 나오고 `subject_id` 샘플은 거부되지 않아 실패한다
+  - `db` 테스트는 더하지 않았다. 올바른 샘플 전체를 `validate_contract()`로 검사한 뒤 INSERT하는 테스트(`test_valid_samples_fit_tables_and_read_back`)가 이미 있다
+- 손으로 확인(커밋하지 않은 스크립트, 임시 DB): 첫 개발 때 문자열의 NUL, `details`의 NaN·Infinity가 계약을 통과한 뒤 INSERT에서 실패하는 것을 확인했고, 지금은 `validate_contract()`가 `(root): json`으로 거부한다. 짝 없는 서로게이트는 지금도 계약을 통과한 뒤 INSERT에서 실패한다
+- 손으로 확인: 700단계로 중첩된 `details`도 JSON 사전 검사에서 RecursionError 없이 통과한다
 - `uv run python scripts/generate_contracts.py --check`: 차이 없음. 생성 파일에 한 줄을 더하면 exit 1
 - 빈 DB에 `uv run python -m soc.db.migrate`를 두 번 실행: 1개 적용 → "적용할 마이그레이션이 없다"
 - 최신 uv로 `uv lock --check`: 통과
