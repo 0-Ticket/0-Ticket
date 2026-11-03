@@ -516,3 +516,4 @@ src/soc/contracts/generated/ ← Python(Pydantic v2). 직접 수정 금지
 - 2026-11-03 · (계약) RawRecord의 `siem_profile`·`siem_ref`와 Asset의 `entity_value`는 빈 문자열을 거부한다(`minLength: 1`).
 - 2026-11-03 · (DB) `alerts.raw_id`, `events.raw_id`에 인덱스를 둔다.
 - 2026-11-03 · (마이그레이션 실행기) 이미 적용한 번호의 파일 이름이 `schema_migrations.name`과 다르면 아무것도 실행하지 않고 `MigrationError`로 멈춘다.
+- 2026-11-03 · (계약) 시각(`epoch_ms`) 상한을 `253402214399999`(9999-12-30T23:59:59.999Z)로 당긴다. 가장 큰 시간대 오프셋(+14시간)으로 읽어도 10000년을 넘지 않게 하기 위해서다.
