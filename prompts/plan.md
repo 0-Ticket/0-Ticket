@@ -8,7 +8,7 @@
 
 ## 1. 읽기
 
-1. `gh issue view <번호> --comments`로 이슈 본문과 댓글을 읽는다. "함께 반영할 이슈"에 적힌 이슈도 읽는다. 읽지 못하면 멈추고 알린다.
+1. `gh issue view <번호> --comments`로 이슈 본문과 댓글을 읽는다. "함께 반영할 이슈"에 적힌 이슈도 읽는다. 읽지 못하면 멈추고 알린다. 기점(`AGENTS.md` "기점") 이전의 이슈·PR을 링크하거나 언급하면 열어 읽지 말고 사람에게 묻는다.
 2. `docs/architecture.md`, `docs/decisions.md`, `docs/security.md`를 읽는다.
 3. 이슈가 건드리는 코드 위치와 낱말로 `docs/plans/`와 `docs/notes/`를 찾아 최근 것부터 읽는다(`docs/notes/README.md` "찾는 법").
 4. 바꿀 코드와 그 앞뒤(이 코드를 부르는 곳, 이 코드가 부르는 곳, 같은 데이터를 읽고 쓰는 곳)를 직접 읽는다.
