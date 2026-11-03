@@ -104,11 +104,17 @@ FREE_OBJECTS = [
 ]
 
 
+def circular_dict() -> dict[str, object]:
+    loop: dict[str, object] = {}
+    loop["self"] = loop
+    return loop
+
+
 @pytest.mark.parametrize(("name", "field"), FREE_OBJECTS, ids=[f"{n}.{f}" for n, f in FREE_OBJECTS])
 @pytest.mark.parametrize(
     "value",
-    [b"\x00bytes", datetime(2026, 11, 3, tzinfo=UTC), {"set"}],
-    ids=["bytes", "datetime", "set"],
+    [b"\x00bytes", datetime(2026, 11, 3, tzinfo=UTC), {"set"}, circular_dict()],
+    ids=["bytes", "datetime", "set", "circular_dict"],
 )
 def test_values_that_are_not_json_are_rejected(name: str, field: str, value: object) -> None:
     data = copy.deepcopy(load("valid", name)[0]["data"])

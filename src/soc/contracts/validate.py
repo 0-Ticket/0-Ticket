@@ -82,10 +82,11 @@ def validate_contract(name: str, data: Any) -> BaseModel:
     _, model = _CONTRACTS[name]
 
     try:
-        # 자유 객체 안의 bytes·datetime·set은 schema 검사와 모델 변환을 그대로 지난다.
+        # 자유 객체 안의 bytes·datetime·set(TypeError)과 순환 참조(ValueError)는
+        # schema 검사와 모델 변환을 그대로 지나거나 다른 예외로 새어 나간다.
         # NaN·Infinity는 JSON으로 바뀌므로 여기서 막지 않는다(수집·정규화 이슈에서 정한다).
         json.dumps(data)
-    except TypeError:
+    except (TypeError, ValueError):
         raise ContractError(name, [Violation("(root)", "json")]) from None
 
     violations = [v for e in _validators()[name].iter_errors(data) for v in _from_schema_error(e)]
