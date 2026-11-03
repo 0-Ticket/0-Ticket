@@ -54,6 +54,42 @@
     }
   },
   {
+    "case": "dismissed_by_human_in_review",
+    "data": {
+      "id": "inc_01a19f93-1150-7000-8000-000000000005",
+      "title": "VPN 비정상 접속 시간",
+      "summary": "출장 중인 직원의 접속으로 보인다",
+      "status": "dismissed",
+      "ticket_ids": ["tkt_01a19f93-1150-7000-8000-000000000006"],
+      "entities": [{"type": "user", "value": "han.sales", "role": "actor"}],
+      "severity": 2,
+      "assessed_severity": 2,
+      "analysis_round": 1,
+      "review_round": 1,
+      "created_at": 1793678830000,
+      "updated_at": 1793679300000,
+      "details": {}
+    }
+  },
+  {
+    "case": "dismissed_by_human_after_handling",
+    "data": {
+      "id": "inc_01a19f93-1150-7000-8000-000000000006",
+      "title": "대량 파일 다운로드",
+      "summary": "백업 작업으로 확인했다",
+      "status": "dismissed",
+      "ticket_ids": ["tkt_01a19f93-1150-7000-8000-000000000007"],
+      "entities": [{"type": "host", "value": "nas-02", "role": "target"}],
+      "severity": 3,
+      "assessed_severity": 3,
+      "analysis_round": 3,
+      "review_round": 2,
+      "created_at": 1793678840000,
+      "updated_at": 1793680000000,
+      "details": {}
+    }
+  },
+  {
     "case": "l3_only_severity_zero",
     "data": {
       "id": "inc_01a19f93-1150-7000-8000-000000000004",
