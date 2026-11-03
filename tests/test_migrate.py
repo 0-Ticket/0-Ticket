@@ -1,5 +1,6 @@
 """마이그레이션 실행기에서 DB 없이 확인할 수 있는 것."""
 
+import functools
 from pathlib import Path
 
 import pytest
@@ -90,3 +91,22 @@ def test_main_failure_keeps_database_url_out(
     output = capsys.readouterr()
     for part in URL_PARTS:
         assert part not in output.out + output.err
+
+
+# Windows 한글 편집기가 저장하는 CP949.
+NOT_UTF8_SQL = "-- 메모\nCREATE TABLE second_table (id int);".encode("cp949")
+
+
+def test_main_exits_1_without_traceback_on_non_utf8_migration(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """파일은 DB 접속 전에 읽으므로 DB 없이 확인한다. 접속을 먼저 하면 연결 오류가 난다."""
+    (tmp_path / "0001_cp949.sql").write_bytes(NOT_UTF8_SQL)
+    monkeypatch.setenv("DATABASE_URL", UNREACHABLE_URL)
+    monkeypatch.setattr("soc.db.migrate.migrate", functools.partial(migrate, directory=tmp_path))
+
+    assert main() == 1
+
+    error = capsys.readouterr().err
+    assert "0001_cp949.sql" in error
+    assert "Traceback" not in error

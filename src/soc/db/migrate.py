@@ -19,8 +19,9 @@
     갈라진다). 해시는 UTF-8로 읽어 \\r\\n을 \\n으로 바꾼 뒤의 SHA-256(hex)이다. Windows의
     core.autocrlf 체크아웃에서도 같은 값이 나오게 하려는 것이다. 강제로 해시를 고치는 옵션은 없다.
 - SQL 파일은 UTF-8로 저장한다. UTF-8이 아니면(예: CP949) 번호와 파일 이름을 담은
-  MigrationError로 멈춘다. 파일은 DB에 접속한 뒤 해시를 비교하거나 적용할 때 읽으므로, 그 앞의
-  미적용 파일은 이미 적용됐을 수 있다.
+  MigrationError로 멈춘다.
+- 파일은 DB 접속 전에 모두 읽는다. 인코딩 오류는 아무것도 적용하지 않는다. SQL 오류는 앞 번호가
+  적용된 채로 멈춘다. 해시 비교와 적용은 이때 읽은 내용을 쓴다(비교한 내용을 그대로 적용한다).
 - DB 주소(비밀번호 포함)는 출력·로그·예외 메시지에 넣지 않는다.
 """
 
@@ -93,6 +94,8 @@ def _read_sql(migration: Migration) -> tuple[str, str]:
 def migrate(database_url: str, directory: Path = MIGRATIONS_DIR) -> list[str]:
     """아직 적용하지 않은 마이그레이션을 적용하고, 적용한 파일 이름을 돌려준다."""
     migrations = find_migrations(directory)
+    # 번호 → (실행할 SQL, 내용 해시). 해시 비교와 적용 모두 이 내용을 쓰고 파일을 다시 읽지 않는다.
+    contents = {m.version: _read_sql(m) for m in migrations}
     try:
         conn = psycopg.connect(database_url, autocommit=True)
     except psycopg.Error:
@@ -130,7 +133,7 @@ def migrate(database_url: str, directory: Path = MIGRATIONS_DIR) -> list[str]:
         changed = [
             f"{m.version:04d}번({m.name})"
             for m in migrations
-            if m.version in done and _read_sql(m)[1] != done[m.version][1]
+            if m.version in done and contents[m.version][1] != done[m.version][1]
         ]
         if changed:
             raise MigrationError(
@@ -148,7 +151,7 @@ def migrate(database_url: str, directory: Path = MIGRATIONS_DIR) -> list[str]:
                     "(대역 사이 적용 순서는 DB마다 다를 수 있다)",
                     file=sys.stderr,
                 )
-            sql, checksum = _read_sql(migration)
+            sql, checksum = contents[migration.version]
             try:
                 with conn.transaction():
                     # 여러 문장이 든 SQL 파일이다.

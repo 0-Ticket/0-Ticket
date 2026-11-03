@@ -1,6 +1,5 @@
 """공통 테이블과 마이그레이션 실행기를 실제 PostgreSQL로 확인한다(db 마커)."""
 
-import functools
 import hashlib
 import json
 import re
@@ -15,7 +14,7 @@ from psycopg import sql
 from psycopg.types.json import Jsonb
 
 from soc.contracts import ContractError, to_datetime, to_epoch_ms, validate_contract
-from soc.db.migrate import MigrationError, find_migrations, main, migrate
+from soc.db.migrate import MigrationError, find_migrations, migrate
 
 pytestmark = pytest.mark.db
 
@@ -277,37 +276,22 @@ def test_new_db_applies_bands_in_number_order_without_warning(
     assert capsys.readouterr().err == ""
 
 
-# Windows 한글 편집기가 저장하는 CP949. 실행기는 SQL 파일을 DB에 접속한 뒤 읽는다.
+# Windows 한글 편집기가 저장하는 CP949. 실행기는 DB에 접속하기 전에 파일을 모두 읽는다.
 NOT_UTF8_SQL = "-- 메모\nCREATE TABLE second_table (id int);".encode("cp949")
 
 
-def test_non_utf8_migration_stops_with_number_and_name(temp_database: str, tmp_path: Path) -> None:
+def test_non_utf8_migration_applies_nothing(temp_database: str, tmp_path: Path) -> None:
     (tmp_path / "0001_first.sql").write_text("CREATE TABLE first_table (id int);")
     (tmp_path / "0002_cp949.sql").write_bytes(NOT_UTF8_SQL)
 
-    with pytest.raises(MigrationError, match=r"0002번.*0002_cp949\.sql.*UTF-8"):
+    with pytest.raises(
+        MigrationError, match=r"0002번\(0002_cp949\.sql\)을 UTF-8로 읽지 못했다\(4번째 바이트\)"
+    ):
         migrate(temp_database, tmp_path)
 
     with psycopg.connect(temp_database) as conn:
-        assert table_names(conn) == {"first_table", "schema_migrations"}
-        assert conn.execute("SELECT version FROM schema_migrations").fetchall() == [(1,)]
-
-
-def test_main_exits_1_without_traceback_on_non_utf8_migration(
-    temp_database: str,
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    (tmp_path / "0001_cp949.sql").write_bytes(NOT_UTF8_SQL)
-    monkeypatch.setenv("DATABASE_URL", temp_database)
-    monkeypatch.setattr("soc.db.migrate.migrate", functools.partial(migrate, directory=tmp_path))
-
-    assert main() == 1
-
-    error = capsys.readouterr().err
-    assert "0001_cp949.sql" in error
-    assert "Traceback" not in error
+        # 접속 전에 멈추므로 0001의 테이블도, schema_migrations도 없다
+        assert table_names(conn) == set()
 
 
 @pytest.mark.parametrize("table", ["alerts", "events"])
