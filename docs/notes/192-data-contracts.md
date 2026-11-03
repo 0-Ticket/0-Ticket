@@ -49,7 +49,7 @@ L1·L2·L3를 여러 사람이 동시에 개발하기 전에, 단계끼리 주�
 - **DB에 쓰기 전에 `validate_contract()`를 거친다.** 생성 모델을 직접 만들면 if/then 규칙(상태 짝, `alert_ids` 개수, 도구 호출 토큰, `subject_id` 접두사), 중복 ID(`uniqueItems`), `ocsf_class` 비교, JSON이 아닌 값을 검사하지 않는다. 모델이 있으면 `validate_contract(name, model.model_dump(mode="json"))`로 다시 확인한다. 반환 타입은 `BaseModel`이다.
 - **계약은 모양만 검사한다.** 근거 ID(`evidence_ids`)가 실제로 있는지, Incident `severity` 계산(소속 Alert 최대, 없으면 0), Case가 Incident 값을 그대로 복사했는지는 각 단계 코드가 확인한다.
 - **계약 통과 ≠ INSERT 가능.** 로그에서 온 문자열의 NUL(`\u0000`)과 자유 객체 안의 NaN·Infinity는 계약이 막지 않지만 PostgreSQL은 거부한다. 공격자가 일부러 넣어 저장을 실패시킬 수 있으므로, 바꿔 넣을지 그 레코드만 거부하고 다음으로 진행할지는 수집·정규화 이슈에서 반드시 정한다. SIEM 응답을 `json.loads`로 읽을 때 NaN이 섞여 들어올 수 있다.
-- **`validate_contract()`는 JSON으로 바꿀 수 없는 값을 거부한다.** 자유 객체(`details`, `ocsf`, `original`, `input`, `output`)에 bytes·datetime·set을 넣으면 `(root): json`으로 거부되고, 어느 칸인지는 나오지 않는다. 시각은 `to_epoch_ms()`로, bytes는 문자열로 바꿔 넣는다. 순환 참조가 있는 dict는 `json.dumps`의 `ValueError`가 그대로 올라간다(`ContractError`도 `ValueError`의 하위 클래스라 `except ValueError`로 함께 잡힌다).
+- **`validate_contract()`는 JSON으로 바꿀 수 없는 값을 거부한다.** 자유 객체(`details`, `ocsf`, `original`, `input`, `output`)에 bytes·datetime·set이나 순환 참조가 있는 dict를 넣으면 `(root): json`으로 거부되고, 어느 칸인지는 나오지 않는다. `json.dumps`의 `TypeError`와 `ValueError`를 모두 `ContractError`로 바꾼다. 시각은 `to_epoch_ms()`로, bytes는 문자열로 바꿔 넣는다.
 - **Hunt 대상 Agent Log의 `subject_id`는 빈 문자열만 거부한다.** Hunt ID 형식이 아직 없어서다. L3 이슈에서 Hunt ID를 정할 때 `agent_log.schema.json`의 `hunt` 갈래(`minLength: 1`)를 그 ID 패턴으로 바꾼다. 공통 계약 변경이라 L1·L2·L3 담당자 전원의 승인이 필요하고, 접두사를 새로 만들면 `soc.ids.new_id()`와 `types.schema.json`에도 더한다.
 - **DB는 ID 목록의 NULL 원소와 개수만 확인한다.** 중복과 접두사는 `validate_contract()`만 검사하고, 가리키는 행이 실제로 있는지는 각 단계 코드가 확인한다. 2차원 배열은 `array_position`이 CHECK 위반이 아닌 `feature_not_supported`(0A000) 오류를 내서 들어가지 않는다.
 - **L1이 1차 판정 대기 알럿을 찾을 때는 `triage ->> 'status' = 'pending'`으로 쓴다.** 이 식이어야 식 인덱스 `alerts_triage_status_idx`를 탄다. `triage -> 'status' = '"pending"'`처럼 다른 식으로 쓰면 인덱스를 타지 않는다.
@@ -72,14 +72,15 @@ L1·L2·L3를 여러 사람이 동시에 개발하기 전에, 단계끼리 주�
 ## 확인 방법
 
 - `uv run ruff format --check .`, `uv run ruff check .`: 통과
-- `uv run pytest`: 169개 통과(`db` 62개 제외). 주요 테스트:
-  - `tests/test_contracts.py`: 올바른 샘플 35개(상한 경계값 포함)가 통과하고, 모델로 바꿔도 필드가 빠지지 않는다. 틀린 샘플 68개는 기대한 경로·규칙으로 거부된다. 자유 객체 5칸 × bytes·datetime·set 15개는 `(root): json`으로 거부된다.
+- `uv run pytest`: 174개 통과(`db` 62개 제외). 주요 테스트:
+  - `tests/test_contracts.py`: 올바른 샘플 35개(상한 경계값 포함)가 통과하고, 모델로 바꿔도 필드가 빠지지 않는다. 틀린 샘플 68개는 기대한 경로·규칙으로 거부된다. 자유 객체 5칸 × bytes·datetime·set·순환 참조 20개는 `(root): json`으로 거부된다.
   - `tests/test_ids.py`, `tests/test_times.py`, `tests/test_migrate.py`
 - `DATABASE_URL=<로컬 postgres:17.6 trust 컨테이너> uv run pytest -m db`: 62개 통과(`tests/test_db_tables.py`). 상한 경계값 샘플(int32 최댓값, 상한 시각)도 테이블에 들어가고, 세션 시간대 Pacific/Kiritimati(+14)·Asia/Seoul(+9)에서도 읽힌다. 이 시간대 테스트는 이전 상한(9999-12-31)에서 `timestamp too large (after year 10K)`로 실패하는 것을 확인했다. 끝난 뒤 남은 임시 DB 0개. JSON null 거부 테스트는 CHECK를 넣기 전 SQL에서 실패하는 것을 확인했다
 - `DATABASE_URL` 없이 `uv run pytest -m db`: 62개 오류(건너뛰지 않음)
 - triage·jsonb 모양 테스트: 새 제약을 넣기 전 SQL에서 실패하는 것을 확인했다. 리뷰 원안 식(`jsonb_typeof(triage) = 'object' AND triage ->> 'status' IN (...)`)으로는 `{}`, status 없음, status null이 여전히 통과해서 `IS TRUE`로 감쌌다
 - 두 번째 리뷰 반영(2026-11-04): 항목마다 새 테스트가 고치기 전에 실패하는 것을 확인했다.
   - JSON이 아닌 값 15개: `ContractError`가 나지 않아 실패
+  - 순환 참조 5개(리뷰 뒤 사람이 추가로 정함): `json.dumps`의 `ValueError`가 그대로 올라와 실패. 고친 뒤에도 자유 객체 안의 NaN·Infinity는 지금처럼 이 검사를 지나는 것을 손으로 확인했다
   - 번호만 바꾼 마이그레이션(`IF NOT EXISTS`라 다시 실행돼도 오류 없음): `MigrationError`가 나지 않아 실패
   - ID 목록 거부 7개(NULL 원소 3, 빈 목록 4): CHECK 위반이 나지 않아 실패. 같은 값을 계약도 거부하는지 함께 확인한다. 허용 4개(L3 빈 목록, ID 여러 개)는 고치기 전후 모두 통과한다(제약이 너무 좁아지지 않았는지 지킨다)
   - 중복 ID 3개, 도구 호출 토큰 1개, 대상 ID 모양 4개(종류·접두사 불일치 3, hunt 빈 문자열 1): 거부되지 않아 실패
