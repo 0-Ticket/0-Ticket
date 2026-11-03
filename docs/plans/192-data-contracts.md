@@ -532,3 +532,7 @@ src/soc/contracts/generated/ ← Python(Pydantic v2). 직접 수정 금지
 - 2026-11-04 · (마이그레이션 실행기, PR #193 리뷰) 내용 해시는 파일을 UTF-8로 읽고 `\r\n`을 `\n`으로 바꾼 뒤의 SHA-256(hex)이다. Windows `core.autocrlf` 체크아웃에서 해시가 달라지지 않게 하려는 것이다.
 - 2026-11-04 · (레포 설정, PR #193 리뷰) 레포 루트 `.gitattributes`에 `*.sql text eol=lf`를 둔다.
 - 2026-11-04 · (검증 함수, PR #193 리뷰) JSON 사전 검사 ②에서 키와 문자열 값을 UTF-8로 바꿔 보아, 짝 없는 서로게이트(U+D800~U+DFFF)가 있으면 `(root): json`으로 거부한다. `json.dumps`는 이를 `\ud800`으로 이스케이프해 ①을 지나가지만 INSERT는 실패하기 때문이다. 이모지 같은 BMP 밖 글자는 통과한다. 이로써 "`validate_contract()`를 통과하면 값 때문에 INSERT가 실패하지 않는다"에 남아 있던 예외를 없앤다.
+- 2026-11-04 · (검증 함수, PR #193 리뷰) JSON 사전 검사에 최대 깊이 100(`MAX_JSON_DEPTH`)을 둔다. 깊이는 dict·list가 겹친 수이고 data 최상위 dict가 1이다(자유 객체도 최상위부터 센다). 넘으면 `(root): json`으로 거부한다. ①의 `json.dumps`가 내는 `RecursionError`도 `TypeError`·`ValueError`와 같이 `(root): json`으로 처리한다. Python 재귀 한도와 상관없이 결과가 정해지게 하려는 것이다.
+- 2026-11-04 · (검증 함수, PR #193 리뷰) JSON Schema `integer`는 Python int만 받는다(bool 제외). `4.0` 같은 float는 `type` 위반이다(`anyOf[integer, null]`인 `tokens_in`·`tokens_out`은 기존 매핑대로 `anyOf`). "검증을 통과한 dict를 그대로 INSERT해도 된다"를 지키려는 것이다. `number` 필드와 자유 객체 안의 float, schema와 생성 코드는 바꾸지 않는다.
+- 2026-11-04 · (마이그레이션 실행기, PR #193 리뷰) 기록된 가장 큰 번호보다 작은 미적용 파일도 지금처럼 멈추지 않고 적용하고, 적용할 때 번호·파일 이름·기록된 가장 큰 번호를 담은 경고 한 줄을 stderr에 낸다. 번호 대역은 병렬로 머지되어 DB마다 대역 사이 적용 순서가 다를 수 있으므로, 마이그레이션은 자기 대역의 테이블만 바꾼다.
+- 2026-11-04 · (마이그레이션 실행기, PR #193 리뷰) SQL 파일이 UTF-8이 아니면 번호와 파일 이름을 담은 `MigrationError`로 멈춘다. `python -m soc.db.migrate`는 트레이스백 없이 exit 1로 끝난다.
