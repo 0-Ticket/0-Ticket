@@ -161,20 +161,56 @@ def circular_dict() -> dict[str, object]:
     return loop
 
 
-@pytest.mark.parametrize(("name", "field"), FREE_OBJECTS, ids=[f"{n}.{f}" for n, f in FREE_OBJECTS])
-@pytest.mark.parametrize(
-    "value",
-    [b"\x00bytes", datetime(2026, 11, 3, tzinfo=UTC), {"set"}, circular_dict()],
-    ids=["bytes", "datetime", "set", "circular_dict"],
-)
-def test_values_that_are_not_json_are_rejected(name: str, field: str, value: object) -> None:
-    data = copy.deepcopy(load("valid", name)[0]["data"])
-    data[field] = {**data[field], "from_code": value}
+# 자유 객체에 더할 값. JSON으로 나타낼 수 없거나(bytes·datetime·set·순환 참조·NaN·Infinity),
+# PostgreSQL이 거부하거나(NUL), JSON으로 바꾸면 키가 바뀌는(문자열이 아닌 키) 값이다.
+# INJECTED는 입력 값이 오류 메시지에 들어가지 않는지 보는 표시다.
+NOT_STORABLE_JSON = {
+    "bytes": {"from_code": b"\x00bytes"},
+    "datetime": {"from_code": datetime(2026, 11, 3, tzinfo=UTC)},
+    "set": {"from_code": {"set"}},
+    "circular_dict": {"from_code": circular_dict()},
+    "nan": {"from_log": float("nan")},
+    "inf": {"from_log": float("inf")},
+    "-inf": {"from_log": float("-inf")},
+    "nul_in_value": {"from_log": "INJECTED\x00"},
+    "nul_in_key": {"INJECTED\x00": "x"},
+    "int_key": {1: "x"},
+    "none_key": {None: "x"},
+    "bool_key": {True: "x"},
+    "float_key": {1.5: "x"},
+}
 
+
+def assert_rejected_as_json(name: str, data: dict) -> None:
     with pytest.raises(ContractError) as excinfo:
         validate_contract(name, data)
 
-    assert [(v.path, v.rule) for v in excinfo.value.violations] == [("(root)", "json")]
+    error = excinfo.value
+    assert [(v.path, v.rule) for v in error.violations] == [("(root)", "json")]
+    assert "INJECTED" not in str(error) + repr(error.violations)
+
+
+@pytest.mark.parametrize(("name", "field"), FREE_OBJECTS, ids=[f"{n}.{f}" for n, f in FREE_OBJECTS])
+@pytest.mark.parametrize("extra", NOT_STORABLE_JSON.values(), ids=NOT_STORABLE_JSON.keys())
+def test_values_that_are_not_storable_json_are_rejected(name: str, field: str, extra: dict) -> None:
+    data = copy.deepcopy(load("valid", name)[0]["data"])
+    data[field] = {**data[field], **extra}
+
+    assert_rejected_as_json(name, data)
+
+
+@pytest.mark.parametrize(
+    ("name", "field", "value"),
+    [("verdict", "confidence", float("nan")), ("alert", "title", "SQL INJECTED\x00")],
+    ids=["verdict.confidence_nan", "alert.title_nul"],
+)
+def test_contract_fields_with_nan_or_nul_are_rejected_as_json(
+    name: str, field: str, value: object
+) -> None:
+    """정의된 필드도 같다. 숫자 NaN은 범위 검사가 아니라 JSON 사전 검사에서 걸린다."""
+    data = {**load("valid", name)[0]["data"], field: value}
+
+    assert_rejected_as_json(name, data)
 
 
 def test_non_object_data_is_rejected() -> None:

@@ -3,9 +3,9 @@
 생성된 Pydantic 모델은 if/then 규칙과 schema 밖 검사를 모른다. 모델을 직접 만들어 DB에 쓰면
 계약을 건너뛰게 되므로, 모델을 만들었으면 model_dump(mode="json")으로 다시 이 함수를 거친다.
 
-계약을 통과해도 INSERT가 된다는 뜻은 아니다. 문자열 안의 NUL 문자(U+0000)와 자유 객체 안의
-NaN·Infinity는 계약이 막지 않지만 PostgreSQL은 거부한다. 바꿔 넣을지 그 레코드만 거부할지는
-수집·정규화 이슈에서 정한다.
+목표: 이 함수를 통과한 값은 값 때문에 PostgreSQL INSERT가 실패하지 않는다(외래 키·유일 제약은 별개).
+그래서 JSON으로 나타낼 수 없는 값, NaN·Infinity, NUL 문자(U+0000), 문자열이 아닌 dict 키를
+(root): json으로 거부한다. 짝 없는 서로게이트(U+D800~U+DFFF)는 아직 막지 않는다.
 """
 
 import json
@@ -76,20 +76,17 @@ class ContractError(ValueError):
 def validate_contract(name: str, data: Any) -> BaseModel:
     """data가 계약 name에 맞는지 검사하고 생성된 Pydantic 모델로 돌려준다.
 
-    순서: ① JSON으로 바꿀 수 있는지 ② JSON Schema 검사(if/then 포함) ③ schema로 쓸 수 없는 규칙
-    ④ Pydantic 모델로 변환. 맞지 않으면 ContractError를 낸다.
+    순서: ① JSON 사전 검사(JSON 값인지, NaN·Infinity, NUL, 문자열이 아닌 키) ② JSON Schema 검사
+    (if/then 포함) ③ schema로 쓸 수 없는 규칙 ④ Pydantic 모델로 변환.
+    맞지 않으면 ContractError를 낸다.
     """
     if name not in _CONTRACTS:
         raise ValueError(f"알 수 없는 계약 이름이다. 쓸 수 있는 값: {', '.join(CONTRACT_NAMES)}")
     _, model = _CONTRACTS[name]
 
-    try:
-        # 자유 객체 안의 bytes·datetime·set(TypeError)과 순환 참조(ValueError)는
-        # schema 검사와 모델 변환을 그대로 지나거나 다른 예외로 새어 나간다.
-        # NaN·Infinity는 JSON으로 바뀌므로 여기서 막지 않는다(수집·정규화 이슈에서 정한다).
-        json.dumps(data)
-    except (TypeError, ValueError):
-        raise ContractError(name, [Violation("(root)", "json")]) from None
+    if not _is_storable_json(data):
+        # 어느 칸인지 알리지 않는다. 경로에 입력 키가 들어갈 수 있기 때문이다.
+        raise ContractError(name, [Violation("(root)", "json")])
 
     violations = [v for e in _validators()[name].iter_errors(data) for v in _from_schema_error(e)]
     if not violations:
@@ -102,6 +99,36 @@ def validate_contract(name: str, data: Any) -> BaseModel:
     except PydanticValidationError as exc:
         # schema 검사를 통과했으면 여기 오지 않는다. 와도 입력 값이 든 원래 예외는 감춘다.
         raise ContractError(name, map(_from_pydantic_error, exc.errors())) from None
+
+
+def _is_storable_json(data: Any) -> bool:
+    """data가 PostgreSQL에 그대로 넣을 수 있는 JSON 값인지 본다.
+
+    ① json.dumps(allow_nan=False): bytes·datetime·set(TypeError), 순환 참조·NaN·Infinity(ValueError)
+    ② ①을 통과한 뒤 모든 dict 키가 문자열인지, 키와 문자열 값에 NUL이 없는지 본다.
+       json.dumps는 int·float·bool·None 키를 문자열로 바꿔 통과시키고, PostgreSQL은 text와 jsonb
+       모두 NUL을 거부한다. 순환 참조는 ①에서 걸렀으므로 ②는 끝난다. 깊게 중첩된 값에서
+       RecursionError가 나지 않게 재귀 함수 대신 스택으로 돈다.
+    """
+    try:
+        json.dumps(data, allow_nan=False)
+    except (TypeError, ValueError):
+        return False
+
+    stack = [data]
+    while stack:
+        value = stack.pop()
+        if isinstance(value, str):
+            if "\x00" in value:
+                return False
+        elif isinstance(value, dict):
+            for key, item in value.items():
+                if not isinstance(key, str) or "\x00" in key:
+                    return False
+                stack.append(item)
+        elif isinstance(value, list | tuple):
+            stack.extend(value)
+    return True
 
 
 def _extra_violations(name: str, data: dict[str, Any]) -> list[Violation]:
