@@ -1,5 +1,6 @@
 """공통 테이블과 마이그레이션 실행기를 실제 PostgreSQL로 확인한다(db 마커)."""
 
+import hashlib
 from datetime import timedelta
 from pathlib import Path
 from typing import Any
@@ -11,7 +12,7 @@ from psycopg import sql
 from psycopg.types.json import Jsonb
 
 from soc.contracts import ContractError, to_datetime, to_epoch_ms, validate_contract
-from soc.db.migrate import MigrationError, migrate
+from soc.db.migrate import MigrationError, find_migrations, migrate
 
 pytestmark = pytest.mark.db
 
@@ -188,6 +189,58 @@ def test_migrate_stops_when_applied_number_has_no_file(temp_database: str, tmp_p
     with psycopg.connect(temp_database) as conn:
         assert table_names(conn) == {"first_table", "schema_migrations"}  # 0003도 돌리지 않는다
         assert conn.execute("SELECT version FROM schema_migrations").fetchall() == [(1,)]
+
+
+def sql_checksum(text: str) -> str:
+    """정한 방식대로 계산한다: \\r\\n을 \\n으로 바꾼 UTF-8 텍스트의 SHA-256(hex)."""
+    return hashlib.sha256(text.replace("\r\n", "\n").encode("utf-8")).hexdigest()
+
+
+def test_migrate_records_content_checksum(temp_database: str) -> None:
+    migrate(temp_database)
+
+    with psycopg.connect(temp_database) as conn:
+        rows = conn.execute("SELECT name, checksum FROM schema_migrations ORDER BY version")
+        recorded = rows.fetchall()
+
+    expected = [
+        (m.name, sql_checksum(m.path.read_bytes().decode("utf-8"))) for m in find_migrations()
+    ]
+    assert recorded == expected
+
+
+def test_migrate_stops_when_applied_file_content_changed(
+    temp_database: str, tmp_path: Path
+) -> None:
+    """이름은 그대로 두고 내용만 고치면 기존 DB와 새 DB의 스키마가 갈라진다. 그래서 멈춘다."""
+    (tmp_path / "0001_first.sql").write_text("CREATE TABLE first_table (id int);")
+    migrate(temp_database, tmp_path)
+    (tmp_path / "0001_first.sql").write_text("CREATE TABLE first_table (id bigint);")
+    (tmp_path / "0002_second.sql").write_text("CREATE TABLE second_table (id int);")
+
+    with pytest.raises(MigrationError, match=r"0001번.*0001_first\.sql"):
+        migrate(temp_database, tmp_path)
+
+    with psycopg.connect(temp_database) as conn:
+        assert table_names(conn) == {"first_table", "schema_migrations"}  # 0002도 돌리지 않는다
+        assert conn.execute("SELECT version FROM schema_migrations").fetchall() == [(1,)]
+
+
+@pytest.mark.parametrize(
+    ("before", "after"), [("\n", "\r\n"), ("\r\n", "\n")], ids=["lf_to_crlf", "crlf_to_lf"]
+)
+def test_line_ending_change_is_not_a_content_change(
+    temp_database: str, tmp_path: Path, before: str, after: str
+) -> None:
+    """Windows core.autocrlf 체크아웃처럼 줄바꿈만 바뀐 파일은 같은 내용으로 본다."""
+    lines = ["CREATE TABLE first_table (id int);", "-- 줄바꿈만 다르다", ""]
+    path = tmp_path / "0001_first.sql"
+    path.write_bytes(before.join(lines).encode("utf-8"))
+    migrate(temp_database, tmp_path)
+    path.write_bytes(after.join(lines).encode("utf-8"))
+    (tmp_path / "0002_second.sql").write_text("CREATE TABLE second_table (id int);")
+
+    assert migrate(temp_database, tmp_path) == ["0002_second.sql"]
 
 
 @pytest.mark.parametrize("table", ["alerts", "events"])

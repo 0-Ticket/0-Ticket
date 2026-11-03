@@ -7,11 +7,17 @@
 - 파일 하나를 트랜잭션 하나로 실행하고, schema_migrations 기록도 같은 트랜잭션에 넣는다.
   실패하면 그 파일만 되돌리고 멈춘다.
 - 적용한 파일은 고치지 않고 새 번호를 만든다. 파일은 자기보다 작은 번호의 테이블만 참조한다.
-- 이미 적용한 번호의 파일 이름이 기록과 다르거나, 기록에 있는 번호의 파일이 없으면
-  아무것도 실행하지 않고 멈춘다. 번호만 바꾼 파일이 새 번호로 다시 실행되는 것을 막는다.
+- 새 파일을 하나라도 실행하기 전에 이미 적용한 번호를 모두 검사하고, 하나라도 맞지 않으면
+  아무것도 실행하지 않고 멈춘다.
+  - 기록에 있는 번호의 파일이 없다(번호만 바꾼 파일이 새 번호로 다시 실행되는 것을 막는다).
+  - 파일 이름이 기록과 다르다.
+  - 파일 내용의 해시가 기록과 다르다(이름은 두고 내용만 고치면 기존 DB와 새 DB의 스키마가
+    갈라진다). 해시는 UTF-8로 읽어 \\r\\n을 \\n으로 바꾼 뒤의 SHA-256(hex)이다. Windows의
+    core.autocrlf 체크아웃에서도 같은 값이 나오게 하려는 것이다. 강제로 해시를 고치는 옵션은 없다.
 - DB 주소(비밀번호 포함)는 출력·로그·예외 메시지에 넣지 않는다.
 """
 
+import hashlib
 import os
 import re
 import sys
@@ -28,6 +34,7 @@ _CREATE_HISTORY = """
 CREATE TABLE IF NOT EXISTS schema_migrations (
     version integer PRIMARY KEY,
     name text NOT NULL,
+    checksum text NOT NULL,
     applied_at timestamptz NOT NULL DEFAULT now()
 )
 """
@@ -63,6 +70,12 @@ def find_migrations(directory: Path = MIGRATIONS_DIR) -> list[Migration]:
     return [Migration(version, paths[0].name, paths[0]) for version, paths in sorted(found.items())]
 
 
+def _read_sql(path: Path) -> tuple[str, str]:
+    """(실행할 SQL, 내용 해시). 해시를 계산한 텍스트를 그대로 실행한다."""
+    sql = path.read_bytes().decode("utf-8").replace("\r\n", "\n")
+    return sql, hashlib.sha256(sql.encode("utf-8")).hexdigest()
+
+
 def migrate(database_url: str, directory: Path = MIGRATIONS_DIR) -> list[str]:
     """아직 적용하지 않은 마이그레이션을 적용하고, 적용한 파일 이름을 돌려준다."""
     migrations = find_migrations(directory)
@@ -78,12 +91,13 @@ def migrate(database_url: str, directory: Path = MIGRATIONS_DIR) -> list[str]:
     with conn:
         try:
             conn.execute(_CREATE_HISTORY)
-            done = dict(conn.execute("SELECT version, name FROM schema_migrations").fetchall())
+            rows = conn.execute("SELECT version, name, checksum FROM schema_migrations")
+            done = {version: (name, checksum) for version, name, checksum in rows.fetchall()}
         except psycopg.Error as exc:
             reason = exc.diag.message_primary or type(exc).__name__
             raise MigrationError(f"schema_migrations를 준비하지 못했다: {reason}") from None
         missing = [
-            f"{version:04d}번(기록 {done[version]})"
+            f"{version:04d}번(기록 {done[version][0]})"
             for version in sorted(done.keys() - {m.version for m in migrations})
         ]
         if missing:
@@ -91,26 +105,37 @@ def migrate(database_url: str, directory: Path = MIGRATIONS_DIR) -> list[str]:
                 f"이미 적용한 번호의 파일이 없다(번호를 바꿨는지 확인한다): {'; '.join(missing)}"
             )
         renamed = [
-            f"{m.version:04d}번(기록 {done[m.version]}, 지금 {m.name})"
+            f"{m.version:04d}번(기록 {done[m.version][0]}, 지금 {m.name})"
             for m in migrations
-            if m.version in done and done[m.version] != m.name
+            if m.version in done and done[m.version][0] != m.name
         ]
         if renamed:
             raise MigrationError(
                 f"이미 적용한 번호의 파일 이름이 기록과 다르다: {'; '.join(renamed)}"
             )
+        changed = [
+            f"{m.version:04d}번({m.name})"
+            for m in migrations
+            if m.version in done and _read_sql(m.path)[1] != done[m.version][1]
+        ]
+        if changed:
+            raise MigrationError(
+                "이미 적용한 파일의 내용이 기록과 다르다"
+                f"(적용한 파일은 고치지 않고 새 번호를 만든다): {'; '.join(changed)}"
+            )
         for migration in migrations:
             if migration.version in done:
                 continue
-            sql = migration.path.read_text(encoding="utf-8")
+            sql, checksum = _read_sql(migration.path)
             try:
                 with conn.transaction():
                     # 여러 문장이 든 SQL 파일이다.
                     # 인자 없이 실행해야 여러 문장을 한 번에 보낼 수 있다.
                     conn.execute(sql)
                     conn.execute(
-                        "INSERT INTO schema_migrations (version, name) VALUES (%s, %s)",
-                        (migration.version, migration.name),
+                        "INSERT INTO schema_migrations (version, name, checksum)"
+                        " VALUES (%s, %s, %s)",
+                        (migration.version, migration.name, checksum),
                     )
             except psycopg.Error as exc:
                 reason = exc.diag.message_primary or type(exc).__name__
