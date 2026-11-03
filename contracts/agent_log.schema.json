@@ -88,5 +88,11 @@
       "type": "object",
       "additionalProperties": true
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {"required": ["kind"], "properties": {"kind": {"const": "tool"}}},
+      "then": {"properties": {"tokens_in": {"type": "null"}, "tokens_out": {"type": "null"}}}
+    }
+  ]
 }

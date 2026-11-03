@@ -196,5 +196,30 @@
       "duration_ms": 100,
       "details": {}
     }
+  },
+  {
+    "case": "tool_call_with_tokens",
+    "violations": [
+      {"path": "tokens_in", "rule": "type"},
+      {"path": "tokens_out", "rule": "type"}
+    ],
+    "data": {
+      "id": "agl_01a19f93-1150-7000-8000-000000000002",
+      "run_id": "run_01a19f93-1150-7000-8000-000000000002",
+      "stage": "l1",
+      "subject_type": "ticket",
+      "subject_id": "tkt_01a19f93-1150-7000-8000-000000000005",
+      "seq": 2,
+      "kind": "tool",
+      "name": "siem_search",
+      "input": {"query": "user.name:lee.dev", "size": 10},
+      "output": [],
+      "outcome": "ok",
+      "tokens_in": 10,
+      "tokens_out": 2,
+      "started_at": 1793678690000,
+      "duration_ms": 230,
+      "details": {}
+    }
   }
 ]
