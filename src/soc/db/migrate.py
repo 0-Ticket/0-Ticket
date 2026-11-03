@@ -1,0 +1,123 @@
+"""순번 SQL 마이그레이션 실행기(마이그레이션 방식, D-035).
+
+    uv run python -m soc.db.migrate     # 환경변수 DATABASE_URL의 DB에 적용한다
+
+- migrations/의 NNNN_이름.sql을 번호 순서로, 아직 적용하지 않은 것만 실행한다.
+- 번호 대역: 0001~0099 공통, 0100~0199 수집·정규화·L1, 0200~0299 L2, 0300~0399 L3.
+- 파일 하나를 트랜잭션 하나로 실행하고, schema_migrations 기록도 같은 트랜잭션에 넣는다.
+  실패하면 그 파일만 되돌리고 멈춘다.
+- 적용한 파일은 고치지 않고 새 번호를 만든다. 파일은 자기보다 작은 번호의 테이블만 참조한다.
+- DB 주소(비밀번호 포함)는 출력·로그·예외 메시지에 넣지 않는다.
+"""
+
+import os
+import re
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+
+import psycopg
+
+MIGRATIONS_DIR = Path(__file__).parent / "migrations"
+
+_NAME = re.compile(r"^(\d{4})_[a-z0-9_]+\.sql$")
+
+_CREATE_HISTORY = """
+CREATE TABLE IF NOT EXISTS schema_migrations (
+    version integer PRIMARY KEY,
+    name text NOT NULL,
+    applied_at timestamptz NOT NULL DEFAULT now()
+)
+"""
+
+
+class MigrationError(Exception):
+    """마이그레이션을 찾거나 적용하지 못했다."""
+
+
+@dataclass(frozen=True)
+class Migration:
+    version: int
+    name: str
+    path: Path
+
+
+def find_migrations(directory: Path = MIGRATIONS_DIR) -> list[Migration]:
+    """번호 순서로 정렬한 마이그레이션 목록. 이름이 규칙에 맞지 않거나 번호가 겹치면 실패한다."""
+    found: dict[int, list[Path]] = {}
+    for path in sorted(directory.glob("*.sql")):
+        match = _NAME.match(path.name)
+        if match is None:
+            raise MigrationError(
+                f"마이그레이션 파일 이름이 'NNNN_소문자_이름.sql' 규칙에 맞지 않다: {path.name}"
+            )
+        found.setdefault(int(match.group(1)), []).append(path)
+
+    duplicated = {version: paths for version, paths in found.items() if len(paths) > 1}
+    if duplicated:
+        listed = "; ".join(" / ".join(p.name for p in paths) for paths in duplicated.values())
+        raise MigrationError(f"같은 번호의 마이그레이션이 있다: {listed}")
+
+    return [Migration(version, paths[0].name, paths[0]) for version, paths in sorted(found.items())]
+
+
+def migrate(database_url: str, directory: Path = MIGRATIONS_DIR) -> list[str]:
+    """아직 적용하지 않은 마이그레이션을 적용하고, 적용한 파일 이름을 돌려준다."""
+    migrations = find_migrations(directory)
+    try:
+        conn = psycopg.connect(database_url, autocommit=True)
+    except psycopg.Error:
+        # 원래 예외 메시지에는 접속 대상 주소와 계정이 들어 있어 감춘다.
+        raise MigrationError(
+            "DB에 연결하지 못했다. DATABASE_URL 값과 DB가 실행 중인지 확인한다"
+        ) from None
+
+    applied: list[str] = []
+    with conn:
+        try:
+            conn.execute(_CREATE_HISTORY)
+            done = {row[0] for row in conn.execute("SELECT version FROM schema_migrations")}
+        except psycopg.Error as exc:
+            reason = exc.diag.message_primary or type(exc).__name__
+            raise MigrationError(f"schema_migrations를 준비하지 못했다: {reason}") from None
+        for migration in migrations:
+            if migration.version in done:
+                continue
+            sql = migration.path.read_text(encoding="utf-8")
+            try:
+                with conn.transaction():
+                    # 여러 문장이 든 SQL 파일이다.
+                    # 인자 없이 실행해야 여러 문장을 한 번에 보낼 수 있다.
+                    conn.execute(sql)
+                    conn.execute(
+                        "INSERT INTO schema_migrations (version, name) VALUES (%s, %s)",
+                        (migration.version, migration.name),
+                    )
+            except psycopg.Error as exc:
+                reason = exc.diag.message_primary or type(exc).__name__
+                raise MigrationError(
+                    f"{migration.name} 적용 실패(그 파일은 되돌렸다): {reason}"
+                ) from None
+            applied.append(migration.name)
+    return applied
+
+
+def main() -> int:
+    database_url = os.environ.get("DATABASE_URL")
+    if not database_url:
+        print("환경변수 DATABASE_URL이 없다. .env.example을 참고해 설정한다.", file=sys.stderr)
+        return 2
+    try:
+        applied = migrate(database_url)
+    except MigrationError as exc:
+        print(f"마이그레이션 실패: {exc}", file=sys.stderr)
+        return 1
+    if applied:
+        print(f"마이그레이션 {len(applied)}개를 적용했다: {', '.join(applied)}")
+    else:
+        print("적용할 마이그레이션이 없다.")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

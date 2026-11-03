@@ -1,0 +1,43 @@
+"""db 마커 테스트가 쓰는 임시 DB.
+
+DATABASE_URL로 접속해 soc_test_<랜덤> DB를 만들고, 테스트가 끝나면 지운다.
+개발 DB의 테이블은 건드리지 않는다. DATABASE_URL이 없으면 건너뛰지 않고 실패한다.
+"""
+
+import os
+import secrets
+from collections.abc import Iterator
+
+import psycopg
+import pytest
+from psycopg import sql
+from psycopg.conninfo import make_conninfo
+
+
+class HiddenUrl(str):
+    """테스트가 실패해도 pytest 출력에 주소(비밀번호 포함)가 찍히지 않게 repr을 가린다."""
+
+    def __repr__(self) -> str:
+        return "'<DB 주소>'"
+
+
+@pytest.fixture
+def database_url() -> HiddenUrl:
+    url = os.environ.get("DATABASE_URL")
+    if not url:
+        pytest.fail("db 테스트에는 환경변수 DATABASE_URL이 필요하다", pytrace=False)
+    return HiddenUrl(url)
+
+
+@pytest.fixture
+def temp_database(database_url: HiddenUrl) -> Iterator[HiddenUrl]:
+    name = f"soc_test_{secrets.token_hex(6)}"
+    with psycopg.connect(database_url, autocommit=True) as admin:
+        admin.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(name)))
+    try:
+        yield HiddenUrl(make_conninfo(database_url, dbname=name))
+    finally:
+        with psycopg.connect(database_url, autocommit=True) as admin:
+            admin.execute(
+                sql.SQL("DROP DATABASE IF EXISTS {} WITH (FORCE)").format(sql.Identifier(name))
+            )
