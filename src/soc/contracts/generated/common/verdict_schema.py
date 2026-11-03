@@ -20,7 +20,7 @@ class Verdict(BaseModel):
     evidence_ids: Annotated[
         list[types_schema.EvidenceId],
         Field(
-            description="판정 근거가 된 Alert·Event ID와 도구 호출 기록 ID. decision이 benign·malicious이면 1개 이상"
+            description="판정 근거가 된 Alert·Event ID와 도구 호출 기록 ID. decision이 benign·malicious이면 1개 이상. 중복 없음"
         ),
     ]
     decided_at: Annotated[

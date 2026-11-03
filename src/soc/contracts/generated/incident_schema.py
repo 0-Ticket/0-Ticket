@@ -26,7 +26,9 @@ class Incident(BaseModel):
             description="analyzing: L2 분석 필요·중, awaiting_review: 사람 검토 대기, confirmed: 사람 승인(Case 생성), human_handling: 사람이 직접 처리, dismissed: 위협 아님으로 종결(L2가 분석 후, 또는 사람이 검토 중이나 직접 처리를 끝낼 때)"
         ),
     ]
-    ticket_ids: Annotated[list[types_schema.TicketId], Field(min_length=1)]
+    ticket_ids: Annotated[
+        list[types_schema.TicketId], Field(description="1개 이상. 중복 없음", min_length=1)
+    ]
     entities: Annotated[
         list[entity_schema.Entity], Field(description="소속 Ticket 엔티티를 모은 것")
     ]

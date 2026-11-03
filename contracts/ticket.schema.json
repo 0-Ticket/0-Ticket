@@ -29,8 +29,9 @@
       "enum": ["new", "closed", "held", "escalated", "linked"]
     },
     "alert_ids": {
-      "description": "origin이 auto, scenario, l1이면 1개 이상",
+      "description": "origin이 auto, scenario, l1이면 1개 이상. 중복 없음",
       "type": "array",
+      "uniqueItems": true,
       "items": {"$ref": "common/types.schema.json#/definitions/alert_id"}
     },
     "entities": {

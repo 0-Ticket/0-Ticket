@@ -152,5 +152,23 @@
       "updated_at": 1793678581000,
       "details": {}
     }
+  },
+  {
+    "case": "duplicate_alert_ids",
+    "violations": [{"path": "alert_ids", "rule": "uniqueItems"}],
+    "data": {
+      "id": "tkt_01a19f93-1150-7000-8000-000000000001",
+      "origin": "auto",
+      "status": "new",
+      "alert_ids": [
+        "alt_01a19f93-1150-7000-8000-000000000001",
+        "alt_01a19f93-1150-7000-8000-000000000001"
+      ],
+      "entities": [],
+      "verdict": null,
+      "created_at": 1793678581000,
+      "updated_at": 1793678581000,
+      "details": {}
+    }
   }
 ]

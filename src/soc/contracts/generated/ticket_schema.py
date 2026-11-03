@@ -32,7 +32,7 @@ class Ticket(BaseModel):
     ]
     alert_ids: Annotated[
         list[types_schema.AlertId],
-        Field(description="origin이 auto, scenario, l1이면 1개 이상"),
+        Field(description="origin이 auto, scenario, l1이면 1개 이상. 중복 없음"),
     ]
     entities: Annotated[
         list[entity_schema.Entity], Field(description="소속 Alert 엔티티를 모은 것")

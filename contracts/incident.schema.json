@@ -36,8 +36,10 @@
       "enum": ["analyzing", "awaiting_review", "confirmed", "human_handling", "dismissed"]
     },
     "ticket_ids": {
+      "description": "1개 이상. 중복 없음",
       "type": "array",
       "minItems": 1,
+      "uniqueItems": true,
       "items": {"$ref": "common/types.schema.json#/definitions/ticket_id"}
     },
     "entities": {
