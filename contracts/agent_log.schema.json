@@ -36,7 +36,7 @@
       "enum": ["alert", "ticket", "incident", "hunt"]
     },
     "subject_id": {
-      "description": "대상 ID",
+      "description": "대상 ID. alert는 alt_, ticket은 tkt_, incident는 inc_ ID. hunt는 Hunt ID 형식이 정해지기 전까지 빈 문자열만 거부한다",
       "type": "string"
     },
     "seq": {
@@ -93,6 +93,22 @@
     {
       "if": {"required": ["kind"], "properties": {"kind": {"const": "tool"}}},
       "then": {"properties": {"tokens_in": {"type": "null"}, "tokens_out": {"type": "null"}}}
+    },
+    {
+      "if": {"required": ["subject_type"], "properties": {"subject_type": {"const": "alert"}}},
+      "then": {"properties": {"subject_id": {"$ref": "common/types.schema.json#/definitions/alert_id"}}}
+    },
+    {
+      "if": {"required": ["subject_type"], "properties": {"subject_type": {"const": "ticket"}}},
+      "then": {"properties": {"subject_id": {"$ref": "common/types.schema.json#/definitions/ticket_id"}}}
+    },
+    {
+      "if": {"required": ["subject_type"], "properties": {"subject_type": {"const": "incident"}}},
+      "then": {"properties": {"subject_id": {"$ref": "common/types.schema.json#/definitions/incident_id"}}}
+    },
+    {
+      "if": {"required": ["subject_type"], "properties": {"subject_type": {"const": "hunt"}}},
+      "then": {"properties": {"subject_id": {"minLength": 1}}}
     }
   ]
 }

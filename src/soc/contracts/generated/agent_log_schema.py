@@ -34,7 +34,12 @@ class AgentLog(BaseModel):
         Literal["alert", "ticket", "incident", "hunt"],
         Field(description="alert는 L1 1차 판정"),
     ]
-    subject_id: Annotated[str, Field(description="대상 ID")]
+    subject_id: Annotated[
+        str,
+        Field(
+            description="대상 ID. alert는 alt_, ticket은 tkt_, incident는 inc_ ID. hunt는 Hunt ID 형식이 정해지기 전까지 빈 문자열만 거부한다"
+        ),
+    ]
     seq: Annotated[
         int, Field(description="작업 안 순번. (run_id, seq)는 유일", ge=1, le=2147483647)
     ]
