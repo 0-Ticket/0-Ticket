@@ -508,3 +508,5 @@ src/soc/contracts/generated/ ← Python(Pydantic v2). 직접 수정 금지
 
 ## 바뀐 점
 
+- 2026-11-03 · jsonb 컬럼에 JSON null을 거부하는 CHECK를 건다. null이 될 수 있는 `triage`, `verdict`, `output`은 SQL NULL만 받고, 같은 위험이 있는 NOT NULL 객체·목록 컬럼(`original`, `entities`, `assets`, `ocsf`, `details`)에도 건다. 계약상 JSON 값 전체(null 포함)를 받는 `agent_logs.input`은 뺀다. 머지 전이라 `0001_common_tables.sql`을 직접 고치고, JSON null 거부·SQL NULL 허용 `db` 테스트를 더한다.
+- 2026-11-03 · OCSF 클래스별 검증은 정규화 이슈에서 한다. 이 계약은 `ocsf`를 자유 객체로 두고 Alert의 `class_uid = 2004`와 Event의 `ocsf_class = ocsf.class_uid`만 검사한다. 결정 목록 OCSF 정규화(D-007) 메모에 공식 OCSF 1.9.0 JSON Schema로 클래스별 검증을 정규화 이슈에서 반드시 한다고 덧붙인다.
