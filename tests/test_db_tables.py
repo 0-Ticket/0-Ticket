@@ -10,7 +10,7 @@ from contract_samples import load, load_schema
 from psycopg import sql
 from psycopg.types.json import Jsonb
 
-from soc.contracts import to_datetime, to_epoch_ms, validate_contract
+from soc.contracts import ContractError, to_datetime, to_epoch_ms, validate_contract
 from soc.db.migrate import MigrationError, migrate
 
 pytestmark = pytest.mark.db
@@ -403,6 +403,71 @@ def test_agent_log_input_and_output_take_any_json(migrated: str, value: Any) -> 
         insert(conn, "agent_logs", data)
 
         assert select(conn, "agent_logs", data["id"]) == data
+
+
+ALT_1 = "alt_01a19f93-1150-7000-8000-000000000001"
+ALT_2 = "alt_01a19f93-1150-7000-8000-000000000002"
+TKT_1 = "tkt_01a19f93-1150-7000-8000-000000000001"
+TKT_2 = "tkt_01a19f93-1150-7000-8000-000000000002"
+
+
+def valid_sample(name: str, case: str) -> dict[str, Any]:
+    return next(s["data"] for s in load("valid", name) if s["case"] == case)
+
+
+@pytest.mark.parametrize(
+    ("name", "case", "column", "value"),
+    [
+        ("ticket", "auto_new", "alert_ids", [ALT_1, None]),
+        ("ticket", "l3_escalated", "alert_ids", [ALT_1, None]),
+        ("ticket", "auto_new", "alert_ids", []),
+        ("ticket", "scenario_new", "alert_ids", []),
+        ("ticket", "l1_new", "alert_ids", []),
+        ("incident", "analyzing_before_analysis", "ticket_ids", [TKT_1, None]),
+        ("incident", "analyzing_before_analysis", "ticket_ids", []),
+    ],
+    ids=[
+        "auto_null_alert_id",
+        "l3_null_alert_id",
+        "auto_no_alerts",
+        "scenario_no_alerts",
+        "l1_no_alerts",
+        "null_ticket_id",
+        "no_tickets",
+    ],
+)
+def test_id_arrays_reject_null_ids_and_missing_ids(
+    migrated: str, name: str, case: str, column: str, value: list[str | None]
+) -> None:
+    data = {**valid_sample(name, case), column: value}
+    with pytest.raises(ContractError):
+        validate_contract(name, data)  # 계약도 거부한다
+
+    with psycopg.connect(migrated) as conn:
+        with pytest.raises(psycopg.errors.CheckViolation):
+            insert(conn, TABLES[name], data)
+
+
+@pytest.mark.parametrize(
+    ("name", "case", "column", "value"),
+    [
+        ("ticket", "l3_escalated", "alert_ids", []),
+        ("ticket", "l3_escalated", "alert_ids", [ALT_1]),
+        ("ticket", "auto_new", "alert_ids", [ALT_1, ALT_2]),
+        ("incident", "analyzing_before_analysis", "ticket_ids", [TKT_1, TKT_2]),
+    ],
+    ids=["l3_no_alerts", "l3_with_alert", "auto_two_alerts", "two_tickets"],
+)
+def test_id_arrays_take_values_the_contract_allows(
+    migrated: str, name: str, case: str, column: str, value: list[str]
+) -> None:
+    data = {**valid_sample(name, case), column: value}
+    validate_contract(name, data)  # 계약이 받는 값이다
+
+    with psycopg.connect(migrated) as conn:
+        insert(conn, TABLES[name], data)
+
+        assert select(conn, TABLES[name], data["id"]) == data
 
 
 def test_pending_alert_lookup_uses_triage_status_index(migrated: str) -> None:

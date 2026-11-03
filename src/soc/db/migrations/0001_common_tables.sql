@@ -1,6 +1,7 @@
 -- 공통 테이블(#192). 단계끼리 주고받는 데이터 7가지를 담는다.
 -- 컬럼 이름은 contracts/의 최상위 필드 이름과 같다. 시각은 timestamptz, 객체는 jsonb.
--- CHECK는 최상위 컬럼의 목록 값·숫자 범위, triage의 모양과 status, jsonb 칸의 모양(객체·목록)까지 확인한다.
+-- CHECK는 최상위 컬럼의 목록 값·숫자 범위, triage의 모양과 status, jsonb 칸의 모양(객체·목록),
+-- ID 목록(alert_ids, ticket_ids)의 NULL 원소와 개수까지 확인한다.
 -- jsonb 칸의 안쪽 필드(entities[].type, verdict.decision 등)는 validate_contract()가 검사한다.
 -- jsonb 컬럼은 JSON null('null'::jsonb)을 거부한다. null이 될 수 있는 컬럼(triage, verdict, output)은
 -- SQL NULL로 넣는다. psycopg의 Jsonb(None)은 JSON null이 되어 IS NULL 조회에 걸리지 않기 때문이다.
@@ -67,12 +68,14 @@ CREATE TABLE tickets (
     id text PRIMARY KEY,
     origin text NOT NULL CHECK (origin IN ('auto', 'scenario', 'l1', 'l3')),
     status text NOT NULL CHECK (status IN ('new', 'closed', 'held', 'escalated', 'linked')),
-    alert_ids text[] NOT NULL,
+    alert_ids text[] NOT NULL CHECK (array_position(alert_ids, NULL) IS NULL),
     entities jsonb NOT NULL CHECK (jsonb_typeof(entities) = 'array'),
     verdict jsonb CHECK (verdict IS NULL OR jsonb_typeof(verdict) = 'object'),
     created_at timestamptz NOT NULL,
     updated_at timestamptz NOT NULL,
-    details jsonb NOT NULL CHECK (jsonb_typeof(details) = 'object')
+    details jsonb NOT NULL CHECK (jsonb_typeof(details) = 'object'),
+    -- 계약과 같다: L3 헌팅 발견(origin = l3)만 Alert 없이 만들 수 있다
+    CHECK (origin = 'l3' OR cardinality(alert_ids) >= 1)
 );
 
 CREATE INDEX tickets_status_idx ON tickets (status);
@@ -85,7 +88,9 @@ CREATE TABLE incidents (
     status text NOT NULL CHECK (
         status IN ('analyzing', 'awaiting_review', 'confirmed', 'human_handling', 'dismissed')
     ),
-    ticket_ids text[] NOT NULL,
+    ticket_ids text[] NOT NULL
+        CHECK (cardinality(ticket_ids) >= 1)
+        CHECK (array_position(ticket_ids, NULL) IS NULL),
     entities jsonb NOT NULL CHECK (jsonb_typeof(entities) = 'array'),
     severity smallint NOT NULL CHECK (severity BETWEEN 0 AND 6),
     assessed_severity smallint CHECK (assessed_severity BETWEEN 0 AND 6),
