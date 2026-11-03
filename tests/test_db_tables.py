@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import re
 from datetime import timedelta
 from pathlib import Path
 from typing import Any
@@ -242,6 +243,37 @@ def test_line_ending_change_is_not_a_content_change(
     (tmp_path / "0002_second.sql").write_text("CREATE TABLE second_table (id int);")
 
     assert migrate(temp_database, tmp_path) == ["0002_second.sql"]
+
+
+def test_lower_number_merged_later_is_applied_with_warning(
+    temp_database: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """대역은 병렬로 머지된다. L2(0200)를 적용한 DB에 늦게 머지된 L1(0105)도 적용하고 경고한다."""
+    (tmp_path / "0001_common.sql").write_text("CREATE TABLE common_table (id int);")
+    (tmp_path / "0200_l2.sql").write_text("CREATE TABLE l2_table (id int);")
+    migrate(temp_database, tmp_path)
+    capsys.readouterr()
+    (tmp_path / "0105_l1.sql").write_text("CREATE TABLE l1_table (id int);")
+
+    assert migrate(temp_database, tmp_path) == ["0105_l1.sql"]
+
+    warning = capsys.readouterr().err
+    assert re.search(r"0105번.*0105_l1\.sql.*0200번", warning), warning
+    assert len(warning.splitlines()) == 1
+    with psycopg.connect(temp_database) as conn:
+        assert "l1_table" in table_names(conn)
+
+
+def test_new_db_applies_bands_in_number_order_without_warning(
+    temp_database: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    (tmp_path / "0200_l2.sql").write_text("CREATE TABLE l2_table (id int);")
+    (tmp_path / "0001_common.sql").write_text("CREATE TABLE common_table (id int);")
+    (tmp_path / "0105_l1.sql").write_text("CREATE TABLE l1_table (id int);")
+
+    assert migrate(temp_database, tmp_path) == ["0001_common.sql", "0105_l1.sql", "0200_l2.sql"]
+
+    assert capsys.readouterr().err == ""
 
 
 @pytest.mark.parametrize("table", ["alerts", "events"])

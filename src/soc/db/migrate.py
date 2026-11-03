@@ -4,6 +4,10 @@
 
 - migrations/의 NNNN_이름.sql을 번호 순서로, 아직 적용하지 않은 것만 실행한다.
 - 번호 대역: 0001~0099 공통, 0100~0199 수집·정규화·L1, 0200~0299 L2, 0300~0399 L3.
+  대역은 병렬로 머지되므로 DB마다 대역 사이 적용 순서가 다를 수 있다(0200을 적용한 DB에 늦게
+  머지된 0105가 나중에 들어온다). 그래서 마이그레이션은 자기 대역의 테이블만 바꾼다.
+  기록된 가장 큰 번호보다 작은 미적용 파일도 멈추지 않고 적용하고, 적용할 때 stderr에 경고
+  한 줄을 낸다. 새 DB에서는 번호 순서대로 적용된다.
 - 파일 하나를 트랜잭션 하나로 실행하고, schema_migrations 기록도 같은 트랜잭션에 넣는다.
   실패하면 그 파일만 되돌리고 멈춘다.
 - 적용한 파일은 고치지 않고 새 번호를 만든다. 파일은 자기보다 작은 번호의 테이블만 참조한다.
@@ -123,9 +127,17 @@ def migrate(database_url: str, directory: Path = MIGRATIONS_DIR) -> list[str]:
                 "이미 적용한 파일의 내용이 기록과 다르다"
                 f"(적용한 파일은 고치지 않고 새 번호를 만든다): {'; '.join(changed)}"
             )
+        latest = max(done, default=0)
         for migration in migrations:
             if migration.version in done:
                 continue
+            if migration.version < latest:
+                print(
+                    f"경고: {migration.version:04d}번({migration.name})은 이미 적용한"
+                    f" 가장 큰 번호 {latest:04d}번보다 작지만 적용한다"
+                    "(대역 사이 적용 순서는 DB마다 다를 수 있다)",
+                    file=sys.stderr,
+                )
             sql, checksum = _read_sql(migration.path)
             try:
                 with conn.transaction():
