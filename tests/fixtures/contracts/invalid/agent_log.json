@@ -154,6 +154,28 @@
     }
   },
   {
+    "case": "started_at_past_upper_bound",
+    "violations": [{"path": "started_at", "rule": "maximum"}],
+    "data": {
+      "id": "agl_01a19f93-1150-7000-8000-000000000001",
+      "run_id": "run_01a19f93-1150-7000-8000-000000000001",
+      "stage": "l1",
+      "subject_type": "alert",
+      "subject_id": "alt_01a19f93-1150-7000-8000-000000000004",
+      "seq": 1,
+      "kind": "model",
+      "name": "openai/gpt-oss-120b",
+      "input": {},
+      "output": {},
+      "outcome": "ok",
+      "tokens_in": 10,
+      "tokens_out": 1,
+      "started_at": 253402300799999,
+      "duration_ms": 100,
+      "details": {}
+    }
+  },
+  {
     "case": "negative_tokens",
     "violations": [{"path": "tokens_in", "rule": "minimum"}],
     "data": {

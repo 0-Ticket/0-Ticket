@@ -1,5 +1,6 @@
 """공통 테이블과 마이그레이션 실행기를 실제 PostgreSQL로 확인한다(db 마커)."""
 
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
@@ -243,6 +244,32 @@ def test_check_constraints_reject_values_outside_contract(
         ensure_parents(conn, name, data)
         with pytest.raises(psycopg.errors.CheckViolation):
             insert(conn, TABLES[name], data)
+
+
+@pytest.mark.parametrize(
+    ("time_zone", "offset"),
+    [("Pacific/Kiritimati", timedelta(hours=14)), ("Asia/Seoul", timedelta(hours=9))],
+)
+def test_upper_bound_time_reads_back_in_non_utc_session(
+    migrated: str, time_zone: str, offset: timedelta
+) -> None:
+    """psycopg는 timestamptz를 세션 시간대로 돌려준다.
+
+    상한 시각도 가장 큰 오프셋(+14h)에서 읽혀야 한다.
+    """
+    samples = load("valid", "agent_log")
+    sample = next(s["data"] for s in samples if s["case"] == "limits_at_upper_bounds")
+    data = validate_contract("agent_log", sample).model_dump(mode="json")
+
+    with psycopg.connect(migrated, options=f"-c TimeZone={time_zone}") as conn:
+        assert conn.execute("SHOW TimeZone").fetchone() == (time_zone,)
+        insert(conn, "agent_logs", data)
+
+        started_at = conn.execute(
+            "SELECT started_at FROM agent_logs WHERE id = %s", (data["id"],)
+        ).fetchone()[0]
+        assert started_at.utcoffset() == offset  # 세션 시간대로 바뀌어 돌아온다
+        assert select(conn, "agent_logs", data["id"]) == data
 
 
 def test_jsonb_columns_reject_json_null(migrated: str) -> None:

@@ -32,9 +32,9 @@ class Event(BaseModel):
     time: Annotated[
         int,
         Field(
-            description="UTC epoch 밀리초. 상한은 9999-12-31T23:59:59.999Z",
+            description="UTC epoch 밀리초. 상한은 9999-12-30T23:59:59.999Z(+14시간 시간대로 읽어도 9999년 안)",
             ge=0,
-            le=253402300799999,
+            le=253402214399999,
         ),
     ]
     ocsf_class: Annotated[
