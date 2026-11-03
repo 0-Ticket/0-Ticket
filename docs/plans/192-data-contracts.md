@@ -525,3 +525,6 @@ src/soc/contracts/generated/ ← Python(Pydantic v2). 직접 수정 금지
 - 2026-11-04 · (계약, PR #193 리뷰) Agent Log에서 `kind = tool`이면 `tokens_in`, `tokens_out`은 null이다(if/then).
 - 2026-11-04 · (계약, PR #193 리뷰) Agent Log `subject_id`는 `subject_type`에 맞는 ID다(if/then): `alert` → `alt_`, `ticket` → `tkt_`, `incident` → `inc_`. `hunt`는 Hunt ID 형식이 아직 없어 빈 문자열만 거부하고(`minLength: 1`), L3 이슈에서 Hunt ID를 정할 때 바꾼다.
 - 2026-11-04 · (검증 함수) `json.dumps`가 내는 `ValueError`(순환 참조)도 `TypeError`와 같이 `(root): json` 위반으로 `ContractError`를 낸다. NaN·Infinity는 `allow_nan` 기본값이라 오류가 나지 않으므로 지금처럼 수집·정규화 이슈에서 정한다.
+- 2026-11-04 · (검증 함수, PR #193 리뷰) JSON Schema `pattern`은 끝의 이스케이프되지 않은 `$`를 `\Z`로 바꿔 검사한다. Python의 `$`가 마지막 `\n` 앞에서도 맞아 `"alt_<uuid>\n"` 같은 값이 통과했기 때문이다. schema 파일은 바꾸지 않는다(`\Z`는 ECMA 정규식과 Rust regex가 모른다). 위반 rule 이름은 그대로 `pattern`이다.
+- 2026-11-04 · (검증 함수, PR #193 리뷰) JSON 사전 검사를 넓힌다. `json.dumps(allow_nan=False)`로 NaN·Infinity도 거부하고, 이어서 모든 dict 키가 문자열인지, 키와 문자열 값에 NUL(`\u0000`)이 없는지 본다. 걸리면 `(root): json`이다. 목표는 `validate_contract()`를 통과한 값이 값 때문에 INSERT에서 실패하지 않는 것이다. 앞서 NaN·Infinity·NUL을 수집·정규화 이슈로 넘긴 결정을 대신한다.
+- 2026-11-04 · (검증 함수, PR #193 리뷰) 정의된 숫자 필드의 NaN(예: `verdict.confidence`)도 따로 처리하지 않고 JSON 사전 검사에서 `(root): json`으로 거부한다.
