@@ -517,3 +517,4 @@ src/soc/contracts/generated/ ← Python(Pydantic v2). 직접 수정 금지
 - 2026-11-03 · (DB) `alerts.raw_id`, `events.raw_id`에 인덱스를 둔다.
 - 2026-11-03 · (마이그레이션 실행기) 이미 적용한 번호의 파일 이름이 `schema_migrations.name`과 다르면 아무것도 실행하지 않고 `MigrationError`로 멈춘다.
 - 2026-11-03 · (계약) 시각(`epoch_ms`) 상한을 `253402214399999`(9999-12-30T23:59:59.999Z)로 당긴다. 가장 큰 시간대 오프셋(+14시간)으로 읽어도 10000년을 넘지 않게 하기 위해서다.
+- 2026-11-03 · (DB, PR #193 리뷰) `alerts.triage`는 SQL NULL이거나, 객체이면서 `status`가 목록 값일 때만 받는다. `status`가 없거나 null이어도 거부되도록 비교를 `IS TRUE`로 감싸고, JSON null 거부 제약은 그대로 둔다. jsonb 칸의 모양도 확인한다: `original`·`ocsf`·`details`·`verdict`(SQL NULL 허용)는 객체, `entities`·`assets`는 목록이다. `agent_logs.input`·`output`은 모양 제약을 걸지 않는다. 안쪽 필드 검사는 지금처럼 `validate_contract()`가 맡는다.
