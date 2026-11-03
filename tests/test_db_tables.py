@@ -1,6 +1,7 @@
 """공통 테이블과 마이그레이션 실행기를 실제 PostgreSQL로 확인한다(db 마커)."""
 
 import hashlib
+import json
 from datetime import timedelta
 from pathlib import Path
 from typing import Any
@@ -395,6 +396,25 @@ ANY_JSON_COLUMNS = {("agent_logs", "input"), ("agent_logs", "output")}
 
 def alert_sample(case: str) -> dict[str, Any]:
     return next(s["data"] for s in load("valid", "alert") if s["case"] == case)
+
+
+def test_emoji_text_is_stored_and_read_back(migrated: str) -> None:
+    """BMP 밖 글자(이모지)는 짝 없는 서로게이트 검사에 걸리지 않고 text·jsonb 칸에 저장된다."""
+    sample = alert_sample("default_mode")
+    from_siem = json.loads('"\\ud83d\\ude00"')  # SIEM 응답의 이스케이프된 서로게이트 쌍
+    data = {
+        **sample,
+        "title": "SQL Injection 😀",
+        "ocsf": {**sample["ocsf"], "message": from_siem},
+        "details": {"메모😀": "이모지 😀"},
+    }
+    data = validate_contract("alert", data).model_dump(mode="json")
+
+    with psycopg.connect(migrated) as conn:
+        ensure_parents(conn, "alert", data)
+        insert(conn, "alerts", data)
+
+        assert select(conn, "alerts", data["id"]) == data
 
 
 @pytest.mark.parametrize(

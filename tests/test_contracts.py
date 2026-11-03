@@ -177,7 +177,8 @@ def circular_dict() -> dict[str, object]:
 
 
 # 자유 객체에 더할 값. JSON으로 나타낼 수 없거나(bytes·datetime·set·순환 참조·NaN·Infinity),
-# PostgreSQL이 거부하거나(NUL), JSON으로 바꾸면 키가 바뀌는(문자열이 아닌 키) 값이다.
+# PostgreSQL이 거부하거나(NUL, 짝 없는 서로게이트),
+# JSON으로 바꾸면 키가 바뀌는(문자열이 아닌 키) 값이다.
 # INJECTED는 입력 값이 오류 메시지에 들어가지 않는지 보는 표시다.
 NOT_STORABLE_JSON = {
     "bytes": {"from_code": b"\x00bytes"},
@@ -189,6 +190,8 @@ NOT_STORABLE_JSON = {
     "-inf": {"from_log": float("-inf")},
     "nul_in_value": {"from_log": "INJECTED\x00"},
     "nul_in_key": {"INJECTED\x00": "x"},
+    "lone_surrogate_value": {"from_log": "INJECTED\ud800"},
+    "lone_surrogate_key": {"INJECTED\udfff": "x"},
     "int_key": {1: "x"},
     "none_key": {None: "x"},
     "bool_key": {True: "x"},
@@ -216,16 +219,38 @@ def test_values_that_are_not_storable_json_are_rejected(name: str, field: str, e
 
 @pytest.mark.parametrize(
     ("name", "field", "value"),
-    [("verdict", "confidence", float("nan")), ("alert", "title", "SQL INJECTED\x00")],
-    ids=["verdict.confidence_nan", "alert.title_nul"],
+    [
+        ("verdict", "confidence", float("nan")),
+        ("alert", "title", "SQL INJECTED\x00"),
+        ("alert", "title", "SQL INJECTED\ud800"),
+    ],
+    ids=["verdict.confidence_nan", "alert.title_nul", "alert.title_lone_surrogate"],
 )
-def test_contract_fields_with_nan_or_nul_are_rejected_as_json(
+def test_contract_fields_with_unstorable_values_are_rejected_as_json(
     name: str, field: str, value: object
 ) -> None:
     """정의된 필드도 같다. 숫자 NaN은 범위 검사가 아니라 JSON 사전 검사에서 걸린다."""
     data = {**load("valid", name)[0]["data"], field: value}
 
     assert_rejected_as_json(name, data)
+
+
+@pytest.mark.parametrize(("name", "field"), FREE_OBJECTS, ids=[f"{n}.{f}" for n, f in FREE_OBJECTS])
+@pytest.mark.parametrize(
+    "extra", [{"from_log": "탐지 😀"}, {"😀": "x"}], ids=["emoji_value", "emoji_key"]
+)
+def test_emoji_in_free_objects_passes(name: str, field: str, extra: dict) -> None:
+    """BMP 밖 글자(이모지)는 서로게이트 쌍으로 이스케이프돼도 올바른 글자라 거부하지 않는다."""
+    data = copy.deepcopy(load("valid", name)[0]["data"])
+    data[field] = {**data[field], **extra}
+
+    assert validate_contract(name, data).model_dump(mode="json") == data
+
+
+def test_emoji_in_contract_text_field_passes() -> None:
+    data = {**load("valid", "alert")[0]["data"], "title": "SQL Injection 😀"}
+
+    assert validate_contract("alert", data).model_dump(mode="json") == data
 
 
 def test_non_object_data_is_rejected() -> None:
