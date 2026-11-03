@@ -43,7 +43,7 @@ flowchart LR
 | L3 | 가설 | 알럿이 없는 위협을 가설로 세워 우리 데이터로 검증 | 기각 / L2로 투입 |
 
 - L1 Ticket 생성 모드: 기본은 모든 알럿을 Ticket으로, 설정으로 시나리오 모드를 켜면 시나리오 일치 알럿만 바로 Ticket, 나머지는 L1 1차 판정(Ticket 생성 모드, D-033).
-- Case로 가는 승인은 사람만 한다. 위협이 아닌 Incident는 L2나 사람이 종결한다.
+- Case로 가는 승인은 사람만 한다. 위협이 아닌 Incident는 L2가 분석 후 종결하거나, 사람이 검토 중 또는 직접 처리(반려 한도 도달)를 끝낼 때 종결한다.
 
 ## 단계끼리 주고받는 데이터 (RawRecord, Alert, Event, Ticket, Incident, Case, Hunt, Agent Log)
 
