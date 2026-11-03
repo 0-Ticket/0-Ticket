@@ -510,3 +510,9 @@ src/soc/contracts/generated/ ← Python(Pydantic v2). 직접 수정 금지
 
 - 2026-11-03 · jsonb 컬럼에 JSON null을 거부하는 CHECK를 건다. null이 될 수 있는 `triage`, `verdict`, `output`은 SQL NULL만 받고, 같은 위험이 있는 NOT NULL 객체·목록 컬럼(`original`, `entities`, `assets`, `ocsf`, `details`)에도 건다. 계약상 JSON 값 전체(null 포함)를 받는 `agent_logs.input`은 뺀다. 머지 전이라 `0001_common_tables.sql`을 직접 고치고, JSON null 거부·SQL NULL 허용 `db` 테스트를 더한다.
 - 2026-11-03 · OCSF 클래스별 검증은 정규화 이슈에서 한다. 이 계약은 `ocsf`를 자유 객체로 두고 Alert의 `class_uid = 2004`와 Event의 `ocsf_class = ocsf.class_uid`만 검사한다. 결정 목록 OCSF 정규화(D-007) 메모에 공식 OCSF 1.9.0 JSON Schema로 클래스별 검증을 정규화 이슈에서 반드시 한다고 덧붙인다.
+- 2026-11-03 · (계약) Verdict의 `decision`이 `benign`·`malicious`이면 `evidence_ids`는 1개 이상이다(if/then). `undetermined`는 빈 목록을 허용한다.
+- 2026-11-03 · (계약) DB `integer`(int32) 컬럼에 대응하는 정수 필드(`ocsf_class`, `analysis_round`, `review_round`, `seq`, `tokens_in`, `tokens_out`, `duration_ms`)에 `maximum: 2147483647`을 둔다.
+- 2026-11-03 · (계약) 시각(`epoch_ms`)에 `maximum: 253402300799999`(9999-12-31T23:59:59.999Z)를 둔다. 마이크로초로 잘못 넣은 시각을 거부한다.
+- 2026-11-03 · (계약) RawRecord의 `siem_profile`·`siem_ref`와 Asset의 `entity_value`는 빈 문자열을 거부한다(`minLength: 1`).
+- 2026-11-03 · (DB) `alerts.raw_id`, `events.raw_id`에 인덱스를 둔다.
+- 2026-11-03 · (마이그레이션 실행기) 이미 적용한 번호의 파일 이름이 `schema_migrations.name`과 다르면 아무것도 실행하지 않고 `MigrationError`로 멈춘다.
