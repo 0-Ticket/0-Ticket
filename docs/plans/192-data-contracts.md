@@ -518,3 +518,9 @@ src/soc/contracts/generated/ ← Python(Pydantic v2). 직접 수정 금지
 - 2026-11-03 · (마이그레이션 실행기) 이미 적용한 번호의 파일 이름이 `schema_migrations.name`과 다르면 아무것도 실행하지 않고 `MigrationError`로 멈춘다.
 - 2026-11-03 · (계약) 시각(`epoch_ms`) 상한을 `253402214399999`(9999-12-30T23:59:59.999Z)로 당긴다. 가장 큰 시간대 오프셋(+14시간)으로 읽어도 10000년을 넘지 않게 하기 위해서다.
 - 2026-11-03 · (DB, PR #193 리뷰) `alerts.triage`는 SQL NULL이거나, 객체이면서 `status`가 목록 값일 때만 받는다. `status`가 없거나 null이어도 거부되도록 비교를 `IS TRUE`로 감싸고, JSON null 거부 제약은 그대로 둔다. jsonb 칸의 모양도 확인한다: `original`·`ocsf`·`details`·`verdict`(SQL NULL 허용)는 객체, `entities`·`assets`는 목록이다. `agent_logs.input`·`output`은 모양 제약을 걸지 않는다. 안쪽 필드 검사는 지금처럼 `validate_contract()`가 맡는다.
+- 2026-11-04 · (검증 함수, PR #193 리뷰) `validate_contract()`는 schema 검사 전에 `json.dumps(data)`를 시도하고, `TypeError`가 나면(자유 객체 안의 bytes·datetime·set 등) `(root): json` 위반으로 `ContractError`를 낸다. NaN·Infinity는 지금처럼 수집·정규화 이슈에서 정한다(`allow_nan` 기본값 유지).
+- 2026-11-04 · (마이그레이션 실행기, PR #193 리뷰) `schema_migrations`에 기록된 번호의 파일이 없으면 아무것도 실행하지 않고 `MigrationError`로 멈춘다. 번호만 바꾼 파일이 새 번호로 다시 실행되는 것을 막는다.
+- 2026-11-04 · (DB, PR #193 리뷰) `tickets.alert_ids`, `incidents.ticket_ids`는 NULL 원소를 거부한다(`array_position(..., NULL) IS NULL`). `ticket_ids`는 1개 이상, `alert_ids`는 계약과 같이 `origin`이 `l3`가 아니면 1개 이상이다(`origin = 'l3' OR cardinality(alert_ids) >= 1`).
+- 2026-11-04 · (계약, PR #193 리뷰) Ticket `alert_ids`, Incident `ticket_ids`, Verdict `evidence_ids`는 중복 ID를 거부한다(`uniqueItems`).
+- 2026-11-04 · (계약, PR #193 리뷰) Agent Log에서 `kind = tool`이면 `tokens_in`, `tokens_out`은 null이다(if/then).
+- 2026-11-04 · (계약, PR #193 리뷰) Agent Log `subject_id`는 `subject_type`에 맞는 ID다(if/then): `alert` → `alt_`, `ticket` → `tkt_`, `incident` → `inc_`. `hunt`는 Hunt ID 형식이 아직 없어 빈 문자열만 거부하고(`minLength: 1`), L3 이슈에서 Hunt ID를 정할 때 바꾼다.
