@@ -1,8 +1,0 @@
-"""Lets the box 4 tests reuse the in-memory record store from tests/store."""
-
-import sys
-from pathlib import Path
-
-STORE_TESTS = str(Path(__file__).resolve().parents[1] / "store")
-if STORE_TESTS not in sys.path:
-    sys.path.insert(0, STORE_TESTS)

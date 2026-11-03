@@ -1,4 +1,0 @@
-match,hostname,criticality,owner,zone,shared
-192.0.2.80,intranet-server,5,,intranet,false
-192.0.2.81,mail,3,,dmz,false
-192.0.2.1,firewall,4,,dmz,true

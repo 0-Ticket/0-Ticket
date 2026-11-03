@@ -1,1 +1,0 @@
-{"error": {"root_cause": [{"type": "index_not_found_exception", "reason": "no such index [wazuh-archives-4.x-2026.10.20]", "index": "wazuh-archives-4.x-2026.10.20"}], "type": "index_not_found_exception", "reason": "no such index [wazuh-archives-4.x-2026.10.20]", "index": "wazuh-archives-4.x-2026.10.20"}, "status": 404}

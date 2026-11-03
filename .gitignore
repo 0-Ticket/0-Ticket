@@ -1,8 +1,12 @@
-# 비밀 값
-.env
+# 비밀 값 (.env, .env.local 등. 이름 목록만 담는 .env.example은 커밋)
+.env*
+!.env.example
 
 # 공개 데이터셋 원본 (커밋 금지)
 data/
+
+# 조직 설정 (내부 주소·접속 대상, 커밋 금지)
+config/local.*
 
 # Python · uv
 .venv/
@@ -18,16 +22,8 @@ dist/
 CLAUDE.local.md
 .claude/settings.local.json
 
+# 웹 화면
+node_modules/
+
 # OS
 .DS_Store
-
-# 조직 설정 (ZT_CONFIG로 지정, 커밋 금지)
-config/local.*
-config/org.*
-
-# 웹 화면 (frontend/)
-node_modules/
-.pnpm-store/
-frontend/dist/
-frontend/.env
-frontend/.env.local

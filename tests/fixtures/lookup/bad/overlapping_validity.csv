@@ -1,3 +1,0 @@
-match,hostname,criticality,shared,valid_from,valid_to
-192.0.2.80,web-01,5,false,2021-01-01T00:00:00Z,
-192.0.2.80/32,web-02,4,false,2022-01-01T00:00:00Z,2023-01-01T00:00:00Z

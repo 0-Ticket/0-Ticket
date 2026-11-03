@@ -1,24 +1,14 @@
 [project]
 name = "0-ticket-soc"
 version = "0.1.0"
-description = "AI 네이티브 SOC 파이프라인"
+description = "AI 에이전트 기반 SOC 파이프라인"
 readme = "README.md"
-requires-python = ">=3.12"
-dependencies = [
-    "fastapi>=0.120.4",
-    "jsonschema>=4.26.0",
-    "mcp>=2,<3",
-    "psycopg-pool>=3.3.3",
-    "psycopg[binary]>=3.3.6",
-    "pydantic>=2.14.1",
-    "qdrant-client>=1.19.1",
-    "uvicorn>=0.38.0",
-]
+license = "Apache-2.0"
+requires-python = ">=3.13"
+dependencies = []
 
 [dependency-groups]
 dev = [
-    "datamodel-code-generator>=0.83.0",
-    "httpx>=0.28.1",
     "pytest>=8",
     "ruff>=0.17.0",
 ]
@@ -27,30 +17,12 @@ dev = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-[project.entry-points."zero_ticket_soc.stores"]
-"postgresql.tickets" = "soc.store.postgresql.tickets:create_postgresql_ticket_store"
-"postgresql.agent_log" = "soc.store.postgresql.agent_log:create_postgresql_agent_log_store"
-
-[project.entry-points."zero_ticket_soc.vector_stores"]
-qdrant = "soc.store.vectors.qdrant:create_qdrant_vector_store"
-
-[project.entry-points."zero_ticket_soc.embedders"]
-ollama = "soc.store.embedders.ollama:create_ollama_embedder"
-
 [tool.hatch.build.targets.wheel]
 packages = ["src/soc"]
 
-[tool.hatch.build.targets.wheel.force-include]
-"contracts" = "soc/contracts/schemas"
-"config/default.toml" = "soc/default.toml"
-"src/soc/l1/prompts/l1_entity_lookup.md" = "soc/l1/prompts/l1_entity_lookup.md"
-"src/soc/l1/prompts/web_specialist.md" = "soc/l1/prompts/web_specialist.md"
-"src/soc/store/vectors/templates/decided_ticket.txt" = "soc/store/vectors/templates/decided_ticket.txt"
-"src/soc/store/vectors/templates/entity_sentence.txt" = "soc/store/vectors/templates/entity_sentence.txt"
-
 [tool.ruff]
 line-length = 100
-target-version = "py312"
+target-version = "py313"
 
 [tool.ruff.lint]
 # E/F: 기본 오류, I: import 정렬, B: 흔한 버그, UP: 최신 문법
@@ -59,8 +31,8 @@ select = ["E", "F", "I", "B", "UP"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = [
-    "llm: 실제 LLM을 호출하는 테스트. 기본 실행에서 제외, uv run pytest -m llm 으로 실행",
-    "db: PostgreSQL이 필요한 테스트(DATABASE_URL). 기본 실행에서 제외, uv run pytest -m db 으로 실행",
-    "qdrant: Qdrant 서비스가 필요한 통합 테스트. 기본 실행에서 제외, uv run pytest -m qdrant 으로 실행",
+    "llm: 실제 LLM을 호출하는 테스트. uv run pytest -m llm 으로 실행",
+    "db: PostgreSQL이 필요한 테스트. uv run pytest -m db 으로 실행",
+    "qdrant: Qdrant가 필요한 테스트. uv run pytest -m qdrant 으로 실행",
 ]
 addopts = "-m 'not llm and not db and not qdrant'"
