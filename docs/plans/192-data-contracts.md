@@ -528,3 +528,6 @@ src/soc/contracts/generated/ ← Python(Pydantic v2). 직접 수정 금지
 - 2026-11-04 · (검증 함수, PR #193 리뷰) JSON Schema `pattern`은 끝의 이스케이프되지 않은 `$`를 `\Z`로 바꿔 검사한다. Python의 `$`가 마지막 `\n` 앞에서도 맞아 `"alt_<uuid>\n"` 같은 값이 통과했기 때문이다. schema 파일은 바꾸지 않는다(`\Z`는 ECMA 정규식과 Rust regex가 모른다). 위반 rule 이름은 그대로 `pattern`이다.
 - 2026-11-04 · (검증 함수, PR #193 리뷰) JSON 사전 검사를 넓힌다. `json.dumps(allow_nan=False)`로 NaN·Infinity도 거부하고, 이어서 모든 dict 키가 문자열인지, 키와 문자열 값에 NUL(`\u0000`)이 없는지 본다. 걸리면 `(root): json`이다. 목표는 `validate_contract()`를 통과한 값이 값 때문에 INSERT에서 실패하지 않는 것이다. 앞서 NaN·Infinity·NUL을 수집·정규화 이슈로 넘긴 결정을 대신한다.
 - 2026-11-04 · (검증 함수, PR #193 리뷰) 정의된 숫자 필드의 NaN(예: `verdict.confidence`)도 따로 처리하지 않고 JSON 사전 검사에서 `(root): json`으로 거부한다.
+- 2026-11-04 · (마이그레이션 실행기, PR #193 리뷰) `schema_migrations`에 `checksum`(text, NOT NULL)을 더하고, 파일을 적용할 때 같은 트랜잭션 안에서 내용 해시를 기록한다. 새 파일을 하나라도 실행하기 전에 이미 적용한 번호를 모두 검사해, 해시가 기록과 다르면 아무것도 실행하지 않고 번호와 파일 이름을 담은 `MigrationError`로 멈춘다(종료 코드 1). 강제로 해시를 갱신하는 옵션은 두지 않는다. 머지 전이라 새 마이그레이션 없이 실행기의 테이블 정의를 바로 고친다.
+- 2026-11-04 · (마이그레이션 실행기, PR #193 리뷰) 내용 해시는 파일을 UTF-8로 읽고 `\r\n`을 `\n`으로 바꾼 뒤의 SHA-256(hex)이다. Windows `core.autocrlf` 체크아웃에서 해시가 달라지지 않게 하려는 것이다.
+- 2026-11-04 · (레포 설정, PR #193 리뷰) 레포 루트 `.gitattributes`에 `*.sql text eol=lf`를 둔다.
