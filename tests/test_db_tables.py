@@ -72,9 +72,17 @@ def from_row(columns: Columns, row: dict[str, Any]) -> dict[str, Any]:
     return data
 
 
-def insert(conn: psycopg.Connection, table: str, data: dict[str, Any], *, skip_existing=False):
+def insert(
+    conn: psycopg.Connection,
+    table: str,
+    data: dict[str, Any],
+    *,
+    skip_existing: bool = False,
+    raw: dict[str, Any] | None = None,
+) -> None:
+    """data를 컬럼 형식으로 바꿔 넣는다. raw에 준 값은 바꾸지 않고 그대로 넣는다."""
     columns = columns_of(conn, table)
-    row = to_row(columns, data)
+    row = {**to_row(columns, data), **(raw or {})}
     query = sql.SQL("INSERT INTO {} ({}) VALUES ({}){}").format(
         sql.Identifier(table),
         sql.SQL(", ").join(map(sql.Identifier, row)),
@@ -106,6 +114,16 @@ def ensure_raw_record(conn: psycopg.Connection, raw_id: str, kind: str) -> None:
     }
     validate_contract("raw_record", raw)
     insert(conn, "raw_records", raw, skip_existing=True)
+
+
+def ensure_parents(conn: psycopg.Connection, name: str, data: dict[str, Any]) -> None:
+    """외래 키가 가리키는 행(Alert·Event의 원본, Case의 Incident)을 먼저 넣는다."""
+    if name in ("alert", "event"):
+        ensure_raw_record(conn, data["raw_id"], name)
+    if name == "case":
+        incidents = [s["data"] for s in load("valid", "incident")]
+        incident = next(i for i in incidents if i["id"] == data["incident_id"])
+        insert(conn, "incidents", incident, skip_existing=True)
 
 
 def test_migrate_creates_all_tables_on_empty_db(temp_database: str) -> None:
@@ -195,9 +213,52 @@ def test_check_constraints_reject_values_outside_contract(
     data = {**load("valid", name)[0]["data"], field: value}
 
     with psycopg.connect(migrated) as conn:
-        if name in ("alert", "event"):
-            ensure_raw_record(conn, data["raw_id"], name)
-        if name == "case":
-            insert(conn, "incidents", load("valid", "incident")[3]["data"])
+        ensure_parents(conn, name, data)
         with pytest.raises(psycopg.errors.CheckViolation):
             insert(conn, TABLES[name], data)
+
+
+def test_jsonb_columns_reject_json_null(migrated: str) -> None:
+    """JSON null('null'::jsonb)은 NOT NULL과 IS NULL 조회를 피해 가므로 DB가 거부한다."""
+    checked = []
+    with psycopg.connect(migrated) as conn:
+        for name, table in TABLES.items():
+            data = load("valid", name)[0]["data"]
+            ensure_parents(conn, name, data)
+            for column, (data_type, _) in columns_of(conn, table).items():
+                if data_type != "jsonb" or (table, column) == ("agent_logs", "input"):
+                    continue
+                with pytest.raises(psycopg.errors.CheckViolation), conn.transaction():
+                    insert(conn, table, data, raw={column: Jsonb(None)})
+                checked.append(f"{table}.{column}")
+
+    assert len(checked) == 19, checked  # jsonb 컬럼 20개 중 agent_logs.input만 뺀다
+
+
+@pytest.mark.parametrize(
+    ("name", "column"), [("alert", "triage"), ("ticket", "verdict"), ("agent_log", "output")]
+)
+def test_nullable_jsonb_columns_take_sql_null(migrated: str, name: str, column: str) -> None:
+    data = {**load("valid", name)[0]["data"], column: None}
+
+    with psycopg.connect(migrated) as conn:
+        ensure_parents(conn, name, data)
+        insert(conn, TABLES[name], data)
+
+        query = sql.SQL("SELECT {} IS NULL FROM {} WHERE id = %s").format(
+            sql.Identifier(column), sql.Identifier(TABLES[name])
+        )
+        assert conn.execute(query, (data["id"],)).fetchone() == (True,)
+
+
+def test_agent_log_input_keeps_json_null(migrated: str) -> None:
+    """input은 계약상 JSON 값 전체를 받고 NOT NULL이라, null 입력은 JSON null로 남는다."""
+    data = {**load("valid", "agent_log")[0]["data"], "input": None}
+
+    with psycopg.connect(migrated) as conn:
+        insert(conn, "agent_logs", data)
+
+        row = conn.execute(
+            "SELECT jsonb_typeof(input) FROM agent_logs WHERE id = %s", (data["id"],)
+        ).fetchone()
+        assert row == ("null",)

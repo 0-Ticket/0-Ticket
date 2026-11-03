@@ -2,7 +2,9 @@
 -- 컬럼 이름은 contracts/의 최상위 필드 이름과 같다. 시각은 timestamptz, 객체는 jsonb.
 -- CHECK는 최상위 컬럼의 목록 값·숫자 범위와 triage 상태까지만 건다.
 -- jsonb 안쪽(entities[].type, verdict.decision 등)은 validate_contract()가 검사한다.
--- 계약에서 null이 될 수 있는 jsonb 컬럼(triage, verdict, output)의 null은 SQL NULL로 넣는다.
+-- jsonb 컬럼은 JSON null('null'::jsonb)을 거부한다. null이 될 수 있는 컬럼(triage, verdict, output)은
+-- SQL NULL로 넣는다. psycopg의 Jsonb(None)은 JSON null이 되어 IS NULL 조회에 걸리지 않기 때문이다.
+-- agent_logs.input만 예외다. 계약상 JSON 값 전체(null 포함)를 받고, NOT NULL이라 null은 JSON null로만 담긴다.
 
 CREATE TABLE raw_records (
     id text PRIMARY KEY,
@@ -10,7 +12,7 @@ CREATE TABLE raw_records (
     siem_profile text NOT NULL,
     siem_ref text NOT NULL,
     fetched_at timestamptz NOT NULL,
-    original jsonb NOT NULL,
+    original jsonb NOT NULL CHECK (jsonb_typeof(original) <> 'null'),
     -- 같은 SIEM 문서를 두 번 저장하지 않는다
     UNIQUE (siem_profile, siem_ref)
 );
@@ -24,11 +26,13 @@ CREATE TABLE alerts (
     severity smallint NOT NULL CHECK (severity BETWEEN 0 AND 6),
     title text NOT NULL,
     rule_id text,
-    entities jsonb NOT NULL,
-    assets jsonb NOT NULL,
-    triage jsonb CHECK (triage ->> 'status' IN ('pending', 'promoted', 'held')),
-    ocsf jsonb NOT NULL,
-    details jsonb NOT NULL
+    entities jsonb NOT NULL CHECK (jsonb_typeof(entities) <> 'null'),
+    assets jsonb NOT NULL CHECK (jsonb_typeof(assets) <> 'null'),
+    triage jsonb
+        CHECK (triage IS NULL OR jsonb_typeof(triage) <> 'null')
+        CHECK (triage ->> 'status' IN ('pending', 'promoted', 'held')),
+    ocsf jsonb NOT NULL CHECK (jsonb_typeof(ocsf) <> 'null'),
+    details jsonb NOT NULL CHECK (jsonb_typeof(details) <> 'null')
 );
 
 CREATE INDEX alerts_rule_id_idx ON alerts (rule_id);
@@ -41,10 +45,10 @@ CREATE TABLE events (
     time timestamptz NOT NULL,
     ocsf_class integer NOT NULL CHECK (ocsf_class >= 0),
     summary text NOT NULL,
-    entities jsonb NOT NULL,
-    assets jsonb NOT NULL,
-    ocsf jsonb NOT NULL,
-    details jsonb NOT NULL
+    entities jsonb NOT NULL CHECK (jsonb_typeof(entities) <> 'null'),
+    assets jsonb NOT NULL CHECK (jsonb_typeof(assets) <> 'null'),
+    ocsf jsonb NOT NULL CHECK (jsonb_typeof(ocsf) <> 'null'),
+    details jsonb NOT NULL CHECK (jsonb_typeof(details) <> 'null')
 );
 
 CREATE TABLE tickets (
@@ -52,11 +56,11 @@ CREATE TABLE tickets (
     origin text NOT NULL CHECK (origin IN ('auto', 'scenario', 'l1', 'l3')),
     status text NOT NULL CHECK (status IN ('new', 'closed', 'held', 'escalated', 'linked')),
     alert_ids text[] NOT NULL,
-    entities jsonb NOT NULL,
-    verdict jsonb,
+    entities jsonb NOT NULL CHECK (jsonb_typeof(entities) <> 'null'),
+    verdict jsonb CHECK (verdict IS NULL OR jsonb_typeof(verdict) <> 'null'),
     created_at timestamptz NOT NULL,
     updated_at timestamptz NOT NULL,
-    details jsonb NOT NULL
+    details jsonb NOT NULL CHECK (jsonb_typeof(details) <> 'null')
 );
 
 CREATE INDEX tickets_status_idx ON tickets (status);
@@ -70,14 +74,14 @@ CREATE TABLE incidents (
         status IN ('analyzing', 'awaiting_review', 'confirmed', 'human_handling', 'dismissed')
     ),
     ticket_ids text[] NOT NULL,
-    entities jsonb NOT NULL,
+    entities jsonb NOT NULL CHECK (jsonb_typeof(entities) <> 'null'),
     severity smallint NOT NULL CHECK (severity BETWEEN 0 AND 6),
     assessed_severity smallint CHECK (assessed_severity BETWEEN 0 AND 6),
     analysis_round integer NOT NULL CHECK (analysis_round >= 0),
     review_round integer NOT NULL CHECK (review_round >= 0),
     created_at timestamptz NOT NULL,
     updated_at timestamptz NOT NULL,
-    details jsonb NOT NULL
+    details jsonb NOT NULL CHECK (jsonb_typeof(details) <> 'null')
 );
 
 CREATE INDEX incidents_status_idx ON incidents (status);
@@ -90,13 +94,13 @@ CREATE TABLE cases (
     title text NOT NULL,
     summary text,
     severity smallint NOT NULL CHECK (severity BETWEEN 0 AND 6),
-    entities jsonb NOT NULL,
+    entities jsonb NOT NULL CHECK (jsonb_typeof(entities) <> 'null'),
     confirmed_by text NOT NULL,
     confirmed_at timestamptz NOT NULL,
     status text NOT NULL CHECK (status IN ('open', 'in_progress', 'resolved')),
     assignee text,
     resolved_at timestamptz,
-    details jsonb NOT NULL
+    details jsonb NOT NULL CHECK (jsonb_typeof(details) <> 'null')
 );
 
 CREATE TABLE agent_logs (
@@ -109,13 +113,13 @@ CREATE TABLE agent_logs (
     kind text NOT NULL CHECK (kind IN ('model', 'tool')),
     name text NOT NULL,
     input jsonb NOT NULL,
-    output jsonb,
+    output jsonb CHECK (output IS NULL OR jsonb_typeof(output) <> 'null'),
     outcome text NOT NULL CHECK (outcome IN ('ok', 'error')),
     tokens_in integer CHECK (tokens_in >= 0),
     tokens_out integer CHECK (tokens_out >= 0),
     started_at timestamptz NOT NULL,
     duration_ms integer NOT NULL CHECK (duration_ms >= 0),
-    details jsonb NOT NULL
+    details jsonb NOT NULL CHECK (jsonb_typeof(details) <> 'null')
 );
 
 CREATE INDEX agent_logs_subject_idx ON agent_logs (subject_type, subject_id);
