@@ -15,7 +15,7 @@ L1·L2·L3를 여러 사람이 동시에 개발하기 전에, 단계끼리 주�
 - 단계끼리 주고받는 데이터 7가지(RawRecord, Alert, Event, Ticket, Incident, Case, Agent Log)와 공통 조각 3개(Entity, Asset, Verdict)의 계약을 `contracts/`에 JSON Schema(draft-07)로 만들었다.
 - `scripts/generate_contracts.py`가 schema로 Pydantic v2 모델을 `src/soc/contracts/generated/`에 만든다. CI는 `--check`로 커밋된 생성 코드가 schema와 같은지 검사한다.
 - `soc.contracts.validate_contract(name, data)`는 다음 순서로 검사한다.
-  1. JSON 사전 검사: `json.dumps(allow_nan=False)`로 JSON으로 나타낼 수 있는지(bytes·datetime·set·순환 참조·NaN·Infinity 거부) 본 뒤, 모든 dict 키가 문자열인지, 키와 문자열 값에 NUL(`\u0000`)이 없는지 본다
+  1. JSON 사전 검사: `json.dumps(allow_nan=False)`로 JSON으로 나타낼 수 있는지(bytes·datetime·set·순환 참조·NaN·Infinity 거부) 본 뒤, 모든 dict 키가 문자열인지, 키와 문자열 값에 NUL(`\u0000`)과 짝 없는 서로게이트(U+D800~U+DFFF)가 없는지 본다
   2. JSON Schema 검사. pattern 끝의 `$`는 `\Z`로 바꿔 검사한다(끝에 `\n`이 붙은 값 거부)
   3. schema로 쓸 수 없는 규칙(Event의 `ocsf_class`)
   4. 생성 모델로 변환
@@ -29,7 +29,7 @@ L1·L2·L3를 여러 사람이 동시에 개발하기 전에, 단계끼리 주�
 
 ## 계획과 달라진 점
 
-- 사람이 정한 변경(JSON null 거부, OCSF 클래스별 검증 위치, 근거 필수, 정수·시각 상한과 시각 상한 조정, 빈 문자열 거부, `raw_id` 인덱스, 실행기의 파일 이름 비교, triage·jsonb 모양 제약, JSON이 아닌 값 거부, 실행기의 빠진 파일 확인, ID 목록 제약, 중복 ID 거부, 도구 호출 토큰, 대상 ID 모양, pattern 끝 `$` 처리, JSON 사전 검사 확장, 마이그레이션 내용 해시)은 계획 파일 "바뀐 점"에 있다.
+- 사람이 정한 변경(JSON null 거부, OCSF 클래스별 검증 위치, 근거 필수, 정수·시각 상한과 시각 상한 조정, 빈 문자열 거부, `raw_id` 인덱스, 실행기의 파일 이름 비교, triage·jsonb 모양 제약, JSON이 아닌 값 거부, 실행기의 빠진 파일 확인, ID 목록 제약, 중복 ID 거부, 도구 호출 토큰, 대상 ID 모양, pattern 끝 `$` 처리, JSON 사전 검사 확장, 마이그레이션 내용 해시, 짝 없는 서로게이트 거부)은 계획 파일 "바뀐 점"에 있다.
 - **공통 정의 파일 `contracts/common/types.schema.json`을 추가했다.** ID 패턴 9개, 시각, 심각도를 한 곳에 둔다. UUIDv7 정규식을 schema 20여 곳에 복사하지 않기 위해서다. 계약이 아니라서 `validate_contract()`의 이름으로는 쓸 수 없다.
 - **생성 옵션을 이렇게 골랐다.**
   - `--use-type-alias`: 목록 안의 ID와 null 가능한 숫자가 RootModel 대신 일반 `str`·`int`로 나온다. 이 옵션이 없으면 `ticket.alert_ids[0]`이 RootModel이라 `.root`를 붙여야 했다.
@@ -48,8 +48,8 @@ L1·L2·L3를 여러 사람이 동시에 개발하기 전에, 단계끼리 주�
 
 - **DB에 쓰기 전에 `validate_contract()`를 거친다.** 생성 모델을 직접 만들면 if/then 규칙(상태 짝, `alert_ids` 개수, 도구 호출 토큰, `subject_id` 접두사), 중복 ID(`uniqueItems`), `ocsf_class` 비교, JSON 사전 검사를 하지 않는다. 모델이 있으면 `validate_contract(name, model.model_dump(mode="json"))`로 다시 확인한다. 반환 타입은 `BaseModel`이다.
 - **계약은 모양만 검사한다.** 근거 ID(`evidence_ids`)가 실제로 있는지, Incident `severity` 계산(소속 Alert 최대, 없으면 0), Case가 Incident 값을 그대로 복사했는지는 각 단계 코드가 확인한다.
-- **`validate_contract()`를 통과하면 INSERT도 된다.** 값 때문에 INSERT가 실패하지 않는 것이 목표다(외래 키·유일 제약 위반은 별개). JSON으로 나타낼 수 없는 값(bytes·datetime·set·순환 참조·NaN·Infinity), 키와 문자열의 NUL(`\u0000`), 문자열이 아닌 dict 키(int·float·bool·None)는 계약 안팎 어느 칸에 있든 `(root): json`으로 거부한다. 시각은 `to_epoch_ms()`로, bytes는 문자열로 바꿔 넣는다. SIEM 응답을 `json.loads`로 읽으면 NaN·NUL이 섞여 들어올 수 있으므로, 수집·정규화 이슈는 이렇게 거부된 레코드를 어떻게 처리할지(건너뛰고 다음으로 갈지 등) 정한다.
-- **예외: 짝 없는 서로게이트(U+D800~U+DFFF)는 아직 거부하지 않는다.** `json.loads('"\\ud800"')`가 그대로 만들어 내고, 계약을 통과한 뒤 INSERT에서 실패한다(text 칸은 `UnicodeEncodeError`, jsonb 칸은 `InvalidTextRepresentation`. 임시 DB에서 손으로 확인). 사전 검사에 넣을지는 사람이 정한다.
+- **`validate_contract()`를 통과하면 INSERT도 된다.** 값 때문에 INSERT가 실패하지 않는 것이 목표다(외래 키·유일 제약 위반은 별개). JSON으로 나타낼 수 없는 값(bytes·datetime·set·순환 참조·NaN·Infinity), 키와 문자열의 NUL(`\u0000`)과 짝 없는 서로게이트(U+D800~U+DFFF), 문자열이 아닌 dict 키(int·float·bool·None)는 계약 안팎 어느 칸에 있든 `(root): json`으로 거부한다. 시각은 `to_epoch_ms()`로, bytes는 문자열로 바꿔 넣는다. SIEM 응답을 `json.loads`로 읽으면 NaN·NUL·짝 없는 서로게이트(`"\ud800"`)가 섞여 들어올 수 있으므로, 수집·정규화 이슈는 이렇게 거부된 레코드를 어떻게 처리할지(건너뛰고 다음으로 갈지 등) 정한다.
+- **짝 없는 서로게이트는 문자열을 UTF-8로 바꿔 보아 거부한다.** `json.dumps`는 `\ud800`으로 이스케이프해 통과시키지만, 그대로 두면 text 칸은 `UnicodeEncodeError`, jsonb 칸은 `InvalidTextRepresentation`으로 INSERT가 실패한다(임시 DB에서 손으로 확인). 이모지 같은 BMP 밖 글자는 통과한다. `json.loads`는 `"\ud83d\ude00"` 같은 이스케이프된 쌍을 한 글자로 합친다. 코드에서 서로게이트 두 개를 따로 붙인 문자열(`chr(0xD83D) + chr(0xDE00)`)은 UTF-8로 바꿀 수 없어 거부된다.
 - **schema pattern은 `^`로 시작하고 `$`로 끝나게 쓴다.** `validate_contract()`가 끝의 `$`를 `\Z`로 바꿔 검사해 끝에 `\n`이 붙은 값을 거부한다(Python의 `$`는 마지막 `\n` 앞에서도 맞는다). schema에 `\Z`를 직접 쓰지 않는 것은 ECMA 정규식과 Rust regex(Pydantic)가 모르기 때문이다. 테스트가 모든 pattern의 모양을 검사한다. `\d`·`\w`·`\s`는 Python에서 유니코드 글자까지 맞으니 `[0-9]`처럼 범위를 적는다(지금 pattern 9개에는 없다).
 - **Hunt 대상 Agent Log의 `subject_id`는 빈 문자열만 거부한다.** Hunt ID 형식이 아직 없어서다. L3 이슈에서 Hunt ID를 정할 때 `agent_log.schema.json`의 `hunt` 갈래(`minLength: 1`)를 그 ID 패턴으로 바꾼다. 공통 계약 변경이라 L1·L2·L3 담당자 전원의 승인이 필요하고, 접두사를 새로 만들면 `soc.ids.new_id()`와 `types.schema.json`에도 더한다.
 - **DB는 ID 목록의 NULL 원소와 개수만 확인한다.** 중복과 접두사는 `validate_contract()`만 검사하고, 가리키는 행이 실제로 있는지는 각 단계 코드가 확인한다. 2차원 배열은 `array_position`이 CHECK 위반이 아닌 `feature_not_supported`(0A000) 오류를 내서 들어가지 않는다.
@@ -74,11 +74,11 @@ L1·L2·L3를 여러 사람이 동시에 개발하기 전에, 단계끼리 주�
 ## 확인 방법
 
 - `uv run ruff format --check .`, `uv run ruff check .`: 통과
-- `uv run pytest`: 230개 통과(`db` 66개 제외). 주요 테스트:
-  - `tests/test_contracts.py`: 올바른 샘플 35개(상한 경계값 포함)가 통과하고, 모델로 바꿔도 필드가 빠지지 않는다. 틀린 샘플 72개는 기대한 경로·규칙으로 거부되고, 위반 rule은 약속한 이름뿐이다. JSON 사전 검사 67개(자유 객체 5칸 × 13종, `verdict.confidence` NaN, `alert.title` NUL)는 `(root): json`으로 거부되고 메시지에 입력 값이 없다. 모든 schema pattern이 `^…$` 모양이고, 끝 `$` 처리 3개(이스케이프 포함)를 확인한다.
+- `uv run pytest`: 252개 통과(`db` 67개 제외). 주요 테스트:
+  - `tests/test_contracts.py`: 올바른 샘플 35개(상한 경계값 포함)가 통과하고, 모델로 바꿔도 필드가 빠지지 않는다. 틀린 샘플 72개는 기대한 경로·규칙으로 거부되고, 위반 rule은 약속한 이름뿐이다. JSON 사전 검사 78개(자유 객체 5칸 × 15종, `verdict.confidence` NaN, `alert.title` NUL·짝 없는 서로게이트)는 `(root): json`으로 거부되고 메시지에 입력 값이 없다. 이모지가 든 값·키 11개(자유 객체 5칸 × 값·키, `alert.title`)는 통과한다. 모든 schema pattern이 `^…$` 모양이고, 끝 `$` 처리 3개(이스케이프 포함)를 확인한다.
   - `tests/test_ids.py`, `tests/test_times.py`, `tests/test_migrate.py`
-- `DATABASE_URL=<로컬 postgres:17.6 trust 컨테이너> uv run pytest -m db`: 66개 통과(`tests/test_db_tables.py`). 상한 경계값 샘플(int32 최댓값, 상한 시각)도 테이블에 들어가고, 세션 시간대 Pacific/Kiritimati(+14)·Asia/Seoul(+9)에서도 읽힌다. 이 시간대 테스트는 이전 상한(9999-12-31)에서 `timestamp too large (after year 10K)`로 실패하는 것을 확인했다. 끝난 뒤 남은 임시 DB 0개. JSON null 거부 테스트는 CHECK를 넣기 전 SQL에서 실패하는 것을 확인했다
-- `DATABASE_URL` 없이 `uv run pytest -m db`: 66개 오류(건너뛰지 않음)
+- `DATABASE_URL=<로컬 postgres:17.6 trust 컨테이너> uv run pytest -m db`: 67개 통과(`tests/test_db_tables.py`). 상한 경계값 샘플(int32 최댓값, 상한 시각)도 테이블에 들어가고, 세션 시간대 Pacific/Kiritimati(+14)·Asia/Seoul(+9)에서도 읽힌다. 이 시간대 테스트는 이전 상한(9999-12-31)에서 `timestamp too large (after year 10K)`로 실패하는 것을 확인했다. 끝난 뒤 남은 임시 DB 0개. JSON null 거부 테스트는 CHECK를 넣기 전 SQL에서 실패하는 것을 확인했다
+- `DATABASE_URL` 없이 `uv run pytest -m db`: 67개 오류(건너뛰지 않음)
 - triage·jsonb 모양 테스트: 새 제약을 넣기 전 SQL에서 실패하는 것을 확인했다. 리뷰 원안 식(`jsonb_typeof(triage) = 'object' AND triage ->> 'status' IN (...)`)으로는 `{}`, status 없음, status null이 여전히 통과해서 `IS TRUE`로 감쌌다
 - 두 번째 리뷰 반영(2026-11-04): 항목마다 새 테스트가 고치기 전에 실패하는 것을 확인했다.
   - JSON이 아닌 값 15개: `ContractError`가 나지 않아 실패
@@ -92,13 +92,16 @@ L1·L2·L3를 여러 사람이 동시에 개발하기 전에, 단계끼리 주�
   - JSON 사전 검사 47개(자유 객체 5칸 × NaN·inf·-inf·NUL 값·NUL 키·int·None·bool·float 키, `verdict.confidence` NaN, `alert.title` NUL): 거부되지 않거나 다른 위반(`string_type`, `less_than_equal`)으로 실패
   - rule 약속 검사: 지금 코드에서는 통과한다. 1·2번 전 `validate.py`(1bf2ddb)를 임시 worktree에 두고 돌리면, `string_pattern_mismatch` 3건이 약속 밖으로 나오고 `subject_id` 샘플은 거부되지 않아 실패한다
   - `db` 테스트는 더하지 않았다. 올바른 샘플 전체를 `validate_contract()`로 검사한 뒤 INSERT하는 테스트(`test_valid_samples_fit_tables_and_read_back`)가 이미 있다
-- 손으로 확인(커밋하지 않은 스크립트, 임시 DB): 첫 개발 때 문자열의 NUL, `details`의 NaN·Infinity가 계약을 통과한 뒤 INSERT에서 실패하는 것을 확인했고, 지금은 `validate_contract()`가 `(root): json`으로 거부한다. 짝 없는 서로게이트는 지금도 계약을 통과한 뒤 INSERT에서 실패한다
+- 손으로 확인(커밋하지 않은 스크립트, 임시 DB): 첫 개발 때 문자열의 NUL, `details`의 NaN·Infinity가 계약을 통과한 뒤 INSERT에서 실패하는 것을 확인했고, 지금은 `validate_contract()`가 `(root): json`으로 거부한다. 짝 없는 서로게이트도 계약을 통과한 뒤 INSERT에서 실패하는 것을 확인했고, 지금은 같은 `(root): json`으로 거부한다
 - 손으로 확인: 700단계로 중첩된 `details`도 JSON 사전 검사에서 RecursionError 없이 통과한다
 - 네 번째 리뷰 반영(2026-11-04, 마이그레이션 내용 해시): 새 테스트가 고치기 전에 실패하는 것을 확인했다.
   - 해시 기록: `checksum` 칸이 없어(`UndefinedColumn`) 실패
   - 같은 이름으로 내용만 바꾸고 0002를 더함: `MigrationError`가 나지 않고 0002가 적용되어 실패
   - 줄바꿈만 바꾼 파일 2개(LF→CRLF, CRLF→LF)와 두 번 실행 테스트는 고치기 전후 모두 통과한다(검사가 너무 엄격해지지 않았는지 지킨다)
 - 손으로 확인(임시 DB): `python -m soc.db.migrate`는 기록된 해시가 다르면 `0001번(0001_common_tables.sql)`을 담은 오류를 내고 exit 1로 끝난다. `checksum` 칸이 없는 예전 `schema_migrations`에서도 exit 1로 멈춘다
+- 짝 없는 서로게이트 거부(2026-11-04): 새 테스트가 고치기 전에 실패하는 것을 확인했다.
+  - 자유 객체 5칸 × 짝 없는 서로게이트 값(`\ud800`)·키(`\udfff`) 10개와 `alert.title` 1개: 거부되지 않아 실패
+  - 이모지 통과 11개와 `db` 테스트(이모지가 든 Alert를 검증한 뒤 INSERT·읽기, `json.loads`로 읽은 이스케이프 쌍 포함)는 고치기 전후 모두 통과한다(지나치게 엄격하지 않은지 지킨다). 올바른 샘플에 BMP 밖 글자가 없어 기존 `db` 테스트로는 덮이지 않아 새로 넣었다
 - `uv run python scripts/generate_contracts.py --check`: 차이 없음. 생성 파일에 한 줄을 더하면 exit 1
 - 빈 DB에 `uv run python -m soc.db.migrate`를 두 번 실행: 1개 적용 → "적용할 마이그레이션이 없다"
 - 최신 uv로 `uv lock --check`: 통과
