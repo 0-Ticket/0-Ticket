@@ -130,3 +130,25 @@ def test_main_exits_1_without_traceback_on_non_utf8_migration(
     error = capsys.readouterr().err
     assert "0001_cp949.sql" in error
     assert "Traceback" not in error
+
+
+# 메모장 같은 Windows 편집기가 붙이는 UTF-8 BOM. 디코딩은 되지만
+# PostgreSQL이 BOM을 SQL 첫 글자로 읽어 문법 오류를 낸다.
+BOM_SQL = "\ufeffCREATE TABLE second_table (id int);".encode()
+
+
+def test_main_exits_1_without_traceback_on_bom_migration(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """BOM도 DB 접속 전에 거부하므로 DB 없이 확인한다. 접속을 먼저 하면 연결 오류가 난다."""
+    write(tmp_path, "0001_first.sql", "CREATE TABLE first_table (id int);")
+    (tmp_path / "0002_bom.sql").write_bytes(BOM_SQL)
+    monkeypatch.setenv("DATABASE_URL", UNREACHABLE_URL)
+    monkeypatch.setattr("soc.db.migrate.migrate", functools.partial(migrate, directory=tmp_path))
+
+    assert main() == 1
+
+    error = capsys.readouterr().err
+    assert "0002_bom.sql" in error
+    assert "BOM" in error
+    assert "Traceback" not in error

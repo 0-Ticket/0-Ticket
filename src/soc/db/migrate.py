@@ -18,10 +18,11 @@
   - 파일 내용의 해시가 기록과 다르다(이름은 두고 내용만 고치면 기존 DB와 새 DB의 스키마가
     갈라진다). 해시는 UTF-8로 읽어 \\r\\n을 \\n으로 바꾼 뒤의 SHA-256(hex)이다. Windows의
     core.autocrlf 체크아웃에서도 같은 값이 나오게 하려는 것이다. 강제로 해시를 고치는 옵션은 없다.
-- SQL 파일은 UTF-8로 저장한다. UTF-8이 아니면(예: CP949) 번호와 파일 이름을 담은
-  MigrationError로 멈춘다.
-- 파일은 DB 접속 전에 모두 읽는다. 인코딩 오류는 아무것도 적용하지 않는다. SQL 오류는 앞 번호가
-  적용된 채로 멈춘다. 해시 비교와 적용은 이때 읽은 내용을 쓴다(비교한 내용을 그대로 적용한다).
+- SQL 파일은 BOM 없는 UTF-8로 저장한다. UTF-8이 아니거나(예: CP949) UTF-8 BOM으로 시작하면
+  번호와 파일 이름을 담은 MigrationError로 멈춘다. BOM을 떼고 적용하지 않는다.
+- 파일은 DB 접속 전에 모두 읽는다. 인코딩 오류와 BOM은 아무것도 적용하지 않는다.
+  SQL 오류는 앞 번호가 적용된 채로 멈춘다. 해시 비교와 적용은 이때 읽은 내용을 쓴다
+  (비교한 내용을 그대로 적용한다).
 - DB 주소(비밀번호 포함)는 출력·로그·예외 메시지에 넣지 않는다.
 """
 
@@ -89,6 +90,13 @@ def _read_sql(migration: Migration) -> tuple[str, str]:
             f"{migration.version:04d}번({migration.name})을 UTF-8로 읽지 못했다"
             f"({exc.start + 1}번째 바이트). 마이그레이션 파일은 UTF-8로 저장한다"
         ) from None
+    if text.startswith("\ufeff"):
+        # BOM을 떼고 적용하지 않는다. psql도 클라이언트 인코딩이 UTF8일 때만 떼고 다른 인코딩에서는
+        # 문법 오류를 내므로 도구마다 결과가 갈라진다. 같은 SQL의 해시가 BOM 때문에 달라지기도 한다.
+        raise MigrationError(
+            f"{migration.version:04d}번({migration.name})이 UTF-8 BOM으로 시작한다."
+            " 마이그레이션 파일은 BOM 없는 UTF-8로 저장한다"
+        )
     sql = text.replace("\r\n", "\n")
     return sql, hashlib.sha256(sql.encode("utf-8")).hexdigest()
 

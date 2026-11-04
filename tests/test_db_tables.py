@@ -294,6 +294,23 @@ def test_non_utf8_migration_applies_nothing(temp_database: str, tmp_path: Path) 
         assert table_names(conn) == set()
 
 
+# 메모장 같은 Windows 편집기가 붙이는 UTF-8 BOM. 디코딩은 되지만
+# PostgreSQL이 BOM을 SQL 첫 글자로 읽어 문법 오류를 낸다.
+BOM_SQL = "\ufeffCREATE TABLE second_table (id int);".encode()
+
+
+def test_bom_migration_applies_nothing(temp_database: str, tmp_path: Path) -> None:
+    (tmp_path / "0001_first.sql").write_text("CREATE TABLE first_table (id int);")
+    (tmp_path / "0002_bom.sql").write_bytes(BOM_SQL)
+
+    with pytest.raises(MigrationError, match=r"0002번\(0002_bom\.sql\)이 UTF-8 BOM으로 시작한다"):
+        migrate(temp_database, tmp_path)
+
+    with psycopg.connect(temp_database) as conn:
+        # 접속 전에 멈추므로 0001의 테이블도, schema_migrations도 없다
+        assert table_names(conn) == set()
+
+
 @pytest.mark.parametrize("table", ["alerts", "events"])
 def test_raw_id_is_indexed(migrated: str, table: str) -> None:
     with psycopg.connect(migrated) as conn:
