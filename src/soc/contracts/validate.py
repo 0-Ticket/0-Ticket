@@ -165,6 +165,8 @@ def _is_storable_text(text: str) -> bool:
 
 def _extra_violations(name: str, data: dict[str, Any]) -> list[Violation]:
     """JSON Schema로 쓸 수 없는 규칙. schema 검사를 통과한 data만 받는다."""
+    # 두 값 모두 schema의 integer 검사(Python int만)를 지났다. 4002.0은 거기서 type 위반이다.
+    # 여기서는 4002 == 4002.0이 참이므로, schema에서 integer를 빼면 float가 이 비교를 지나간다.
     if name == "event" and data["ocsf_class"] != data["ocsf"]["class_uid"]:
         return [Violation("ocsf.class_uid", "equals_ocsf_class")]
     return []

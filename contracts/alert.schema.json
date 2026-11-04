@@ -52,7 +52,7 @@
       "additionalProperties": true,
       "required": ["class_uid"],
       "properties": {
-        "class_uid": {"const": 2004}
+        "class_uid": {"type": "integer", "const": 2004}
       }
     },
     "details": {

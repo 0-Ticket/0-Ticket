@@ -74,6 +74,38 @@ def test_schema_patterns_are_anchored_at_both_ends() -> None:
         assert (len(body) - len(body.rstrip("\\"))) % 2 == 0, f"끝의 $가 이스케이프됐다: {pattern}"
 
 
+def is_number(value: object) -> bool:
+    return isinstance(value, int | float) and not isinstance(value, bool)
+
+
+def numeric_constant_nodes(node: object) -> Iterator[dict]:
+    """숫자 const나 숫자가 든 enum을 가진 schema 노드."""
+    if isinstance(node, dict):
+        if is_number(node.get("const")) or any(map(is_number, node.get("enum", []))):
+            yield node
+        for value in node.values():
+            yield from numeric_constant_nodes(value)
+    elif isinstance(node, list):
+        for item in node:
+            yield from numeric_constant_nodes(item)
+
+
+def test_numeric_const_and_enum_have_integer_type() -> None:
+    """jsonschema는 const·enum을 수치로 비교해 2004.0도 2004와 같다고 본다.
+
+    type: integer를 같이 두어야 integer 검사(Python int만)에 걸려 2004.0이 거부된다.
+    """
+    nodes = [
+        node
+        for path in sorted(SCHEMA_DIR.rglob("*.schema.json"))
+        for node in numeric_constant_nodes(json.loads(path.read_text(encoding="utf-8")))
+    ]
+
+    assert nodes
+    for node in nodes:
+        assert node.get("type") == "integer", node
+
+
 @pytest.mark.parametrize(
     ("pattern", "matches", "rejects"),
     [
