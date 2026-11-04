@@ -1,0 +1,9 @@
+{
+  "description": "답을 내지 않고 도구만 계속 부른다",
+  "steps": [
+    {"tool_call": {"name": "lookup_alert", "arguments": {"alert_id": "alt_01a19f93-1150-7000-8000-000000000004"}}},
+    {"tool_call": {"name": "lookup_alert", "arguments": {"alert_id": "alt_01a19f93-1150-7000-8000-000000000004"}}},
+    {"tool_call": {"name": "lookup_alert", "arguments": {"alert_id": "alt_01a19f93-1150-7000-8000-000000000004"}}},
+    {"tool_call": {"name": "lookup_alert", "arguments": {"alert_id": "alt_01a19f93-1150-7000-8000-000000000004"}}}
+  ]
+}
