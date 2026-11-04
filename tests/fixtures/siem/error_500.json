@@ -1,0 +1,8 @@
+{
+  "error": {
+    "root_cause": [{"type": "search_phase_execution_exception", "reason": "all shards failed at elk-internal.example.com:9200"}],
+    "type": "search_phase_execution_exception",
+    "reason": "all shards failed"
+  },
+  "status": 500
+}

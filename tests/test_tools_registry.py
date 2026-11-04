@@ -13,7 +13,15 @@ from tool_helpers import Caller, body_chars, parse
 from soc.agent.agent_log import MemoryLogSink
 from soc.agent.runner import run_task
 from soc.contracts import validate_contract
-from soc.tools import Arg, ToolConfigError, ToolError, ToolRegistry, ToolSpec, default_registry
+from soc.tools import (
+    Arg,
+    ToolConfigError,
+    ToolError,
+    ToolRegistry,
+    ToolSpec,
+    default_registry,
+    tool_error_text,
+)
 
 OTHER_ALERT = "alt_01a19f93-1150-7000-8000-00000000ffff"
 SECRET_MESSAGE = "boom postgresql://reader:fake-agent-pass-6666@db.example.com/soc SELECT 1"
@@ -539,7 +547,8 @@ def production_config() -> dict[str, Any]:
 
 
 def test_default_registry_has_the_five_tools() -> None:
-    assert default_registry().names() == PRODUCTION_TOOLS
+    # #212에서 SIEM 도구 2개가 늘었다
+    assert default_registry().names() == [*PRODUCTION_TOOLS, "query_siem", "count_siem"]
 
 
 def test_missing_agent_database_url_is_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -565,3 +574,74 @@ def model_tool_outputs(model: FakeModel) -> list[str]:
     from fake_model import tool_outputs
 
     return tool_outputs(model.calls[-1]["input"])
+
+
+# 실패 사유(details.reason)와 도구 설정 검사(check_config) (#212)
+
+
+def _reasoned(args: dict[str, Any], ctx: Any) -> Any:
+    raise ToolError("failed", reason="auth")
+
+
+def test_reason_goes_to_details_and_not_to_the_model() -> None:
+    registry = ToolRegistry([spec("reasoned", _reasoned)])
+    caller = Caller(registry, config(["reasoned"]))
+    out = call(caller, "reasoned", {})
+    assert out == tool_error_text("reasoned", "failed")
+    assert "auth" not in out
+    assert caller.rows[0]["details"]["failure"] == "failed"
+    assert caller.rows[0]["details"]["reason"] == "auth"
+    validate_contract("agent_log", caller.rows[0])
+
+
+def test_no_reason_keeps_details_as_before() -> None:
+    caller = Caller(REGISTRY, config())
+    call(caller, "coded", {"code": "timeout"})
+    call(caller, "boom", {})
+    assert caller.rows[0]["details"]["failure"] == "timeout"
+    assert caller.rows[1]["details"]["failure"] == "failed"
+    assert "reason" not in caller.rows[0]["details"]
+    assert "reason" not in caller.rows[1]["details"]
+    assert ToolError("failed").reason is None
+
+
+def test_tool_error_reason_must_be_text() -> None:
+    with pytest.raises(ValueError):
+        ToolError("failed", reason="")
+
+
+CHECKED: list[Any] = []
+
+
+def _check_config(tools_config: Any) -> None:
+    CHECKED.append(tools_config)
+    if tools_config.get("broken"):
+        raise ToolConfigError("설정이 틀렸다")
+
+
+def _check_config_crashes(tools_config: Any) -> None:
+    raise KeyError("x")
+
+
+def test_check_config_runs_for_allowed_tools_only() -> None:
+    CHECKED.clear()
+    registry = ToolRegistry(
+        [spec("checked", _spy, check_config=_check_config), spec("other", _spy)]
+    )
+    cfg = config(["other"])
+    cfg["tools"]["broken"] = True
+    Caller(registry, cfg)  # 허용되지 않은 도구의 설정은 보지 않는다
+    assert CHECKED == []
+    Caller(registry, config(["checked"]))
+    assert len(CHECKED) == 1
+
+
+@pytest.mark.parametrize("checker", [_check_config, _check_config_crashes])
+def test_bad_tool_config_is_provider_error(checker: Any) -> None:
+    registry = ToolRegistry([spec("checked", _spy, check_config=checker)])
+    cfg = config(["checked"])
+    cfg["tools"]["broken"] = True
+    with pytest.raises(ToolConfigError):
+        Caller(registry, cfg)
+    result, _, _ = run([{"final": verdict(ALERT_ID)}], cfg=cfg, registry=registry)
+    assert result.failure == "provider_error"

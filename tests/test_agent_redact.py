@@ -60,3 +60,14 @@ def test_non_strings_are_kept() -> None:
         "none": None,
         "f": 0.5,
     }
+
+
+def test_siem_tool_env_values_are_redacted() -> None:
+    # SIEM 도구(#212)의 [tools.siem] url_env·api_key_env.
+    # redact.py를 고치지 않고 *_env 규칙으로 잡힌다
+    config = {"tools": {"siem": {"url_env": "ELK_URL", "api_key_env": "ELK_API_KEY"}}}
+    env = {"ELK_URL": "https://elk.example.com:9200", "ELK_API_KEY": "fake-elk-key-iiii"}
+    out = build_redactor(config, env)(
+        {"output": "ApiKey fake-elk-key-iiii at https://elk.example.com:9200/logs/_search"}
+    )
+    assert out == {"output": f"ApiKey {REDACTED} at {REDACTED}/logs/_search"}

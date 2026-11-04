@@ -42,13 +42,20 @@ _MIN_SHORTEN = 16
 
 
 class ToolError(Exception):
-    """핸들러가 오류 코드로 실패를 알린다. 메시지는 모델과 detail에 보내지 않는다."""
+    """핸들러가 오류 코드로 실패를 알린다. 메시지는 모델과 detail에 보내지 않는다.
 
-    def __init__(self, code: ErrorCode) -> None:
+    reason은 Agent Log tool 줄의 details.reason에만 남기는 짧은 사유 이름이다(예: auth, #212).
+    모델에게 가는 문구는 reason과 상관없이 같다. 비밀 값이나 응답 본문을 넣지 않는다.
+    """
+
+    def __init__(self, code: ErrorCode, reason: str | None = None) -> None:
         if code not in ERROR_CODES:
             raise ValueError("알 수 없는 도구 오류 코드")
+        if reason is not None and (not isinstance(reason, str) or not reason):
+            raise ValueError("reason은 빈 값이 아닌 문자열이다")
         super().__init__(code)
         self.code = code
+        self.reason = reason
 
 
 class ToolConfigError(Exception):
@@ -83,6 +90,7 @@ class CallContext:
 
 Handler = Callable[[dict[str, Any], CallContext], Any]
 Check = Callable[[dict[str, Any], Mapping[str, Any]], None]
+CheckConfig = Callable[[Mapping[str, Any]], None]
 
 
 @dataclass(frozen=True)
@@ -97,6 +105,8 @@ class ToolSpec:
       장부에는 call_id만 들어간다.
     limit_argument: 이름을 주면 그 정수 인자(기본 [tools] default_limit, 1~max_limit)를 더한다.
     check: 인자 사이의 조건을 실행 전에 검사한다. 맞지 않으면 ToolError("invalid_argument").
+    check_config: 설정의 [tools]를 실행 시작 전에 검사한다(#212). 허용 목록에 있는 도구만 부르고,
+      틀리면 ToolConfigError를 낸다. 실행은 provider_error("도구 설정 오류")로 끝난다.
     """
 
     name: str
@@ -108,6 +118,7 @@ class ToolSpec:
     limit_argument: str | None = None
     args: tuple[Arg, ...] = ()
     check: Check | None = None
+    check_config: CheckConfig | None = None
 
 
 class ToolRecorder(Protocol):
@@ -116,7 +127,12 @@ class ToolRecorder(Protocol):
     def tool_log_id(self, tool_call_id: str) -> str | None: ...
 
     def report_tool(
-        self, tool_call_id: str, output: Any, failure: str | None, blocked: bool
+        self,
+        tool_call_id: str,
+        output: Any,
+        failure: str | None,
+        blocked: bool,
+        reason: str | None = None,
     ) -> None: ...
 
 
@@ -157,6 +173,15 @@ class ToolRegistry:
         except (KeyError, TypeError, ValueError):
             raise ToolConfigError("도구 결과 한도나 strict_mode 설정이 없다") from None
         specs = [self._specs[name] for name in dict.fromkeys(allowed)]
+        for spec in specs:
+            if spec.check_config is None:
+                continue
+            try:
+                spec.check_config(tools)
+            except ToolConfigError:
+                raise
+            except Exception:  # 검사 코드의 예외도 설정 오류로 본다. 메시지는 남기지 않는다
+                raise ToolConfigError("도구 설정을 검사하지 못했다") from None
         return ToolSession(
             specs=specs,
             tools_config=tools,
@@ -219,7 +244,7 @@ class ToolSession:
             if spec.check is not None:
                 spec.check(args, self._tools_config)
         except ToolError as exc:
-            return self._fail(name, tool_call_id, exc.code)
+            return self._fail(name, tool_call_id, exc.code, reason=exc.reason)
         ctx = CallContext(
             call_id=call_id,
             tools_config=self._tools_config,
@@ -230,7 +255,7 @@ class ToolSession:
             raw = spec.handler(args, ctx)
             body, shown_ids = self._shape(spec, call_id, raw)
         except ToolError as exc:
-            return self._fail(name, tool_call_id, exc.code)
+            return self._fail(name, tool_call_id, exc.code, reason=exc.reason)
         except Exception:  # 메시지에 SQL·주소가 들어 있을 수 있어 종류도 남기지 않는다
             return self._fail(name, tool_call_id, "failed")
         self._failures[name] = 0
@@ -239,11 +264,19 @@ class ToolSession:
         self._recorder.report_tool(tool_call_id, raw, None, False)
         return _wrap(_dump(body))
 
-    def _fail(self, name: str, tool_call_id: str, code: str, *, blocked: bool = False) -> str:
+    def _fail(
+        self,
+        name: str,
+        tool_call_id: str,
+        code: str,
+        *,
+        blocked: bool = False,
+        reason: str | None = None,
+    ) -> str:
         text = tool_error_text(name, code)
         if name in self._specs:
             self._failures[name] = self._failures.get(name, 0) + 1
-        self._recorder.report_tool(tool_call_id, text, code, blocked)
+        self._recorder.report_tool(tool_call_id, text, code, blocked, reason)
         return text
 
     def _fits(self, body: dict[str, Any]) -> bool:

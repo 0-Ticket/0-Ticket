@@ -1,0 +1,8 @@
+{
+  "error": {
+    "root_cause": [{"type": "security_exception", "reason": "unable to authenticate with provided credentials and anonymous access is not allowed for this request"}],
+    "type": "security_exception",
+    "reason": "unable to authenticate with provided credentials and anonymous access is not allowed for this request"
+  },
+  "status": 401
+}

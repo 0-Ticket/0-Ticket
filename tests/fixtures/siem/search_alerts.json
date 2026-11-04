@@ -1,0 +1,45 @@
+{
+  "took": 2,
+  "timed_out": false,
+  "hits": {
+    "total": {"value": 10000, "relation": "gte"},
+    "max_score": null,
+    "hits": [
+      {
+        "_index": ".internal.alerts-security.alerts-default-000001",
+        "_id": "alert-doc-0001",
+        "_score": null,
+        "_source": {
+          "@timestamp": "2026-11-04T02:00:00.000Z",
+          "kibana.alert.rule.name": "Multiple Logon Failure from the same Source Address",
+          "kibana.alert.severity": "medium",
+          "kibana.alert.risk_score": 47,
+          "kibana.alert.reason": "authentication event with source 203.0.113.10 by test-user on web-01.example.com created medium alert",
+          "kibana.alert.workflow_status": "open",
+          "kibana.alert.original_event": {"action": "logon-failed"},
+          "source": {"ip": "203.0.113.10"},
+          "user": {"name": "test-user"},
+          "host": {"name": "web-01.example.com"},
+          "event": {"action": "logon-failed"}
+        }
+      },
+      {
+        "_index": ".internal.alerts-security.alerts-default-000001",
+        "_id": "alert-doc-0002",
+        "_score": null,
+        "_source": {
+          "@timestamp": "2026-11-04T01:30:00.000Z",
+          "kibana": {
+            "alert": {
+              "rule": {"name": "Unusual Login Activity"},
+              "severity": "high",
+              "risk_score": 73,
+              "workflow_status": "open"
+            }
+          },
+          "destination": {"ip": "192.0.2.20"}
+        }
+      }
+    ]
+  }
+}
