@@ -1,0 +1,45 @@
+[
+  {
+    "case": "one_hypothesis",
+    "data": {
+      "hypotheses": [
+        {
+          "hypothesis": "공개 웹 서버의 취약점으로 웹셸이 올라왔다",
+          "attack_techniques": [
+            "T1190",
+            "T1505.003"
+          ],
+          "news_ids": [
+            1,
+            2
+          ],
+          "case_ids": [
+            "cas_01a19f93-1150-7000-8000-000000000001"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "case": "no_hypotheses",
+    "data": {
+      "hypotheses": []
+    }
+  },
+  {
+    "case": "no_references",
+    "data": {
+      "hypotheses": [
+        {
+          "hypothesis": "공개 웹 서버의 취약점으로 웹셸이 올라왔다",
+          "attack_techniques": [
+            "T1190",
+            "T1505.003"
+          ],
+          "news_ids": [],
+          "case_ids": []
+        }
+      ]
+    }
+  }
+]

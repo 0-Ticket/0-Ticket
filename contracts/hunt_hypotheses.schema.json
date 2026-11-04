@@ -1,0 +1,47 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "hunt_hypotheses.schema.json",
+  "title": "HuntHypotheses",
+  "description": "L3 가설 생성 run의 출력. L3 내부 출력 계약이고 다른 단계는 읽지 않는다. 가설 문장은 밖에서 온 문자열(뉴스 등)에서 나온 LLM 출력이다",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["hypotheses"],
+  "properties": {
+    "hypotheses": {
+      "description": "가설 목록. 가설을 세우지 못하면 빈 목록",
+      "type": "array",
+      "items": {
+        "title": "HuntHypothesis",
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["hypothesis", "attack_techniques", "news_ids", "case_ids"],
+        "properties": {
+          "hypothesis": {
+            "description": "가설 문장",
+            "type": "string",
+            "minLength": 1
+          },
+          "attack_techniques": {
+            "description": "ATT&CK 기법 ID(T1190, T1059.004). 1개 이상, 중복 없음. 실제로 있는 기법인지는 L3 코드가 확인한다",
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {"type": "string", "pattern": "^T[0-9]{4}(\\.[0-9]{3})?$"}
+          },
+          "news_ids": {
+            "description": "참고한 뉴스(threat_news.id). 중복 없음. 입력에 없던 값은 L3 코드가 버린다",
+            "type": "array",
+            "uniqueItems": true,
+            "items": {"type": "integer", "minimum": 1}
+          },
+          "case_ids": {
+            "description": "참고한 Case ID. 중복 없음. 입력에 없던 값은 L3 코드가 버린다",
+            "type": "array",
+            "uniqueItems": true,
+            "items": {"$ref": "common/types.schema.json#/definitions/case_id"}
+          }
+        }
+      }
+    }
+  }
+}

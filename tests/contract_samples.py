@@ -20,6 +20,8 @@ CONTRACT_NAMES = (
     "incident",
     "case",
     "hunt",
+    "hunt_hypotheses",
+    "hunt_verification",
     "agent_log",
     "entity",
     "asset",

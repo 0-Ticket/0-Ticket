@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "hunt_verification.schema.json",
+  "title": "HuntVerification",
+  "description": "L3 검증 run의 출력. L3 내부 출력 계약이고 다른 단계는 읽지 않는다. 결과를 낮추는 규칙(확신도 임계값, 근거 종류)은 L3 코드가 적용한다",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["result", "confidence", "reason", "evidence_ids", "entities"],
+  "properties": {
+    "result": {
+      "description": "confirmed: 위협 확인, rejected: 가설 기각, inconclusive: 근거 부족",
+      "type": "string",
+      "enum": ["confirmed", "rejected", "inconclusive"]
+    },
+    "confidence": {
+      "description": "확신도",
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "reason": {
+      "description": "이유. 공격자가 쓴 문장이 들어갈 수 있다",
+      "type": "string",
+      "minLength": 1
+    },
+    "evidence_ids": {
+      "description": "근거가 된 Alert·Event ID와 도구 호출 기록 ID. 중복 없음",
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "common/types.schema.json#/definitions/evidence_id"}
+    },
+    "entities": {
+      "description": "모델이 확인한 엔티티. L3 코드가 근거 레코드의 엔티티와 합친다",
+      "type": "array",
+      "items": {"$ref": "common/entity.schema.json"}
+    }
+  }
+}
