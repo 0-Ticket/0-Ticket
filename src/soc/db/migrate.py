@@ -36,7 +36,9 @@ import psycopg
 
 MIGRATIONS_DIR = Path(__file__).parent / "migrations"
 
-_NAME = re.compile(r"^(\d{4})_[a-z0-9_]+\.sql$")
+# 숫자는 [0-9]로 쓰고 이름 전체를 fullmatch로 비교한다.
+# \d는 유니코드 숫자(٠٠٠١ 등)에도 맞고, $는 마지막 \n 앞에서도 맞기 때문이다.
+_NAME = re.compile(r"([0-9]{4})_[a-z0-9_]+\.sql")
 
 _CREATE_HISTORY = """
 CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -63,7 +65,7 @@ def find_migrations(directory: Path = MIGRATIONS_DIR) -> list[Migration]:
     """번호 순서로 정렬한 마이그레이션 목록. 이름이 규칙에 맞지 않거나 번호가 겹치면 실패한다."""
     found: dict[int, list[Path]] = {}
     for path in sorted(directory.glob("*.sql")):
-        match = _NAME.match(path.name)
+        match = _NAME.fullmatch(path.name)
         if match is None:
             raise MigrationError(
                 f"마이그레이션 파일 이름이 'NNNN_소문자_이름.sql' 규칙에 맞지 않다: {path.name}"

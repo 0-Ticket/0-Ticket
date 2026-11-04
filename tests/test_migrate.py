@@ -44,12 +44,32 @@ def test_duplicate_numbers_are_rejected(tmp_path: Path) -> None:
         find_migrations(tmp_path)
 
 
-@pytest.mark.parametrize("name", ["init.sql", "1_short.sql", "0001-dash.sql", "0001_Upper.sql"])
+@pytest.mark.parametrize(
+    "name",
+    [
+        "init.sql",
+        "1_short.sql",
+        "0001-dash.sql",
+        "0001_Upper.sql",
+        "\u0660\u0660\u0660\u0661_x.sql",  # 아랍 숫자 ٠٠٠١. \d라면 1번으로 읽힌다
+    ],
+)
 def test_badly_named_sql_files_are_rejected(tmp_path: Path, name: str) -> None:
     write(tmp_path, name)
 
     with pytest.raises(MigrationError):
         find_migrations(tmp_path)
+
+
+def test_name_ending_in_newline_is_not_a_migration(tmp_path: Path) -> None:
+    """이름이 .sql로 끝나지 않으므로 README.md처럼 SQL 파일로 보지 않고 넘어간다.
+
+    파일 이름에 \\n을 쓸 수 있는 OS(Linux·macOS)에서만 만들 수 있는 이름이다.
+    """
+    write(tmp_path, "0001_x.sql\n")
+    write(tmp_path, "0002_y.sql")
+
+    assert [m.name for m in find_migrations(tmp_path)] == ["0002_y.sql"]
 
 
 def test_duplicates_are_found_before_connecting(tmp_path: Path) -> None:
