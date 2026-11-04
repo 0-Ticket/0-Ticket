@@ -1,6 +1,6 @@
 """계약 시각(UTC epoch 밀리초) ↔ DB 시각(timestamptz) 변환."""
 
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta, timezone
 
 import pytest
 
@@ -36,3 +36,9 @@ def test_naive_datetime_is_rejected() -> None:
 def test_non_integer_milliseconds_are_rejected(value: object) -> None:
     with pytest.raises(TypeError):
         to_datetime(value)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("value", [date(2026, 11, 3), "2026-11-03T04:03:00Z"], ids=["date", "str"])
+def test_non_datetime_values_are_rejected(value: object) -> None:
+    with pytest.raises(TypeError, match="datetime"):
+        to_epoch_ms(value)  # type: ignore[arg-type]
