@@ -375,6 +375,7 @@ def test_rows_are_redacted(monkeypatch: pytest.MonkeyPatch) -> None:
         {"output_contract": "no_such_contract"},
         {"subject_type": "user"},
         {"subject_id": "tkt_01a19f93-1150-7000-8000-000000000004"},  # alert인데 tkt_
+        {"subject_type": "hunt", "subject_id": ""},  # #210
         {"subject_type": "hunt", "subject_id": "dns-beaconing-review"},
         {"subject_type": "hunt", "subject_id": "tkt_01a19f93-1150-7000-8000-000000000004"},
         {"subject_type": "hunt", "subject_id": "hnt_01a19f93-1150-7000-8000-000000000001\n"},

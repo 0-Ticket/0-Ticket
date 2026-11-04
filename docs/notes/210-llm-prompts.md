@@ -20,6 +20,7 @@ supersedes: []
 ## 계획과 달라진 점
 
 - **모듈 이름.** 합성은 `soc.agent.compose`, 연결·재시도·글자 수는 `soc.agent.llm`에 두었다. `src/soc/agent/prompts/`가 이미 프롬프트 파일 폴더라 `prompts.py`를 만들면 이름이 겹친다. `runner.compose_instructions`는 `compose.compose_instructions(task, *, max_turns)`로 옮겼다. `runner._has_top_level`도 `compose.has_top_level_field`로 옮겼다.
+- **Hunt ID 검사는 #217이 넣었다.** main에 들어온 #217이 AgentTask의 Hunt ID 검사(hnt_·hrn_)를 이미 넣었다. 이 이슈는 빠진 테스트(빈 ID, hunt 계약 요약)만 더했다.
 - **금지 문구 목록에 두 개를 더했다.** "ignore all previous", "시스템 프롬프트". 계획의 예시 다섯 개는 그대로 있다. "ignore previous"는 "ignore all previous"를 잡지 못하고, "system prompt"의 한국어 표현도 같은 뜻이라서다.
 - **`run_task`에 `sleep` 인자를 더했다**(기본 `asyncio.sleep`). 테스트가 기다리지 않게 바꿔 끼우는 자리다. `soc.agent.llm.build_model`에는 `http_client` 인자를 두었다. 테스트가 가짜 전송 계층(`httpx2.MockTransport`)을 넣어 실제 openai 클라이언트가 만든 요청(주소·키 헤더·model·reasoning_effort)과 실제 429 응답 처리를 네트워크 없이 확인하는 자리다.
 - **설정 키는 필수다.** `[agent.<단계>]`의 `max_input_chars`·`reasoning_effort`, `[llm]`의 `rate_limit_retries`·`timeout_seconds`가 없으면 `provider_error`("예상하지 못한 오류(KeyError)")로 끝난다. 빠진 설정을 예산 없음으로 넘기지 않기 위해 기본값을 코드에 두지 않았다.
@@ -55,7 +56,7 @@ supersedes: []
 ## 확인 방법
 
 - `uv run ruff format --check .`, `uv run ruff check .`: 통과
-- `uv run pytest`: 392건 통과, 1건 실패(위 Windows 전용 실패, `origin/main`에서도 같음). 로컬 Windows에서 실행했다
+- `uv run pytest`: main(#217·#221 포함) 위로 rebase한 뒤 507건 통과, 1건 실패(위 Windows 전용 실패, main에서도 같음. main 기준은 438건 통과·1건 실패). 로컬 Windows에서 실행했다
 - 새 테스트(모두 네트워크 없음)
   - `tests/test_agent_llm.py`: 세 제공자 설정의 클라이언트(base_url·model·키·`max_retries=0`·timeout), 빈 연결 설정·키 환경변수 없음, 가짜 전송 계층으로 실제 요청 주소·키 헤더·model·reasoning_effort, 429 재시도(1·2·4초, Retry-After 2.5초·120→60초·읽을 수 없는 값), 설정 횟수 뒤 `rate_limited`와 `details.retries`, 실제 openai 429 응답 재시도, 타임아웃·인증 오류는 재시도 없이 `provider_error`, detail에 키·주소·base_url 없음, 예산(첫 호출 초과·한도와 같으면 보냄·중간 호출 초과와 앞 줄 ok)
   - `tests/test_agent_prompts.py`: 1층이 모든 단계·도메인 조합에 들어감, 층 순서, 2·3층 금지 문구 없음, 금지 문구 `TaskPrompt` 거부(대소문자·공백 변형 포함), 자동 층(턴 문장·계약 요약·decided_at), 해시(같은 입력 같음·한 글자 다름·domains 순서 무관)

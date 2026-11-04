@@ -131,6 +131,35 @@ def test_auto_layer_summarizes_output_contract() -> None:
     assert "decided_at은 비워 둔다" in text
 
 
+def test_auto_layer_summarizes_hunt_contract() -> None:
+    task = make_task(
+        stage="l3",
+        output_contract="hunt",
+        subject_type="hunt",
+        subject_id="hrn_01a19f93-1150-7000-8000-000000000001",
+    )
+    text = compose_instructions(task, max_turns=10)
+    for field in (
+        "id",
+        "hunt_run_id",
+        "status",
+        "hypothesis",
+        "attack_techniques",
+        "confidence",
+        "reason",
+        "evidence_ids",
+        "entities",
+        "attempts",
+        "verified_at",
+        "created_at",
+        "updated_at",
+        "details",
+    ):
+        assert f"- {field} (필수" in text, field
+    assert '"pending" | "confirmed" | "rejected" | "inconclusive" | "failed"' in text
+    assert "decided_at" not in text  # hunt 계약에는 decided_at이 없다
+
+
 def test_auto_layer_without_decided_at_has_no_decided_at_note() -> None:
     task = make_task(output_contract="entity", cited_ids=lambda output: [])
     text = compose_instructions(task, max_turns=6)
