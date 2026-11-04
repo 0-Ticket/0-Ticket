@@ -1,0 +1,99 @@
+[
+  {
+    "case": "missing_outcome",
+    "violations": [{"path": "outcome", "rule": "required"}],
+    "data": {
+      "siem_profile": "elk-dev",
+      "source_kind": "alert",
+      "source_key": ".alerts-security.alerts-default",
+      "started_at": 1793678570000,
+      "finished_at": 1793678580000,
+      "pages": 0,
+      "inserted": 0
+    }
+  },
+  {
+    "case": "source_kind_not_in_list",
+    "violations": [{"path": "source_kind", "rule": "enum"}],
+    "data": {
+      "siem_profile": "elk-dev",
+      "source_kind": "log",
+      "source_key": ".alerts-security.alerts-default",
+      "started_at": 1793678570000,
+      "finished_at": 1793678580000,
+      "outcome": "ok",
+      "pages": 0,
+      "inserted": 0
+    }
+  },
+  {
+    "case": "outcome_raw_text",
+    "violations": [{"path": "outcome", "rule": "pattern"}],
+    "data": {
+      "siem_profile": "elk-dev",
+      "source_kind": "alert",
+      "source_key": ".alerts-security.alerts-default",
+      "started_at": 1793678570000,
+      "finished_at": 1793678580000,
+      "outcome": "HTTP 401 Unauthorized: invalid token",
+      "pages": 0,
+      "inserted": 0
+    }
+  },
+  {
+    "case": "outcome_trailing_newline",
+    "violations": [{"path": "outcome", "rule": "pattern"}],
+    "data": {
+      "siem_profile": "elk-dev",
+      "source_kind": "alert",
+      "source_key": ".alerts-security.alerts-default",
+      "started_at": 1793678570000,
+      "finished_at": 1793678580000,
+      "outcome": "timeout\n",
+      "pages": 0,
+      "inserted": 0
+    }
+  },
+  {
+    "case": "negative_pages",
+    "violations": [{"path": "pages", "rule": "minimum"}],
+    "data": {
+      "siem_profile": "elk-dev",
+      "source_kind": "alert",
+      "source_key": ".alerts-security.alerts-default",
+      "started_at": 1793678570000,
+      "finished_at": 1793678580000,
+      "outcome": "ok",
+      "pages": -1,
+      "inserted": 0
+    }
+  },
+  {
+    "case": "negative_inserted",
+    "violations": [{"path": "inserted", "rule": "minimum"}],
+    "data": {
+      "siem_profile": "elk-dev",
+      "source_kind": "alert",
+      "source_key": ".alerts-security.alerts-default",
+      "started_at": 1793678570000,
+      "finished_at": 1793678580000,
+      "outcome": "ok",
+      "pages": 0,
+      "inserted": -1
+    }
+  },
+  {
+    "case": "finished_before_started",
+    "violations": [{"path": "finished_at", "rule": "not_before_started_at"}],
+    "data": {
+      "siem_profile": "elk-dev",
+      "source_kind": "alert",
+      "source_key": ".alerts-security.alerts-default",
+      "started_at": 1793678570000,
+      "finished_at": 1793678569999,
+      "outcome": "ok",
+      "pages": 0,
+      "inserted": 0
+    }
+  }
+]

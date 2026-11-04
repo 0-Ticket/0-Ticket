@@ -19,6 +19,7 @@ from soc.ingest.run import exit_code, format_results, run
 
 
 def _env(name: str) -> str:
+    """환경변수 값을 돌려준다. 없거나 비었으면 ConfigError(값은 쓰지 않는다)."""
     value = os.environ.get(name)
     if not value:
         raise ConfigError(f"환경변수 {name}이 없다. .env.example을 참고해 설정한다.")
@@ -26,9 +27,16 @@ def _env(name: str) -> str:
 
 
 def _elk_env(settings: Settings) -> tuple[str, str]:
-    """(ELK 주소, API 키). 주소는 http(s)만 받는다.
+    """ELK 주소와 API 키를 환경변수에서 읽는다. 주소는 http(s)만 받는다.
 
-    인증은 API 키로만 하도록 주소에 계정 정보를 넣지 못하게 한다.
+    인자:
+        settings: url_env, api_key_env 이름을 담은 설정.
+
+    반환:
+        (ELK 주소, API 키).
+
+    발생:
+        ConfigError: 환경변수가 없거나, 주소가 http(s)가 아니거나, 계정 정보를 담고 있을 때.
     """
     base_url = _env(settings.url_env)
     try:
@@ -42,6 +50,11 @@ def _elk_env(settings: Settings) -> tuple[str, str]:
 
 
 def main() -> int:
+    """설정을 읽고 한 번 수집한다. 종료 코드를 돌려준다.
+
+    반환:
+        0 모두 성공, 1 실패한 대상이 있거나 DB 오류, 2 설정·환경변수 오류.
+    """
     try:
         settings = read_settings(load_config()["ingest"])
         base_url, api_key = _elk_env(settings)

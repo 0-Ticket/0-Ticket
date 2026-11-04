@@ -6,7 +6,7 @@ import pytest
 
 from soc.ingest.config import ConfigError, load_config, read_settings
 
-REPO_CONFIG = Path(__file__).resolve().parents[1] / "config"
+REPO_CONFIG = Path(__file__).resolve().parents[3] / "config"
 
 
 def test_default_config_reads_into_settings() -> None:

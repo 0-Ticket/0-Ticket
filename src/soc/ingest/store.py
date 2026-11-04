@@ -2,6 +2,7 @@
 
 페이지의 원본과 다음 위치(체크포인트)는 트랜잭션 하나로 함께 커밋하거나 함께 되돌린다.
 그래서 체크포인트는 늘 마지막으로 저장에 성공한 페이지를 가리킨다.
+실행 이력은 그와 따로 ingest_runs(0101)에 실행마다 한 행씩 쌓는다.
 """
 
 from typing import Any
@@ -19,36 +20,50 @@ ON CONFLICT (siem_profile, siem_ref) DO NOTHING
 """
 
 _UPSERT_CHECKPOINT = """
-INSERT INTO ingest_checkpoints
-    (siem_profile, source_kind, source_key, cursor, updated_at, last_error)
-VALUES (%(siem_profile)s, %(source_kind)s, %(source_key)s, %(cursor)s, %(updated_at)s,
-        %(last_error)s)
+INSERT INTO ingest_checkpoints (siem_profile, source_kind, source_key, cursor, updated_at)
+VALUES (%(siem_profile)s, %(source_kind)s, %(source_key)s, %(cursor)s, %(updated_at)s)
 ON CONFLICT (siem_profile, source_kind, source_key) DO UPDATE SET
     cursor = EXCLUDED.cursor,
-    updated_at = EXCLUDED.updated_at,
-    last_error = EXCLUDED.last_error
+    updated_at = EXCLUDED.updated_at
+"""
+
+_INSERT_RUN = """
+INSERT INTO ingest_runs
+    (siem_profile, source_kind, source_key, started_at, finished_at, outcome, pages, inserted)
+VALUES (%(siem_profile)s, %(source_kind)s, %(source_key)s, %(started_at)s, %(finished_at)s,
+        %(outcome)s, %(pages)s, %(inserted)s)
 """
 
 
 def load_checkpoint(
     conn: psycopg.Connection, siem_profile: str, source_kind: str, source_key: str
 ) -> dict[str, Any] | None:
-    """ingest_checkpoint 계약 모양의 dict. 아직 저장한 적이 없으면 None."""
+    """체크포인트 한 행을 읽는다.
+
+    인자:
+        conn: 연결(autocommit이 아니어도 된다. 읽기만 한다).
+        siem_profile: 체크포인트의 프로필 이름.
+        source_kind: "alert" 또는 "event".
+        source_key: 조회 대상(Source.key).
+
+    반환:
+        ingest_checkpoint 계약 모양의 dict(siem_profile, source_kind, source_key,
+        cursor, updated_at(epoch ms)). 행이 없으면 None.
+    """
     row = conn.execute(
-        "SELECT cursor, updated_at, last_error FROM ingest_checkpoints"
+        "SELECT cursor, updated_at FROM ingest_checkpoints"
         " WHERE siem_profile = %s AND source_kind = %s AND source_key = %s",
         (siem_profile, source_kind, source_key),
     ).fetchone()
     if row is None:
         return None
-    cursor, updated_at, last_error = row
+    cursor, updated_at = row
     return {
         "siem_profile": siem_profile,
         "source_kind": source_kind,
         "source_key": source_key,
         "cursor": cursor,
         "updated_at": to_epoch_ms(updated_at),
-        "last_error": last_error,
     }
 
 
@@ -57,9 +72,14 @@ def save_page(
 ) -> int:
     """페이지의 원본과 체크포인트를 한 트랜잭션으로 쓰고, 새로 저장한 원본 수를 돌려준다.
 
+    인자:
+        conn: autocommit 연결. 이 함수가 트랜잭션을 연다.
+        records: 한 페이지의 RawRecord dict 목록. 비어 있을 수 있다.
+        checkpoint: 이 페이지를 끝낸 뒤의 ingest_checkpoint dict. cursor는 다음 조회 위치다.
+
     쓰기 전에 모든 원본(raw_record)과 체크포인트(ingest_checkpoint)를 계약으로 검사한다. 하나라도
     맞지 않으면 ContractError를 내고 아무것도 쓰지 않는다. DB 오류가 나면 둘 다 되돌리고 그 예외를
-    그대로 낸다. 체크포인트의 last_error는 받은 값(성공이면 None)으로 덮어쓴다.
+    그대로 낸다.
     """
     for record in records:
         validate_contract("raw_record", record)
@@ -89,25 +109,23 @@ def save_page(
     return inserted
 
 
-def record_failure(
-    conn: psycopg.Connection,
-    siem_profile: str,
-    source_kind: str,
-    source_key: str,
-    error_kind: str,
-    now_ms: int,
-) -> None:
-    """실패 원인의 종류 코드를 남긴다. 이미 있는 cursor는 그대로 둔다.
+def record_run(conn: psycopg.Connection, run: dict[str, Any]) -> None:
+    """조회 대상 하나의 실행 이력 한 행을 쌓는다. 원본·체크포인트와는 다른 트랜잭션이다.
 
-    체크포인트가 아직 없으면(첫 페이지부터 실패) 빈 cursor로 행을 만든다. 빈 cursor는 "아직 성공한
-    페이지가 없다"는 뜻이라 다음 실행은 처음부터 조회한다. error_kind는 원문이 아닌 코드여야 하며,
-    테이블의 CHECK가 코드 모양이 아니면 거부한다.
+    인자:
+        conn: autocommit 연결. INSERT 한 번이 바로 커밋된다.
+        run: ingest_run 계약 모양의 dict. started_at·finished_at은 epoch ms, outcome은 "ok" 또는
+            FAILURES 중 하나의 코드다.
+
+    쓰기 전에 계약으로 검사하고, 맞지 않으면 ContractError를 내고 쓰지 않는다.
+    DB 오류는 그대로 낸다.
     """
+    validate_contract("ingest_run", run)
     conn.execute(
-        "INSERT INTO ingest_checkpoints"
-        " (siem_profile, source_kind, source_key, cursor, updated_at, last_error)"
-        " VALUES (%s, %s, %s, '{}'::jsonb, %s, %s)"
-        " ON CONFLICT (siem_profile, source_kind, source_key)"
-        " DO UPDATE SET last_error = EXCLUDED.last_error, updated_at = EXCLUDED.updated_at",
-        (siem_profile, source_kind, source_key, to_datetime(now_ms), error_kind),
+        _INSERT_RUN,
+        {
+            **run,
+            "started_at": to_datetime(run["started_at"]),
+            "finished_at": to_datetime(run["finished_at"]),
+        },
     )

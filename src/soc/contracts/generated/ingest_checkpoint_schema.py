@@ -41,10 +41,3 @@ class IngestCheckpoint(BaseModel):
             le=253402214399999,
         ),
     ]
-    last_error: Annotated[
-        str | None,
-        Field(
-            description="마지막 실행이 실패한 원인의 종류 코드. 성공하면 null. 원문과 비밀은 넣지 않는다",
-            pattern="^[a-z][a-z0-9_]*$",
-        ),
-    ]

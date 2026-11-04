@@ -1,13 +1,12 @@
 [
   {
-    "case": "missing_last_error",
-    "violations": [{"path": "last_error", "rule": "required"}],
+    "case": "missing_updated_at",
+    "violations": [{"path": "updated_at", "rule": "required"}],
     "data": {
       "siem_profile": "elk-dev",
       "source_kind": "alert",
       "source_key": ".alerts-security.alerts-default",
-      "cursor": {},
-      "updated_at": 1793678580000
+      "cursor": {}
     }
   },
   {
@@ -18,8 +17,7 @@
       "source_kind": "log",
       "source_key": ".alerts-security.alerts-default",
       "cursor": {},
-      "updated_at": 1793678580000,
-      "last_error": null
+      "updated_at": 1793678580000
     }
   },
   {
@@ -30,8 +28,7 @@
       "source_kind": "alert",
       "source_key": "",
       "cursor": {},
-      "updated_at": 1793678580000,
-      "last_error": null
+      "updated_at": 1793678580000
     }
   },
   {
@@ -42,32 +39,19 @@
       "source_kind": "alert",
       "source_key": ".alerts-security.alerts-default",
       "cursor": [1793678578000],
-      "updated_at": 1793678580000,
-      "last_error": null
+      "updated_at": 1793678580000
     }
   },
   {
-    "case": "last_error_raw_text",
-    "violations": [{"path": "last_error", "rule": "pattern"}],
+    "case": "last_error_is_removed",
+    "violations": [{"path": "(root)", "rule": "additionalProperties"}],
     "data": {
       "siem_profile": "elk-dev",
       "source_kind": "alert",
       "source_key": ".alerts-security.alerts-default",
       "cursor": {},
       "updated_at": 1793678580000,
-      "last_error": "HTTP 401 Unauthorized: invalid token"
-    }
-  },
-  {
-    "case": "last_error_trailing_newline",
-    "violations": [{"path": "last_error", "rule": "pattern"}],
-    "data": {
-      "siem_profile": "elk-dev",
-      "source_kind": "alert",
-      "source_key": ".alerts-security.alerts-default",
-      "cursor": {},
-      "updated_at": 1793678580000,
-      "last_error": "timeout\n"
+      "last_error": "http_status"
     }
   }
 ]

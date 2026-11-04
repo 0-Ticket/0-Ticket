@@ -1,4 +1,4 @@
-"""수집 페이지와 체크포인트 저장(soc.ingest.store)을 실제 PostgreSQL로 확인한다(#218, db 마커)."""
+"""soc.ingest.store의 원본·체크포인트·이력 저장을 실제 PostgreSQL로 확인한다(#218, db 마커)."""
 
 import copy
 import json
@@ -10,11 +10,11 @@ import pytest
 
 from soc.contracts import ContractError, to_epoch_ms
 from soc.db.migrate import migrate
-from soc.ingest.store import load_checkpoint, record_failure, save_page
+from soc.ingest.store import load_checkpoint, record_run, save_page
 
 pytestmark = pytest.mark.db
 
-FIXTURES = Path(__file__).parent / "fixtures" / "ingest"
+FIXTURES = Path(__file__).resolve().parents[2] / "fixtures" / "ingest"
 TARGET = ("elk-dev", "alert", ".alerts-security.alerts-default")
 
 
@@ -102,7 +102,7 @@ def test_contract_rejection_writes_nothing(conn: psycopg.Connection, page: dict)
 
 
 def test_rejected_checkpoint_writes_no_records(conn: psycopg.Connection, page: dict) -> None:
-    broken = {**page["checkpoint"], "last_error": "HTTP 401 Unauthorized"}
+    broken = {**page["checkpoint"], "cursor": [1793678579000]}
     with pytest.raises(ContractError):
         save_page(conn, page["records"], broken)
 
@@ -128,33 +128,56 @@ def test_db_failure_on_checkpoint_rolls_back_records(conn: psycopg.Connection, p
     assert load_checkpoint(conn, *TARGET) is None
 
 
-def test_record_failure_keeps_cursor(conn: psycopg.Connection, page: dict) -> None:
-    save_page(conn, page["records"], page["checkpoint"])
+def run_rows(conn: psycopg.Connection) -> list[dict]:
+    rows = conn.execute(
+        "SELECT siem_profile, source_kind, source_key, started_at, finished_at, outcome, pages,"
+        " inserted FROM ingest_runs ORDER BY id"
+    ).fetchall()
+    return [
+        {
+            "siem_profile": profile,
+            "source_kind": kind,
+            "source_key": key,
+            "started_at": to_epoch_ms(started_at),
+            "finished_at": to_epoch_ms(finished_at),
+            "outcome": outcome,
+            "pages": pages,
+            "inserted": inserted,
+        }
+        for profile, kind, key, started_at, finished_at, outcome, pages, inserted in rows
+    ]
 
-    record_failure(conn, *TARGET, "http_status", 1793678700000)
 
-    assert load_checkpoint(conn, *TARGET) == {
-        **page["checkpoint"],
-        "updated_at": 1793678700000,
-        "last_error": "http_status",
+def run_of(outcome: str, pages: int, inserted: int, started_at: int) -> dict:
+    profile, kind, key = TARGET
+    return {
+        "siem_profile": profile,
+        "source_kind": kind,
+        "source_key": key,
+        "started_at": started_at,
+        "finished_at": started_at + 500,
+        "outcome": outcome,
+        "pages": pages,
+        "inserted": inserted,
     }
 
-    # 다음 페이지가 성공하면 체크포인트의 last_error가 비워진다
-    later = next_checkpoint(page, 1793678800000)
-    save_page(conn, [], later)
-    assert load_checkpoint(conn, *TARGET) == later
+
+def test_runs_accumulate_and_leave_checkpoint_alone(conn: psycopg.Connection, page: dict) -> None:
+    save_page(conn, page["records"], page["checkpoint"])
+    runs = [run_of("ok", 1, 2, 1793678570000), run_of("http_status", 0, 0, 1793678700000)]
+
+    for run in runs:
+        record_run(conn, run)
+
+    assert run_rows(conn) == runs
+    assert load_checkpoint(conn, *TARGET) == page["checkpoint"]
 
 
-def test_record_failure_without_checkpoint_creates_empty_cursor_row(
-    conn: psycopg.Connection,
-) -> None:
-    """첫 페이지부터 실패해도 원인이 남고, 빈 cursor라 다음 실행은 처음부터 조회한다."""
-    record_failure(conn, *TARGET, "timeout", 1793678700000)
+def test_rejected_run_writes_nothing(conn: psycopg.Connection) -> None:
+    with pytest.raises(ContractError):
+        record_run(conn, run_of("HTTP 401 Unauthorized", 0, 0, 1793678700000))
 
-    saved = load_checkpoint(conn, *TARGET)
-    assert saved is not None
-    assert saved["cursor"] == {}
-    assert saved["last_error"] == "timeout"
+    assert run_rows(conn) == []
 
 
 @pytest.mark.parametrize(
@@ -164,8 +187,6 @@ def test_record_failure_without_checkpoint_creates_empty_cursor_row(
         {"siem_profile": ""},
         {"source_key": ""},
         {"cursor": "[]"},
-        {"last_error": "HTTP 401 Unauthorized"},
-        {"last_error": "timeout\n"},
     ],
 )
 def test_checks_reject_broken_rows(conn: psycopg.Connection, values: dict) -> None:
@@ -175,7 +196,6 @@ def test_checks_reject_broken_rows(conn: psycopg.Connection, values: dict) -> No
         "source_key": ".alerts-security.alerts-default",
         "cursor": "{}",
         "updated_at": "2026-11-04T00:00:00Z",
-        "last_error": None,
     } | values
     columns = ", ".join(row)
     placeholders = ", ".join(["%s"] * len(row))
@@ -183,4 +203,36 @@ def test_checks_reject_broken_rows(conn: psycopg.Connection, values: dict) -> No
         conn.execute(
             f"INSERT INTO ingest_checkpoints ({columns}) VALUES ({placeholders})",
             list(row.values()),
+        )
+
+
+@pytest.mark.parametrize(
+    "values",
+    [
+        {"source_kind": "log"},
+        {"siem_profile": ""},
+        {"source_key": ""},
+        {"outcome": "HTTP 401 Unauthorized"},
+        {"outcome": "timeout\n"},
+        {"pages": -1},
+        {"inserted": -1},
+        {"finished_at": "2026-11-03T23:59:59Z"},
+    ],
+)
+def test_run_checks_reject_broken_rows(conn: psycopg.Connection, values: dict) -> None:
+    row = {
+        "siem_profile": "elk-dev",
+        "source_kind": "alert",
+        "source_key": ".alerts-security.alerts-default",
+        "started_at": "2026-11-04T00:00:00Z",
+        "finished_at": "2026-11-04T00:00:01Z",
+        "outcome": "ok",
+        "pages": 0,
+        "inserted": 0,
+    } | values
+    columns = ", ".join(row)
+    placeholders = ", ".join(["%s"] * len(row))
+    with pytest.raises(psycopg.errors.CheckViolation):
+        conn.execute(
+            f"INSERT INTO ingest_runs ({columns}) VALUES ({placeholders})", list(row.values())
         )

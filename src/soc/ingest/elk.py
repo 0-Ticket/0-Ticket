@@ -22,10 +22,21 @@ import httpx
 from soc.ingest.config import Settings, Source
 from soc.ingest.errors import IngestError
 
+# PIT와 검색 요청의 생존 시간. 페이지 사이 간격보다 길어야 PIT가 살아 있다.
 KEEP_ALIVE = "1m"
 
 
 def make_client(settings: Settings, base_url: str, api_key: str) -> httpx.Client:
+    """읽기 전용 ELK 호출에 쓸 HTTP 클라이언트를 만든다.
+
+    인자:
+        settings: connect·read 제한 시간을 얻는 데 쓴다.
+        base_url: ELK 주소(http 또는 https, 계정 정보 없음).
+        api_key: ELK API 키. Authorization: ApiKey 헤더로 보낸다.
+
+    반환:
+        리다이렉트를 따라가지 않는 httpx.Client. 호출한 쪽이 닫는다.
+    """
     timeout = httpx.Timeout(settings.read_timeout_seconds, connect=settings.connect_timeout_seconds)
     return httpx.Client(
         base_url=base_url,
@@ -47,6 +58,19 @@ def iter_pages(
 
     start_ms가 있으면 time_field >= start_ms인 문서부터, 없으면 time_field가 있는 문서 전체다.
     끝나거나 실패하거나 호출한 쪽이 멈추면 PIT를 닫는다.
+
+    인자:
+        client: make_client()가 만든 클라이언트.
+        settings: page_size, max_bytes, deadline_seconds를 쓴다.
+        source: 조회 대상(key로 PIT를 열고, time_field로 정렬·범위를 건다).
+        start_ms: 체크포인트 커서(epoch ms). None이면 처음부터 조회한다.
+        clock: 응답 마감 시간을 재는 함수.
+
+    산출:
+        hit 목록(ELK 응답의 hits.hits 항목을 바꾸지 않고 그대로). 한 번에 page_size개 이하다.
+
+    발생:
+        IngestError: 응답 오류, 인증 실패, 크기·시간 초과, 연결 실패 등. kind에 원인이 있다.
     """
 
     def call(method: str, path: str, **kwargs: Any) -> Any:
@@ -87,9 +111,16 @@ def iter_pages(
 
 
 def _read_page(data: Any) -> tuple[str, list[dict[str, Any]]]:
-    """(다음 요청에 쓸 PIT ID, hit 목록).
+    """검색 응답을 검사해 (다음 요청에 쓸 PIT ID, hit 목록)을 돌려준다.
 
-    hit마다 _index·_id와 첫 정렬 값(시각 epoch ms 정수)을 본다.
+    인자:
+        data: JSON으로 파싱한 검색 응답.
+
+    반환:
+        (pit_id, hits). hit마다 _index·_id가 문자열이고 sort 첫 값이 0 이상의 정수여야 한다.
+
+    발생:
+        IngestError("response_shape"): 필드가 없거나 모양이 다를 때.
     """
     if not isinstance(data, dict) or not _is_text(data.get("pit_id")):
         raise IngestError("response_shape")
@@ -110,6 +141,7 @@ def _read_page(data: Any) -> tuple[str, list[dict[str, Any]]]:
 
 
 def _is_text(value: Any) -> bool:
+    """인자 value가 비어 있지 않은 문자열이면 True."""
     return isinstance(value, str) and value != ""
 
 
@@ -122,6 +154,23 @@ def _call(
     clock: Callable[[], float],
     **kwargs: Any,
 ) -> Any:
+    """ELK 요청 하나를 보내고 응답 본문을 JSON으로 돌려준다.
+
+    인자:
+        client: HTTP 클라이언트.
+        method: "GET", "POST", "DELETE" 등.
+        path: 기준 주소 뒤의 경로(예: "/_search").
+        settings: max_bytes와 deadline_seconds를 쓴다.
+        clock: 마감 시간을 재는 함수.
+        **kwargs: httpx 요청 인자(params, json 등).
+
+    반환:
+        JSON으로 파싱한 응답 본문.
+
+    발생:
+        IngestError: 401·403은 auth, 그 밖의 비 2xx는 http_status, 크기 초과는 too_large,
+        마감 초과는 timeout, 연결·프로토콜 오류는 network, JSON이 아니면 response_shape.
+    """
     started = clock()
     body = bytearray()
     try:

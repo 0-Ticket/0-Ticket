@@ -83,3 +83,10 @@ ELK의 선택된 Event와 Elastic Security Alert 원본을 RawRecord로 PostgreS
 
 - 늦게 도착한 문서: `@timestamp` 커서는 색인이 늦게 끝난 문서를 놓친다. 로컬 ES에서 재현했다(0건 놓침 확인, `event.ingested` 커서는 1건 저장). Event의 커서 필드는 `event.ingested`로 바꾸는 것을 제안하며, 실제 ELK에 필드가 있는지 확인한 뒤 확정한다. 확정 전까지 기본값은 `@timestamp`다.
 - 이름: Elastic 데이터 스트림 규칙 `{type}-{dataset}-{namespace}`(dataset에 하이픈 금지)와 Alert의 `.alerts-security.alerts-{space}`를 따른다. 현재 키는 이미 이 규칙에 맞아 바꾼 것은 없다.
+
+### 2026-11-04 · 실행 이력 테이블(사람 확정)
+
+- 체크포인트의 `last_error`를 없앤다. 체크포인트는 재개 위치(cursor)와 `updated_at`만 가진다. 이유: 같은 성공인데 hit이 있으면 `last_error`가 지워지고 0건이면 남는 불일치가 있었고, 이력이 DB에 남지 않았다.
+- `ingest_runs` 테이블과 `ingest_run` 계약을 새로 둔다. 조회 대상 하나의 실행마다 한 행을 쌓는다(성공이면 `outcome = ok`, 0건 성공도 기록). 현재 상태는 대상별 가장 최근 행으로 읽는다. 실패 종류 코드는 `outcome`에 남기고 원문·비밀은 넣지 않는다.
+- 마이그레이션은 적용된 `0100`을 고치지 않고 `0101`로 `last_error` 열 삭제와 `ingest_runs` 생성을 한다. 이력 기록이 실패해도 수집 결과(원본·체크포인트)에는 영향이 없다.
+- 정정: `0100`은 `origin/main`에 아직 없고 이 브랜치의 로컬 DB에만 적용됐다. `0101`을 따로 둔 것은 이미 적용한 파일은 고치지 않는다는 실행기 규칙을 지키기 위해서다.

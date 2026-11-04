@@ -5,7 +5,7 @@
   "description": "수집 대상 하나의 재개 위치. (siem_profile, source_kind, source_key)마다 하나다",
   "type": "object",
   "additionalProperties": false,
-  "required": ["siem_profile", "source_kind", "source_key", "cursor", "updated_at", "last_error"],
+  "required": ["siem_profile", "source_kind", "source_key", "cursor", "updated_at"],
   "properties": {
     "siem_profile": {
       "description": "가져온 SIEM 연결 프로필 이름. RawRecord의 siem_profile과 같다",
@@ -26,11 +26,6 @@
       "type": "object",
       "additionalProperties": true
     },
-    "updated_at": {"$ref": "common/types.schema.json#/definitions/epoch_ms"},
-    "last_error": {
-      "description": "마지막 실행이 실패한 원인의 종류 코드. 성공하면 null. 원문과 비밀은 넣지 않는다",
-      "type": ["string", "null"],
-      "pattern": "^[a-z][a-z0-9_]*$"
-    }
+    "updated_at": {"$ref": "common/types.schema.json#/definitions/epoch_ms"}
   }
 }
