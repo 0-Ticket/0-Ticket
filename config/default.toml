@@ -145,6 +145,17 @@ max_stderr_chars = 2000
 #   checks = ["processes", "listening_ports", "recent_logins", "auth_log_tail", "file_hash"]
 hosts = []
 
+# L2 Ticket 분류 후보 만들기(#226, Incident 분류 방법 D-027).
+[l2.branch]
+# 후보로 볼 열린 Incident의 updated_at 시간 창(밀리초)
+candidate_window_ms = 86_400_000
+# 다음 단계에 보여 줄 후보 수 상한
+max_candidates = 5
+strong_signal_types = ["file_hash", "process", "url", "domain", "user"]
+weak_signal_types = ["ip", "host"]
+# 여러 Incident에 공통으로 나와 묶는 점수에서 뺄 값
+shared_entity_values = []
+
 # L3 가설 재료 수집(#221, L3 위협 시나리오 입력 D-029). 모두 공개 피드라 비밀 값이 없다.
 # 실행: uv run python -m soc.l3.intel
 [l3.intel]
