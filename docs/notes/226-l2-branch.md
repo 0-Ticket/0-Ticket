@@ -27,6 +27,7 @@ supersedes: []
 - `user` 값은 AD·Windows 계정이 대소문자를 구분하지 않는 경우가 더 흔해 소문자로 비교한다. Linux에서는 대소문자가 다른 계정을 잘못 합칠 수 있지만, 분류는 확정 판정이 아니라 복구 가능한 묶기라 이 기준을 택했다.
 - 공용 설정 값은 Entity type별 정규화 뒤 비교한다. 같은 문자열이라도 URL·process는 대소문자를 보존한다.
 - L2-A-2는 `build_branch()`의 `BranchResult.context`와 `BranchResult.candidates`를 에이전트 입력으로 직렬화하면 된다. 이번 코드에는 직렬화나 분류 출력 계약이 없다.
+- `build_branch()`에는 L2 파이프라인용 DB 연결을 넘긴다. 도구용 `AGENT_DATABASE_URL`의 `soc_agent_reader` 역할은 `alerts`·`events`만 읽을 수 있어 #226이 필요한 `tickets`·`incidents`·`hunts`·`agent_logs`를 읽지 못한다. 이를 맞추려고 도구 역할의 권한을 넓히지 않는다.
 - DB 인증 자체가 실패하면 psycopg의 `OperationalError`가 연결 문자열을 펼쳐 쓸 수 있어 `tests/conftest.py`의 `HiddenUrl`만으로 비밀번호가 가려지지 않는다. 이번 범위에서는 공통 테스트 장치를 바꾸지 않았고, 별도 이슈에서 보완해야 한다. 그 전에는 실패 가능성이 있는 DB 주소를 출력되는 테스트에 넣지 않는다.
 - Windows에서는 기존 `test_name_ending_in_newline_is_not_a_migration`이 OS가 줄바꿈 파일명을 만들지 못해 실패하고, 닫힌 포트 연결 테스트가 오래 대기했다. 테스트를 삭제·skip하지 않고 Linux Python 3.13 컨테이너에서 기본 검사 전체를 확인했다.
 
@@ -35,8 +36,8 @@ supersedes: []
 - 테스트를 먼저 쓰고 구현 전에 실행: `soc.l2`가 없어 일반 테스트 2개가 수집 단계에서 실패
 - `uv run pytest tests/test_l2_config.py tests/test_l2_branch.py`: 18개 통과
 - 일회성 `postgres:17.6`에서 `uv run pytest -m db tests/test_l2_branch_db.py`: 4개 통과
-- 같은 DB에서 `uv run pytest -m db`: 118개 통과, 526개 제외
-- 읽기 전용으로 마운트한 Linux Python 3.13 컨테이너에서 `uv run pytest`: 526개 통과, 118개 제외
-- `uv run ruff format --check .`: 112개 파일 통과
+- 최신 `main` 위로 rebase한 뒤 같은 DB에서 `uv run pytest -m db`: 157개 통과, 671개 제외
+- 읽기 전용으로 마운트한 Linux Python 3.13 컨테이너에서 `uv run pytest`: 670개 통과, 158개 제외. 읽기 전용이라 pytest 캐시를 쓰지 못했다는 경고 2개만 있었다
+- `uv run ruff format .`, `uv run ruff format --check .`: 128개 파일 변경 없음·검사 통과
 - `uv run ruff check .`: 통과
 - 주요 테스트: `test_context_keeps_confirmed_data_and_normalized_signals`, `test_l3_context_uses_hunt_evidence_and_entities_without_duplicates`, `test_candidates_rank_by_strong_weak_then_updated_at`, `test_reads_ticket_evidence_and_only_open_recent_incidents`, `test_open_incident_query_uses_status_index`
