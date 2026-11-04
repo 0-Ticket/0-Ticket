@@ -71,3 +71,14 @@ fixture 파일은 저장소 관례대로 `tests/fixtures/ingest/`에 있다.
 - `test_rejected_page_rolls_back_and_next_run_resumes`: 거부된 페이지는 롤백되고, 다음 실행이 같은 위치에서 이어간다. 이력에 `contract_rejected`, `ok`가 차례로 쌓인다.
 - `test_first_page_failure_and_empty_run_leave_history_only`: 첫 페이지 실패와 0건 성공은 체크포인트 없이 이력 행만 남긴다.
 - `test_failed_run_record_keeps_saved_pages`: 이력 쓰기가 DB 오류로 실패해도 실행은 성공이고 원본·체크포인트는 커밋돼 있다.
+
+### `test_links_db.py`: 알럿↔원본 이벤트 연결 (`soc.ingest.store.link_by_refs`, `raw_links`)
+- `test_links_are_saved_and_many_to_many_works`: 알럿 하나가 이벤트 여럿을, 이벤트 하나가 알럿 여럿에 연결된다.
+- `test_saving_the_same_pairs_again_links_nothing_and_is_not_pending`: 같은 쌍을 다시 넘기면 새로 넣지 않고 보류하지도 않는다.
+- `test_missing_event_is_pending_then_links_after_it_arrives`: 이벤트 원본이 없으면 보류로 돌려주고, 들어온 뒤 다시 넘기면 연결된다.
+- `test_missing_alert_is_pending`: 알럿 원본이 없어도 보류로 돌려준다.
+- `test_pending_pair_does_not_block_the_others`: 보류된 쌍이 있어도 나머지 쌍은 연결된다.
+- `test_only_the_given_profile_and_kind_are_matched`: 다른 프로필의 원본이나 kind가 다른 원본은 연결하지 않는다.
+- `test_failure_rolls_back_the_whole_batch`: 중간에 실패하면 이미 넣은 연결도 되돌린다.
+- 연결 키를 알럿 문서의 어느 필드에서 읽는지는 아직 확인되지 않아 이 테스트들은 합성 `siem_ref`만 쓴다.
+

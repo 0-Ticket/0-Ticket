@@ -129,3 +129,43 @@ def record_run(conn: psycopg.Connection, run: dict[str, Any]) -> None:
             "finished_at": to_datetime(run["finished_at"]),
         },
     )
+
+
+# 같은 쌍을 두 번 넣어도 오류가 나지 않게 한다(재시도 때 안전)
+_INSERT_LINK = """
+INSERT INTO raw_links (raw_id, source_raw_id)
+VALUES (%s, %s)
+ON CONFLICT (raw_id, source_raw_id) DO NOTHING
+"""
+
+_FIND_RAW_ID = """
+SELECT id FROM raw_records WHERE siem_profile = %s AND kind = %s AND siem_ref = %s
+"""
+
+
+def link_by_refs(
+    conn: psycopg.Connection, siem_profile: str, pairs: list[tuple[str, str]]
+) -> tuple[int, list[tuple[str, str]]]:
+    """알럿과 이벤트를 siem_ref 쌍으로 받아 raw_links에 한 트랜잭션으로 연결한다.
+
+    한쪽 원본이 아직 저장되지 않은 쌍은 연결하지 않고 돌려준다. 호출한 쪽이 나중에 다시 넘긴다.
+
+    인자:
+        conn: autocommit 연결. 이 함수가 트랜잭션을 연다.
+        siem_profile: 두 원본이 속한 SIEM 프로필 이름.
+        pairs: (알럿 siem_ref, 이벤트 siem_ref) 목록. siem_ref는 "<_index>/<_id>"다.
+
+    반환:
+        (새로 저장한 연결 수, 원본이 없어 보류한 쌍). 이미 연결된 쌍은 세지 않고 보류하지도 않는다.
+    """
+    linked = 0
+    pending: list[tuple[str, str]] = []
+    with conn.transaction():
+        for alert_ref, event_ref in pairs:
+            alert = conn.execute(_FIND_RAW_ID, (siem_profile, "alert", alert_ref)).fetchone()
+            event = conn.execute(_FIND_RAW_ID, (siem_profile, "event", event_ref)).fetchone()
+            if alert is None or event is None:
+                pending.append((alert_ref, event_ref))
+                continue
+            linked += conn.execute(_INSERT_LINK, (alert[0], event[0])).rowcount
+    return linked, pending
