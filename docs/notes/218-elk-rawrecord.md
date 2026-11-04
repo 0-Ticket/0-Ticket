@@ -39,7 +39,7 @@ supersedes: []
 
 ## 확인 방법
 
-- `uv run ruff format --check .`, `uv run ruff check .`, `uv run pytest`(612 통과), `uv run pytest -m db`(137 통과), `uv run python scripts/generate_contracts.py --check`.
-- DB 테스트는 로컬 Postgres(`DATABASE_URL`)에서 `uv run pytest -m db`로 137개 통과했다.
-- 로컬 ELK(`.local/elk/`, 합성 데이터만)에서 손으로 확인: 600건 2페이지, 같은 `_id` 두 인덱스, 실패 후 재개(`network` 기록 뒤 새 문서 1건 저장; `last_error` 시절에 확인했고 `ingest_runs`로 바꾼 뒤에는 다시 확인하지 않았다), 늦은 문서 커서 비교.
+- `uv run ruff format --check .`, `uv run ruff check .`, `uv run pytest`(757 통과), `uv run pytest -m db`(176 통과; main의 #211·#212 테스트 포함), `uv run python scripts/generate_contracts.py --check`.
+- DB 테스트는 로컬 Postgres(`DATABASE_URL`)에서 `uv run pytest -m db`로 176개 통과했다.
+- 로컬 ELK(`.local/elk/`, 합성 데이터만)에서 손으로 확인: 600건 2페이지, 같은 `_id` 두 인덱스, 실패 후 재개(ELK 중지 → `ingest_runs`에 `network` 행 6개 기록, 재시작 후 `ok` 행과 새 문서 저장; `ingest_runs` 전환 뒤에 다시 확인했다), 늦은 문서 커서 비교.
 - 주요 테스트: `tests/ingest/db/test_store_db.py`(원자성·롤백·중복·이력), `tests/ingest/db/test_run_db.py`(실패 후 재개·이력), `tests/ingest/unit/test_elk.py`(페이징·오류 종류), `tests/ingest/unit/test_run.py`. 목록은 `tests/ingest/README.md`.
