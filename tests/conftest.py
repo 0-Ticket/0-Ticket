@@ -7,6 +7,7 @@ DATABASE_URL로 접속해 soc_test_<랜덤> DB를 만들고, 테스트가 끝나
 import os
 import secrets
 from collections.abc import Iterator
+from contextlib import contextmanager
 
 import psycopg
 import pytest
@@ -29,8 +30,8 @@ def database_url() -> HiddenUrl:
     return HiddenUrl(url)
 
 
-@pytest.fixture
-def temp_database(database_url: HiddenUrl) -> Iterator[HiddenUrl]:
+@contextmanager
+def created_database(database_url: HiddenUrl) -> Iterator[HiddenUrl]:
     name = f"soc_test_{secrets.token_hex(6)}"
     with psycopg.connect(database_url, autocommit=True) as admin:
         admin.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(name)))
@@ -41,3 +42,16 @@ def temp_database(database_url: HiddenUrl) -> Iterator[HiddenUrl]:
             admin.execute(
                 sql.SQL("DROP DATABASE IF EXISTS {} WITH (FORCE)").format(sql.Identifier(name))
             )
+
+
+@pytest.fixture
+def temp_database(database_url: HiddenUrl) -> Iterator[HiddenUrl]:
+    with created_database(database_url) as url:
+        yield url
+
+
+@pytest.fixture
+def other_temp_database(database_url: HiddenUrl) -> Iterator[HiddenUrl]:
+    """같은 서버의 두 번째 임시 DB. DB끼리 서로 영향을 주지 않는지 볼 때 쓴다."""
+    with created_database(database_url) as url:
+        yield url

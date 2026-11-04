@@ -23,10 +23,15 @@
 - 파일은 DB 접속 전에 모두 읽는다. 인코딩 오류와 BOM은 아무것도 적용하지 않는다.
   SQL 오류는 앞 번호가 적용된 채로 멈춘다. 해시 비교와 적용은 이때 읽은 내용을 쓴다
   (비교한 내용을 그대로 적용한다).
+- 접속 직후 세션 단위 advisory lock(LOCK_KEY)을 잡고, schema_migrations 준비와 적용 목록 조회,
+  모든 적용을 마친 뒤 연결을 닫으며 푼다. 같은 DB에 실행기가 동시에 돌면 뒤에 온 쪽은 기다렸다가
+  앞쪽이 적용한 것을 보고 남은 것만 적용한다. LOCK_WAIT_SECONDS(60초)를 넘게 기다리면 아무것도
+  적용하지 않고 MigrationError로 멈춘다.
 - DB 주소(비밀번호 포함)는 출력·로그·예외 메시지에 넣지 않는다.
 """
 
 import hashlib
+import math
 import os
 import re
 import sys
@@ -36,6 +41,14 @@ from pathlib import Path
 import psycopg
 
 MIGRATIONS_DIR = Path(__file__).parent / "migrations"
+
+# 실행기끼리 동시 실행을 막는 advisory lock의 키. "soc.db.migrate"의 SHA-256 앞 8바이트를 부호 있는
+# 64비트 정수(big-endian)로 읽은 값이다. 다른 기능이 advisory lock을 쓸 때 겹치지 않게, 1 같은 작은
+# 수 대신 이름에서 만들었다. 잠금은 DB마다 따로라 같은 서버의 다른 DB끼리는 서로 막지 않는다.
+LOCK_KEY = -3383018492198273124
+
+# 다른 실행기가 잠금을 잡고 있을 때 기다리는 한도(초). 넘으면 아무것도 적용하지 않고 멈춘다.
+LOCK_WAIT_SECONDS = 60
 
 # 숫자는 [0-9]로 쓰고 이름 전체를 fullmatch로 비교한다.
 # \d는 유니코드 숫자(٠٠٠١ 등)에도 맞고, $는 마지막 \n 앞에서도 맞기 때문이다.
@@ -101,8 +114,16 @@ def _read_sql(migration: Migration) -> tuple[str, str]:
     return sql, hashlib.sha256(sql.encode("utf-8")).hexdigest()
 
 
-def migrate(database_url: str, directory: Path = MIGRATIONS_DIR) -> list[str]:
-    """아직 적용하지 않은 마이그레이션을 적용하고, 적용한 파일 이름을 돌려준다."""
+def migrate(
+    database_url: str,
+    directory: Path = MIGRATIONS_DIR,
+    *,
+    lock_wait_seconds: float = LOCK_WAIT_SECONDS,
+) -> list[str]:
+    """아직 적용하지 않은 마이그레이션을 적용하고, 적용한 파일 이름을 돌려준다.
+
+    같은 DB에서 다른 실행기가 돌고 있으면 lock_wait_seconds까지 기다린다.
+    """
     migrations = find_migrations(directory)
     # 번호 → (실행할 SQL, 내용 해시). 해시 비교와 적용 모두 이 내용을 쓰고 파일을 다시 읽지 않는다.
     contents = {m.version: _read_sql(m) for m in migrations}
@@ -116,6 +137,8 @@ def migrate(database_url: str, directory: Path = MIGRATIONS_DIR) -> list[str]:
 
     applied: list[str] = []
     with conn:
+        # 기록 테이블을 만들고 적용 목록을 읽기 전에 잠근다. 연결을 닫을 때(모든 적용 뒤) 풀린다.
+        _lock(conn, lock_wait_seconds)
         try:
             conn.execute(_CREATE_HISTORY)
             rows = conn.execute("SELECT version, name, checksum FROM schema_migrations")
@@ -179,6 +202,26 @@ def migrate(database_url: str, directory: Path = MIGRATIONS_DIR) -> list[str]:
                 ) from None
             applied.append(migration.name)
     return applied
+
+
+def _lock(conn: psycopg.Connection, wait_seconds: float) -> None:
+    """실행기 잠금(세션 단위 advisory lock)을 잡는다. 한도를 넘게 기다리면 MigrationError."""
+    # 한도는 PostgreSQL lock_timeout으로 건다. 잠금이 풀리면 서버가 바로 깨우고, 한도도 서버가 잰다.
+    # set_config의 셋째 인자 true로 이 트랜잭션 안에서만 쓰고, 마이그레이션 SQL에는 걸지 않는다.
+    # lock_timeout 0은 한도 없음이라 1ms 이상으로 둔다.
+    timeout = f"{max(1, math.ceil(wait_seconds * 1000))}ms"
+    try:
+        with conn.transaction():
+            conn.execute("SELECT set_config('lock_timeout', %s, true)", (timeout,))
+            # 세션 단위 잠금은 트랜잭션이 끝나도 남는다.
+            conn.execute("SELECT pg_advisory_lock(%s)", (LOCK_KEY,))
+    except psycopg.errors.LockNotAvailable:
+        raise MigrationError(
+            f"다른 마이그레이션이 실행 중이다({wait_seconds:g}초 기다렸다). 끝난 뒤 다시 실행한다"
+        ) from None
+    except psycopg.Error as exc:
+        reason = exc.diag.message_primary or type(exc).__name__
+        raise MigrationError(f"마이그레이션 잠금을 잡지 못했다: {reason}") from None
 
 
 def main() -> int:

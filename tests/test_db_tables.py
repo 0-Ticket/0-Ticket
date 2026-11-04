@@ -3,6 +3,10 @@
 import hashlib
 import json
 import re
+import threading
+import time
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 from pathlib import Path
 from typing import Any
@@ -14,7 +18,7 @@ from psycopg import sql
 from psycopg.types.json import Jsonb
 
 from soc.contracts import ContractError, to_datetime, to_epoch_ms, validate_contract
-from soc.db.migrate import MigrationError, find_migrations, migrate
+from soc.db.migrate import LOCK_KEY, MigrationError, find_migrations, migrate
 
 pytestmark = pytest.mark.db
 
@@ -309,6 +313,91 @@ def test_bom_migration_applies_nothing(temp_database: str, tmp_path: Path) -> No
     with psycopg.connect(temp_database) as conn:
         # 접속 전에 멈추므로 0001의 테이블도, schema_migrations도 없다
         assert table_names(conn) == set()
+
+
+def hold_migration_lock(conn: psycopg.Connection) -> None:
+    """실행 중인 다른 실행기처럼 같은 키의 잠금을 세션 단위로 잡는다."""
+    conn.execute("SELECT pg_advisory_lock(%s)", (LOCK_KEY,))
+
+
+def lock_waiters(conn: psycopg.Connection) -> int:
+    """이 DB에서 advisory lock을 기다리는 세션 수."""
+    row = conn.execute(
+        "SELECT count(*) FROM pg_locks WHERE locktype = 'advisory' AND NOT granted"
+        " AND database = (SELECT oid FROM pg_database WHERE datname = current_database())"
+    ).fetchone()
+    assert row is not None
+    return row[0]
+
+
+def wait_until(condition: Callable[[], bool], timeout: float = 10) -> None:
+    """condition이 참이 될 때까지 확인을 되풀이한다. 순서를 sleep 길이에 맡기지 않는다."""
+    deadline = time.monotonic() + timeout
+    while not condition():
+        if time.monotonic() > deadline:
+            pytest.fail(f"{timeout}초 안에 조건이 맞지 않았다")
+        time.sleep(0.01)
+
+
+def test_migrate_gives_up_while_another_run_holds_the_lock(
+    temp_database: str, tmp_path: Path
+) -> None:
+    (tmp_path / "0001_first.sql").write_text("CREATE TABLE first_table (id int);")
+
+    with psycopg.connect(temp_database, autocommit=True) as other:
+        hold_migration_lock(other)
+        with pytest.raises(MigrationError, match="다른 마이그레이션이 실행 중이다"):
+            migrate(temp_database, tmp_path, lock_wait_seconds=0.2)
+
+    with psycopg.connect(temp_database) as conn:
+        # 잠금을 잡은 뒤에 schema_migrations를 만들므로 그것도 없다
+        assert table_names(conn) == set()
+
+
+def test_migrate_waits_for_the_lock_then_applies(temp_database: str, tmp_path: Path) -> None:
+    (tmp_path / "0001_first.sql").write_text("CREATE TABLE first_table (id int);")
+
+    # 빠져나갈 때 연결(other)을 먼저 닫아 잠금을 풀고, 그 뒤에 스레드를 기다린다
+    with ThreadPoolExecutor(1) as pool, psycopg.connect(temp_database, autocommit=True) as other:
+        hold_migration_lock(other)
+        running = pool.submit(migrate, temp_database, tmp_path, lock_wait_seconds=30)
+        wait_until(lambda: running.done() or lock_waiters(other) == 1)
+        assert not running.done(), "잠금을 기다리지 않고 끝났다"
+
+        other.execute("SELECT pg_advisory_unlock(%s)", (LOCK_KEY,))
+
+        assert running.result(timeout=30) == ["0001_first.sql"]
+
+
+def test_concurrent_runs_apply_each_file_once(temp_database: str, tmp_path: Path) -> None:
+    """새 DB에 실행기 두 개를 동시에 돌리면, 하나가 모두 적용하고 다른 하나는 기다렸다가 끝난다."""
+    (tmp_path / "0001_first.sql").write_text("CREATE TABLE first_table (id int);")
+    (tmp_path / "0002_second.sql").write_text("CREATE TABLE second_table (id int);")
+    start = threading.Barrier(2)
+
+    def run() -> list[str]:
+        start.wait(timeout=10)
+        return migrate(temp_database, tmp_path)
+
+    with ThreadPoolExecutor(2) as pool:
+        runs = [pool.submit(run) for _ in range(2)]
+        results = sorted(future.result(timeout=60) for future in runs)
+
+    assert results == [[], ["0001_first.sql", "0002_second.sql"]]
+    with psycopg.connect(temp_database) as conn:
+        rows = conn.execute("SELECT version FROM schema_migrations ORDER BY version").fetchall()
+        assert rows == [(1,), (2,)]
+
+
+def test_lock_in_another_database_does_not_block(
+    temp_database: str, other_temp_database: str, tmp_path: Path
+) -> None:
+    """advisory lock은 DB마다 따로 잡힌다. 임시 DB를 따로 쓰는 db 테스트끼리는 서로 막지 않는다."""
+    (tmp_path / "0001_first.sql").write_text("CREATE TABLE first_table (id int);")
+
+    with psycopg.connect(other_temp_database, autocommit=True) as other:
+        hold_migration_lock(other)
+        assert migrate(temp_database, tmp_path, lock_wait_seconds=0.2) == ["0001_first.sql"]
 
 
 @pytest.mark.parametrize("table", ["alerts", "events"])
