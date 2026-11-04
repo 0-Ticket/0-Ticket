@@ -28,7 +28,7 @@ supersedes: []
 
 ## 다음 사람이 알아야 할 것
 
-- `link_by_refs`를 부르는 곳이 아직 없다. 알럿 문서가 원본 이벤트를 가리키는 필드(`kibana.alert.original_event.*` 등)를 공식 문서로 확인하지 못해, 알럿에서 쌍을 뽑는 코드와 `run.py`의 호출, 보류한 쌍을 다음 실행에서 다시 넘기는 코드를 만들지 않았다. 확인 전에는 필드 이름을 추측하지 않고 "연결 불가"로 둔다(계획 218 "바뀐 점" 2026-11-05). 지금은 실행해도 `raw_links`에 행이 생기지 않는다.
+- `link_by_refs`를 부르는 곳이 아직 없다. 알럿 문서가 원본 이벤트를 가리키는 필드는 공개 데이터셋(Kibana 8.17.3 알럿)에서 `kibana.alert.ancestors`로 확인했다(`type`이 `event`인 항목의 `index`·`id`가 이벤트의 `siem_ref`). `kibana.alert.original_event.*`는 연결 키가 아니다. 조직 ELK에서 다시 확인하지 않았고, 알럿에서 쌍을 뽑는 코드와 `run.py`의 호출, 보류한 쌍을 다음 실행에서 다시 넘기는 코드는 후속 이슈로 분리했다(계획 218 "바뀐 점" 2026-11-05). 지금은 실행해도 `raw_links`에 행이 생기지 않는다.
 - 이벤트 소스 5곳의 ECS 필드를 공식 통합 문서로 확인했다. 시각(`@timestamp`)과 웹 로그의 IP·URL, 클라우드 로그의 행위자·동작·리소스는 매핑할 수 있다. `file_hash`·`process`는 어떤 소스도 주지 않고, `domain`과 CloudTrail·Azure의 `source.ip`는 문서로 확인하지 못했다. 정규화 이슈에서 실제 문서로 다시 확인한다.
 
 - Event의 `time_field`는 아직 `@timestamp`다. `@timestamp`를 커서로 쓰면 색인이 늦게 끝난 문서를 놓친다. 로컬 ES에서 확인했다(`.local/elk/late_arrival.py`): `@timestamp` 커서는 늦은 문서 0건, `event.ingested` 커서는 1건을 잡았다. `event.ingested`로 바꾸려면 실제 ELK에 필드가 있는지 먼저 확인한다. 없으면 `exists` 필터가 문서를 조용히 건너뛰어 실행이 성공처럼 보인다. 확인 명령은 `config/default.toml` 주석에 있다. 색인 지연이 커서보다 길어지면 이 방법도 놓칠 수 있으므로, 겹침 구간(lookback)을 두는 방안을 따로 정한다.

@@ -97,3 +97,24 @@ ELK의 선택된 Event와 Elastic Security Alert 원본을 RawRecord로 PostgreS
 - 필드가 없거나 확인되지 않은 알럿은 연결하지 않고 "연결 불가"로 남긴다. 필드를 추측하거나 우리가 임의로 연결 규칙(시각·호스트 기반 추측)을 만들지 않는다. ELK 쪽에 연결 필드를 새로 넣는 것은 SIEM 운영 결정이라 우리 범위가 아니다.
 - 확인 방법: 조직 ELK에서 `GET .alerts-security.alerts-default/_mapping`과 `_search?size=1`로 필드 이름을 확인한 뒤 연결 필드 경로를 설정으로 받는다.
 - 이 결정으로 `raw_links` 초안의 완료 기준 1번("확인 전 구현 금지")은 추출 함수에만 적용한다. 연결 테이블과 저장 함수는 필드와 무관하므로 확인 전에도 만들 수 있다. 구현 위치(이 PR, 별도 이슈)는 아직 정하지 않았다.
+
+### 2026-11-05 · 연결 필드와 남은 결정 정리(공개 데이터셋 확인 후, 사람 위임으로 정함)
+
+근거: 공개 데이터셋 secops-es-benchmark(CC-BY-4.0)의 case-03에서 Kibana 8.17.3이 만든 알럿 21건을 확인했다. 원본 파일은 저장소에 두지 않았다.
+
+정한 것
+- 알럿이 원본 이벤트를 가리키는 필드는 `kibana.alert.ancestors`다. 항목 중 `type`이 `event`인 것의 `index`와 `id`로 이벤트의 `siem_ref`(`<index>/<id>`)를 만든다. 앞 항목의 `kibana.alert.original_event.*`는 연결 키가 아니다. 이 필드에는 `index`가 없고 `id`도 ES `_id`가 아니라 `event.id`다.
+- `type`이 `signal`인 항목(알럿이 다른 알럿의 조상인 경우)은 연결하지 않는다.
+- 알럿 문서는 `kibana.alert.ancestors`처럼 점이 들어간 평평한 키로 저장된다. 읽을 때 이 키 이름 그대로 찾는다.
+- 추출 코드와 `run.py`의 호출, 보류한 쌍을 다음 실행에서 다시 넘기는 코드는 이 PR에 넣지 않고 후속 이슈로 분리한다. 이유: PR이 리뷰 중이고, 조직 ELK에서 필드를 다시 확인하지 않았고, 보류 쌍을 다시 넘기는 방식이 정해지지 않았다. `raw_links`와 `link_by_refs`는 이 PR에 남긴다.
+- `raw_link`는 공통 계약으로 추가하지 않는다. 식별자 쌍만 가진 내부 테이블이다. P05나 L2가 계약을 요구하면 그 이슈에서 추가한다.
+- Alert는 ELK(Elastic Security)가 룰로 만든 것을 `kind=alert`로 가져와 정규화한다. 프로젝트가 `kind=event`에서 Alert를 새로 만들지 않는다(아키텍처 원칙 6, #208 외부 전제). 이슈 #219의 "룰에 맞는 Event의 Alert 생성" 문구는 이 결정에 맞게 고친다.
+- Event 커서는 `event.ingested`를 쓰는 방향으로 한다. 이 데이터의 모든 문서(nginx.access 포함)에 있다. 기본값은 조직 ELK에서 필드를 확인한 뒤 바꾼다. 없으면 `exists` 필터가 문서를 조용히 건너뛰기 때문이다.
+- 공개 데이터셋은 개발·테스트용 후보로만 본다. 원본은 `data/`(커밋 금지)에만 두고, 코드에 쓰기 전에 `docs/decisions.md` 안건으로 올려 확정한다.
+- `ingest_runs`·`raw_links` 보관 기간은 보관 기간 이슈에서, 수집 실행 API는 별도 이슈에서, DB 연결 풀은 #215에서 정한다.
+
+정하지 않은 것(사람·조직 확인 필요)
+- 조직 ELK에서의 연결 필드와 `event.ingested` 존재 확인(#208)
+- 출처별 전체 마감 시간(D-039), `ELK_URL`의 http 허용
+- 최초 지원 Event `class_uid`와 ECS→OCSF 매핑, 공통 계약 변경 승인
+
