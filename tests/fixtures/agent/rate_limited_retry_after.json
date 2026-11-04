@@ -1,0 +1,9 @@
+{
+  "description": "Retry-After가 2.5초, 120초(상한 60초), 읽을 수 없는 값인 429 뒤 Verdict를 낸다",
+  "steps": [
+    {"raise": "rate_limited", "retry_after": "2.5"},
+    {"raise": "rate_limited", "retry_after": "120"},
+    {"raise": "rate_limited", "retry_after": "soon"},
+    {"final": {"decision": "benign", "confidence": 0.9, "reason": "관리자 계정의 예정된 점검 작업이다", "evidence_ids": ["alt_01a19f93-1150-7000-8000-000000000004"]}}
+  ]
+}

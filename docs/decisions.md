@@ -44,7 +44,7 @@
 
 | ID | 결정 | 메모 |
 |---|---|---|
-| D-009 | 기본 LLM은 Groq `openai/gpt-oss-120b`(OpenAI 호환 API). 주소·모델 이름·키 환경변수 이름은 설정 값이라 다른 OpenAI 호환 제공자(Ollama 등)로 바꿀 수 있어야 한다 | 무료 플랜의 분당·일일 한도가 있다. 팀원별 키를 쓰고 입력 길이를 제한한다. OpenAI Agents SDK(D-022)를 쓰게 되면 Chat Completions API로 붙여야 다른 제공자로 바꿀 수 있다 |
+| D-009 | 기본 LLM은 Azure AI Foundry `gpt-oss-120b`(OpenAI 호환 v1 API, Chat Completions). 주소·모델(배포) 이름·키 환경변수 이름은 설정 값이라 코드를 고치지 않고 Groq·Ollama 같은 다른 OpenAI 호환 제공자로 바꿀 수 있다 | Azure 계정 확정 전까지는 Groq 또는 Ollama로 개발한다. 실제 연결·strict 수용 여부·구독·리전·TPM 확인은 #215에서 한다 |
 | D-010 | SIEM 조회 도구는 읽기 전용이다 | |
 | D-011 | SSH 도구는 읽기 전용이다. 접속 대상·계정·허용 명령은 설정 값이고 기본은 비어 있어 전부 거부한다. 키는 환경변수로만 읽는다. 허용 단위는 인자까지 포함한 명령 템플릿이다. SSH는 원격 서버의 셸이 명령 문자열을 다시 해석하므로, 인자 자리에 들어가는 값은 허용 형식만 받고 셸 특수문자가 들어 있으면 거부한다. 인자 값이 `-`로 시작하면 거부한다. 옵션으로 해석돼 명령이 쓰기·삭제로 바뀌는 것을 막기 위해서다. 원격 접속 계정은 읽기 권한만 가진 계정을 쓴다. 문자열 검사가 뚫려도 쓰기가 되지 않게 하는 마지막 방어선이다 | 원격 셸 해석을 막는 구체 방법은 이 이슈에서 정한다. 후보: 인자마다 `shlex.quote`로 감싸기, 원격 `authorized_keys`의 `command=` 제한 |
 | D-022 | 에이전트 프레임워크는 OpenAI Agents SDK(`openai-agents==0.24.0`, `openai==3.42.1`). Chat Completions 경로(`OpenAIChatCompletionsModel`)로 붙이고, 에이전트를 실행하는 코드 진입점에서 `set_tracing_disabled(True)`로 트레이싱을 끈다 | 트레이싱은 기본으로 켜져 있고 모델 입력·출력을 OpenAI 서버로 보낸다(`docs/security.md`). 환경변수에 맡기지 않는다. 구조화 출력(`output_type`)과 병렬 도구 호출은 쓰지 않는다. 함께 들어오는 패키지는 `uv.lock`으로 고정한다 |
@@ -127,6 +127,7 @@
 
 새 기록을 맨 위에 쓴다.
 
+- #210 · 기본 LLM(D-009)을 Groq에서 Azure Foundry gpt-oss-120b로 바꿈. 설정만으로 Groq·Ollama로 되돌리는 구조 포함. 팀 합의(#210)
 - #221 · L3 위협 시나리오 입력(D-029)을 담당자가 정함에서 확정으로 옮김, HTTP 클라이언트 httpx(D-039)와 데이터셋 MITRE ATT&CK Enterprise(D-040) 추가
 - 2026-11-04 · Hunt 계약(#217): Hunt 계약과 `hunts` 테이블(마이그레이션 0002)을 추가하고, Ticket에 `hunt_id`(`origin = l3`이면 값, 그 밖에는 null, Hunt 하나에 Ticket 하나)를 더함. ID 접두사 `hnt`·`hrn` 추가, Agent Log hunt 대상 `subject_id`를 `hnt_`·`hrn_` ID로 좁힘. 공통 계약 변경이라 L1·L2·L3 담당자 전원의 승인이 필요하다
 - #209 · 에이전트 프레임워크(D-022)와 에이전트 구조(D-024)를 후보에서 확정으로 옮김. 팀 합의(#209, L1·L2·L3 담당). 기본 LLM(D-009)·도구 구현 방식(D-023)·SSH 라이브러리·SSH 도구(D-011) 메모는 처음 쓰는 이슈에서 정한다

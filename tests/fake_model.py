@@ -59,7 +59,7 @@ class FakeModel(Model):
         step = self.steps.pop(0)
         n = len(self.calls)
         if "raise" in step:
-            raise _error(step["raise"])
+            raise _error(step["raise"], step.get("retry_after"))
         if "tool_call" in step:
             call = step["tool_call"]
             item = function_call(call["name"], call["arguments"], call_id=f"call_{n}")
@@ -85,11 +85,16 @@ class FakeModel(Model):
         raise NotImplementedError("가짜 모델은 스트리밍을 쓰지 않는다")
 
 
-def _error(kind: str) -> Exception:
+def _error(kind: str, retry_after: str | None = None) -> Exception:
     if kind == "rate_limited":
-        return openai.RateLimitError(
-            "rate limited", response=httpx2.Response(429, request=_REQUEST), body=None
-        )
+        headers = {} if retry_after is None else {"retry-after": retry_after}
+        response = httpx2.Response(429, headers=headers, request=_REQUEST)
+        return openai.RateLimitError("rate limited", response=response, body=None)
     if kind == "provider_error":
         return openai.APIConnectionError(request=_REQUEST)
+    if kind == "timeout":
+        return openai.APITimeoutError(request=_REQUEST)
+    if kind == "auth":
+        response = httpx2.Response(401, request=_REQUEST)
+        return openai.AuthenticationError("invalid api key", response=response, body=None)
     raise ValueError(f"알 수 없는 raise 값: {kind}")

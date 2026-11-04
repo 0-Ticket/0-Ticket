@@ -1,0 +1,6 @@
+{
+  "description": "모델 호출이 타임아웃으로 실패한다",
+  "steps": [
+    {"raise": "timeout"}
+  ]
+}

@@ -32,6 +32,24 @@ FAILURES: tuple[str, ...] = (
     "log_error",
 )
 
+# 2~4층 프롬프트에 들어가면 안 되는 문구(#210). 부정문도 걸리므로 2·3층은 다른 말로 쓴다.
+# 비교는 대소문자를 구분하지 않고 공백을 하나로 줄인 뒤 부분 문자열로 한다.
+FORBIDDEN_PHRASES: tuple[str, ...] = (
+    "이전 지시",
+    "지시를 무시",
+    "ignore previous",
+    "ignore all previous",
+    "system prompt",
+    "시스템 프롬프트",
+    "대응을 실행",
+)
+
+
+def contains_forbidden(text: str) -> bool:
+    normalized = re.sub(r"\s+", " ", text).casefold()
+    return any(phrase.casefold() in normalized for phrase in FORBIDDEN_PHRASES)
+
+
 # contracts/common/types.schema.json의 ID 모양과 같다. 끝의 \n을 받지 않도록 \Z를 쓴다.
 _UUID7 = r"[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
 EVIDENCE_ID = re.compile(rf"(alt|evt|agl)_{_UUID7}\Z")
@@ -45,7 +63,7 @@ _SUBJECT_ID = {
 
 @dataclass(frozen=True)
 class TaskPrompt:
-    """4층 작업 프롬프트. 파이프가 쓴다."""
+    """4층 작업 프롬프트. 파이프가 쓴다. 금지 문구(FORBIDDEN_PHRASES)가 있으면 거부한다."""
 
     text: str
     version: str
@@ -53,6 +71,8 @@ class TaskPrompt:
     def __post_init__(self) -> None:
         if not isinstance(self.text, str) or not self.text.strip():
             raise ValueError("TaskPrompt.text가 비어 있다")
+        if contains_forbidden(self.text):
+            raise ValueError("TaskPrompt.text에 금지 문구가 있다(FORBIDDEN_PHRASES)")
         if not isinstance(self.version, str) or not self.version:
             raise ValueError("TaskPrompt.version이 비어 있다")
 

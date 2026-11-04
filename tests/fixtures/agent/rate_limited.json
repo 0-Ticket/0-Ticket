@@ -1,6 +1,9 @@
 {
-  "description": "첫 모델 호출이 429로 실패한다",
+  "description": "모델 호출이 계속 429로 실패한다. 처음 호출과 재시도 3회가 모두 429다",
   "steps": [
+    {"raise": "rate_limited"},
+    {"raise": "rate_limited"},
+    {"raise": "rate_limited"},
     {"raise": "rate_limited"}
   ]
 }

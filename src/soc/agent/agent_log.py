@@ -119,6 +119,7 @@ class LogRecorder(RunHooks[Any]):
             "model", self._model_name, {"system": system_prompt, "input": input_items}
         )
         row["details"]["prompt_version"] = self._prompt_version
+        row["details"]["retries"] = 0  # 429 재시도 횟수. RetryingModel이 note_retry로 센다
 
     async def on_llm_end(self, context: Any, agent: Any, response: Any) -> None:
         row = self._finish("model", [jsonable(item) for item in response.output])
@@ -137,6 +138,27 @@ class LogRecorder(RunHooks[Any]):
 
     async def on_tool_end(self, context: Any, agent: Any, tool: Any, result: object) -> None:
         self._finish("tool", jsonable(result))
+
+    # 래퍼·예산 필터가 부름
+
+    def note_retry(self) -> None:
+        """지금 열려 있는 model 줄의 429 재시도 횟수를 하나 늘린다."""
+        opened = self._open.get("model")
+        if opened is not None:
+            opened[0]["details"]["retries"] += 1
+
+    def add_budget_exceeded(self, chars: int, max_input_chars: int) -> None:
+        """예산을 넘어 보내지 않은 호출을 model 줄 하나로 남긴다.
+
+        SDK는 call_model_input_filter를 on_llm_start보다 먼저 부르므로 훅이 이 줄을 만들지 않는다.
+        보내지 않은 내용은 넣지 않고 글자 수와 한도만 남긴다.
+        """
+        value = {"chars": chars, "max_input_chars": max_input_chars}
+        row = self._start("model", self._model_name, value)
+        self._open.pop("model", None)  # 보내지 않았으므로 열린 줄로 두지 않는다
+        row["outcome"] = "error"
+        row["details"]["prompt_version"] = self._prompt_version
+        row["details"]["failure"] = "budget_exceeded"
 
     # 정리
 

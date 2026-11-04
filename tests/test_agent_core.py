@@ -16,10 +16,25 @@ from soc.contracts import validate_contract
 
 ALERT_ID = "alt_01a19f93-1150-7000-8000-000000000004"
 CONFIG: dict[str, Any] = {
-    "llm": {"base_url": "", "model": "", "api_key_env": "LLM_API_KEY"},
-    "agent": {"l1": {"max_turns": 3}, "l2": {"max_turns": 12}, "l3": {"max_turns": 10}},
+    "llm": {
+        "base_url": "",
+        "model": "",
+        "api_key_env": "LLM_API_KEY",
+        "strict_mode": True,
+        "timeout_seconds": 60,
+        "rate_limit_retries": 3,
+    },
+    "agent": {
+        "l1": {"max_turns": 3, "max_input_chars": 32_000, "reasoning_effort": "low"},
+        "l2": {"max_turns": 12, "max_input_chars": 64_000, "reasoning_effort": "medium"},
+        "l3": {"max_turns": 10, "max_input_chars": 48_000, "reasoning_effort": "medium"},
+    },
     "tools": {},
 }
+
+
+async def no_sleep(seconds: float) -> None:
+    """429 재시도에서 실제로 기다리지 않는다(#210)."""
 
 
 @function_tool
@@ -54,6 +69,7 @@ def run(scenario: str, task: AgentTask | None = None, sink: Any = None):
         log_sink=sink,
         config=CONFIG,
         tools=[lookup_alert],
+        sleep=no_sleep,
     )
     return result, model, sink
 
@@ -132,7 +148,8 @@ def test_max_turns_exceeded_is_budget_exceeded() -> None:
 
 
 def test_retry_counts_toward_max_turns() -> None:
-    config = {**CONFIG, "agent": {**CONFIG["agent"], "l1": {"max_turns": 1}}}
+    l1 = {**CONFIG["agent"]["l1"], "max_turns": 1}  # 단계 설정의 다른 키는 그대로 둔다(#210)
+    config = {**CONFIG, "agent": {**CONFIG["agent"], "l1": l1}}
     model = FakeModel("format_error_then_ok")
     result = run_task(
         make_task(),
@@ -358,6 +375,7 @@ def test_rows_are_redacted(monkeypatch: pytest.MonkeyPatch) -> None:
         {"output_contract": "no_such_contract"},
         {"subject_type": "user"},
         {"subject_id": "tkt_01a19f93-1150-7000-8000-000000000004"},  # alert인데 tkt_
+        {"subject_type": "hunt", "subject_id": ""},  # #210
         {"subject_type": "hunt", "subject_id": "dns-beaconing-review"},
         {"subject_type": "hunt", "subject_id": "tkt_01a19f93-1150-7000-8000-000000000004"},
         {"subject_type": "hunt", "subject_id": "hnt_01a19f93-1150-7000-8000-000000000001\n"},

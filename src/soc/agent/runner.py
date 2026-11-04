@@ -1,7 +1,8 @@
 """run_agent: 파이프가 부르는 단 하나의 접점(에이전트 구조, D-024).
 
-처리 순서: 작업 검사(AgentTask를 만들 때) → 프롬프트 합성 → Runner.run_sync → JSON 파싱 →
+처리 순서: 작업 검사(AgentTask를 만들 때) → 프롬프트 5층 합성 → Runner.run_sync → JSON 파싱 →
 decided_at 덮어쓰기 → validate_contract → 실패하면 1회 재요청 → 근거 장부 검사 → Agent Log 쓰기.
+모델 호출마다 입력 예산(call_model_input_filter)을 검사하고, 429는 RetryingModel이 다시 부른다.
 어떤 실패에도 예외를 밖으로 내지 않고 AgentResult를 돌려준다.
 """
 
@@ -11,7 +12,6 @@ import json
 import os
 import time
 from collections.abc import Sequence
-from pathlib import Path
 from typing import Any
 
 import openai
@@ -25,16 +25,17 @@ from agents import (
     set_tracing_disabled,
 )
 from agents.models.interface import Model
+from agents.run_config import CallModelData, ModelInputData
+from openai.types.shared import Reasoning
 
 from soc.agent.agent_log import LogRecorder, LogSink, PostgresLogSink
+from soc.agent.compose import compose_instructions, has_top_level_field
 from soc.agent.config import load_config
+from soc.agent.llm import LLMConfigError, RetryingModel, Sleep, build_model, input_chars
 from soc.agent.redact import build_redactor
 from soc.agent.types import AgentResult, AgentTask
 from soc.contracts import ContractError, validate_contract
-from soc.contracts.validate import _CONTRACTS
 from soc.ids import new_id
-
-BASE_PROMPT_PATH = Path(__file__).parent / "prompts" / "base.md"
 
 
 class _Stop(Exception):
@@ -54,24 +55,22 @@ def run_agent(task: AgentTask) -> AgentResult:
         config = load_config()
     except Exception:
         return _failed("provider_error", "에이전트 설정을 읽지 못했다")
-    model = _default_model(config)
-    if model is None:
-        return _failed("provider_error", "LLM 연결 설정이 없다")
+    try:
+        model, model_name = build_model(config)
+    except LLMConfigError as exc:
+        return _failed("provider_error", str(exc))  # 주소·키는 담지 않는다
+    except Exception as exc:
+        return _failed("provider_error", f"LLM 연결을 만들지 못했다({type(exc).__name__})")
     database_url = os.environ.get("DATABASE_URL")
     if not database_url:
         return _failed("log_error", "환경변수 DATABASE_URL이 없다")
     return run_task(
         task,
         model=model,
-        model_name=str(config["llm"].get("model", "")),
+        model_name=model_name,
         log_sink=PostgresLogSink(database_url),
         config=config,
     )
-
-
-def _default_model(config: dict[str, Any]) -> Model | None:
-    """운영 모델. LLM 연결은 #210에서 붙인다."""
-    return None
 
 
 def run_task(
@@ -82,12 +81,17 @@ def run_task(
     log_sink: LogSink,
     config: dict[str, Any],
     tools: Sequence[Any] = (),
+    sleep: Sleep = asyncio.sleep,
 ) -> AgentResult:
-    """run_agent의 본체. 테스트는 가짜 모델과 메모리 기록기를 넣는다."""
+    """run_agent의 본체. 테스트는 가짜 모델과 메모리 기록기, 기다리지 않는 sleep을 넣는다."""
     set_tracing_disabled(True)  # 환경변수에 맡기지 않는다(docs/security.md)
     run_id = new_id("run")
     started = time.perf_counter()
-    instructions = compose_instructions(task)
+    try:
+        max_turns = int(config["agent"][task.stage]["max_turns"])
+        instructions = compose_instructions(task, max_turns=max_turns)
+    except Exception as exc:  # 설정·프롬프트 파일 문제. 예외는 밖으로 내지 않는다
+        return _failed("provider_error", f"프롬프트를 만들지 못했다({type(exc).__name__})")
     recorder = LogRecorder(
         run_id=run_id,
         stage=task.stage,
@@ -105,7 +109,7 @@ def run_task(
     detail: str | None = None
     validation: str | None = None
     try:
-        output, cited = _execute(task, model, instructions, recorder, config, tools)
+        output, cited = _execute(task, model, instructions, recorder, config, tools, sleep)
         validation = "ok"
     except _Stop as stop:
         failure, detail, validation = stop.failure, stop.detail, stop.validation
@@ -138,12 +142,6 @@ def run_task(
     )
 
 
-def compose_instructions(task: AgentTask) -> str:
-    """1층(base.md)과 4층(작업 프롬프트). 2·3·5층은 #210에서 더한다."""
-    base = BASE_PROMPT_PATH.read_text(encoding="utf-8").strip()
-    return f"{base}\n\n{task.prompt.text.strip()}"
-
-
 def wrap_data(data: Any) -> str:
     """입력 데이터를 구분자로 감싼다. 데이터 속 '<'는 \\u003c로 바꿔 구분자를 닫지 못하게 한다."""
     payload = json.dumps(data, ensure_ascii=False, sort_keys=True)
@@ -158,16 +156,36 @@ def _execute(
     recorder: LogRecorder,
     config: dict[str, Any],
     tools: Sequence[Any],
+    sleep: Sleep,
 ) -> tuple[Any, list[str]]:
-    max_turns = int(config["agent"][task.stage]["max_turns"])
+    stage = config["agent"][task.stage]
+    max_turns = int(stage["max_turns"])
+    max_input_chars = int(stage["max_input_chars"])
     agent = Agent(
         name=f"soc-{task.stage}",
         instructions=instructions,
-        model=model,
+        model=RetryingModel(
+            model,
+            retries=int(config["llm"]["rate_limit_retries"]),
+            sleep=sleep,
+            on_retry=recorder.note_retry,
+        ),
         tools=list(tools),
-        model_settings=ModelSettings(parallel_tool_calls=False),
+        # retry는 켜지 않는다(None). 재시도는 RetryingModel 하나만 한다.
+        model_settings=ModelSettings(
+            parallel_tool_calls=False,
+            reasoning=Reasoning(effort=stage["reasoning_effort"]),
+        ),
     )
-    run_config = RunConfig(tracing_disabled=True)
+
+    def check_budget(data: CallModelData[Any]) -> ModelInputData:
+        chars = input_chars(data.model_data.instructions, data.model_data.input)
+        if chars > max_input_chars:
+            recorder.add_budget_exceeded(chars, max_input_chars)
+            raise _Stop("budget_exceeded", "입력 예산(max_input_chars)을 넘어 보내지 않았다")
+        return data.model_data
+
+    run_config = RunConfig(tracing_disabled=True, call_model_input_filter=check_budget)
 
     def run(items: list[Any], turns: int) -> Any:
         try:
@@ -216,18 +234,13 @@ def _check_output(task: AgentTask, final_output: Any) -> tuple[Any, str | None]:
         data = json.loads(final_output)
     except ValueError:
         return None, "(root): json"
-    if isinstance(data, dict) and _has_top_level(task.output_contract, "decided_at"):
+    if isinstance(data, dict) and has_top_level_field(task.output_contract, "decided_at"):
         data["decided_at"] = time.time_ns() // 1_000_000  # 모델이 낸 시각은 쓰지 않는다
     try:
         validate_contract(task.output_contract, data)
     except ContractError as exc:
         return None, ", ".join(f"{v.path}: {v.rule}" for v in exc.violations)
     return data, None
-
-
-def _has_top_level(contract: str, field: str) -> bool:
-    model = _CONTRACTS[contract][1]
-    return field in model.model_fields
 
 
 def _redacted(row: dict[str, Any], redact: Any) -> dict[str, Any]:

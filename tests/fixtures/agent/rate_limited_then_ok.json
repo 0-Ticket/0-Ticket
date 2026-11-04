@@ -1,0 +1,9 @@
+{
+  "description": "429가 세 번 난 뒤 네 번째 호출에서 Verdict를 낸다",
+  "steps": [
+    {"raise": "rate_limited"},
+    {"raise": "rate_limited"},
+    {"raise": "rate_limited"},
+    {"final": {"decision": "benign", "confidence": 0.9, "reason": "관리자 계정의 예정된 점검 작업이다", "evidence_ids": ["alt_01a19f93-1150-7000-8000-000000000004"]}}
+  ]
+}
