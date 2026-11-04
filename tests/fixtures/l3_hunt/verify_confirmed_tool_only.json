@@ -1,0 +1,30 @@
+{
+  "description": "도구 호출 기록만 근거로 confirmed를 낸다. Alert·Event 근거가 없어 inconclusive로 낮춰져야 한다",
+  "steps": [
+    {
+      "tool_call": {
+        "name": "query_events",
+        "arguments": {
+          "entity": "203.0.113.10"
+        }
+      }
+    },
+    {
+      "final": {
+        "result": "confirmed",
+        "confidence": 0.9,
+        "reason": "업로드 뒤 셸 실행이 보인다",
+        "evidence_ids": [
+          "agl_01a19f93-1150-7000-8000-0000000000a2"
+        ],
+        "entities": [
+          {
+            "type": "ip",
+            "value": "203.0.113.10",
+            "role": "src"
+          }
+        ]
+      }
+    }
+  ]
+}
