@@ -71,3 +71,28 @@ def test_siem_tool_env_values_are_redacted() -> None:
         {"output": "ApiKey fake-elk-key-iiii at https://elk.example.com:9200/logs/_search"}
     )
     assert out == {"output": f"ApiKey {REDACTED} at {REDACTED}/logs/_search"}
+
+
+MULTILINE_KEY = (
+    "-----BEGIN OPENSSH PRIVATE KEY-----\n"
+    "ZmFrZS1rZXktbGluZS0xLWZvci10ZXN0cy1vbmx5LWFhYWFhYWFhYWFhYWFhYWFhYWFh\n"
+    "ZmFrZS1rZXktbGluZS0yLWZvci10ZXN0cy1vbmx5LWJiYmJiYmJiYmJiYmJiYmJiYmJi\n"
+    "-----END OPENSSH PRIVATE KEY-----\n"
+)
+
+
+def test_multiline_secret_is_redacted_whole_escaped_and_partial() -> None:
+    # SSH 개인 키(#213)처럼 여러 줄인 값. 통째로 나오면 한 번에, JSON 문자열 속(줄바꿈이 \n
+    # 이스케이프)이나 잘려서 일부 줄만 나와도 줄마다 가린다. 한 줄 중간에서 잘린 조각은 못 가린다.
+    import json
+
+    cfg = {"tools": {"ssh": {"key_env": "SSH_FAKE_KEY"}}}
+    redactor = build_redactor(cfg, {"SSH_FAKE_KEY": MULTILINE_KEY})
+    lines = MULTILINE_KEY.splitlines()
+    assert redactor({"stdout": MULTILINE_KEY}) == {"stdout": REDACTED}
+    escaped = redactor(json.dumps({"stdout": MULTILINE_KEY}))
+    partial = redactor("head\n" + lines[1] + "\n" + lines[2][:40])
+    for line in lines[1:3]:
+        assert line not in escaped
+    assert partial == f"head\n{REDACTED}\n" + lines[2][:40]
+    assert redactor(lines[2]) == REDACTED

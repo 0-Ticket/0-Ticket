@@ -2,7 +2,9 @@
 
 입출력에 비밀 값을 넣지 않는 것이 먼저다. 이 함수는 그래도 섞여 든 값을 한 번 더 지운다.
 가리는 것은 세 가지다.
-1. 설정의 *_env가 가리키는 환경변수의 실제 값
+1. 설정의 *_env가 가리키는 환경변수의 실제 값. 여러 줄인 값(SSH 개인 키, #213)은 값 전체와 함께
+   줄마다 가린다. JSON 문자열 속에서는 줄바꿈이 이스케이프(\\n)로 바뀌어 값 전체가
+   맞지 않기 때문이다.
 2. DB 주소(DATABASE_URL, AGENT_DATABASE_URL)의 비밀번호, 그리고 문자열 속 URL의 비밀번호 자리
 3. password=, Authorization: Bearer, api_key 모양의 값과, 이름이 password·api_key인 객체 키의 값
 """
@@ -40,6 +42,7 @@ def build_redactor(
             secret = environ.get(value)
             if secret and len(secret) >= _MIN_SECRET_LENGTH:
                 secrets.add(secret)
+                secrets.update(_lines(secret))
     for name in _DATABASE_URL_ENVS:
         password = _database_password(environ.get(name))
         if password and len(password) >= _MIN_SECRET_LENGTH:
@@ -68,6 +71,13 @@ def build_redactor(
         return value
 
     return redact
+
+
+def _lines(secret: str) -> list[str]:
+    """여러 줄인 비밀 값의 줄(앞뒤 공백 제외, 너무 짧은 줄 제외). 한 줄짜리 값이면 빈 목록."""
+    if "\n" not in secret:
+        return []
+    return [s for line in secret.splitlines() if len(s := line.strip()) >= _MIN_SECRET_LENGTH]
 
 
 def _items(value: Any) -> Iterator[tuple[str, Any]]:

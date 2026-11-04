@@ -1,0 +1,28 @@
+{
+  "_comment": "손으로 만든 점검 출력(#213). 계정은 가짜 이름, IP는 문서용 대역이다. 명령은 도구가 조립하는 문자열 그대로다.",
+  "processes": {
+    "command": "ps -eo pid,ppid,user,etime,args --no-headers",
+    "stdout": "      1       0 root          02:11:05 nginx: master process nginx -g daemon off;\n     29       1 www-data      02:11:05 nginx: worker process\n     31       1 root          02:11:04 /usr/sbin/sshd -D\n    412      31 root             00:41 sshd: soc-reader [priv]\n    418     412 soc-reader       00:41 ps -eo pid,ppid,user,etime,args --no-headers\n",
+    "exit_status": 0
+  },
+  "listening_ports": {
+    "command": "ss -tuln",
+    "stdout": "Netid State  Recv-Q Send-Q Local Address:Port Peer Address:Port Process\ntcp   LISTEN 0      511          0.0.0.0:80        0.0.0.0:*\ntcp   LISTEN 0      128          0.0.0.0:22        0.0.0.0:*\ntcp   LISTEN 0      4096       127.0.0.1:9000      0.0.0.0:*\n",
+    "exit_status": 0
+  },
+  "recent_logins": {
+    "command": "last -F -n 20",
+    "stdout": "soc-read pts/0        198.51.100.7     Thu Nov  5 09:12:44 2026   still logged in\nalice    pts/1        203.0.113.10     Wed Nov  4 22:01:03 2026 - Wed Nov  4 22:15:40 2026  (00:14)\n\nwtmp begins Sun Nov  1 00:00:01 2026\n",
+    "exit_status": 0
+  },
+  "auth_log_tail": {
+    "command": "tail -n 50 /var/log/auth.log",
+    "stdout": "2026-11-04T22:00:58+00:00 web01 sshd[2201]: Failed password for alice from 203.0.113.10 port 51122 ssh2\n2026-11-04T22:01:01+00:00 web01 sshd[2201]: Failed password for alice from 203.0.113.10 port 51122 ssh2\n2026-11-04T22:01:03+00:00 web01 sshd[2201]: Accepted password for alice from 203.0.113.10 port 51122 ssh2\n2026-11-05T09:12:44+00:00 web01 sshd[412]: Accepted publickey for soc-reader from 198.51.100.7 port 40022 ssh2\n",
+    "exit_status": 0
+  },
+  "file_hash": {
+    "command": "sha256sum -- /var/www/html/index.php",
+    "stdout": "9f2c1d4b8e7a6f5d4c3b2a1908f7e6d5c4b3a29180f7e6d5c4b3a2918f7e6d5c  /var/www/html/index.php\n",
+    "exit_status": 0
+  }
+}

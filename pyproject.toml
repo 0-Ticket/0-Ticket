@@ -6,6 +6,7 @@ readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.13"
 dependencies = [
+    "asyncssh==2.24.1",
     "httpx==0.28.1",
     "jsonschema>=4.26.0",
     "openai==3.42.1",
@@ -49,5 +50,6 @@ markers = [
     "db: PostgreSQL이 필요한 테스트. uv run pytest -m db 으로 실행",
     "qdrant: Qdrant가 필요한 테스트. uv run pytest -m qdrant 으로 실행",
     "elk: 실제 ELK에 접속하는 테스트. uv run pytest -m elk 으로 실행(docs/notes/212-siem-tools.md)",
+    "ssh: 실제 SSH 호스트에 접속하는 테스트. uv run pytest -m ssh 으로 실행(docs/notes/213-ssh-tool.md)",
 ]
-addopts = "-m 'not llm and not db and not qdrant and not elk'"
+addopts = "-m 'not llm and not db and not qdrant and not elk and not ssh'"
