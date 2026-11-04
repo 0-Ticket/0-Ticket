@@ -185,9 +185,10 @@ def test_returns_generated_model_with_plain_values() -> None:
     assert model.alert_ids == data["alert_ids"]
     assert type(model.alert_ids[0]) is str
     assert model.verdict is None
+    assert model.hunt_id is None
 
 
-@pytest.mark.parametrize("name", ["hunt", "types", "Ticket", ""])
+@pytest.mark.parametrize("name", ["hunts", "types", "Ticket", ""])
 def test_unknown_contract_name_is_rejected(name: str) -> None:
     with pytest.raises(ValueError):
         validate_contract(name, {})
@@ -198,6 +199,7 @@ FREE_OBJECTS = [
     ("raw_record", "original"),
     ("alert", "ocsf"),
     ("ticket", "details"),
+    ("hunt", "details"),
     ("agent_log", "input"),
     ("agent_log", "output"),
 ]

@@ -34,6 +34,12 @@ class Ticket(BaseModel):
         list[types_schema.AlertId],
         Field(description="origin이 auto, scenario, l1이면 1개 이상. 중복 없음"),
     ]
+    hunt_id: Annotated[
+        types_schema.HuntId | None,
+        Field(
+            description="이 Ticket을 만든 Hunt. origin이 l3이면 값이 있고, 그 밖에는 null. Hunt 하나에 Ticket 하나"
+        ),
+    ]
     entities: Annotated[
         list[entity_schema.Entity], Field(description="소속 Alert 엔티티를 모은 것")
     ]

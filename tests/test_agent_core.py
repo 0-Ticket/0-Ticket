@@ -358,6 +358,9 @@ def test_rows_are_redacted(monkeypatch: pytest.MonkeyPatch) -> None:
         {"output_contract": "no_such_contract"},
         {"subject_type": "user"},
         {"subject_id": "tkt_01a19f93-1150-7000-8000-000000000004"},  # alert인데 tkt_
+        {"subject_type": "hunt", "subject_id": "dns-beaconing-review"},
+        {"subject_type": "hunt", "subject_id": "tkt_01a19f93-1150-7000-8000-000000000004"},
+        {"subject_type": "hunt", "subject_id": "hnt_01a19f93-1150-7000-8000-000000000001\n"},
         {"allowed_evidence_ids": ("not-an-id",)},
         {"domains": ("mobile",)},
         {"attempt": 0},
@@ -366,3 +369,17 @@ def test_rows_are_redacted(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_invalid_task_is_rejected_when_built(overrides: dict[str, Any]) -> None:
     with pytest.raises(ValueError):
         make_task(**overrides)
+
+
+@pytest.mark.parametrize(
+    "subject_id",
+    ["hrn_01a19f93-1150-7000-8000-000000000001", "hnt_01a19f93-1150-7000-8000-000000000001"],
+    ids=["hunt_run", "hunt"],
+)
+def test_hunt_task_takes_hunt_run_and_hunt_ids(subject_id: str) -> None:
+    """가설 생성 run은 hrn_, 검증 run은 hnt_ ID를 대상으로 한다(Agent Log 계약과 같다)."""
+    task = make_task(stage="l3", subject_type="hunt", subject_id=subject_id)
+
+    result, _, _ = run("verdict_ok", task)
+
+    assert result.ok, result.detail

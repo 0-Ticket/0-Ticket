@@ -7,6 +7,7 @@
       "origin": "auto",
       "status": "new",
       "alert_ids": [],
+      "hunt_id": null,
       "entities": [],
       "verdict": null,
       "created_at": 1793678581000,
@@ -22,6 +23,7 @@
       "origin": "scenario",
       "status": "new",
       "alert_ids": [],
+      "hunt_id": null,
       "entities": [],
       "verdict": null,
       "created_at": 1793678581100,
@@ -37,6 +39,7 @@
       "origin": "l1",
       "status": "new",
       "alert_ids": [],
+      "hunt_id": null,
       "entities": [],
       "verdict": null,
       "created_at": 1793678641000,
@@ -52,6 +55,7 @@
       "origin": "auto",
       "status": "new",
       "alert_ids": ["alt_01a19f93-1150-7000-8000-000000000001"],
+      "hunt_id": null,
       "entities": [],
       "verdict": {
         "decision": "malicious",
@@ -73,6 +77,7 @@
       "origin": "manual",
       "status": "new",
       "alert_ids": ["alt_01a19f93-1150-7000-8000-000000000001"],
+      "hunt_id": null,
       "entities": [],
       "verdict": null,
       "created_at": 1793678581000,
@@ -88,6 +93,7 @@
       "origin": "auto",
       "status": "open",
       "alert_ids": ["alt_01a19f93-1150-7000-8000-000000000001"],
+      "hunt_id": null,
       "entities": [],
       "verdict": null,
       "created_at": 1793678581000,
@@ -103,6 +109,7 @@
       "origin": "auto",
       "status": "closed",
       "alert_ids": ["alt_01a19f93-1150-7000-8000-000000000007"],
+      "hunt_id": null,
       "entities": [],
       "verdict": {
         "decision": "benign",
@@ -125,6 +132,7 @@
       "origin": "auto",
       "status": "closed",
       "alert_ids": ["alt_01a19f93-1150-7000-8000-000000000007"],
+      "hunt_id": null,
       "entities": [],
       "verdict": {
         "decision": "benign",
@@ -146,6 +154,7 @@
       "origin": "auto",
       "status": "new",
       "alert_ids": ["evt_01a19f93-1150-7000-8000-000000000001"],
+      "hunt_id": null,
       "entities": [],
       "verdict": null,
       "created_at": 1793678581000,
@@ -164,6 +173,7 @@
         "alt_01a19f93-1150-7000-8000-000000000001",
         "alt_01a19f93-1150-7000-8000-000000000001"
       ],
+      "hunt_id": null,
       "entities": [],
       "verdict": null,
       "created_at": 1793678581000,
@@ -179,10 +189,90 @@
       "origin": "auto",
       "status": "new",
       "alert_ids": ["alt_01a19f93-1150-7000-8000-000000000001\n"],
+      "hunt_id": null,
       "entities": [],
       "verdict": null,
       "created_at": 1793678581000,
       "updated_at": 1793678581000,
+      "details": {}
+    }
+  },
+  {
+    "case": "l3_without_hunt",
+    "violations": [{"path": "hunt_id", "rule": "type"}],
+    "data": {
+      "id": "tkt_01a19f93-1150-7000-8000-000000000004",
+      "origin": "l3",
+      "status": "escalated",
+      "alert_ids": [],
+      "hunt_id": null,
+      "entities": [],
+      "verdict": null,
+      "created_at": 1793679000000,
+      "updated_at": 1793679000000,
+      "details": {}
+    }
+  },
+  {
+    "case": "auto_with_hunt",
+    "violations": [{"path": "hunt_id", "rule": "type"}],
+    "data": {
+      "id": "tkt_01a19f93-1150-7000-8000-000000000004",
+      "origin": "auto",
+      "status": "new",
+      "alert_ids": ["alt_01a19f93-1150-7000-8000-000000000001"],
+      "hunt_id": "hnt_01a19f93-1150-7000-8000-000000000001",
+      "entities": [],
+      "verdict": null,
+      "created_at": 1793679000000,
+      "updated_at": 1793679000000,
+      "details": {}
+    }
+  },
+  {
+    "case": "hunt_id_with_run_prefix",
+    "violations": [{"path": "hunt_id", "rule": "pattern"}],
+    "data": {
+      "id": "tkt_01a19f93-1150-7000-8000-000000000004",
+      "origin": "l3",
+      "status": "escalated",
+      "alert_ids": [],
+      "hunt_id": "hrn_01a19f93-1150-7000-8000-000000000001",
+      "entities": [],
+      "verdict": null,
+      "created_at": 1793679000000,
+      "updated_at": 1793679000000,
+      "details": {}
+    }
+  },
+  {
+    "case": "hunt_id_trailing_newline",
+    "violations": [{"path": "hunt_id", "rule": "pattern"}],
+    "data": {
+      "id": "tkt_01a19f93-1150-7000-8000-000000000004",
+      "origin": "l3",
+      "status": "escalated",
+      "alert_ids": [],
+      "hunt_id": "hnt_01a19f93-1150-7000-8000-000000000001\n",
+      "entities": [],
+      "verdict": null,
+      "created_at": 1793679000000,
+      "updated_at": 1793679000000,
+      "details": {}
+    }
+  },
+  {
+    "case": "missing_hunt_id",
+    "violations": [{"path": "hunt_id", "rule": "required"}],
+    "data": {
+      "id": "tkt_01a19f93-1150-7000-8000-000000000004",
+      "origin": "auto",
+      "status": "new",
+      "alert_ids": ["alt_01a19f93-1150-7000-8000-000000000001"],
+      "entities": [],
+      "verdict": null,
+      "created_at": 1793679000000,
+      "updated_at": 1793679000000,
       "details": {}
     }
   }

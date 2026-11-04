@@ -10,6 +10,7 @@
     "origin",
     "status",
     "alert_ids",
+    "hunt_id",
     "entities",
     "verdict",
     "created_at",
@@ -33,6 +34,13 @@
       "type": "array",
       "uniqueItems": true,
       "items": {"$ref": "common/types.schema.json#/definitions/alert_id"}
+    },
+    "hunt_id": {
+      "description": "이 Ticket을 만든 Hunt. origin이 l3이면 값이 있고, 그 밖에는 null. Hunt 하나에 Ticket 하나",
+      "anyOf": [
+        {"$ref": "common/types.schema.json#/definitions/hunt_id"},
+        {"type": "null"}
+      ]
     },
     "entities": {
       "description": "소속 Alert 엔티티를 모은 것",
@@ -61,6 +69,11 @@
         "properties": {"origin": {"enum": ["auto", "scenario", "l1"]}}
       },
       "then": {"properties": {"alert_ids": {"minItems": 1}}}
+    },
+    {
+      "if": {"required": ["origin"], "properties": {"origin": {"const": "l3"}}},
+      "then": {"properties": {"hunt_id": {"type": "string"}}},
+      "else": {"properties": {"hunt_id": {"type": "null"}}}
     },
     {
       "if": {"required": ["status"], "properties": {"status": {"const": "new"}}},

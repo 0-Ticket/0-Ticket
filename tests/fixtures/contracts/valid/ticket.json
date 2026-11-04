@@ -6,6 +6,7 @@
       "origin": "auto",
       "status": "new",
       "alert_ids": ["alt_01a19f93-1150-7000-8000-000000000001"],
+      "hunt_id": null,
       "entities": [
         {"type": "ip", "value": "203.0.113.10", "role": "src"},
         {"type": "host", "value": "web-01", "role": "dst"}
@@ -23,6 +24,7 @@
       "origin": "scenario",
       "status": "new",
       "alert_ids": ["alt_01a19f93-1150-7000-8000-000000000002"],
+      "hunt_id": null,
       "entities": [{"type": "user", "value": "kim.admin", "role": "actor"}],
       "verdict": null,
       "created_at": 1793678581100,
@@ -37,6 +39,7 @@
       "origin": "l1",
       "status": "new",
       "alert_ids": ["alt_01a19f93-1150-7000-8000-000000000004"],
+      "hunt_id": null,
       "entities": [{"type": "host", "value": "ws-07", "role": "target"}],
       "verdict": null,
       "created_at": 1793678641000,
@@ -51,6 +54,7 @@
       "origin": "l3",
       "status": "escalated",
       "alert_ids": [],
+      "hunt_id": "hnt_01a19f93-1150-7000-8000-000000000001",
       "entities": [{"type": "domain", "value": "update-check.example.com", "role": "dst"}],
       "verdict": null,
       "created_at": 1793679000000,
@@ -65,6 +69,7 @@
       "origin": "auto",
       "status": "closed",
       "alert_ids": ["alt_01a19f93-1150-7000-8000-000000000007"],
+      "hunt_id": null,
       "entities": [{"type": "user", "value": "lee.dev", "role": "actor"}],
       "verdict": {
         "decision": "benign",

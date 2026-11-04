@@ -24,6 +24,17 @@
     "case_id": {"type": "string", "pattern": "^cas_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
     "agent_log_id": {"type": "string", "pattern": "^agl_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
     "run_id": {"type": "string", "pattern": "^run_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
+    "hunt_id": {"type": "string", "pattern": "^hnt_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
+    "hunt_run_id": {
+      "description": "같은 가설 생성 실행에서 나온 Hunt 묶음. Agent Log의 run_id(에이전트 실행 한 번)와 다른 ID다",
+      "type": "string",
+      "pattern": "^hrn_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "hunt_subject_id": {
+      "description": "Agent Log의 hunt 대상. 가설 생성 run은 hrn_, 검증 run은 hnt_ ID",
+      "type": "string",
+      "pattern": "^(hnt|hrn)_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
     "evidence_id": {
       "description": "판정 근거. Alert·Event ID 또는 도구 호출 기록(Agent Log) ID",
       "type": "string",

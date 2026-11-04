@@ -1,0 +1,330 @@
+[
+  {
+    "case": "pending_with_confidence",
+    "violations": [{"path": "confidence", "rule": "type"}],
+    "data": {
+      "id": "hnt_01a19f93-1150-7000-8000-000000000002",
+      "hunt_run_id": "hrn_01a19f93-1150-7000-8000-000000000001",
+      "status": "pending",
+      "hypothesis": "공개 웹 서버의 취약점으로 웹셸이 올라왔다",
+      "attack_techniques": ["T1190"],
+      "confidence": 0.5,
+      "reason": null,
+      "evidence_ids": [],
+      "entities": [],
+      "attempts": 0,
+      "verified_at": null,
+      "created_at": 1793678800000,
+      "updated_at": 1793678800000,
+      "details": {}
+    }
+  },
+  {
+    "case": "failed_with_confidence",
+    "violations": [{"path": "confidence", "rule": "type"}],
+    "data": {
+      "id": "hnt_01a19f93-1150-7000-8000-000000000006",
+      "hunt_run_id": "hrn_01a19f93-1150-7000-8000-000000000002",
+      "status": "failed",
+      "hypothesis": "예약 작업으로 지속성을 확보했다",
+      "attack_techniques": ["T1053.005"],
+      "confidence": 0.2,
+      "reason": null,
+      "evidence_ids": [],
+      "entities": [],
+      "attempts": 3,
+      "verified_at": null,
+      "created_at": 1793678800000,
+      "updated_at": 1793678990000,
+      "details": {}
+    }
+  },
+  {
+    "case": "inconclusive_without_confidence",
+    "violations": [{"path": "confidence", "rule": "type"}],
+    "data": {
+      "id": "hnt_01a19f93-1150-7000-8000-000000000005",
+      "hunt_run_id": "hrn_01a19f93-1150-7000-8000-000000000002",
+      "status": "inconclusive",
+      "hypothesis": "203.0.113.50에서 내부 서버로 자격 증명 대입을 시도했다",
+      "attack_techniques": ["T1110"],
+      "confidence": null,
+      "reason": "해당 기간 인증 로그가 수집되지 않았다",
+      "evidence_ids": [],
+      "entities": [],
+      "attempts": 2,
+      "verified_at": 1793678920000,
+      "created_at": 1793678800000,
+      "updated_at": 1793678920000,
+      "details": {}
+    }
+  },
+  {
+    "case": "confirmed_without_alert_or_event_evidence",
+    "violations": [{"path": "evidence_ids", "rule": "contains"}],
+    "data": {
+      "id": "hnt_01a19f93-1150-7000-8000-000000000001",
+      "hunt_run_id": "hrn_01a19f93-1150-7000-8000-000000000001",
+      "status": "confirmed",
+      "hypothesis": "업데이트 확인을 가장한 도메인으로 주기적인 DNS 비콘이 나간다",
+      "attack_techniques": ["T1071.004"],
+      "confidence": 0.86,
+      "reason": "ws-07이 5분 간격으로 같은 하위 도메인을 조회했다",
+      "evidence_ids": ["agl_01a19f93-1150-7000-8000-000000000005"],
+      "entities": [],
+      "attempts": 1,
+      "verified_at": 1793678900000,
+      "created_at": 1793678800000,
+      "updated_at": 1793678900000,
+      "details": {}
+    }
+  },
+  {
+    "case": "rejected_without_evidence",
+    "violations": [{"path": "evidence_ids", "rule": "minItems"}],
+    "data": {
+      "id": "hnt_01a19f93-1150-7000-8000-000000000004",
+      "hunt_run_id": "hrn_01a19f93-1150-7000-8000-000000000001",
+      "status": "rejected",
+      "hypothesis": "PowerShell 인코딩 명령으로 추가 페이로드를 받았다",
+      "attack_techniques": ["T1059.001"],
+      "confidence": 0.9,
+      "reason": "같은 기간 인코딩 명령 실행 기록이 0건이다",
+      "evidence_ids": [],
+      "entities": [],
+      "attempts": 1,
+      "verified_at": 1793678910000,
+      "created_at": 1793678800000,
+      "updated_at": 1793678910000,
+      "details": {}
+    }
+  },
+  {
+    "case": "confirmed_without_attempts",
+    "violations": [{"path": "attempts", "rule": "minimum"}],
+    "data": {
+      "id": "hnt_01a19f93-1150-7000-8000-000000000001",
+      "hunt_run_id": "hrn_01a19f93-1150-7000-8000-000000000001",
+      "status": "confirmed",
+      "hypothesis": "업데이트 확인을 가장한 도메인으로 주기적인 DNS 비콘이 나간다",
+      "attack_techniques": ["T1071.004"],
+      "confidence": 0.86,
+      "reason": "ws-07이 5분 간격으로 같은 하위 도메인을 조회했다",
+      "evidence_ids": ["evt_01a19f93-1150-7000-8000-000000000003"],
+      "entities": [],
+      "attempts": 0,
+      "verified_at": 1793678900000,
+      "created_at": 1793678800000,
+      "updated_at": 1793678900000,
+      "details": {}
+    }
+  },
+  {
+    "case": "empty_reason",
+    "violations": [{"path": "reason", "rule": "minLength"}],
+    "data": {
+      "id": "hnt_01a19f93-1150-7000-8000-000000000001",
+      "hunt_run_id": "hrn_01a19f93-1150-7000-8000-000000000001",
+      "status": "confirmed",
+      "hypothesis": "업데이트 확인을 가장한 도메인으로 주기적인 DNS 비콘이 나간다",
+      "attack_techniques": ["T1071.004"],
+      "confidence": 0.86,
+      "reason": "",
+      "evidence_ids": ["evt_01a19f93-1150-7000-8000-000000000003"],
+      "entities": [],
+      "attempts": 1,
+      "verified_at": 1793678900000,
+      "created_at": 1793678800000,
+      "updated_at": 1793678900000,
+      "details": {}
+    }
+  },
+  {
+    "case": "empty_hypothesis",
+    "violations": [{"path": "hypothesis", "rule": "minLength"}],
+    "data": {
+      "id": "hnt_01a19f93-1150-7000-8000-000000000002",
+      "hunt_run_id": "hrn_01a19f93-1150-7000-8000-000000000001",
+      "status": "pending",
+      "hypothesis": "",
+      "attack_techniques": [],
+      "confidence": null,
+      "reason": null,
+      "evidence_ids": [],
+      "entities": [],
+      "attempts": 0,
+      "verified_at": null,
+      "created_at": 1793678800000,
+      "updated_at": 1793678800000,
+      "details": {}
+    }
+  },
+  {
+    "case": "technique_wrong_format",
+    "violations": [
+      {"path": "attack_techniques[0]", "rule": "pattern"},
+      {"path": "attack_techniques[1]", "rule": "pattern"},
+      {"path": "attack_techniques[2]", "rule": "pattern"}
+    ],
+    "data": {
+      "id": "hnt_01a19f93-1150-7000-8000-000000000002",
+      "hunt_run_id": "hrn_01a19f93-1150-7000-8000-000000000001",
+      "status": "pending",
+      "hypothesis": "공개 웹 서버의 취약점으로 웹셸이 올라왔다",
+      "attack_techniques": ["T190", "t1190", "T1505.03"],
+      "confidence": null,
+      "reason": null,
+      "evidence_ids": [],
+      "entities": [],
+      "attempts": 0,
+      "verified_at": null,
+      "created_at": 1793678800000,
+      "updated_at": 1793678800000,
+      "details": {}
+    }
+  },
+  {
+    "case": "technique_trailing_newline",
+    "violations": [{"path": "attack_techniques[0]", "rule": "pattern"}],
+    "data": {
+      "id": "hnt_01a19f93-1150-7000-8000-000000000002",
+      "hunt_run_id": "hrn_01a19f93-1150-7000-8000-000000000001",
+      "status": "pending",
+      "hypothesis": "공개 웹 서버의 취약점으로 웹셸이 올라왔다",
+      "attack_techniques": ["T1190\n"],
+      "confidence": null,
+      "reason": null,
+      "evidence_ids": [],
+      "entities": [],
+      "attempts": 0,
+      "verified_at": null,
+      "created_at": 1793678800000,
+      "updated_at": 1793678800000,
+      "details": {}
+    }
+  },
+  {
+    "case": "duplicate_techniques",
+    "violations": [{"path": "attack_techniques", "rule": "uniqueItems"}],
+    "data": {
+      "id": "hnt_01a19f93-1150-7000-8000-000000000002",
+      "hunt_run_id": "hrn_01a19f93-1150-7000-8000-000000000001",
+      "status": "pending",
+      "hypothesis": "공개 웹 서버의 취약점으로 웹셸이 올라왔다",
+      "attack_techniques": ["T1190", "T1190"],
+      "confidence": null,
+      "reason": null,
+      "evidence_ids": [],
+      "entities": [],
+      "attempts": 0,
+      "verified_at": null,
+      "created_at": 1793678800000,
+      "updated_at": 1793678800000,
+      "details": {}
+    }
+  },
+  {
+    "case": "duplicate_evidence_ids",
+    "violations": [{"path": "evidence_ids", "rule": "uniqueItems"}],
+    "data": {
+      "id": "hnt_01a19f93-1150-7000-8000-000000000001",
+      "hunt_run_id": "hrn_01a19f93-1150-7000-8000-000000000001",
+      "status": "confirmed",
+      "hypothesis": "업데이트 확인을 가장한 도메인으로 주기적인 DNS 비콘이 나간다",
+      "attack_techniques": ["T1071.004"],
+      "confidence": 0.86,
+      "reason": "ws-07이 5분 간격으로 같은 하위 도메인을 조회했다",
+      "evidence_ids": [
+        "evt_01a19f93-1150-7000-8000-000000000003",
+        "evt_01a19f93-1150-7000-8000-000000000003"
+      ],
+      "entities": [],
+      "attempts": 1,
+      "verified_at": 1793678900000,
+      "created_at": 1793678800000,
+      "updated_at": 1793678900000,
+      "details": {}
+    }
+  },
+  {
+    "case": "status_not_in_list",
+    "violations": [{"path": "status", "rule": "enum"}],
+    "data": {
+      "id": "hnt_01a19f93-1150-7000-8000-000000000001",
+      "hunt_run_id": "hrn_01a19f93-1150-7000-8000-000000000001",
+      "status": "open",
+      "hypothesis": "업데이트 확인을 가장한 도메인으로 주기적인 DNS 비콘이 나간다",
+      "attack_techniques": ["T1071.004"],
+      "confidence": null,
+      "reason": null,
+      "evidence_ids": [],
+      "entities": [],
+      "attempts": 1,
+      "verified_at": null,
+      "created_at": 1793678800000,
+      "updated_at": 1793678800000,
+      "details": {}
+    }
+  },
+  {
+    "case": "hunt_run_id_with_run_prefix",
+    "violations": [{"path": "hunt_run_id", "rule": "pattern"}],
+    "data": {
+      "id": "hnt_01a19f93-1150-7000-8000-000000000002",
+      "hunt_run_id": "run_01a19f93-1150-7000-8000-000000000001",
+      "status": "pending",
+      "hypothesis": "공개 웹 서버의 취약점으로 웹셸이 올라왔다",
+      "attack_techniques": [],
+      "confidence": null,
+      "reason": null,
+      "evidence_ids": [],
+      "entities": [],
+      "attempts": 0,
+      "verified_at": null,
+      "created_at": 1793678800000,
+      "updated_at": 1793678800000,
+      "details": {}
+    }
+  },
+  {
+    "case": "attempts_float",
+    "violations": [{"path": "attempts", "rule": "type"}],
+    "data": {
+      "id": "hnt_01a19f93-1150-7000-8000-000000000002",
+      "hunt_run_id": "hrn_01a19f93-1150-7000-8000-000000000001",
+      "status": "pending",
+      "hypothesis": "공개 웹 서버의 취약점으로 웹셸이 올라왔다",
+      "attack_techniques": [],
+      "confidence": null,
+      "reason": null,
+      "evidence_ids": [],
+      "entities": [],
+      "attempts": 0.0,
+      "verified_at": null,
+      "created_at": 1793678800000,
+      "updated_at": 1793678800000,
+      "details": {}
+    }
+  },
+  {
+    "case": "extra_field",
+    "violations": [{"path": "(root)", "rule": "additionalProperties"}],
+    "data": {
+      "id": "hnt_01a19f93-1150-7000-8000-000000000002",
+      "hunt_run_id": "hrn_01a19f93-1150-7000-8000-000000000001",
+      "status": "pending",
+      "hypothesis": "공개 웹 서버의 취약점으로 웹셸이 올라왔다",
+      "attack_techniques": [],
+      "confidence": null,
+      "reason": null,
+      "evidence_ids": [],
+      "entities": [],
+      "attempts": 0,
+      "verified_at": null,
+      "created_at": 1793678800000,
+      "updated_at": 1793678800000,
+      "details": {},
+      "source_url": "https://news.example.com/a"
+    }
+  }
+]
