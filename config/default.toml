@@ -33,23 +33,44 @@ rate_limit_retries = 3
 # max_turns: 모델 호출 상한. 넘으면 budget_exceeded.
 # max_input_chars: 한 호출에 보내는 system 지시 + 입력 항목(JSON) 글자 수 상한. 넘으면 보내지 않고 budget_exceeded.
 # reasoning_effort: Chat Completions의 reasoning_effort(low | medium | high).
+# max_tool_result_chars: 모델에게 보내는 도구 결과 JSON 본문의 글자 수 상한. 넘으면 뒤 레코드부터 뺀다(#211).
 [agent.l1]
 max_turns = 6
 max_input_chars = 32000
 reasoning_effort = "low"
+max_tool_result_chars = 6000
 
 [agent.l2]
 max_turns = 12
 max_input_chars = 64000
 reasoning_effort = "medium"
+max_tool_result_chars = 8000
 
 [agent.l3]
 max_turns = 10
 max_input_chars = 48000
 reasoning_effort = "medium"
+max_tool_result_chars = 8000
 
 [tools]
-# 도구 레지스트리와 단계별 허용 목록, max_tool_result_chars는 #211에서 채운다.
+# 도구 레지스트리(도구 구현 방식, D-023, #211). 내부 데이터·Web 도구는 환경변수 AGENT_DATABASE_URL
+# (읽기 역할 soc_agent_reader의 멤버 계정)로 alerts·events만 읽는다.
+# DB 문장 시간 상한(밀리초). 넘으면 TOOL_ERROR code=timeout
+statement_timeout_ms = 5000
+# 접속 시간 상한(초). 접속이 안 되면 TOOL_ERROR code=unavailable
+connect_timeout_seconds = 5
+# 시간 범위 인자(start_ms~end_ms)로 한 번에 볼 수 있는 일 수
+max_range_days = 7
+# 목록 도구의 limit 기본값과 상한
+default_limit = 20
+max_limit = 100
+
+# 단계별 허용 도구. 여기에 없는 도구는 모델에게 등록되지 않는다(기본 전부 거부).
+# 레지스트리에 없는 이름을 적으면 실행이 provider_error로 끝난다.
+[tools.allowed]
+l1 = ["get_alert", "get_event", "query_records", "query_http_flow", "summarize_http_flow"]
+l2 = ["get_alert", "get_event", "query_records", "query_http_flow", "summarize_http_flow"]
+l3 = ["get_alert", "get_event", "query_records", "query_http_flow", "summarize_http_flow"]
 
 # L3 가설 재료 수집(#221, L3 위협 시나리오 입력 D-029). 모두 공개 피드라 비밀 값이 없다.
 # 실행: uv run python -m soc.l3.intel

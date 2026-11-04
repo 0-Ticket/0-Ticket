@@ -7,7 +7,7 @@ import httpx2
 import pytest
 from agents import OpenAIChatCompletionsModel
 from fake_model import FakeModel
-from test_agent_core import CONFIG, lookup_alert, make_task, no_sleep
+from test_agent_core import CONFIG, REGISTRY, make_task, no_sleep
 
 from soc.agent import run_agent
 from soc.agent.agent_log import MemoryLogSink
@@ -58,7 +58,7 @@ def run(scenario: str, *, config: dict[str, Any] = CONFIG, sleep: Any = no_sleep
         model_name="fake-model",
         log_sink=sink,
         config=config,
-        tools=[lookup_alert],
+        registry=REGISTRY,
         sleep=sleep,
     )
     return result, model, sink
@@ -148,6 +148,7 @@ def test_request_goes_to_base_url_with_model_effort_and_key() -> None:
         model_name="gpt-oss-120b-deploy",
         log_sink=MemoryLogSink(),
         config=llm_config(**PROVIDERS["foundry"]),
+        registry=REGISTRY,
         sleep=no_sleep,
     )
     assert result.failure == "format_error"  # 답 모양은 관심 밖이다. 요청만 본다
@@ -268,6 +269,7 @@ def test_real_client_429_is_retried_then_rate_limited() -> None:
         model_name="gpt-oss-120b-deploy",
         log_sink=MemoryLogSink(),
         config=config,
+        registry=REGISTRY,
         sleep=sleep,
     )
     assert result.failure == "rate_limited"

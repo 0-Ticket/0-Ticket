@@ -3,7 +3,7 @@
 입출력에 비밀 값을 넣지 않는 것이 먼저다. 이 함수는 그래도 섞여 든 값을 한 번 더 지운다.
 가리는 것은 세 가지다.
 1. 설정의 *_env가 가리키는 환경변수의 실제 값
-2. DB 주소(DATABASE_URL)의 비밀번호, 그리고 문자열 속 URL의 비밀번호 자리
+2. DB 주소(DATABASE_URL, AGENT_DATABASE_URL)의 비밀번호, 그리고 문자열 속 URL의 비밀번호 자리
 3. password=, Authorization: Bearer, api_key 모양의 값과, 이름이 password·api_key인 객체 키의 값
 """
 
@@ -18,7 +18,7 @@ REDACTED = "[REDACTED]"
 
 # 너무 짧은 값은 평범한 낱말까지 지우므로 가리지 않는다.
 _MIN_SECRET_LENGTH = 4
-_DATABASE_URL_ENVS = ("DATABASE_URL",)
+_DATABASE_URL_ENVS = ("DATABASE_URL", "AGENT_DATABASE_URL")
 _SECRET_KEYS = frozenset({"password", "passwd", "api_key", "apikey", "api-key", "authorization"})
 
 _URL_PASSWORD = re.compile(r"(\b[a-z][a-z0-9+.-]*://[^\s:/@]+:)[^\s@/]+(?=@)", re.IGNORECASE)

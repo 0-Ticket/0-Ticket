@@ -1,0 +1,138 @@
+{
+  "description": "내부 데이터·Web 도구 테스트용 손으로 만든 Alert·Event(#211). IP는 문서용 대역, 도메인은 example.com, 계정은 가짜 이름이다. 기준 시각 T0 = 1793678578000(2026-11-03). alt_…0a03은 T0보다 10일 앞이다. Event는 4002(HTTP Activity) 4건과 다른 클래스(3002 인증, 1007 프로세스) 2건이다",
+  "alerts": [
+    {
+      "id": "alt_01a19f93-1150-7000-8000-000000000a01",
+      "raw_id": "raw_01a19f93-1150-7000-8000-000000000b01",
+      "time": 1793678578000,
+      "severity": 4,
+      "title": "SQL Injection Attempt",
+      "rule_id": "rule-sqli",
+      "entities": [
+        {"type": "ip", "value": "203.0.113.10", "role": "src"},
+        {"type": "host", "value": "web-01", "role": "dst"}
+      ],
+      "assets": [],
+      "triage": null,
+      "ocsf": {"class_uid": 2004, "finding_info": {"title": "SQL Injection Attempt", "uid": "rule-sqli"}},
+      "details": {}
+    },
+    {
+      "id": "alt_01a19f93-1150-7000-8000-000000000a02",
+      "raw_id": "raw_01a19f93-1150-7000-8000-000000000b02",
+      "time": 1793678638000,
+      "severity": 2,
+      "title": "100% CPU usage_alert on web-02",
+      "rule_id": "rule-cpu",
+      "entities": [{"type": "host", "value": "web-02", "role": "target"}],
+      "assets": [],
+      "triage": null,
+      "ocsf": {"class_uid": 2004, "finding_info": {"title": "100% CPU usage_alert on web-02", "uid": "rule-cpu"}},
+      "details": {}
+    },
+    {
+      "id": "alt_01a19f93-1150-7000-8000-000000000a03",
+      "raw_id": "raw_01a19f93-1150-7000-8000-000000000b03",
+      "time": 1792814578000,
+      "severity": 6,
+      "title": "Old Brute Force",
+      "rule_id": "rule-sqli",
+      "entities": [{"type": "ip", "value": "203.0.113.10", "role": "src"}],
+      "assets": [],
+      "triage": null,
+      "ocsf": {"class_uid": 2004},
+      "details": {}
+    }
+  ],
+  "events": [
+    {
+      "id": "evt_01a19f93-1150-7000-8000-000000000e01",
+      "raw_id": "raw_01a19f93-1150-7000-8000-000000000c01",
+      "time": 1793678579000,
+      "ocsf_class": 4002,
+      "summary": "GET /login.php 500",
+      "entities": [{"type": "ip", "value": "203.0.113.10", "role": "src"}],
+      "assets": [],
+      "ocsf": {
+        "class_uid": 4002,
+        "http_request": {"http_method": "GET", "url": {"path": "/login.php"}, "user_agent": "sqlmap/1.7"},
+        "http_response": {"code": 500},
+        "src_endpoint": {"ip": "203.0.113.10"}
+      },
+      "details": {}
+    },
+    {
+      "id": "evt_01a19f93-1150-7000-8000-000000000e02",
+      "raw_id": "raw_01a19f93-1150-7000-8000-000000000c02",
+      "time": 1793678580000,
+      "ocsf_class": 4002,
+      "summary": "POST /login.php 200",
+      "entities": [{"type": "ip", "value": "203.0.113.10", "role": "src"}],
+      "assets": [],
+      "ocsf": {
+        "class_uid": 4002,
+        "http_request": {"http_method": "POST", "url": {"path": "/login.php"}, "user_agent": "sqlmap/1.7"},
+        "http_response": {"code": 200},
+        "src_endpoint": {"ip": "203.0.113.10"}
+      },
+      "details": {}
+    },
+    {
+      "id": "evt_01a19f93-1150-7000-8000-000000000e03",
+      "raw_id": "raw_01a19f93-1150-7000-8000-000000000c03",
+      "time": 1793678581000,
+      "ocsf_class": 4002,
+      "summary": "GET /index.html 200",
+      "entities": [{"type": "ip", "value": "198.51.100.7", "role": "src"}],
+      "assets": [],
+      "ocsf": {
+        "class_uid": 4002,
+        "http_request": {"http_method": "GET", "url": {"path": "/index.html"}, "user_agent": "Mozilla/5.0 (X11; Linux x86_64)"},
+        "http_response": {"code": 200},
+        "src_endpoint": {"ip": "198.51.100.7"}
+      },
+      "details": {}
+    },
+    {
+      "id": "evt_01a19f93-1150-7000-8000-000000000e04",
+      "raw_id": "raw_01a19f93-1150-7000-8000-000000000c04",
+      "time": 1793678582000,
+      "ocsf_class": 4002,
+      "summary": "GET /admin 403",
+      "entities": [{"type": "ip", "value": "203.0.113.10", "role": "src"}],
+      "assets": [],
+      "ocsf": {
+        "class_uid": 4002,
+        "http_request": {"http_method": "GET", "url": {"path": "/admin"}, "user_agent": "sqlmap/1.7"},
+        "http_response": {"code": 403},
+        "src_endpoint": {"ip": "203.0.113.10"}
+      },
+      "details": {}
+    },
+    {
+      "id": "evt_01a19f93-1150-7000-8000-000000000e05",
+      "raw_id": "raw_01a19f93-1150-7000-8000-000000000c05",
+      "time": 1793678583000,
+      "ocsf_class": 3002,
+      "summary": "login failed for user alice",
+      "entities": [
+        {"type": "ip", "value": "203.0.113.10", "role": "src"},
+        {"type": "user", "value": "alice", "role": "target"}
+      ],
+      "assets": [],
+      "ocsf": {"class_uid": 3002, "src_endpoint": {"ip": "203.0.113.10"}},
+      "details": {}
+    },
+    {
+      "id": "evt_01a19f93-1150-7000-8000-000000000e06",
+      "raw_id": "raw_01a19f93-1150-7000-8000-000000000c06",
+      "time": 1793678584000,
+      "ocsf_class": 1007,
+      "summary": "process started on web-01",
+      "entities": [{"type": "host", "value": "web-01", "role": "target"}],
+      "assets": [],
+      "ocsf": {"class_uid": 1007},
+      "details": {}
+    }
+  ]
+}

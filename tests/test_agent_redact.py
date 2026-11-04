@@ -30,6 +30,13 @@ def test_database_password_is_redacted() -> None:
     assert out[1].startswith("postgresql://u:")
 
 
+def test_agent_database_password_is_redacted() -> None:
+    # 에이전트 도구의 DB 주소(#211). 비밀번호만 따로 나와도 가린다
+    env = {"AGENT_DATABASE_URL": "postgresql://reader:fake-agent-pass-ffff@db.example.com/soc"}
+    out = build_redactor(CONFIG, env)({"error": "auth failed for fake-agent-pass-ffff"})
+    assert out == {"error": f"auth failed for {REDACTED}"}
+
+
 def test_secret_shaped_values_are_redacted() -> None:
     cases = {
         "password=fake-eeee next": "password=" + REDACTED + " next",
