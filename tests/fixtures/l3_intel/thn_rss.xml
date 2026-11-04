@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
+<channel>
+<title>Test Hacker News</title>
+<link>https://hn.example.com/</link>
+<description>Hand-made sample</description>
+<item>
+<title>Fake Botnet Targets Example Routers</title>
+<description><![CDATA[A &lt;em&gt;fake&lt;/em&gt; botnet   scans
+198.51.100.0/24 for exposed admin panels.]]></description>
+<link>https://hn.example.com/2026/11/fake-botnet.html</link>
+<guid isPermaLink="false">https://hn.example.com/2026/11/fake-botnet.html</guid>
+<pubDate>Wed, 04 Nov 2026 00:16:38 +0530</pubDate>
+<author>info@example.com (Test Writer)</author>
+</item>
+<item>
+<title>Item Without Guid Uses Link</title>
+<description><![CDATA[No guid here.]]></description>
+<link>https://hn.example.com/2026/11/no-guid.html</link>
+</item>
+<item>
+<title>Item Without Guid Or Link Is Skipped</title>
+<description><![CDATA[Nothing to key on.]]></description>
+<pubDate>Wed, 04 Nov 2026 01:00:00 +0000</pubDate>
+</item>
+<item>
+<title>   </title>
+<link>https://hn.example.com/2026/11/empty-title.html</link>
+<description><![CDATA[Empty title after cleaning is skipped.]]></description>
+</item>
+<item>
+<title>Unreadable Date Becomes Null</title>
+<link>https://hn.example.com/2026/11/bad-date.html</link>
+<guid isPermaLink="false">thn-bad-date</guid>
+<description><![CDATA[Date is not RFC 822.]]></description>
+<pubDate>2026-11-04 15:35:55</pubDate>
+</item>
+</channel>
+</rss>

@@ -1,0 +1,47 @@
+{
+  "title": "Test Catalog of Known Exploited Vulnerabilities",
+  "catalogVersion": "2026.11.03",
+  "dateReleased": "2026-11-03T20:00:24.8741Z",
+  "count": 3,
+  "vulnerabilities": [
+    {
+      "cveID": "CVE-2026-0001",
+      "vendorProject": "Example",
+      "product": "Example VPN",
+      "vulnerabilityName": "Example VPN Remote Code Execution Vulnerability",
+      "dateAdded": "2026-11-03",
+      "shortDescription": "Example VPN contains a <b>remote code execution</b> vulnerability.",
+      "requiredAction": "Apply mitigations per vendor instructions.",
+      "dueDate": "2026-11-24",
+      "knownRansomwareCampaignUse": "Unknown",
+      "notes": "https://vendor.example.com/advisory/0001",
+      "cwes": ["CWE-78"]
+    },
+    {
+      "cveID": "CVE-2026-0002",
+      "vendorProject": "Example",
+      "product": "Example Mail",
+      "vulnerabilityName": "Example Mail\u0000 Path\u0007 Traversal Vulnerability",
+      "dateAdded": "2026-10-30",
+      "shortDescription": "Control\u0001 characters\ttabs\nand a lone surrogate \ud800 are removed.",
+      "requiredAction": "Apply mitigations per vendor instructions.",
+      "dueDate": "2026-11-20",
+      "knownRansomwareCampaignUse": "Known",
+      "notes": "",
+      "cwes": []
+    },
+    {
+      "cveID": "CVE-2026-0003",
+      "vendorProject": "Example",
+      "product": "Example Router",
+      "vulnerabilityName": "Example Router Authentication Bypass Vulnerability",
+      "dateAdded": "2026-10-01",
+      "shortDescription": "",
+      "requiredAction": "Discontinue use.",
+      "dueDate": "2026-10-22",
+      "knownRansomwareCampaignUse": "Unknown",
+      "notes": "",
+      "cwes": []
+    }
+  ]
+}
