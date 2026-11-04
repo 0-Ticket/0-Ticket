@@ -39,6 +39,7 @@ _SUBJECT_ID = {
     "alert": re.compile(rf"alt_{_UUID7}\Z"),
     "ticket": re.compile(rf"tkt_{_UUID7}\Z"),
     "incident": re.compile(rf"inc_{_UUID7}\Z"),
+    "hunt": re.compile(rf"(hnt|hrn)_{_UUID7}\Z"),
 }
 
 
