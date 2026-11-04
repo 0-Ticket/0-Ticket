@@ -1,7 +1,10 @@
 -- 공통 테이블(#192). 단계끼리 주고받는 데이터 7가지를 담는다.
 -- 컬럼 이름은 contracts/의 최상위 필드 이름과 같다. 시각은 timestamptz, 객체는 jsonb.
 -- CHECK는 최상위 컬럼의 목록 값·숫자 범위, triage의 모양과 status, jsonb 칸의 모양(객체·목록),
--- ID 목록(alert_ids, ticket_ids)의 NULL 원소와 개수까지 확인한다.
+-- ID 목록(alert_ids, ticket_ids)의 NULL 원소와 개수(origin ↔ alert_ids 포함)까지 확인한다.
+-- 기준은 행 하나만 봐도 깨진 레코드인지 알 수 있는 것이다. 상태와 다른 칸이 맞는지(cases의 resolved ↔
+-- resolved_at, tickets의 new → verdict null, triage의 status ↔ verdict)는 validate_contract()와 단계
+-- 코드가 확인한다. 상태 규칙은 단계 담당자가 바꿀 수 있어서 DB에 두지 않는다.
 -- jsonb 칸의 안쪽 필드(entities[].type, verdict.decision 등)는 validate_contract()가 검사한다.
 -- jsonb 컬럼은 JSON null('null'::jsonb)을 거부한다. null이 될 수 있는 컬럼(triage, verdict, output)은
 -- SQL NULL로 넣는다. psycopg의 Jsonb(None)은 JSON null이 되어 IS NULL 조회에 걸리지 않기 때문이다.
