@@ -169,12 +169,18 @@ class LogRecorder(RunHooks[Any]):
         return opened[0]["id"] if opened is not None else None
 
     def report_tool(
-        self, tool_call_id: str, output: Any, failure: str | None, blocked: bool
+        self,
+        tool_call_id: str,
+        output: Any,
+        failure: str | None,
+        blocked: bool,
+        reason: str | None = None,
     ) -> None:
         """레지스트리가 알려 준 결과를 그 tool 줄에 남긴다.
 
         output은 자르기 전 전체 결과(오류면 모델에게 보낸 TOOL_ERROR 문구)다.
         on_tool_end가 받는 값은 모델에게 보낸 잘린 문자열이라 쓰지 않는다.
+        reason은 오류 코드보다 자세한 사유 이름(예: auth)이고 details.reason에 쓴다(#212).
         """
         opened = self._open_tools.get(tool_call_id)
         if opened is None:
@@ -186,6 +192,8 @@ class LogRecorder(RunHooks[Any]):
             row["details"]["failure"] = failure
         if blocked:
             row["details"]["blocked"] = True
+        if reason is not None:
+            row["details"]["reason"] = reason
         self._reported.add(row["id"])
 
     # 래퍼·예산 필터가 부름
