@@ -95,7 +95,7 @@
       "run_id": "run_01a19f93-1150-7000-8000-000000000004",
       "stage": "l3",
       "subject_type": "hunt",
-      "subject_id": "dns-beaconing-review",
+      "subject_id": "hrn_01a19f93-1150-7000-8000-000000000001",
       "seq": 1,
       "kind": "tool",
       "name": "siem_search",
@@ -106,6 +106,27 @@
       "tokens_out": null,
       "started_at": 1793679000000,
       "duration_ms": 410,
+      "details": {}
+    }
+  },
+  {
+    "case": "l3_hunt_verification_model_call",
+    "data": {
+      "id": "agl_01a19f93-1150-7000-8000-000000000006",
+      "run_id": "run_01a19f93-1150-7000-8000-000000000005",
+      "stage": "l3",
+      "subject_type": "hunt",
+      "subject_id": "hnt_01a19f93-1150-7000-8000-000000000001",
+      "seq": 1,
+      "kind": "model",
+      "name": "openai/gpt-oss-120b",
+      "input": [{"role": "user", "content": "가설을 검증한다"}],
+      "output": {"status": "confirmed"},
+      "outcome": "ok",
+      "tokens_in": 900,
+      "tokens_out": 120,
+      "started_at": 1793678880000,
+      "duration_ms": 2100,
       "details": {}
     }
   }

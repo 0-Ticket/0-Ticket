@@ -27,6 +27,7 @@ TABLES = {
     "raw_record": "raw_records",
     "alert": "alerts",
     "event": "events",
+    "hunt": "hunts",
     "ticket": "tickets",
     "incident": "incidents",
     "case": "cases",
@@ -125,9 +126,13 @@ def ensure_raw_record(conn: psycopg.Connection, raw_id: str, kind: str) -> None:
 
 
 def ensure_parents(conn: psycopg.Connection, name: str, data: dict[str, Any]) -> None:
-    """외래 키가 가리키는 행(Alert·Event의 원본, Case의 Incident)을 먼저 넣는다."""
+    """외래 키가 가리키는 행(Alert·Event의 원본, Ticket의 Hunt, Case의 Incident)을 먼저 넣는다."""
     if name in ("alert", "event"):
         ensure_raw_record(conn, data["raw_id"], name)
+    if name == "ticket" and data["hunt_id"] is not None:
+        hunts = [s["data"] for s in load("valid", "hunt")]
+        hunt = next(h for h in hunts if h["id"] == data["hunt_id"])
+        insert(conn, "hunts", hunt, skip_existing=True)
     if name == "case":
         incidents = [s["data"] for s in load("valid", "incident")]
         incident = next(i for i in incidents if i["id"] == data["incident_id"])
@@ -137,7 +142,7 @@ def ensure_parents(conn: psycopg.Connection, name: str, data: dict[str, Any]) ->
 def test_migrate_creates_all_tables_on_empty_db(temp_database: str) -> None:
     applied = migrate(temp_database)
 
-    assert applied == ["0001_common_tables.sql"]
+    assert applied == ["0001_common_tables.sql", "0002_hunts.sql"]
     with psycopg.connect(temp_database) as conn:
         assert table_names(conn) == {*TABLES.values(), "schema_migrations"}
 
@@ -149,7 +154,7 @@ def test_migrate_twice_does_not_reapply(temp_database: str) -> None:
 
     assert applied == []
     with psycopg.connect(temp_database) as conn:
-        assert conn.execute("SELECT count(*) FROM schema_migrations").fetchone() == (1,)
+        assert conn.execute("SELECT count(*) FROM schema_migrations").fetchone() == (2,)
 
 
 def test_failed_migration_rolls_back_only_that_file(temp_database: str, tmp_path: Path) -> None:
@@ -459,6 +464,10 @@ def test_table_columns_match_contract_fields(migrated: str, name: str, table: st
         ("agent_log", "outcome", "timeout"),
         ("raw_record", "kind", "log"),
         ("event", "ocsf_class", -1),
+        ("hunt", "status", "open"),
+        ("hunt", "attempts", -1),
+        ("hunt", "confidence", 1.5),
+        ("hunt", "confidence", -0.1),
     ],
 )
 def test_check_constraints_reject_values_outside_contract(
@@ -512,7 +521,7 @@ def test_jsonb_columns_reject_json_null(migrated: str) -> None:
                     insert(conn, table, data, raw={column: Jsonb(None)})
                 checked.append(f"{table}.{column}")
 
-    assert len(checked) == 19, checked  # jsonb 컬럼 20개 중 agent_logs.input만 뺀다
+    assert len(checked) == 21, checked  # jsonb 컬럼 22개 중 agent_logs.input만 뺀다
 
 
 @pytest.mark.parametrize(
@@ -632,7 +641,7 @@ def test_jsonb_columns_reject_wrong_shape(migrated: str) -> None:
                         insert(conn, table, data, raw={column: Jsonb(value)})
                     checked.append(f"{table}.{column}={value!r}")
 
-    assert len(checked) == 34, checked  # 객체·목록 칸 17개 × 잘못된 값 2개
+    assert len(checked) == 38, checked  # 객체·목록 칸 19개 × 잘못된 값 2개
 
 
 @pytest.mark.parametrize("value", [{}, [], "text", 1, True], ids=repr)
@@ -649,6 +658,12 @@ ALT_1 = "alt_01a19f93-1150-7000-8000-000000000001"
 ALT_2 = "alt_01a19f93-1150-7000-8000-000000000002"
 TKT_1 = "tkt_01a19f93-1150-7000-8000-000000000001"
 TKT_2 = "tkt_01a19f93-1150-7000-8000-000000000002"
+EVT_1 = "evt_01a19f93-1150-7000-8000-000000000001"
+HNT_1 = "hnt_01a19f93-1150-7000-8000-000000000001"
+HNT_4 = "hnt_01a19f93-1150-7000-8000-000000000004"
+# 샘플 Ticket과 겹치지 않는 L3 Ticket ID
+L3_TKT_1 = "tkt_01a19f93-1150-7000-8000-0000000000f1"
+L3_TKT_2 = "tkt_01a19f93-1150-7000-8000-0000000000f2"
 
 
 def valid_sample(name: str, case: str) -> dict[str, Any]:
@@ -665,6 +680,8 @@ def valid_sample(name: str, case: str) -> dict[str, Any]:
         ("ticket", "l1_new", "alert_ids", []),
         ("incident", "analyzing_before_analysis", "ticket_ids", [TKT_1, None]),
         ("incident", "analyzing_before_analysis", "ticket_ids", []),
+        ("hunt", "confirmed_with_event_evidence", "evidence_ids", [EVT_1, None]),
+        ("hunt", "pending_before_first_try", "attack_techniques", ["T1190", None]),
     ],
     ids=[
         "auto_null_alert_id",
@@ -674,6 +691,8 @@ def valid_sample(name: str, case: str) -> dict[str, Any]:
         "l1_no_alerts",
         "null_ticket_id",
         "no_tickets",
+        "hunt_null_evidence_id",
+        "hunt_null_technique",
     ],
 )
 def test_id_arrays_reject_null_ids_and_missing_ids(
@@ -684,6 +703,7 @@ def test_id_arrays_reject_null_ids_and_missing_ids(
         validate_contract(name, data)  # 계약도 거부한다
 
     with psycopg.connect(migrated) as conn:
+        ensure_parents(conn, name, data)
         with pytest.raises(psycopg.errors.CheckViolation):
             insert(conn, TABLES[name], data)
 
@@ -705,9 +725,85 @@ def test_id_arrays_take_values_the_contract_allows(
     validate_contract(name, data)  # 계약이 받는 값이다
 
     with psycopg.connect(migrated) as conn:
+        ensure_parents(conn, name, data)
         insert(conn, TABLES[name], data)
 
         assert select(conn, TABLES[name], data["id"]) == data
+
+
+def insert_l3_ticket(conn: psycopg.Connection, ticket_id: str, hunt_id: str) -> None:
+    data = {**valid_sample("ticket", "l3_escalated"), "id": ticket_id, "hunt_id": hunt_id}
+    validate_contract("ticket", data)
+    ensure_parents(conn, "ticket", data)
+    insert(conn, "tickets", data)
+
+
+def test_one_ticket_per_hunt(migrated: str) -> None:
+    with psycopg.connect(migrated) as conn:
+        insert_l3_ticket(conn, L3_TKT_1, HNT_1)
+
+        with pytest.raises(psycopg.errors.UniqueViolation):
+            insert_l3_ticket(conn, L3_TKT_2, HNT_1)
+
+
+def test_tickets_from_different_hunts_and_other_origins_coexist(migrated: str) -> None:
+    """UNIQUE는 NULL끼리 겹쳐도 막지 않는다. hunt_id가 null인 Ticket은 여럿 들어간다."""
+    with psycopg.connect(migrated) as conn:
+        insert_l3_ticket(conn, L3_TKT_1, HNT_1)
+        insert_l3_ticket(conn, L3_TKT_2, HNT_4)
+        for sample in load("valid", "ticket"):
+            if sample["data"]["origin"] != "l3":
+                insert(conn, "tickets", sample["data"])
+
+        count = conn.execute("SELECT count(*) FROM tickets WHERE hunt_id IS NULL").fetchone()
+        assert count == (4,)
+
+
+def test_ticket_hunt_must_exist(migrated: str) -> None:
+    data = valid_sample("ticket", "l3_escalated")
+
+    with psycopg.connect(migrated) as conn:
+        with pytest.raises(psycopg.errors.ForeignKeyViolation):
+            insert(conn, "tickets", data)  # Hunt를 넣지 않았다
+
+
+def test_hunt_with_ticket_cannot_be_deleted(migrated: str) -> None:
+    with psycopg.connect(migrated) as conn:
+        insert_l3_ticket(conn, L3_TKT_1, HNT_1)
+
+        with pytest.raises(psycopg.errors.ForeignKeyViolation):
+            conn.execute("DELETE FROM hunts WHERE id = %s", (HNT_1,))
+
+
+@pytest.mark.parametrize(
+    ("case", "hunt_id"),
+    [("l3_escalated", None), ("auto_new", HNT_1)],
+    ids=["l3_without_hunt", "auto_with_hunt"],
+)
+def test_ticket_origin_must_match_hunt_id(migrated: str, case: str, hunt_id: str | None) -> None:
+    data = {**valid_sample("ticket", case), "hunt_id": hunt_id}
+    with pytest.raises(ContractError):
+        validate_contract("ticket", data)  # 계약도 거부한다
+
+    with psycopg.connect(migrated) as conn:
+        hunt = valid_sample("hunt", "confirmed_with_event_evidence")
+        insert(conn, "hunts", hunt)  # 외래 키가 아니라 CHECK에 걸리는지 본다
+        with pytest.raises(psycopg.errors.CheckViolation):
+            insert(conn, "tickets", data)
+
+
+@pytest.mark.parametrize("column", ["status", "hunt_run_id"])
+def test_hunt_lookup_columns_are_indexed(migrated: str, column: str) -> None:
+    with psycopg.connect(migrated) as conn:
+        definitions = [
+            row[0]
+            for row in conn.execute(
+                "SELECT indexdef FROM pg_indexes"
+                " WHERE schemaname = 'public' AND tablename = 'hunts'"
+            )
+        ]
+
+    assert any(d.endswith(f"({column})") for d in definitions), definitions
 
 
 def test_pending_alert_lookup_uses_triage_status_index(migrated: str) -> None:

@@ -48,6 +48,21 @@ type TicketId = Annotated[
 ]
 
 
+type HuntId = Annotated[
+    str,
+    Field(pattern="^hnt_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"),
+]
+
+
+type HuntSubjectId = Annotated[
+    str,
+    Field(
+        description="Agent Log의 hunt 대상. 가설 생성 run은 hrn_, 검증 run은 hnt_ ID",
+        pattern="^(hnt|hrn)_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+    ),
+]
+
+
 type EvidenceId = Annotated[
     str,
     Field(

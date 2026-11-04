@@ -290,7 +290,7 @@
   },
   {
     "case": "hunt_subject_empty",
-    "violations": [{"path": "subject_id", "rule": "minLength"}],
+    "violations": [{"path": "subject_id", "rule": "pattern"}],
     "data": {
       "id": "agl_01a19f93-1150-7000-8000-000000000001",
       "run_id": "run_01a19f93-1150-7000-8000-000000000001",
@@ -349,6 +349,50 @@
       "outcome": "ok",
       "tokens_in": 10.0,
       "tokens_out": 1,
+      "started_at": 1793678638000,
+      "duration_ms": 100,
+      "details": {}
+    }
+  },
+  {
+    "case": "hunt_subject_with_ticket_id",
+    "violations": [{"path": "subject_id", "rule": "pattern"}],
+    "data": {
+      "id": "agl_01a19f93-1150-7000-8000-000000000001",
+      "run_id": "run_01a19f93-1150-7000-8000-000000000001",
+      "stage": "l3",
+      "subject_type": "hunt",
+      "subject_id": "tkt_01a19f93-1150-7000-8000-000000000004",
+      "seq": 1,
+      "kind": "tool",
+      "name": "siem_search",
+      "input": {},
+      "output": [],
+      "outcome": "ok",
+      "tokens_in": null,
+      "tokens_out": null,
+      "started_at": 1793678638000,
+      "duration_ms": 100,
+      "details": {}
+    }
+  },
+  {
+    "case": "hunt_subject_free_string",
+    "violations": [{"path": "subject_id", "rule": "pattern"}],
+    "data": {
+      "id": "agl_01a19f93-1150-7000-8000-000000000001",
+      "run_id": "run_01a19f93-1150-7000-8000-000000000001",
+      "stage": "l3",
+      "subject_type": "hunt",
+      "subject_id": "dns-beaconing-review",
+      "seq": 1,
+      "kind": "tool",
+      "name": "siem_search",
+      "input": {},
+      "output": [],
+      "outcome": "ok",
+      "tokens_in": null,
+      "tokens_out": null,
       "started_at": 1793678638000,
       "duration_ms": 100,
       "details": {}

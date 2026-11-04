@@ -37,7 +37,7 @@ class AgentLog(BaseModel):
     subject_id: Annotated[
         str,
         Field(
-            description="대상 ID. alert는 alt_, ticket은 tkt_, incident는 inc_ ID. hunt는 Hunt ID 형식이 정해지기 전까지 빈 문자열만 거부한다"
+            description="대상 ID. alert는 alt_, ticket은 tkt_, incident는 inc_, hunt는 hrn_(가설 생성 run) 또는 hnt_(검증 run) ID"
         ),
     ]
     seq: Annotated[

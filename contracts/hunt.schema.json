@@ -1,0 +1,139 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "hunt.schema.json",
+  "title": "Hunt",
+  "description": "L3 가설 하나와 그 검증 결과. 같은 가설 생성 실행에서 나온 Hunt는 hunt_run_id로 묶는다",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "hunt_run_id",
+    "status",
+    "hypothesis",
+    "attack_techniques",
+    "confidence",
+    "reason",
+    "evidence_ids",
+    "entities",
+    "attempts",
+    "verified_at",
+    "created_at",
+    "updated_at",
+    "details"
+  ],
+  "properties": {
+    "id": {"$ref": "common/types.schema.json#/definitions/hunt_id"},
+    "hunt_run_id": {"$ref": "common/types.schema.json#/definitions/hunt_run_id"},
+    "status": {
+      "description": "pending: 검증 대기(재시도 대기 포함), confirmed: 위협 발견(L3 Ticket을 만든다), rejected: 가설 기각, inconclusive: 근거 부족, failed: 검증 run이 재시도 한도까지 실패. 모두 L3가 바꾼다",
+      "type": "string",
+      "enum": ["pending", "confirmed", "rejected", "inconclusive", "failed"]
+    },
+    "hypothesis": {
+      "description": "가설 문장. 밖에서 온 문자열(뉴스 등)에서 나온 LLM 출력이라 공격자가 쓴 문장이 들어갈 수 있다",
+      "type": "string",
+      "minLength": 1
+    },
+    "attack_techniques": {
+      "description": "ATT&CK 기법 ID(T1190, T1059.004). 중복 없음, 빈 목록 가능",
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^T[0-9]{4}(\\.[0-9]{3})?$"}
+    },
+    "confidence": {
+      "description": "검증 결과 확신도. confirmed, rejected, inconclusive일 때만 값이 있다",
+      "anyOf": [
+        {"type": "number", "minimum": 0, "maximum": 1},
+        {"type": "null"}
+      ]
+    },
+    "reason": {
+      "description": "검증 결과 이유. confirmed, rejected, inconclusive일 때만 값이 있다. 공격자가 쓴 문장이 들어갈 수 있다",
+      "type": ["string", "null"],
+      "minLength": 1
+    },
+    "evidence_ids": {
+      "description": "검증 근거가 된 Alert·Event ID와 도구 호출 기록 ID. confirmed는 Alert·Event ID가 1개 이상, rejected는 1개 이상. 중복 없음",
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "common/types.schema.json#/definitions/evidence_id"}
+    },
+    "entities": {
+      "description": "검증에서 확인한 엔티티",
+      "type": "array",
+      "items": {"$ref": "common/entity.schema.json"}
+    },
+    "attempts": {
+      "description": "검증 run 시도 횟수. pending이 아니면 1 이상",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "verified_at": {
+      "description": "검증 결과가 정해진 시각. confirmed, rejected, inconclusive일 때만 값이 있다",
+      "anyOf": [
+        {"$ref": "common/types.schema.json#/definitions/epoch_ms"},
+        {"type": "null"}
+      ]
+    },
+    "created_at": {"$ref": "common/types.schema.json#/definitions/epoch_ms"},
+    "updated_at": {"$ref": "common/types.schema.json#/definitions/epoch_ms"},
+    "details": {
+      "description": "가설 출처(뉴스·Case 참조) 등 L3 내부 값. 다른 단계는 읽지 않는다",
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "required": ["status"],
+        "properties": {"status": {"enum": ["pending", "failed"]}}
+      },
+      "then": {
+        "properties": {
+          "confidence": {"type": "null"},
+          "reason": {"type": "null"},
+          "verified_at": {"type": "null"}
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["status"],
+        "properties": {"status": {"enum": ["confirmed", "rejected", "inconclusive"]}}
+      },
+      "then": {
+        "properties": {
+          "confidence": {"type": "number"},
+          "reason": {"type": "string"},
+          "verified_at": {"type": "integer"}
+        }
+      }
+    },
+    {
+      "if": {"required": ["status"], "properties": {"status": {"const": "confirmed"}}},
+      "then": {
+        "properties": {
+          "evidence_ids": {
+            "contains": {
+              "type": "string",
+              "pattern": "^(alt|evt)_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {"required": ["status"], "properties": {"status": {"const": "rejected"}}},
+      "then": {"properties": {"evidence_ids": {"minItems": 1}}}
+    },
+    {
+      "if": {
+        "required": ["status"],
+        "properties": {"status": {"type": "string", "not": {"const": "pending"}}}
+      },
+      "then": {"properties": {"attempts": {"minimum": 1}}}
+    }
+  ]
+}

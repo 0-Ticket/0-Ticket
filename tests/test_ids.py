@@ -19,6 +19,8 @@ DEFINITIONS = {
     "cas": "case_id",
     "agl": "agent_log_id",
     "run": "run_id",
+    "hnt": "hunt_id",
+    "hrn": "hunt_run_id",
 }
 
 
@@ -51,7 +53,7 @@ def test_new_id_matches_contract_pattern(prefix: str) -> None:
     assert parsed.variant == uuid.RFC_4122
 
 
-@pytest.mark.parametrize("prefix", ["usr", "hnt", "tkt_", "TKT", ""])
+@pytest.mark.parametrize("prefix", ["usr", "hun", "tkt_", "TKT", ""])
 def test_unknown_prefix_is_rejected(prefix: str) -> None:
     with pytest.raises(ValueError):
         new_id(prefix)

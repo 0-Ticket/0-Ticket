@@ -1,0 +1,122 @@
+[
+  {
+    "case": "confirmed_with_event_evidence",
+    "data": {
+      "id": "hnt_01a19f93-1150-7000-8000-000000000001",
+      "hunt_run_id": "hrn_01a19f93-1150-7000-8000-000000000001",
+      "status": "confirmed",
+      "hypothesis": "업데이트 확인을 가장한 도메인으로 주기적인 DNS 비콘이 나간다",
+      "attack_techniques": ["T1071.004", "T1568"],
+      "confidence": 0.86,
+      "reason": "ws-07이 5분 간격으로 같은 하위 도메인을 조회했다",
+      "evidence_ids": [
+        "evt_01a19f93-1150-7000-8000-000000000003",
+        "agl_01a19f93-1150-7000-8000-000000000005"
+      ],
+      "entities": [
+        {"type": "domain", "value": "update-check.example.com", "role": "dst"},
+        {"type": "host", "value": "ws-07", "role": "src"}
+      ],
+      "attempts": 1,
+      "verified_at": 1793678900000,
+      "created_at": 1793678800000,
+      "updated_at": 1793678900000,
+      "details": {"source": {"kind": "news", "ref": "news-0001"}}
+    }
+  },
+  {
+    "case": "pending_before_first_try",
+    "data": {
+      "id": "hnt_01a19f93-1150-7000-8000-000000000002",
+      "hunt_run_id": "hrn_01a19f93-1150-7000-8000-000000000001",
+      "status": "pending",
+      "hypothesis": "공개 웹 서버의 취약점으로 웹셸이 올라왔다",
+      "attack_techniques": ["T1190", "T1505.003"],
+      "confidence": null,
+      "reason": null,
+      "evidence_ids": [],
+      "entities": [],
+      "attempts": 0,
+      "verified_at": null,
+      "created_at": 1793678800000,
+      "updated_at": 1793678800000,
+      "details": {}
+    }
+  },
+  {
+    "case": "pending_waiting_retry",
+    "data": {
+      "id": "hnt_01a19f93-1150-7000-8000-000000000003",
+      "hunt_run_id": "hrn_01a19f93-1150-7000-8000-000000000001",
+      "status": "pending",
+      "hypothesis": "관리자 계정으로 업무 시간 밖에 원격 로그인했다",
+      "attack_techniques": [],
+      "confidence": null,
+      "reason": null,
+      "evidence_ids": [],
+      "entities": [{"type": "user", "value": "kim.admin", "role": "actor"}],
+      "attempts": 1,
+      "verified_at": null,
+      "created_at": 1793678800000,
+      "updated_at": 1793678860000,
+      "details": {}
+    }
+  },
+  {
+    "case": "rejected_with_tool_evidence",
+    "data": {
+      "id": "hnt_01a19f93-1150-7000-8000-000000000004",
+      "hunt_run_id": "hrn_01a19f93-1150-7000-8000-000000000001",
+      "status": "rejected",
+      "hypothesis": "PowerShell 인코딩 명령으로 추가 페이로드를 받았다",
+      "attack_techniques": ["T1059.001"],
+      "confidence": 0.9,
+      "reason": "같은 기간 인코딩 명령 실행 기록이 0건이다",
+      "evidence_ids": ["agl_01a19f93-1150-7000-8000-000000000006"],
+      "entities": [],
+      "attempts": 1,
+      "verified_at": 1793678910000,
+      "created_at": 1793678800000,
+      "updated_at": 1793678910000,
+      "details": {}
+    }
+  },
+  {
+    "case": "inconclusive_without_evidence",
+    "data": {
+      "id": "hnt_01a19f93-1150-7000-8000-000000000005",
+      "hunt_run_id": "hrn_01a19f93-1150-7000-8000-000000000002",
+      "status": "inconclusive",
+      "hypothesis": "203.0.113.50에서 내부 서버로 자격 증명 대입을 시도했다",
+      "attack_techniques": ["T1110"],
+      "confidence": 0.4,
+      "reason": "해당 기간 인증 로그가 수집되지 않았다",
+      "evidence_ids": [],
+      "entities": [{"type": "ip", "value": "203.0.113.50", "role": "src"}],
+      "attempts": 2,
+      "verified_at": 1793678920000,
+      "created_at": 1793678800000,
+      "updated_at": 1793678920000,
+      "details": {}
+    }
+  },
+  {
+    "case": "failed_after_retries",
+    "data": {
+      "id": "hnt_01a19f93-1150-7000-8000-000000000006",
+      "hunt_run_id": "hrn_01a19f93-1150-7000-8000-000000000002",
+      "status": "failed",
+      "hypothesis": "예약 작업으로 지속성을 확보했다",
+      "attack_techniques": ["T1053.005"],
+      "confidence": null,
+      "reason": null,
+      "evidence_ids": [],
+      "entities": [],
+      "attempts": 3,
+      "verified_at": null,
+      "created_at": 1793678800000,
+      "updated_at": 1793678990000,
+      "details": {}
+    }
+  }
+]
