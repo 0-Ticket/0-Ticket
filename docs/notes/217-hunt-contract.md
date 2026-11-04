@@ -40,6 +40,7 @@ L3가 찾은 위협을 L2가 받아 분석할 수 있게, L3 헌팅 결과(Hunt)
 - **`confidence`는 DB에서 `double precision`이다.** 계약에 `1`(int)로 넣어도 읽으면 `1.0`이다. Python에서 `1 == 1.0`이라 비교 테스트는 통과한다.
 - **`AgentTask`의 hunt 대상 검사는 `docs/notes/209-agent-core.md`와 다르다.** 그 기록의 "`hunt`는 빈 문자열만 거부한다"는 이제 맞지 않는다. `hrn_`(가설 생성 run) 또는 `hnt_`(검증 run) + UUIDv7이어야 한다. 패턴은 `src/soc/agent/types.py`와 `contracts/common/types.schema.json`의 `hunt_subject_id` 두 곳에 있으므로 바꿀 때 함께 바꾼다.
 - **ATT&CK 기법 ID는 모양만 본다.** `^T[0-9]{4}(\.[0-9]{3})?$`라서 없는 기법 번호(`T9999`)도 통과한다.
+- **아직 확인하지 못한 것.** 이 브랜치의 CI는 push 전이라 돌지 않았다(로컬에서 같은 검사와 `postgres:17.6`의 `db` 테스트로 확인했다). 공통 계약 변경이라 L1·L2·L3 담당자 전원의 승인이 필요하고, `src/soc/agent/types.py`는 #216 담당자의 코드라 그 담당자의 확인도 받는다.
 
 ## 확인 방법
 
@@ -47,10 +48,12 @@ L3가 찾은 위협을 L2가 받아 분석할 수 있게, L3 헌팅 결과(Hunt)
 - `uv run python scripts/generate_contracts.py --check`: 통과
 - `uv run pytest`: 382개 통과
 - `DATABASE_URL=… uv run pytest -m db`(임시 `postgres:17.6` 컨테이너, trust 인증): 95개 통과
-- 테스트를 먼저 쓰고 구현 전에 실패하는지 봤다: 일반 75개, `db` 24개 실패
+- 테스트를 먼저 쓰고 구현 전에 실패하는지 봤다: 일반 75개, `db` 24개 실패. `AgentTask` 수정 전에는 틀린 hunt ID 3개가 거부되지 않아 실패
 - 주요 테스트
   - `test_valid_samples_pass_without_losing_fields`, `test_invalid_samples_are_rejected`: Hunt 올바른 샘플 6, 틀린 샘플 16, Ticket 틀린 샘플 5개 추가, Agent Log 올바른 샘플 1·틀린 샘플 2개 추가
   - `test_new_id_matches_contract_pattern[hnt|hrn]`
+  - `test_invalid_task_is_rejected_when_built`(hunt 대상 3개), `test_hunt_task_takes_hunt_run_and_hunt_ids[hunt_run|hunt]`
   - `test_one_ticket_per_hunt`, `test_ticket_origin_must_match_hunt_id`, `test_ticket_hunt_must_exist`, `test_hunt_with_ticket_cannot_be_deleted`, `test_tickets_from_different_hunts_and_other_origins_coexist`, `test_hunt_lookup_columns_are_indexed`
   - `test_valid_samples_fit_tables_and_read_back`, `test_table_columns_match_contract_fields[hunt-hunts]`, `test_check_constraints_reject_values_outside_contract[hunt-…]`, `test_id_arrays_reject_null_ids_and_missing_ids[hunt_…]`
+- 손으로 확인(가짜 모델): 수정 전 브랜치에서 틀린 hunt ID 2개로 만든 작업이 모델을 2번 부른 뒤 `log_error`로 끝나고, `hrn_` 작업은 `ok`
 - 손으로 확인(임시 DB): 0001만 적용하고 `origin = l3` Ticket 1건을 넣은 뒤 실행기를 돌리면 `MigrationError`로 멈추고 `schema_migrations`에 1행, `hunts` 테이블 없음
