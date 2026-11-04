@@ -302,6 +302,36 @@ def test_log_write_failure_is_log_error() -> None:
     assert "db.example.com" not in (result.detail or "")
 
 
+class FailingSink(MemoryLogSink):
+    def write(self, rows: list[dict[str, Any]]) -> None:
+        raise LogWriteError("connection to postgresql://soc:fake-db-pass@db.example.com failed")
+
+
+def test_log_write_failure_without_prior_failure_has_no_prior() -> None:
+    result, _, _ = run("verdict_ok", sink=FailingSink())
+    assert result.failure == "log_error"
+    assert "prior=" not in (result.detail or "")
+
+
+@pytest.mark.parametrize(
+    ("scenario", "prior"),
+    [
+        ("format_error_twice", "format_error"),
+        ("evidence_id_error", "evidence_id_error"),
+        ("rate_limited", "rate_limited"),
+        ("provider_error", "provider_error"),
+    ],
+)
+def test_log_error_keeps_prior_failure_in_detail(scenario: str, prior: str) -> None:
+    result, _, _ = run(scenario, sink=FailingSink())
+    assert result.ok is False
+    assert result.failure == "log_error"
+    detail = result.detail or ""
+    assert detail.endswith(f"; prior={prior}")
+    assert "fake-db-pass" not in detail
+    assert "db.example.com" not in detail
+
+
 def test_rows_are_redacted(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("LLM_API_KEY", "FAKE-ENV-SECRET-3333")
     _, _, sink = run("secrets")

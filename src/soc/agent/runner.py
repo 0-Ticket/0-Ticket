@@ -122,7 +122,9 @@ def run_task(
             validate_contract("agent_log", row)
         log_sink.write(rows)
     except Exception as exc:
-        failure, detail = "log_error", f"Agent Log를 쓰지 못했다({type(exc).__name__})"
+        # 앞의 실패를 덮을 때는 그 종류만 남긴다. DB 주소·비밀 값·예외 메시지는 넣지 않는다.
+        prior = f"; prior={failure}" if failure is not None else ""
+        failure, detail = "log_error", f"Agent Log를 쓰지 못했다({type(exc).__name__}){prior}"
 
     ok = failure is None
     return AgentResult(
