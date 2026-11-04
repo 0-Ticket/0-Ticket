@@ -31,6 +31,7 @@ supersedes: []
 
 ## 다음 사람이 알아야 할 것
 
+- **Verdict가 `siem_ref`를 인용하면 장부 검사 전에 계약 검사에서 막힌다.** Verdict 계약의 `evidence_ids`는 근거 ID 모양(`alt_`·`evt_`·`agl_`)만 받아서, `siem_ref`(`<_index>/<_id>`)를 인용하면 형식 오류 재요청이 가고, 그래도 같으면 `evidence_id_error`가 아니라 `format_error`로 끝난다. 테스트는 이 동작대로 `test_citing_siem_ref_is_rejected`(`format_error`)와 `test_citing_alert_id_in_result_body_is_evidence_id_error`로 나눴다.
 - **`ToolSpec`에 `check_config` 칸이 생겼다.** `ToolRegistry.session()`이 허용 목록에 있는 도구의 `check_config(tools_config)`를 부른다. `ToolConfigError`나 다른 예외가 나면 실행은 `provider_error`("도구 설정 오류")다. 허용되지 않은 도구의 설정은 보지 않는다. 칸이 없는 도구는 그대로다.
 - **`ToolError`·`report_tool`에 `reason`이 생겼다(#213·#214가 쓴다).** `raise ToolError("failed", reason="auth")`처럼 쓰면 tool 줄 `details.reason`에 남는다. `details.failure`는 계속 코드 5개 중 하나다. 모델에게 가는 `TOOL_ERROR` 문구는 reason과 상관없이 같다. reason에는 비밀 값·응답 본문·주소를 넣지 않는다. `ToolRecorder`를 직접 구현한 테스트 도우미가 있으면 `reason=None` 인자를 받게 해야 한다.
 - **`aggregate`의 뜻은 "핸들러가 모양과 한도를 정하고, 인용은 `call_id`만"이다.** `query_siem`은 집계가 아니지만 이 뜻에 맞아 `aggregate`를 쓴다. 이름이 어색할 뿐 동작은 맞다. 레지스트리의 `result_kind` 값은 바꾸지 않았다.
@@ -47,8 +48,8 @@ supersedes: []
 ## 확인 방법
 
 - `uv run ruff format --check .`, `uv run ruff check .`: 통과
-- `uv run pytest`: (마무리에서 채움)
-- `uv run pytest -m db`: (마무리에서 채움)
+- `uv run pytest`: 651건 통과, 1건 실패(`test_name_ending_in_newline_is_not_a_migration`, Windows에서만 실패하고 `main`에서도 같다), 154건 제외(`db`·`llm`·`qdrant`·`elk` 마커). Windows에서 실행했다
+- `uv run pytest -m db`: 돌리지 않았다. 이 PC에 0-Ticket용 PostgreSQL과 `DATABASE_URL`이 없었고, 사람이 건너뛰기로 정했다. 이 이슈가 고친 DB 관련 코드는 `LogRecorder.report_tool`의 `details.reason` 한 칸이다(DB 쓰기 코드는 바꾸지 않았다). CI의 `pytest -m db` 단계에서 확인한다
 - 새 테스트
   - `tests/test_tools_siem.py`(네트워크 없음, `httpx.MockTransport` + `tests/fixtures/siem/`): 대상 3개의 요청 경로·본문·헤더와 결과 모양, range·term만 쓰는 쿼리, 필터 순서·정렬, 0건, 뒤 히트부터 빼기·한 건도 못 맞추면 0건, `</tool_result>` 탈출 방지, `count_siem` 상위 10개·120자·건수 적은 것부터 빼기·`other_count`, 인자 검사 25가지(요청이 나가지 않음), 설정에서 뺀 대상, 필터 5개·CIDR·IPv6 허용, 도구 설명, 설정 오류 → `provider_error`, 오류 표 12가지(문구·`details.failure`·`details.reason`·리다이렉트 안 따름·비밀/주소/본문/쿼리 없음), 크기 초과, 가짜 시계로 마감 시간, 환경변수 없음·틀림, 설정 값 틀림, 연속 2회 차단, 가짜 모델로 `call_id` 인용 Verdict 통과, `siem_ref` 인용 거부, 본문 속 `alt_` 인용 `evidence_id_error`, 전체 실행에서 401 숨김, Agent Log에서 키·주소 가림, 기본 설정·`.env.example`·`elk` 마커
   - `tests/test_tools_registry.py`: reason이 `details.reason`에만 가고 모델 문구는 같음, reason이 없으면 `details` 그대로, `check_config`는 허용된 도구만·틀리면 `provider_error`
