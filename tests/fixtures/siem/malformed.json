@@ -1,0 +1,5 @@
+{
+  "took": 1,
+  "timed_out": false,
+  "hits": {"total": {"value": 1, "relation": "eq"}, "hits": {"_index": "not-a-list"}}
+}

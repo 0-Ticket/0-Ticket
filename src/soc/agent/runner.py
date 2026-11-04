@@ -3,6 +3,7 @@
 처리 순서: 작업 검사(AgentTask를 만들 때) → 프롬프트 5층 합성 → Runner.run_sync → JSON 파싱 →
 decided_at 덮어쓰기 → validate_contract → 실패하면 1회 재요청 → 근거 장부 검사 → Agent Log 쓰기.
 모델 호출마다 입력 예산(call_model_input_filter)을 검사하고, 429는 RetryingModel이 다시 부른다.
+도구는 레지스트리(soc.tools)가 stage의 허용 목록에 있는 것만 붙인다(#211).
 어떤 실패에도 예외를 밖으로 내지 않고 AgentResult를 돌려준다.
 """
 
@@ -11,7 +12,6 @@ import hashlib
 import json
 import os
 import time
-from collections.abc import Sequence
 from typing import Any
 
 import openai
@@ -36,6 +36,7 @@ from soc.agent.redact import build_redactor
 from soc.agent.types import AgentResult, AgentTask
 from soc.contracts import ContractError, validate_contract
 from soc.ids import new_id
+from soc.tools import ToolConfigError, ToolRegistry, ToolSession, default_registry
 
 
 class _Stop(Exception):
@@ -80,10 +81,14 @@ def run_task(
     model_name: str,
     log_sink: LogSink,
     config: dict[str, Any],
-    tools: Sequence[Any] = (),
+    registry: ToolRegistry | None = None,
     sleep: Sleep = asyncio.sleep,
 ) -> AgentResult:
-    """run_agent의 본체. 테스트는 가짜 모델과 메모리 기록기, 기다리지 않는 sleep을 넣는다."""
+    """run_agent의 본체. 테스트는 가짜 모델과 메모리 기록기, 기다리지 않는 sleep을 넣는다.
+
+    도구는 registry(기본: 운영 레지스트리)에서 stage의 허용 목록([tools.allowed])에 있는 것만
+    붙는다. 테스트의 가짜 도구도 ToolSpec으로 만들어 ToolRegistry에 넣고 여기로 넘긴다.
+    """
     set_tracing_disabled(True)  # 환경변수에 맡기지 않는다(docs/security.md)
     run_id = new_id("run")
     started = time.perf_counter()
@@ -102,6 +107,12 @@ def run_task(
         attempt=task.attempt,
         prompt_version=hashlib.sha256(instructions.encode("utf-8")).hexdigest(),
     )
+    try:
+        tools = (registry or default_registry()).session(
+            stage=task.stage, config=config, recorder=recorder
+        )
+    except ToolConfigError:
+        return _failed("provider_error", "도구 설정 오류(허용 목록이나 도구 결과 한도)")
 
     output: Any = None
     cited: list[str] = []
@@ -155,7 +166,7 @@ def _execute(
     instructions: str,
     recorder: LogRecorder,
     config: dict[str, Any],
-    tools: Sequence[Any],
+    tools: ToolSession,
     sleep: Sleep,
 ) -> tuple[Any, list[str]]:
     stage = config["agent"][task.stage]
@@ -170,7 +181,7 @@ def _execute(
             sleep=sleep,
             on_retry=recorder.note_retry,
         ),
-        tools=list(tools),
+        tools=list(tools.function_tools()),
         # retry는 켜지 않는다(None). 재시도는 RetryingModel 하나만 한다.
         model_settings=ModelSettings(
             parallel_tool_calls=False,
@@ -214,7 +225,9 @@ def _execute(
         if violation is not None:
             raise _Stop("format_error", f"재요청 뒤에도 계약 위반: {violation}", "format_error")
 
-    ledger = set(task.allowed_evidence_ids) | set(recorder.tool_log_ids)
+    # 장부: 입력의 근거 ID + 성공한 도구 호출의 agl_ + 모델에게 보인 레코드의 id(#211).
+    # 오류·차단된 호출의 agl_과 결과 본문 속 ID 모양 문자열은 들어가지 않는다.
+    ledger = set(task.allowed_evidence_ids) | tools.evidence_ids
     try:
         cited = list(dict.fromkeys(task.cited_ids(output)))
     except Exception:
@@ -255,7 +268,7 @@ def _usage(rows: list[dict[str, Any]], started: float) -> dict[str, int]:
     return {
         "turns": len(models),
         "tool_calls": sum(1 for r in rows if r["kind"] == "tool"),
-        "tool_errors": 0,  # 도구 오류 문구는 도구 레지스트리(#211)가 만든다
+        "tool_errors": sum(1 for r in rows if r["kind"] == "tool" and r["outcome"] == "error"),
         "tokens_in": sum(r["tokens_in"] or 0 for r in models),
         "tokens_out": sum(r["tokens_out"] or 0 for r in models),
         "duration_ms": int((time.perf_counter() - started) * 1000),

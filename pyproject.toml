@@ -48,5 +48,6 @@ markers = [
     "llm: 실제 LLM을 호출하는 테스트. uv run pytest -m llm 으로 실행",
     "db: PostgreSQL이 필요한 테스트. uv run pytest -m db 으로 실행",
     "qdrant: Qdrant가 필요한 테스트. uv run pytest -m qdrant 으로 실행",
+    "elk: 실제 ELK에 접속하는 테스트. uv run pytest -m elk 으로 실행(docs/notes/212-siem-tools.md)",
 ]
-addopts = "-m 'not llm and not db and not qdrant'"
+addopts = "-m 'not llm and not db and not qdrant and not elk'"

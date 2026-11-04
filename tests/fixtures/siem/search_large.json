@@ -1,0 +1,1053 @@
+{
+ "took": 9,
+ "timed_out": false,
+ "hits": {
+  "total": {
+   "value": 40,
+   "relation": "eq"
+  },
+  "max_score": null,
+  "hits": [
+   {
+    "_index": ".ds-logs-nginx.access-default-2026.11.04-000001",
+    "_id": "large-doc-0000",
+    "_score": null,
+    "_source": {
+     "@timestamp": "2026-11-04T04:00:00.000Z",
+     "source": {
+      "ip": "203.0.113.1"
+     },
+     "url": {
+      "path": "/page/0",
+      "query": "q=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     },
+     "http": {
+      "request": {
+       "method": "GET"
+      },
+      "response": {
+       "status_code": 200
+      }
+     },
+     "user_agent": {
+      "original": "Mozilla/5.0 (X11; Linux x86_64) yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+     }
+    }
+   },
+   {
+    "_index": ".ds-logs-nginx.access-default-2026.11.04-000001",
+    "_id": "large-doc-0001",
+    "_score": null,
+    "_source": {
+     "@timestamp": "2026-11-04T04:01:00.000Z",
+     "source": {
+      "ip": "203.0.113.2"
+     },
+     "url": {
+      "path": "/page/1",
+      "query": "q=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     },
+     "http": {
+      "request": {
+       "method": "GET"
+      },
+      "response": {
+       "status_code": 200
+      }
+     },
+     "user_agent": {
+      "original": "Mozilla/5.0 (X11; Linux x86_64) yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+     }
+    }
+   },
+   {
+    "_index": ".ds-logs-nginx.access-default-2026.11.04-000001",
+    "_id": "large-doc-0002",
+    "_score": null,
+    "_source": {
+     "@timestamp": "2026-11-04T04:02:00.000Z",
+     "source": {
+      "ip": "203.0.113.3"
+     },
+     "url": {
+      "path": "/page/2",
+      "query": "q=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     },
+     "http": {
+      "request": {
+       "method": "GET"
+      },
+      "response": {
+       "status_code": 200
+      }
+     },
+     "user_agent": {
+      "original": "Mozilla/5.0 (X11; Linux x86_64) yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+     }
+    }
+   },
+   {
+    "_index": ".ds-logs-nginx.access-default-2026.11.04-000001",
+    "_id": "large-doc-0003",
+    "_score": null,
+    "_source": {
+     "@timestamp": "2026-11-04T04:03:00.000Z",
+     "source": {
+      "ip": "203.0.113.4"
+     },
+     "url": {
+      "path": "/page/3",
+      "query": "q=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     },
+     "http": {
+      "request": {
+       "method": "GET"
+      },
+      "response": {
+       "status_code": 200
+      }
+     },
+     "user_agent": {
+      "original": "Mozilla/5.0 (X11; Linux x86_64) yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+     }
+    }
+   },
+   {
+    "_index": ".ds-logs-nginx.access-default-2026.11.04-000001",
+    "_id": "large-doc-0004",
+    "_score": null,
+    "_source": {
+     "@timestamp": "2026-11-04T04:04:00.000Z",
+     "source": {
+      "ip": "203.0.113.5"
+     },
+     "url": {
+      "path": "/page/4",
+      "query": "q=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     },
+     "http": {
+      "request": {
+       "method": "GET"
+      },
+      "response": {
+       "status_code": 200
+      }
+     },
+     "user_agent": {
+      "original": "Mozilla/5.0 (X11; Linux x86_64) yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+     }
+    }
+   },
+   {
+    "_index": ".ds-logs-nginx.access-default-2026.11.04-000001",
+    "_id": "large-doc-0005",
+    "_score": null,
+    "_source": {
+     "@timestamp": "2026-11-04T04:05:00.000Z",
+     "source": {
+      "ip": "203.0.113.6"
+     },
+     "url": {
+      "path": "/page/5",
+      "query": "q=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     },
+     "http": {
+      "request": {
+       "method": "GET"
+      },
+      "response": {
+       "status_code": 200
+      }
+     },
+     "user_agent": {
+      "original": "Mozilla/5.0 (X11; Linux x86_64) yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+     }
+    }
+   },
+   {
+    "_index": ".ds-logs-nginx.access-default-2026.11.04-000001",
+    "_id": "large-doc-0006",
+    "_score": null,
+    "_source": {
+     "@timestamp": "2026-11-04T04:06:00.000Z",
+     "source": {
+      "ip": "203.0.113.7"
+     },
+     "url": {
+      "path": "/page/6",
+      "query": "q=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     },
+     "http": {
+      "request": {
+       "method": "GET"
+      },
+      "response": {
+       "status_code": 200
+      }
+     },
+     "user_agent": {
+      "original": "Mozilla/5.0 (X11; Linux x86_64) yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+     }
+    }
+   },
+   {
+    "_index": ".ds-logs-nginx.access-default-2026.11.04-000001",
+    "_id": "large-doc-0007",
+    "_score": null,
+    "_source": {
+     "@timestamp": "2026-11-04T04:07:00.000Z",
+     "source": {
+      "ip": "203.0.113.8"
+     },
+     "url": {
+      "path": "/page/7",
+      "query": "q=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     },
+     "http": {
+      "request": {
+       "method": "GET"
+      },
+      "response": {
+       "status_code": 200
+      }
+     },
+     "user_agent": {
+      "original": "Mozilla/5.0 (X11; Linux x86_64) yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+     }
+    }
+   },
+   {
+    "_index": ".ds-logs-nginx.access-default-2026.11.04-000001",
+    "_id": "large-doc-0008",
+    "_score": null,
+    "_source": {
+     "@timestamp": "2026-11-04T04:08:00.000Z",
+     "source": {
+      "ip": "203.0.113.9"
+     },
+     "url": {
+      "path": "/page/8",
+      "query": "q=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     },
+     "http": {
+      "request": {
+       "method": "GET"
+      },
+      "response": {
+       "status_code": 200
+      }
+     },
+     "user_agent": {
+      "original": "Mozilla/5.0 (X11; Linux x86_64) yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+     }
+    }
+   },
+   {
+    "_index": ".ds-logs-nginx.access-default-2026.11.04-000001",
+    "_id": "large-doc-0009",
+    "_score": null,
+    "_source": {
+     "@timestamp": "2026-11-04T04:09:00.000Z",
+     "source": {
+      "ip": "203.0.113.10"
+     },
+     "url": {
+      "path": "/page/9",
+      "query": "q=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     },
+     "http": {
+      "request": {
+       "method": "GET"
+      },
+      "response": {
+       "status_code": 200
+      }
+     },
+     "user_agent": {
+      "original": "Mozilla/5.0 (X11; Linux x86_64) yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+     }
+    }
+   },
+   {
+    "_index": ".ds-logs-nginx.access-default-2026.11.04-000001",
+    "_id": "large-doc-0010",
+    "_score": null,
+    "_source": {
+     "@timestamp": "2026-11-04T04:10:00.000Z",
+     "source": {
+      "ip": "203.0.113.11"
+     },
+     "url": {
+      "path": "/page/10",
+      "query": "q=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     },
+     "http": {
+      "request": {
+       "method": "GET"
+      },
+      "response": {
+       "status_code": 200
+      }
+     },
+     "user_agent": {
+      "original": "Mozilla/5.0 (X11; Linux x86_64) yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+     }
+    }
+   },
+   {
+    "_index": ".ds-logs-nginx.access-default-2026.11.04-000001",
+    "_id": "large-doc-0011",
+    "_score": null,
+    "_source": {
+     "@timestamp": "2026-11-04T04:11:00.000Z",
+     "source": {
+      "ip": "203.0.113.12"
+     },
+     "url": {
+      "path": "/page/11",
+      "query": "q=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     },
+     "http": {
+      "request": {
+       "method": "GET"
+      },
+      "response": {
+       "status_code": 200
+      }
+     },
+     "user_agent": {
+      "original": "Mozilla/5.0 (X11; Linux x86_64) yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+     }
+    }
+   },
+   {
+    "_index": ".ds-logs-nginx.access-default-2026.11.04-000001",
+    "_id": "large-doc-0012",
+    "_score": null,
+    "_source": {
+     "@timestamp": "2026-11-04T04:12:00.000Z",
+     "source": {
+      "ip": "203.0.113.13"
+     },
+     "url": {
+      "path": "/page/12",
+      "query": "q=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     },
+     "http": {
+      "request": {
+       "method": "GET"
+      },
+      "response": {
+       "status_code": 200
+      }
+     },
+     "user_agent": {
+      "original": "Mozilla/5.0 (X11; Linux x86_64) yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+     }
+    }
+   },
+   {
+    "_index": ".ds-logs-nginx.access-default-2026.11.04-000001",
+    "_id": "large-doc-0013",
+    "_score": null,
+    "_source": {
+     "@timestamp": "2026-11-04T04:13:00.000Z",
+     "source": {
+      "ip": "203.0.113.14"
+     },
+     "url": {
+      "path": "/page/13",
+      "query": "q=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     },
+     "http": {
+      "request": {
+       "method": "GET"
+      },
+      "response": {
+       "status_code": 200
+      }
+     },
+     "user_agent": {
+      "original": "Mozilla/5.0 (X11; Linux x86_64) yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+     }
+    }
+   },
+   {
+    "_index": ".ds-logs-nginx.access-default-2026.11.04-000001",
+    "_id": "large-doc-0014",
+    "_score": null,
+    "_source": {
+     "@timestamp": "2026-11-04T04:14:00.000Z",
+     "source": {
+      "ip": "203.0.113.15"
+     },
+     "url": {
+      "path": "/page/14",
+      "query": "q=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     },
+     "http": {
+      "request": {
+       "method": "GET"
+      },
+      "response": {
+       "status_code": 200
+      }
+     },
+     "user_agent": {
+      "original": "Mozilla/5.0 (X11; Linux x86_64) yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+     }
+    }
+   },
+   {
+    "_index": ".ds-logs-nginx.access-default-2026.11.04-000001",
+    "_id": "large-doc-0015",
+    "_score": null,
+    "_source": {
+     "@timestamp": "2026-11-04T04:15:00.000Z",
+     "source": {
+      "ip": "203.0.113.16"
+     },
+     "url": {
+      "path": "/page/15",
+      "query": "q=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     },
+     "http": {
+      "request": {
+       "method": "GET"
+      },
+      "response": {
+       "status_code": 200
+      }
+     },
+     "user_agent": {
+      "original": "Mozilla/5.0 (X11; Linux x86_64) yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+     }
+    }
+   },
+   {
+    "_index": ".ds-logs-nginx.access-default-2026.11.04-000001",
+    "_id": "large-doc-0016",
+    "_score": null,
+    "_source": {
+     "@timestamp": "2026-11-04T04:16:00.000Z",
+     "source": {
+      "ip": "203.0.113.17"
+     },
+     "url": {
+      "path": "/page/16",
+      "query": "q=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     },
+     "http": {
+      "request": {
+       "method": "GET"
+      },
+      "response": {
+       "status_code": 200
+      }
+     },
+     "user_agent": {
+      "original": "Mozilla/5.0 (X11; Linux x86_64) yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+     }
+    }
+   },
+   {
+    "_index": ".ds-logs-nginx.access-default-2026.11.04-000001",
+    "_id": "large-doc-0017",
+    "_score": null,
+    "_source": {
+     "@timestamp": "2026-11-04T04:17:00.000Z",
+     "source": {
+      "ip": "203.0.113.18"
+     },
+     "url": {
+      "path": "/page/17",
+      "query": "q=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     },
+     "http": {
+      "request": {
+       "method": "GET"
+      },
+      "response": {
+       "status_code": 200
+      }
+     },
+     "user_agent": {
+      "original": "Mozilla/5.0 (X11; Linux x86_64) yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+     }
+    }
+   },
+   {
+    "_index": ".ds-logs-nginx.access-default-2026.11.04-000001",
+    "_id": "large-doc-0018",
+    "_score": null,
+    "_source": {
+     "@timestamp": "2026-11-04T04:18:00.000Z",
+     "source": {
+      "ip": "203.0.113.19"
+     },
+     "url": {
+      "path": "/page/18",
+      "query": "q=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     },
+     "http": {
+      "request": {
+       "method": "GET"
+      },
+      "response": {
+       "status_code": 200
+      }
+     },
+     "user_agent": {
+      "original": "Mozilla/5.0 (X11; Linux x86_64) yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+     }
+    }
+   },
+   {
+    "_index": ".ds-logs-nginx.access-default-2026.11.04-000001",
+    "_id": "large-doc-0019",
+    "_score": null,
+    "_source": {
+     "@timestamp": "2026-11-04T04:19:00.000Z",
+     "source": {
+      "ip": "203.0.113.20"
+     },
+     "url": {
+      "path": "/page/19",
+      "query": "q=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     },
+     "http": {
+      "request": {
+       "method": "GET"
+      },
+      "response": {
+       "status_code": 200
+      }
+     },
+     "user_agent": {
+      "original": "Mozilla/5.0 (X11; Linux x86_64) yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+     }
+    }
+   },
+   {
+    "_index": ".ds-logs-nginx.access-default-2026.11.04-000001",
+    "_id": "large-doc-0020",
+    "_score": null,
+    "_source": {
+     "@timestamp": "2026-11-04T04:20:00.000Z",
+     "source": {
+      "ip": "203.0.113.21"
+     },
+     "url": {
+      "path": "/page/20",
+      "query": "q=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     },
+     "http": {
+      "request": {
+       "method": "GET"
+      },
+      "response": {
+       "status_code": 200
+      }
+     },
+     "user_agent": {
+      "original": "Mozilla/5.0 (X11; Linux x86_64) yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+     }
+    }
+   },
+   {
+    "_index": ".ds-logs-nginx.access-default-2026.11.04-000001",
+    "_id": "large-doc-0021",
+    "_score": null,
+    "_source": {
+     "@timestamp": "2026-11-04T04:21:00.000Z",
+     "source": {
+      "ip": "203.0.113.22"
+     },
+     "url": {
+      "path": "/page/21",
+      "query": "q=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     },
+     "http": {
+      "request": {
+       "method": "GET"
+      },
+      "response": {
+       "status_code": 200
+      }
+     },
+     "user_agent": {
+      "original": "Mozilla/5.0 (X11; Linux x86_64) yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+     }
+    }
+   },
+   {
+    "_index": ".ds-logs-nginx.access-default-2026.11.04-000001",
+    "_id": "large-doc-0022",
+    "_score": null,
+    "_source": {
+     "@timestamp": "2026-11-04T04:22:00.000Z",
+     "source": {
+      "ip": "203.0.113.23"
+     },
+     "url": {
+      "path": "/page/22",
+      "query": "q=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     },
+     "http": {
+      "request": {
+       "method": "GET"
+      },
+      "response": {
+       "status_code": 200
+      }
+     },
+     "user_agent": {
+      "original": "Mozilla/5.0 (X11; Linux x86_64) yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+     }
+    }
+   },
+   {
+    "_index": ".ds-logs-nginx.access-default-2026.11.04-000001",
+    "_id": "large-doc-0023",
+    "_score": null,
+    "_source": {
+     "@timestamp": "2026-11-04T04:23:00.000Z",
+     "source": {
+      "ip": "203.0.113.24"
+     },
+     "url": {
+      "path": "/page/23",
+      "query": "q=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     },
+     "http": {
+      "request": {
+       "method": "GET"
+      },
+      "response": {
+       "status_code": 200
+      }
+     },
+     "user_agent": {
+      "original": "Mozilla/5.0 (X11; Linux x86_64) yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+     }
+    }
+   },
+   {
+    "_index": ".ds-logs-nginx.access-default-2026.11.04-000001",
+    "_id": "large-doc-0024",
+    "_score": null,
+    "_source": {
+     "@timestamp": "2026-11-04T04:24:00.000Z",
+     "source": {
+      "ip": "203.0.113.25"
+     },
+     "url": {
+      "path": "/page/24",
+      "query": "q=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     },
+     "http": {
+      "request": {
+       "method": "GET"
+      },
+      "response": {
+       "status_code": 200
+      }
+     },
+     "user_agent": {
+      "original": "Mozilla/5.0 (X11; Linux x86_64) yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+     }
+    }
+   },
+   {
+    "_index": ".ds-logs-nginx.access-default-2026.11.04-000001",
+    "_id": "large-doc-0025",
+    "_score": null,
+    "_source": {
+     "@timestamp": "2026-11-04T04:25:00.000Z",
+     "source": {
+      "ip": "203.0.113.26"
+     },
+     "url": {
+      "path": "/page/25",
+      "query": "q=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     },
+     "http": {
+      "request": {
+       "method": "GET"
+      },
+      "response": {
+       "status_code": 200
+      }
+     },
+     "user_agent": {
+      "original": "Mozilla/5.0 (X11; Linux x86_64) yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+     }
+    }
+   },
+   {
+    "_index": ".ds-logs-nginx.access-default-2026.11.04-000001",
+    "_id": "large-doc-0026",
+    "_score": null,
+    "_source": {
+     "@timestamp": "2026-11-04T04:26:00.000Z",
+     "source": {
+      "ip": "203.0.113.27"
+     },
+     "url": {
+      "path": "/page/26",
+      "query": "q=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     },
+     "http": {
+      "request": {
+       "method": "GET"
+      },
+      "response": {
+       "status_code": 200
+      }
+     },
+     "user_agent": {
+      "original": "Mozilla/5.0 (X11; Linux x86_64) yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+     }
+    }
+   },
+   {
+    "_index": ".ds-logs-nginx.access-default-2026.11.04-000001",
+    "_id": "large-doc-0027",
+    "_score": null,
+    "_source": {
+     "@timestamp": "2026-11-04T04:27:00.000Z",
+     "source": {
+      "ip": "203.0.113.28"
+     },
+     "url": {
+      "path": "/page/27",
+      "query": "q=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     },
+     "http": {
+      "request": {
+       "method": "GET"
+      },
+      "response": {
+       "status_code": 200
+      }
+     },
+     "user_agent": {
+      "original": "Mozilla/5.0 (X11; Linux x86_64) yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+     }
+    }
+   },
+   {
+    "_index": ".ds-logs-nginx.access-default-2026.11.04-000001",
+    "_id": "large-doc-0028",
+    "_score": null,
+    "_source": {
+     "@timestamp": "2026-11-04T04:28:00.000Z",
+     "source": {
+      "ip": "203.0.113.29"
+     },
+     "url": {
+      "path": "/page/28",
+      "query": "q=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     },
+     "http": {
+      "request": {
+       "method": "GET"
+      },
+      "response": {
+       "status_code": 200
+      }
+     },
+     "user_agent": {
+      "original": "Mozilla/5.0 (X11; Linux x86_64) yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+     }
+    }
+   },
+   {
+    "_index": ".ds-logs-nginx.access-default-2026.11.04-000001",
+    "_id": "large-doc-0029",
+    "_score": null,
+    "_source": {
+     "@timestamp": "2026-11-04T04:29:00.000Z",
+     "source": {
+      "ip": "203.0.113.30"
+     },
+     "url": {
+      "path": "/page/29",
+      "query": "q=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     },
+     "http": {
+      "request": {
+       "method": "GET"
+      },
+      "response": {
+       "status_code": 200
+      }
+     },
+     "user_agent": {
+      "original": "Mozilla/5.0 (X11; Linux x86_64) yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+     }
+    }
+   },
+   {
+    "_index": ".ds-logs-nginx.access-default-2026.11.04-000001",
+    "_id": "large-doc-0030",
+    "_score": null,
+    "_source": {
+     "@timestamp": "2026-11-04T04:30:00.000Z",
+     "source": {
+      "ip": "203.0.113.31"
+     },
+     "url": {
+      "path": "/page/30",
+      "query": "q=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     },
+     "http": {
+      "request": {
+       "method": "GET"
+      },
+      "response": {
+       "status_code": 200
+      }
+     },
+     "user_agent": {
+      "original": "Mozilla/5.0 (X11; Linux x86_64) yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+     }
+    }
+   },
+   {
+    "_index": ".ds-logs-nginx.access-default-2026.11.04-000001",
+    "_id": "large-doc-0031",
+    "_score": null,
+    "_source": {
+     "@timestamp": "2026-11-04T04:31:00.000Z",
+     "source": {
+      "ip": "203.0.113.32"
+     },
+     "url": {
+      "path": "/page/31",
+      "query": "q=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     },
+     "http": {
+      "request": {
+       "method": "GET"
+      },
+      "response": {
+       "status_code": 200
+      }
+     },
+     "user_agent": {
+      "original": "Mozilla/5.0 (X11; Linux x86_64) yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+     }
+    }
+   },
+   {
+    "_index": ".ds-logs-nginx.access-default-2026.11.04-000001",
+    "_id": "large-doc-0032",
+    "_score": null,
+    "_source": {
+     "@timestamp": "2026-11-04T04:32:00.000Z",
+     "source": {
+      "ip": "203.0.113.33"
+     },
+     "url": {
+      "path": "/page/32",
+      "query": "q=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     },
+     "http": {
+      "request": {
+       "method": "GET"
+      },
+      "response": {
+       "status_code": 200
+      }
+     },
+     "user_agent": {
+      "original": "Mozilla/5.0 (X11; Linux x86_64) yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+     }
+    }
+   },
+   {
+    "_index": ".ds-logs-nginx.access-default-2026.11.04-000001",
+    "_id": "large-doc-0033",
+    "_score": null,
+    "_source": {
+     "@timestamp": "2026-11-04T04:33:00.000Z",
+     "source": {
+      "ip": "203.0.113.34"
+     },
+     "url": {
+      "path": "/page/33",
+      "query": "q=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     },
+     "http": {
+      "request": {
+       "method": "GET"
+      },
+      "response": {
+       "status_code": 200
+      }
+     },
+     "user_agent": {
+      "original": "Mozilla/5.0 (X11; Linux x86_64) yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+     }
+    }
+   },
+   {
+    "_index": ".ds-logs-nginx.access-default-2026.11.04-000001",
+    "_id": "large-doc-0034",
+    "_score": null,
+    "_source": {
+     "@timestamp": "2026-11-04T04:34:00.000Z",
+     "source": {
+      "ip": "203.0.113.35"
+     },
+     "url": {
+      "path": "/page/34",
+      "query": "q=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     },
+     "http": {
+      "request": {
+       "method": "GET"
+      },
+      "response": {
+       "status_code": 200
+      }
+     },
+     "user_agent": {
+      "original": "Mozilla/5.0 (X11; Linux x86_64) yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+     }
+    }
+   },
+   {
+    "_index": ".ds-logs-nginx.access-default-2026.11.04-000001",
+    "_id": "large-doc-0035",
+    "_score": null,
+    "_source": {
+     "@timestamp": "2026-11-04T04:35:00.000Z",
+     "source": {
+      "ip": "203.0.113.36"
+     },
+     "url": {
+      "path": "/page/35",
+      "query": "q=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     },
+     "http": {
+      "request": {
+       "method": "GET"
+      },
+      "response": {
+       "status_code": 200
+      }
+     },
+     "user_agent": {
+      "original": "Mozilla/5.0 (X11; Linux x86_64) yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+     }
+    }
+   },
+   {
+    "_index": ".ds-logs-nginx.access-default-2026.11.04-000001",
+    "_id": "large-doc-0036",
+    "_score": null,
+    "_source": {
+     "@timestamp": "2026-11-04T04:36:00.000Z",
+     "source": {
+      "ip": "203.0.113.37"
+     },
+     "url": {
+      "path": "/page/36",
+      "query": "q=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     },
+     "http": {
+      "request": {
+       "method": "GET"
+      },
+      "response": {
+       "status_code": 200
+      }
+     },
+     "user_agent": {
+      "original": "Mozilla/5.0 (X11; Linux x86_64) yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+     }
+    }
+   },
+   {
+    "_index": ".ds-logs-nginx.access-default-2026.11.04-000001",
+    "_id": "large-doc-0037",
+    "_score": null,
+    "_source": {
+     "@timestamp": "2026-11-04T04:37:00.000Z",
+     "source": {
+      "ip": "203.0.113.38"
+     },
+     "url": {
+      "path": "/page/37",
+      "query": "q=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     },
+     "http": {
+      "request": {
+       "method": "GET"
+      },
+      "response": {
+       "status_code": 200
+      }
+     },
+     "user_agent": {
+      "original": "Mozilla/5.0 (X11; Linux x86_64) yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+     }
+    }
+   },
+   {
+    "_index": ".ds-logs-nginx.access-default-2026.11.04-000001",
+    "_id": "large-doc-0038",
+    "_score": null,
+    "_source": {
+     "@timestamp": "2026-11-04T04:38:00.000Z",
+     "source": {
+      "ip": "203.0.113.39"
+     },
+     "url": {
+      "path": "/page/38",
+      "query": "q=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     },
+     "http": {
+      "request": {
+       "method": "GET"
+      },
+      "response": {
+       "status_code": 200
+      }
+     },
+     "user_agent": {
+      "original": "Mozilla/5.0 (X11; Linux x86_64) yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+     }
+    }
+   },
+   {
+    "_index": ".ds-logs-nginx.access-default-2026.11.04-000001",
+    "_id": "large-doc-0039",
+    "_score": null,
+    "_source": {
+     "@timestamp": "2026-11-04T04:39:00.000Z",
+     "source": {
+      "ip": "203.0.113.40"
+     },
+     "url": {
+      "path": "/page/39",
+      "query": "q=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     },
+     "http": {
+      "request": {
+       "method": "GET"
+      },
+      "response": {
+       "status_code": 200
+      }
+     },
+     "user_agent": {
+      "original": "Mozilla/5.0 (X11; Linux x86_64) yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+     }
+    }
+   }
+  ]
+ }
+}

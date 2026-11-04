@@ -26,7 +26,32 @@ def test_default_llm_and_budget_values() -> None:
     agent = config["agent"]
     assert [agent[s]["max_input_chars"] for s in ("l1", "l2", "l3")] == [32_000, 64_000, 48_000]
     assert [agent[s]["reasoning_effort"] for s in ("l1", "l2", "l3")] == ["low", "medium", "medium"]
-    assert "max_tool_result_chars" not in agent["l1"]  # #211에서 넣는다
+    tool_chars = [agent[s]["max_tool_result_chars"] for s in ("l1", "l2", "l3")]
+    assert tool_chars == [6_000, 8_000, 8_000]  # #211
+
+
+def test_default_tools_config() -> None:
+    """도구 설정과 단계별 허용 목록(#211, #212).
+
+    비밀 값은 없고, 환경변수 이름은 [tools.siem]에만 있다.
+    """
+    tools = load_config(REPO_CONFIG)["tools"]
+    assert tools["statement_timeout_ms"] == 5000
+    assert tools["connect_timeout_seconds"] == 5
+    assert tools["max_range_days"] == 7
+    assert tools["default_limit"] == 20
+    assert tools["max_limit"] == 100
+    expected = [
+        "get_alert",
+        "get_event",
+        "query_records",
+        "query_http_flow",
+        "summarize_http_flow",
+    ]
+    # SIEM 도구(#212): query_siem은 l1·l2·l3, count_siem은 l2·l3
+    assert tools["allowed"]["l1"] == [*expected, "query_siem"]
+    for stage in ("l2", "l3"):
+        assert tools["allowed"][stage] == [*expected, "query_siem", "count_siem"]
 
 
 def test_default_config_has_provider_examples_only_as_comments() -> None:

@@ -1,0 +1,24 @@
+{
+  "took": 4,
+  "timed_out": false,
+  "hits": {
+    "total": {"value": 1, "relation": "eq"},
+    "max_score": null,
+    "hits": [
+      {
+        "_index": ".ds-logs-aws.cloudtrail-default-2026.11.04-000001",
+        "_id": "ct-doc-0001",
+        "_score": null,
+        "_source": {
+          "@timestamp": "2026-11-04T03:00:00.000Z",
+          "event": {"action": "ConsoleLogin", "provider": "signin.amazonaws.com", "outcome": "failure"},
+          "source": {"ip": "198.51.100.7"},
+          "user": {"name": "test-admin"},
+          "user_agent": {"original": "Mozilla/5.0"},
+          "cloud": {"account": {"id": "111122223333"}, "region": "ap-northeast-2"},
+          "aws": {"cloudtrail": {"error_message": "Failed authentication"}}
+        }
+      }
+    ]
+  }
+}
