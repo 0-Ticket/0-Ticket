@@ -1,0 +1,6 @@
+{
+  "description": "모델 호출이 인증 오류(401)로 실패한다",
+  "steps": [
+    {"raise": "auth"}
+  ]
+}
