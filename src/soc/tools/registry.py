@@ -12,6 +12,7 @@
 도구 결과는 밖에서 온 문자열이다(docs/security.md). 예외 메시지·SQL·DB 주소는 모델에 보내지 않는다.
 """
 
+import inspect
 import json
 import re
 from collections.abc import Callable, Iterable, Mapping
@@ -88,9 +89,11 @@ class CallContext:
     fits: Callable[[dict[str, Any]], bool]  # aggregate 결과가 한도 안인지(call_id 포함해 셈)
 
 
+# 핸들러는 결과를 돌려주거나, 결과를 내는 awaitable(async def)을 돌려준다(#213)
 Handler = Callable[[dict[str, Any], CallContext], Any]
 Check = Callable[[dict[str, Any], Mapping[str, Any]], None]
 CheckConfig = Callable[[Mapping[str, Any]], None]
+Configure = Callable[[Mapping[str, Any]], "ToolSpec | None"]
 
 
 @dataclass(frozen=True)
@@ -107,6 +110,10 @@ class ToolSpec:
     check: 인자 사이의 조건을 실행 전에 검사한다. 맞지 않으면 ToolError("invalid_argument").
     check_config: 설정의 [tools]를 실행 시작 전에 검사한다(#212). 허용 목록에 있는 도구만 부르고,
       틀리면 ToolConfigError를 낸다. 실행은 provider_error("도구 설정 오류")로 끝난다.
+    configure: 설정의 [tools]로 이 실행에서 쓸 ToolSpec을 만든다(#213). check_config 다음에 부른다.
+      설정 값(예: 호스트 이름)을 인자 enum·설명에 넣을 때 쓴다. 이름은 바꿀 수 없다.
+      None을 돌려주면 허용 목록에 있어도 이 실행에서는 등록하지 않는다(모델에게 보이지 않음).
+    handler가 awaitable을 돌려주면 레지스트리가 await한다(#213). 동기 핸들러는 그대로다.
     """
 
     name: str
@@ -119,6 +126,7 @@ class ToolSpec:
     args: tuple[Arg, ...] = ()
     check: Check | None = None
     check_config: CheckConfig | None = None
+    configure: Configure | None = None
 
 
 class ToolRecorder(Protocol):
@@ -182,6 +190,7 @@ class ToolRegistry:
                 raise
             except Exception:  # 검사 코드의 예외도 설정 오류로 본다. 메시지는 남기지 않는다
                 raise ToolConfigError("도구 설정을 검사하지 못했다") from None
+        specs = [shaped for spec in specs if (shaped := _configured(spec, tools)) is not None]
         return ToolSession(
             specs=specs,
             tools_config=tools,
@@ -253,6 +262,8 @@ class ToolSession:
         )
         try:
             raw = spec.handler(args, ctx)
+            if inspect.isawaitable(raw):
+                raw = await raw
             body, shown_ids = self._shape(spec, call_id, raw)
         except ToolError as exc:
             return self._fail(name, tool_call_id, exc.code, reason=exc.reason)
@@ -349,6 +360,23 @@ class ToolSession:
                 high = mid - 1
         body["text"] = text[:low] + CUT_MARK
         return body
+
+
+def _configured(spec: ToolSpec, tools: Mapping[str, Any]) -> ToolSpec | None:
+    """configure가 있으면 설정으로 모양을 정한 ToolSpec(없으면 None). 틀리면 ToolConfigError."""
+    if spec.configure is None:
+        return spec
+    try:
+        shaped = spec.configure(tools)
+    except ToolConfigError:
+        raise
+    except Exception:  # 메시지는 남기지 않는다(check_config와 같다)
+        raise ToolConfigError("도구 모양을 설정으로 정하지 못했다") from None
+    if shaped is None:
+        return None
+    if not isinstance(shaped, ToolSpec) or shaped.name != spec.name:
+        raise ToolConfigError("configure가 다른 도구를 돌려줬다")
+    return shaped
 
 
 def tool_error_text(name: str, code: str) -> str:
