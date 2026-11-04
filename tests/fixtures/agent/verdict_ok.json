@@ -1,0 +1,7 @@
+{
+  "description": "도구를 한 번 부르고 입력에 있던 Alert ID를 근거로 Verdict를 낸다. decided_at은 모델이 지어낸 값이라 덮어써져야 한다",
+  "steps": [
+    {"tool_call": {"name": "lookup_alert", "arguments": {"alert_id": "alt_01a19f93-1150-7000-8000-000000000004"}}, "usage": {"input_tokens": 120, "output_tokens": 18}},
+    {"final": {"decision": "benign", "confidence": 0.9, "reason": "관리자 계정의 예정된 점검 작업이다", "evidence_ids": ["alt_01a19f93-1150-7000-8000-000000000004"], "decided_at": 1}, "usage": {"input_tokens": 210, "output_tokens": 40}}
+  ]
+}

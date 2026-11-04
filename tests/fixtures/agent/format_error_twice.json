@@ -1,0 +1,7 @@
+{
+  "description": "첫 답은 JSON이 아니고, 재요청 뒤 답은 계약 위반이다",
+  "steps": [
+    {"final_text": "판정: 정상입니다"},
+    {"final": {"decision": "benign", "confidence": 0.7, "reason": "정상", "evidence_ids": []}}
+  ]
+}

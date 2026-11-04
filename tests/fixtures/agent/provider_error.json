@@ -1,0 +1,7 @@
+{
+  "description": "도구 호출 뒤 모델 연결이 끊긴다",
+  "steps": [
+    {"tool_call": {"name": "lookup_alert", "arguments": {"alert_id": "alt_01a19f93-1150-7000-8000-000000000004"}}},
+    {"raise": "provider_error"}
+  ]
+}

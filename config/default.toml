@@ -1,0 +1,21 @@
+# 기본 설정. config/local.toml(커밋하지 않음)이 같은 키를 덮어쓴다(설정 파일 TOML, D-002).
+# 비밀 값은 넣지 않는다. 키·주소처럼 비밀인 값은 환경변수 이름만 적는다(*_env).
+
+[llm]
+# 실제 연결은 #210에서 붙인다. 비어 있으면 run_agent는 provider_error를 돌려준다.
+base_url = ""
+model = ""
+api_key_env = "LLM_API_KEY"
+
+# 단계별 설정. 예산의 나머지 값([기본값])은 #210에서 더한다.
+[agent.l1]
+max_turns = 6
+
+[agent.l2]
+max_turns = 12
+
+[agent.l3]
+max_turns = 10
+
+[tools]
+# 도구 레지스트리와 단계별 허용 목록은 #211에서 채운다.

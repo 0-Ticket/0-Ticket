@@ -1,0 +1,7 @@
+{
+  "description": "첫 답은 계약 위반(confidence 범위 밖), 형식 오류 재요청 뒤 두 번째 답은 통과한다",
+  "steps": [
+    {"final": {"decision": "benign", "confidence": 7, "reason": "정상", "evidence_ids": ["alt_01a19f93-1150-7000-8000-000000000004"]}},
+    {"final": {"decision": "benign", "confidence": 0.7, "reason": "정상", "evidence_ids": ["alt_01a19f93-1150-7000-8000-000000000004"]}}
+  ]
+}

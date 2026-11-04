@@ -1,0 +1,6 @@
+{
+  "description": "모양은 맞지만 근거 장부에 없는 Alert ID를 인용한다",
+  "steps": [
+    {"final": {"decision": "malicious", "confidence": 0.8, "reason": "같은 IP의 다른 알럿", "evidence_ids": ["alt_01a19f93-1150-7000-8000-0000000000ff"]}}
+  ]
+}
