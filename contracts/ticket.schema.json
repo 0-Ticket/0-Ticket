@@ -1,0 +1,70 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ticket.schema.json",
+  "title": "Ticket",
+  "description": "L1 Ticket 판정의 단위. 여러 Alert를 묶을 수 있다",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "origin",
+    "status",
+    "alert_ids",
+    "entities",
+    "verdict",
+    "created_at",
+    "updated_at",
+    "details"
+  ],
+  "properties": {
+    "id": {"$ref": "common/types.schema.json#/definitions/ticket_id"},
+    "origin": {
+      "description": "auto: 기본 모드, scenario: 시나리오 일치, l1: L1 1차 판정으로 승격, l3: L3 헌팅 발견",
+      "type": "string",
+      "enum": ["auto", "scenario", "l1", "l3"]
+    },
+    "status": {
+      "description": "new: L1 판정 대기, closed: 오탐 종결, held: 보류, escalated: L2 대기, linked: Incident에 붙음",
+      "type": "string",
+      "enum": ["new", "closed", "held", "escalated", "linked"]
+    },
+    "alert_ids": {
+      "description": "origin이 auto, scenario, l1이면 1개 이상. 중복 없음",
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "common/types.schema.json#/definitions/alert_id"}
+    },
+    "entities": {
+      "description": "소속 Alert 엔티티를 모은 것",
+      "type": "array",
+      "items": {"$ref": "common/entity.schema.json"}
+    },
+    "verdict": {
+      "description": "L1 Ticket 판정. status가 new이면 null",
+      "anyOf": [
+        {"$ref": "common/verdict.schema.json"},
+        {"type": "null"}
+      ]
+    },
+    "created_at": {"$ref": "common/types.schema.json#/definitions/epoch_ms"},
+    "updated_at": {"$ref": "common/types.schema.json#/definitions/epoch_ms"},
+    "details": {
+      "description": "계약에 없는 값. 다른 단계는 읽지 않는다",
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "required": ["origin"],
+        "properties": {"origin": {"enum": ["auto", "scenario", "l1"]}}
+      },
+      "then": {"properties": {"alert_ids": {"minItems": 1}}}
+    },
+    {
+      "if": {"required": ["status"], "properties": {"status": {"const": "new"}}},
+      "then": {"properties": {"verdict": {"type": "null"}}}
+    }
+  ]
+}

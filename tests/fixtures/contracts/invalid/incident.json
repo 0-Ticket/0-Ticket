@@ -1,0 +1,156 @@
+[
+  {
+    "case": "no_tickets",
+    "violations": [{"path": "ticket_ids", "rule": "minItems"}],
+    "data": {
+      "id": "inc_01a19f93-1150-7000-8000-000000000001",
+      "title": "웹서버 SQL 인젝션 시도",
+      "summary": null,
+      "status": "analyzing",
+      "ticket_ids": [],
+      "entities": [],
+      "severity": 4,
+      "assessed_severity": null,
+      "analysis_round": 0,
+      "review_round": 0,
+      "created_at": 1793678800000,
+      "updated_at": 1793678800000,
+      "details": {}
+    }
+  },
+  {
+    "case": "status_not_in_list",
+    "violations": [{"path": "status", "rule": "enum"}],
+    "data": {
+      "id": "inc_01a19f93-1150-7000-8000-000000000001",
+      "title": "웹서버 SQL 인젝션 시도",
+      "summary": null,
+      "status": "closed",
+      "ticket_ids": ["tkt_01a19f93-1150-7000-8000-000000000001"],
+      "entities": [],
+      "severity": 4,
+      "assessed_severity": null,
+      "analysis_round": 0,
+      "review_round": 0,
+      "created_at": 1793678800000,
+      "updated_at": 1793678800000,
+      "details": {}
+    }
+  },
+  {
+    "case": "assessed_severity_out_of_range",
+    "violations": [{"path": "assessed_severity", "rule": "maximum"}],
+    "data": {
+      "id": "inc_01a19f93-1150-7000-8000-000000000001",
+      "title": "웹서버 SQL 인젝션 시도",
+      "summary": "요약",
+      "status": "awaiting_review",
+      "ticket_ids": ["tkt_01a19f93-1150-7000-8000-000000000001"],
+      "entities": [],
+      "severity": 4,
+      "assessed_severity": 9,
+      "analysis_round": 1,
+      "review_round": 0,
+      "created_at": 1793678800000,
+      "updated_at": 1793678900000,
+      "details": {}
+    }
+  },
+  {
+    "case": "negative_analysis_round",
+    "violations": [{"path": "analysis_round", "rule": "minimum"}],
+    "data": {
+      "id": "inc_01a19f93-1150-7000-8000-000000000001",
+      "title": "웹서버 SQL 인젝션 시도",
+      "summary": null,
+      "status": "analyzing",
+      "ticket_ids": ["tkt_01a19f93-1150-7000-8000-000000000001"],
+      "entities": [],
+      "severity": 4,
+      "assessed_severity": null,
+      "analysis_round": -1,
+      "review_round": 0,
+      "created_at": 1793678800000,
+      "updated_at": 1793678800000,
+      "details": {}
+    }
+  },
+  {
+    "case": "review_round_above_int32",
+    "violations": [{"path": "review_round", "rule": "maximum"}],
+    "data": {
+      "id": "inc_01a19f93-1150-7000-8000-000000000001",
+      "title": "웹서버 SQL 인젝션 시도",
+      "summary": null,
+      "status": "analyzing",
+      "ticket_ids": ["tkt_01a19f93-1150-7000-8000-000000000001"],
+      "entities": [],
+      "severity": 4,
+      "assessed_severity": null,
+      "analysis_round": 0,
+      "review_round": 2147483648,
+      "created_at": 1793678800000,
+      "updated_at": 1793678800000,
+      "details": {}
+    }
+  },
+  {
+    "case": "missing_summary",
+    "violations": [{"path": "summary", "rule": "required"}],
+    "data": {
+      "id": "inc_01a19f93-1150-7000-8000-000000000001",
+      "title": "웹서버 SQL 인젝션 시도",
+      "status": "analyzing",
+      "ticket_ids": ["tkt_01a19f93-1150-7000-8000-000000000001"],
+      "entities": [],
+      "severity": 4,
+      "assessed_severity": null,
+      "analysis_round": 0,
+      "review_round": 0,
+      "created_at": 1793678800000,
+      "updated_at": 1793678800000,
+      "details": {}
+    }
+  },
+  {
+    "case": "duplicate_ticket_ids",
+    "violations": [{"path": "ticket_ids", "rule": "uniqueItems"}],
+    "data": {
+      "id": "inc_01a19f93-1150-7000-8000-000000000001",
+      "title": "웹서버 SQL 인젝션 시도",
+      "summary": null,
+      "status": "analyzing",
+      "ticket_ids": [
+        "tkt_01a19f93-1150-7000-8000-000000000001",
+        "tkt_01a19f93-1150-7000-8000-000000000001"
+      ],
+      "entities": [],
+      "severity": 4,
+      "assessed_severity": null,
+      "analysis_round": 0,
+      "review_round": 0,
+      "created_at": 1793678800000,
+      "updated_at": 1793678800000,
+      "details": {}
+    }
+  },
+  {
+    "case": "analysis_round_float",
+    "violations": [{"path": "analysis_round", "rule": "type"}],
+    "data": {
+      "id": "inc_01a19f93-1150-7000-8000-000000000001",
+      "title": "웹서버 SQL 인젝션 시도",
+      "summary": null,
+      "status": "analyzing",
+      "ticket_ids": ["tkt_01a19f93-1150-7000-8000-000000000001"],
+      "entities": [],
+      "severity": 4,
+      "assessed_severity": null,
+      "analysis_round": 1.0,
+      "review_round": 0,
+      "created_at": 1793678800000,
+      "updated_at": 1793678800000,
+      "details": {}
+    }
+  }
+]

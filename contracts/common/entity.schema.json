@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "common/entity.schema.json",
+  "title": "Entity",
+  "description": "알럿·이벤트·Ticket·Incident에 나온 엔티티 하나",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "value", "role"],
+  "properties": {
+    "type": {
+      "description": "엔티티 종류",
+      "type": "string",
+      "enum": ["ip", "host", "user", "domain", "url", "file_hash", "process"]
+    },
+    "value": {
+      "description": "엔티티 값",
+      "type": "string",
+      "minLength": 1
+    },
+    "role": {
+      "description": "역할. 모르면 null",
+      "anyOf": [
+        {"type": "string", "enum": ["src", "dst", "actor", "target"]},
+        {"type": "null"}
+      ]
+    }
+  }
+}

@@ -1,0 +1,109 @@
+[
+  {
+    "case": "resolved_without_resolved_at",
+    "violations": [{"path": "resolved_at", "rule": "type"}],
+    "data": {
+      "id": "cas_01a19f93-1150-7000-8000-000000000002",
+      "incident_id": "inc_01a19f93-1150-7000-8000-000000000002",
+      "title": "업무 PC 악성 PowerShell 실행",
+      "summary": "요약",
+      "severity": 5,
+      "entities": [],
+      "confirmed_by": "park.analyst",
+      "confirmed_at": 1793679200000,
+      "status": "resolved",
+      "assignee": "choi.analyst",
+      "resolved_at": null,
+      "details": {}
+    }
+  },
+  {
+    "case": "open_with_resolved_at",
+    "violations": [{"path": "resolved_at", "rule": "type"}],
+    "data": {
+      "id": "cas_01a19f93-1150-7000-8000-000000000001",
+      "incident_id": "inc_01a19f93-1150-7000-8000-000000000004",
+      "title": "의심 도메인 통신",
+      "summary": null,
+      "severity": 0,
+      "entities": [],
+      "confirmed_by": "park.analyst",
+      "confirmed_at": 1793679100000,
+      "status": "open",
+      "assignee": null,
+      "resolved_at": 1793682800000,
+      "details": {}
+    }
+  },
+  {
+    "case": "incident_id_wrong_prefix",
+    "violations": [{"path": "incident_id", "rule": "pattern"}],
+    "data": {
+      "id": "cas_01a19f93-1150-7000-8000-000000000001",
+      "incident_id": "tkt_01a19f93-1150-7000-8000-000000000004",
+      "title": "의심 도메인 통신",
+      "summary": null,
+      "severity": 0,
+      "entities": [],
+      "confirmed_by": "park.analyst",
+      "confirmed_at": 1793679100000,
+      "status": "open",
+      "assignee": null,
+      "resolved_at": null,
+      "details": {}
+    }
+  },
+  {
+    "case": "missing_summary",
+    "violations": [{"path": "summary", "rule": "required"}],
+    "data": {
+      "id": "cas_01a19f93-1150-7000-8000-000000000001",
+      "incident_id": "inc_01a19f93-1150-7000-8000-000000000004",
+      "title": "의심 도메인 통신",
+      "severity": 0,
+      "entities": [],
+      "confirmed_by": "park.analyst",
+      "confirmed_at": 1793679100000,
+      "status": "open",
+      "assignee": null,
+      "resolved_at": null,
+      "details": {}
+    }
+  },
+  {
+    "case": "summary_not_string",
+    "violations": [{"path": "summary", "rule": "type"}],
+    "data": {
+      "id": "cas_01a19f93-1150-7000-8000-000000000001",
+      "incident_id": "inc_01a19f93-1150-7000-8000-000000000004",
+      "title": "의심 도메인 통신",
+      "summary": {"text": "요약"},
+      "severity": 0,
+      "entities": [],
+      "confirmed_by": "park.analyst",
+      "confirmed_at": 1793679100000,
+      "status": "open",
+      "assignee": null,
+      "resolved_at": null,
+      "details": {}
+    }
+  },
+  {
+    "case": "status_not_in_list",
+    "violations": [{"path": "status", "rule": "enum"}],
+    "data": {
+      "id": "cas_01a19f93-1150-7000-8000-000000000001",
+      "incident_id": "inc_01a19f93-1150-7000-8000-000000000004",
+      "title": "의심 도메인 통신",
+      "summary": null,
+      "severity": 0,
+      "entities": [],
+      "confirmed_by": "park.analyst",
+      "confirmed_at": 1793679100000,
+      "status": "closed",
+      "assignee": null,
+      "resolved_at": null,
+      "details": {}
+    }
+  }
+]

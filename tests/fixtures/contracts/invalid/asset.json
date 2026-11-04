@@ -1,0 +1,22 @@
+[
+  {
+    "case": "criticality_above_five",
+    "violations": [{"path": "criticality", "rule": "maximum"}],
+    "data": {"entity_value": "web-01", "name": "웹서버", "criticality": 6, "owner": null}
+  },
+  {
+    "case": "criticality_zero",
+    "violations": [{"path": "criticality", "rule": "minimum"}],
+    "data": {"entity_value": "web-01", "name": "웹서버", "criticality": 0, "owner": null}
+  },
+  {
+    "case": "empty_entity_value",
+    "violations": [{"path": "entity_value", "rule": "minLength"}],
+    "data": {"entity_value": "", "name": "웹서버", "criticality": 3, "owner": null}
+  },
+  {
+    "case": "missing_owner",
+    "violations": [{"path": "owner", "rule": "required"}],
+    "data": {"entity_value": "web-01", "name": "웹서버", "criticality": 3}
+  }
+]

@@ -1,0 +1,72 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "case.schema.json",
+  "title": "Case",
+  "description": "사람이 확정한 Incident. 승인 시점 내용을 복사해 둔다",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "incident_id",
+    "title",
+    "summary",
+    "severity",
+    "entities",
+    "confirmed_by",
+    "confirmed_at",
+    "status",
+    "assignee",
+    "resolved_at",
+    "details"
+  ],
+  "properties": {
+    "id": {"$ref": "common/types.schema.json#/definitions/case_id"},
+    "incident_id": {"$ref": "common/types.schema.json#/definitions/incident_id"},
+    "title": {
+      "description": "승인 시점 Incident 제목",
+      "type": "string"
+    },
+    "summary": {
+      "description": "승인 시점 Incident summary를 그대로 복사",
+      "type": ["string", "null"]
+    },
+    "severity": {
+      "description": "승인 시점 assessed_severity, 없으면 severity",
+      "$ref": "common/types.schema.json#/definitions/severity"
+    },
+    "entities": {
+      "description": "승인 시점 엔티티",
+      "type": "array",
+      "items": {"$ref": "common/entity.schema.json"}
+    },
+    "confirmed_by": {
+      "description": "승인한 사람",
+      "type": "string"
+    },
+    "confirmed_at": {"$ref": "common/types.schema.json#/definitions/epoch_ms"},
+    "status": {
+      "description": "open → in_progress → resolved. 사람이 화면에서 바꾼다",
+      "type": "string",
+      "enum": ["open", "in_progress", "resolved"]
+    },
+    "assignee": {
+      "description": "담당 분석가",
+      "type": ["string", "null"]
+    },
+    "resolved_at": {
+      "description": "status가 resolved이면 필수, 그 밖에는 null",
+      "anyOf": [
+        {"$ref": "common/types.schema.json#/definitions/epoch_ms"},
+        {"type": "null"}
+      ]
+    },
+    "details": {
+      "description": "계약에 없는 값. 다른 단계는 읽지 않는다",
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "if": {"required": ["status"], "properties": {"status": {"const": "resolved"}}},
+  "then": {"properties": {"resolved_at": {"type": "integer"}}},
+  "else": {"properties": {"resolved_at": {"type": "null"}}}
+}

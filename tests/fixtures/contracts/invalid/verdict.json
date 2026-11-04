@@ -1,0 +1,85 @@
+[
+  {
+    "case": "evidence_ticket_prefix",
+    "violations": [{"path": "evidence_ids[1]", "rule": "pattern"}],
+    "data": {
+      "decision": "malicious",
+      "confidence": 0.9,
+      "reason": "근거",
+      "evidence_ids": [
+        "alt_01a19f93-1150-7000-8000-000000000001",
+        "tkt_01a19f93-1150-7000-8000-000000000001"
+      ],
+      "decided_at": 1793678700000
+    }
+  },
+  {
+    "case": "confidence_above_one",
+    "violations": [{"path": "confidence", "rule": "maximum"}],
+    "data": {
+      "decision": "malicious",
+      "confidence": 1.5,
+      "reason": "근거",
+      "evidence_ids": ["alt_01a19f93-1150-7000-8000-000000000001"],
+      "decided_at": 1793678700000
+    }
+  },
+  {
+    "case": "benign_without_evidence",
+    "violations": [{"path": "evidence_ids", "rule": "minItems"}],
+    "data": {
+      "decision": "benign",
+      "confidence": 0.9,
+      "reason": "정상 업무로 보인다",
+      "evidence_ids": [],
+      "decided_at": 1793678700000
+    }
+  },
+  {
+    "case": "malicious_without_evidence",
+    "violations": [{"path": "evidence_ids", "rule": "minItems"}],
+    "data": {
+      "decision": "malicious",
+      "confidence": 0.9,
+      "reason": "공격으로 보인다",
+      "evidence_ids": [],
+      "decided_at": 1793678700000
+    }
+  },
+  {
+    "case": "decision_not_in_list",
+    "violations": [{"path": "decision", "rule": "enum"}],
+    "data": {
+      "decision": "suspicious",
+      "confidence": 0.5,
+      "reason": "근거",
+      "evidence_ids": [],
+      "decided_at": 1793678700000
+    }
+  },
+  {
+    "case": "duplicate_evidence_ids",
+    "violations": [{"path": "evidence_ids", "rule": "uniqueItems"}],
+    "data": {
+      "decision": "malicious",
+      "confidence": 0.9,
+      "reason": "근거",
+      "evidence_ids": [
+        "alt_01a19f93-1150-7000-8000-000000000001",
+        "alt_01a19f93-1150-7000-8000-000000000001"
+      ],
+      "decided_at": 1793678700000
+    }
+  },
+  {
+    "case": "evidence_id_trailing_newline",
+    "violations": [{"path": "evidence_ids[0]", "rule": "pattern"}],
+    "data": {
+      "decision": "malicious",
+      "confidence": 0.9,
+      "reason": "근거",
+      "evidence_ids": ["alt_01a19f93-1150-7000-8000-000000000001\n"],
+      "decided_at": 1793678700000
+    }
+  }
+]

@@ -1,0 +1,4 @@
+[
+  {"case": "ip_src", "data": {"type": "ip", "value": "192.0.2.15", "role": "src"}},
+  {"case": "role_unknown", "data": {"type": "user", "value": "jung.ops", "role": null}}
+]

@@ -1,0 +1,56 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "event.schema.json",
+  "title": "Event",
+  "description": "OCSF 1.9.0으로 정규화한 이벤트. 맞는 클래스가 없으면 Base Event(class_uid 0)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "raw_id",
+    "time",
+    "ocsf_class",
+    "summary",
+    "entities",
+    "assets",
+    "ocsf",
+    "details"
+  ],
+  "properties": {
+    "id": {"$ref": "common/types.schema.json#/definitions/event_id"},
+    "raw_id": {"$ref": "common/types.schema.json#/definitions/raw_id"},
+    "time": {"$ref": "common/types.schema.json#/definitions/epoch_ms"},
+    "ocsf_class": {
+      "description": "OCSF class_uid. ocsf.class_uid와 같아야 한다(validate_contract 추가 검사)",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "summary": {
+      "description": "한 줄 요약",
+      "type": "string"
+    },
+    "entities": {
+      "type": "array",
+      "items": {"$ref": "common/entity.schema.json"}
+    },
+    "assets": {
+      "type": "array",
+      "items": {"$ref": "common/asset.schema.json"}
+    },
+    "ocsf": {
+      "description": "매핑한 OCSF 클래스 전체",
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["class_uid"],
+      "properties": {
+        "class_uid": {"type": "integer"}
+      }
+    },
+    "details": {
+      "description": "계약에 없는 값. 다른 단계는 읽지 않는다",
+      "type": "object",
+      "additionalProperties": true
+    }
+  }
+}

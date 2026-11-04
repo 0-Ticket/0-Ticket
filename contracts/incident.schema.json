@@ -1,0 +1,81 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "incident.schema.json",
+  "title": "Incident",
+  "description": "같은 공격으로 보이는 Ticket들의 묶음. L2 분석과 사람 검토의 단위",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "title",
+    "summary",
+    "status",
+    "ticket_ids",
+    "entities",
+    "severity",
+    "assessed_severity",
+    "analysis_round",
+    "review_round",
+    "created_at",
+    "updated_at",
+    "details"
+  ],
+  "properties": {
+    "id": {"$ref": "common/types.schema.json#/definitions/incident_id"},
+    "title": {
+      "description": "L2가 정한 제목",
+      "type": "string"
+    },
+    "summary": {
+      "description": "분석 요약. L2가 채운다. 분석 전 null",
+      "type": ["string", "null"]
+    },
+    "status": {
+      "description": "analyzing: L2 분석 필요·중, awaiting_review: 사람 검토 대기, confirmed: 사람 승인(Case 생성), human_handling: 사람이 직접 처리, dismissed: 위협 아님으로 종결(L2가 분석 후, 또는 사람이 검토 중이나 직접 처리를 끝낼 때)",
+      "type": "string",
+      "enum": ["analyzing", "awaiting_review", "confirmed", "human_handling", "dismissed"]
+    },
+    "ticket_ids": {
+      "description": "1개 이상. 중복 없음",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"$ref": "common/types.schema.json#/definitions/ticket_id"}
+    },
+    "entities": {
+      "description": "소속 Ticket 엔티티를 모은 것",
+      "type": "array",
+      "items": {"$ref": "common/entity.schema.json"}
+    },
+    "severity": {
+      "description": "소속 Alert 심각도 중 최대. 소속 Alert가 없으면 0",
+      "$ref": "common/types.schema.json#/definitions/severity"
+    },
+    "assessed_severity": {
+      "description": "L2 분석이 판단한 심각도. 분석 전 null",
+      "anyOf": [
+        {"$ref": "common/types.schema.json#/definitions/severity"},
+        {"type": "null"}
+      ]
+    },
+    "analysis_round": {
+      "description": "L2 분석 횟수",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "review_round": {
+      "description": "사람 검토 횟수",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "created_at": {"$ref": "common/types.schema.json#/definitions/epoch_ms"},
+    "updated_at": {"$ref": "common/types.schema.json#/definitions/epoch_ms"},
+    "details": {
+      "description": "계약에 없는 값. 다른 단계는 읽지 않는다",
+      "type": "object",
+      "additionalProperties": true
+    }
+  }
+}

@@ -1,0 +1,110 @@
+[
+  {
+    "case": "analyzing_before_analysis",
+    "data": {
+      "id": "inc_01a19f93-1150-7000-8000-000000000001",
+      "title": "웹서버 SQL 인젝션 시도",
+      "summary": null,
+      "status": "analyzing",
+      "ticket_ids": ["tkt_01a19f93-1150-7000-8000-000000000001"],
+      "entities": [{"type": "ip", "value": "203.0.113.10", "role": "src"}],
+      "severity": 4,
+      "assessed_severity": null,
+      "analysis_round": 0,
+      "review_round": 0,
+      "created_at": 1793678800000,
+      "updated_at": 1793678800000,
+      "details": {}
+    }
+  },
+  {
+    "case": "awaiting_review",
+    "data": {
+      "id": "inc_01a19f93-1150-7000-8000-000000000002",
+      "title": "업무 PC 악성 PowerShell 실행",
+      "summary": "ws-07에서 인코딩된 PowerShell이 외부 주소에서 파일을 내려받아 실행했다",
+      "status": "awaiting_review",
+      "ticket_ids": ["tkt_01a19f93-1150-7000-8000-000000000003"],
+      "entities": [{"type": "host", "value": "ws-07", "role": "target"}],
+      "severity": 4,
+      "assessed_severity": 5,
+      "analysis_round": 1,
+      "review_round": 0,
+      "created_at": 1793678810000,
+      "updated_at": 1793678900000,
+      "details": {}
+    }
+  },
+  {
+    "case": "dismissed",
+    "data": {
+      "id": "inc_01a19f93-1150-7000-8000-000000000003",
+      "title": "특권 계정 로그인",
+      "summary": "정기 점검 시간에 담당자가 로그인했다. 위협이 아니다",
+      "status": "dismissed",
+      "ticket_ids": ["tkt_01a19f93-1150-7000-8000-000000000002"],
+      "entities": [{"type": "user", "value": "kim.admin", "role": "actor"}],
+      "severity": 3,
+      "assessed_severity": 1,
+      "analysis_round": 1,
+      "review_round": 0,
+      "created_at": 1793678820000,
+      "updated_at": 1793678950000,
+      "details": {}
+    }
+  },
+  {
+    "case": "dismissed_by_human_in_review",
+    "data": {
+      "id": "inc_01a19f93-1150-7000-8000-000000000005",
+      "title": "VPN 비정상 접속 시간",
+      "summary": "출장 중인 직원의 접속으로 보인다",
+      "status": "dismissed",
+      "ticket_ids": ["tkt_01a19f93-1150-7000-8000-000000000006"],
+      "entities": [{"type": "user", "value": "han.sales", "role": "actor"}],
+      "severity": 2,
+      "assessed_severity": 2,
+      "analysis_round": 1,
+      "review_round": 1,
+      "created_at": 1793678830000,
+      "updated_at": 1793679300000,
+      "details": {}
+    }
+  },
+  {
+    "case": "dismissed_by_human_after_handling",
+    "data": {
+      "id": "inc_01a19f93-1150-7000-8000-000000000006",
+      "title": "대량 파일 다운로드",
+      "summary": "백업 작업으로 확인했다",
+      "status": "dismissed",
+      "ticket_ids": ["tkt_01a19f93-1150-7000-8000-000000000007"],
+      "entities": [{"type": "host", "value": "nas-02", "role": "target"}],
+      "severity": 3,
+      "assessed_severity": 3,
+      "analysis_round": 3,
+      "review_round": 2,
+      "created_at": 1793678840000,
+      "updated_at": 1793680000000,
+      "details": {}
+    }
+  },
+  {
+    "case": "l3_only_severity_zero",
+    "data": {
+      "id": "inc_01a19f93-1150-7000-8000-000000000004",
+      "title": "의심 도메인 통신",
+      "summary": null,
+      "status": "analyzing",
+      "ticket_ids": ["tkt_01a19f93-1150-7000-8000-000000000004"],
+      "entities": [{"type": "domain", "value": "update-check.example.com", "role": "dst"}],
+      "severity": 0,
+      "assessed_severity": null,
+      "analysis_round": 0,
+      "review_round": 0,
+      "created_at": 1793679010000,
+      "updated_at": 1793679010000,
+      "details": {}
+    }
+  }
+]

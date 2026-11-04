@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "common/types.schema.json",
+  "title": "Types",
+  "description": "여러 계약이 함께 쓰는 값의 정의. ID는 접두사 + UUIDv7(소문자 16진수).",
+  "definitions": {
+    "epoch_ms": {
+      "description": "UTC epoch 밀리초. 상한은 9999-12-30T23:59:59.999Z(+14시간 시간대로 읽어도 9999년 안)",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 253402214399999
+    },
+    "severity": {
+      "description": "OCSF severity_id. 0 Unknown, 1 Informational, 2 Low, 3 Medium, 4 High, 5 Critical, 6 Fatal",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 6
+    },
+    "raw_id": {"type": "string", "pattern": "^raw_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
+    "alert_id": {"type": "string", "pattern": "^alt_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
+    "event_id": {"type": "string", "pattern": "^evt_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
+    "ticket_id": {"type": "string", "pattern": "^tkt_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
+    "incident_id": {"type": "string", "pattern": "^inc_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
+    "case_id": {"type": "string", "pattern": "^cas_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
+    "agent_log_id": {"type": "string", "pattern": "^agl_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
+    "run_id": {"type": "string", "pattern": "^run_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
+    "evidence_id": {
+      "description": "판정 근거. Alert·Event ID 또는 도구 호출 기록(Agent Log) ID",
+      "type": "string",
+      "pattern": "^(alt|evt|agl)_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    }
+  }
+}
