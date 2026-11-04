@@ -31,6 +31,13 @@ docker compose up -d    # 개발용 PostgreSQL·Qdrant
 
 개발 흐름, 브랜치 규칙, AI 코딩 도구와 함께 일하는 방법은 [CONTRIBUTING.md](CONTRIBUTING.md)에 있습니다.
 
+## 제3자 데이터
+
+L3 위협 헌팅은 실행할 때 아래 공개 데이터를 받아 필요한 필드만 DB에 저장합니다. 원본은 레포에 두지 않습니다.
+
+- **MITRE ATT&CK®**: 기법 ID·이름·전술. © 2026 The MITRE Corporation. This work is reproduced and distributed with the permission of The MITRE Corporation. ([이용 약관](https://attack.mitre.org/resources/legal-and-branding/terms-of-use/))
+- **CISA Known Exploited Vulnerabilities Catalog**, 보안뉴스·The Hacker News RSS: 제목·요약·링크.
+
 ## 라이선스
 
 Apache-2.0. [LICENSE](LICENSE)를 보세요.
