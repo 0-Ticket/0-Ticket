@@ -547,8 +547,9 @@ def production_config() -> dict[str, Any]:
 
 
 def test_default_registry_has_the_five_tools() -> None:
-    # #212에서 SIEM 도구 2개가 늘었다
-    assert default_registry().names() == [*PRODUCTION_TOOLS, "query_siem", "count_siem"]
+    # #212에서 SIEM 도구 2개, #213에서 SSH 점검 도구 1개가 늘었다
+    names = default_registry().names()
+    assert names == [*PRODUCTION_TOOLS, "query_siem", "count_siem", "run_host_check"]
 
 
 def test_missing_agent_database_url_is_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -645,3 +646,115 @@ def test_bad_tool_config_is_provider_error(checker: Any) -> None:
         Caller(registry, cfg)
     result, _, _ = run([{"final": verdict(ALERT_ID)}], cfg=cfg, registry=registry)
     assert result.failure == "provider_error"
+
+
+# 비동기 핸들러와 설정으로 도구 모양 정하기(configure) (#213)
+
+
+async def _async_records(args: dict[str, Any], ctx: Any) -> list[dict[str, Any]]:
+    await asyncio.sleep(0)
+    return [{"id": OTHER_ALERT, "title": "async"}]
+
+
+async def _async_coded(args: dict[str, Any], ctx: Any) -> Any:
+    await asyncio.sleep(0)
+    raise ToolError("timeout")
+
+
+async def _async_boom(args: dict[str, Any], ctx: Any) -> Any:
+    await asyncio.sleep(0)
+    raise RuntimeError(SECRET_MESSAGE)
+
+
+def test_async_handler_is_awaited() -> None:
+    registry = ToolRegistry([spec("arecords", _async_records)])
+    caller = Caller(registry, config(["arecords"]))
+    out = parse(call(caller, "arecords", {}))
+    assert out["records"] == [{"id": OTHER_ALERT, "title": "async"}]
+    assert OTHER_ALERT in caller.session.evidence_ids
+    assert caller.rows[0]["output"] == [{"id": OTHER_ALERT, "title": "async"}]
+
+
+def test_async_handler_errors_are_tool_errors() -> None:
+    registry = ToolRegistry([spec("acoded", _async_coded), spec("aboom", _async_boom)])
+    caller = Caller(registry, config(["acoded", "aboom"]))
+    assert call(caller, "acoded", {}) == tool_error_text("acoded", "timeout")
+    out = call(caller, "aboom", {})
+    assert out == tool_error_text("aboom", "failed")
+    assert "fake-agent-pass" not in json.dumps(caller.rows, ensure_ascii=False)
+
+
+def test_sync_handler_still_works_beside_async() -> None:
+    registry = ToolRegistry([RECORDS, spec("arecords", _async_records)])
+    caller = Caller(registry, config(["records", "arecords"]))
+    assert parse(call(caller, "records", {"word": "x"}))["records"][0]["title"] == "x 1"
+    assert parse(call(caller, "arecords", {}))["records"][0]["title"] == "async"
+
+
+HOST_ARG = Arg("host", "string", required=True)
+
+
+def _configure(tools_config: Any) -> ToolSpec | None:
+    hosts = tools_config.get("hosts", [])
+    if not hosts:
+        return None
+    return spec(
+        "configured",
+        _spy,
+        description="hosts: " + ", ".join(hosts),
+        args=(Arg("host", "string", required=True, enum=tuple(hosts)),),
+    )
+
+
+def _configure_crashes(tools_config: Any) -> ToolSpec | None:
+    raise KeyError("x")
+
+
+def _configure_renames(tools_config: Any) -> ToolSpec | None:
+    return spec("renamed", _spy)
+
+
+def _tool(caller: Caller, name: str) -> FunctionTool:
+    return next(t for t in caller.session.function_tools() if t.name == name)
+
+
+def test_configure_shapes_the_tool_from_config() -> None:
+    registry = ToolRegistry([spec("configured", _spy, args=(HOST_ARG,), configure=_configure)])
+    cfg = config(["configured"])
+    cfg["tools"]["hosts"] = ["web01", "db01"]
+    caller = Caller(registry, cfg)
+    tool = _tool(caller, "configured")
+    assert tool.description == "hosts: web01, db01"
+    assert tool.params_json_schema["properties"]["host"]["enum"] == ["web01", "db01"]
+    assert call(caller, "configured", {"host": "other"}) == tool_error_text(
+        "configured", "invalid_argument"
+    )
+    CALLS.clear()
+    parse(call(caller, "configured", {"host": "db01"}))
+    assert CALLS == [{"host": "db01"}]
+
+
+def test_configure_none_leaves_the_tool_unregistered() -> None:
+    registry = ToolRegistry([spec("configured", _spy, args=(HOST_ARG,), configure=_configure), SPY])
+    caller = Caller(registry, config(["configured", "spy"]))  # hosts 없음
+    assert [t.name for t in caller.session.function_tools()] == ["spy"]
+    # 등록되지 않은 도구를 레지스트리 함수로 직접 부르면 not_allowed(방어선)
+    CALLS.clear()
+    out = call(caller, "configured", {"host": "web01"})
+    assert out == tool_error_text("configured", "not_allowed")
+    assert CALLS == []
+
+
+@pytest.mark.parametrize("configure", [_configure_crashes, _configure_renames])
+def test_bad_configure_is_provider_error(configure: Any) -> None:
+    registry = ToolRegistry([spec("configured", _spy, configure=configure)])
+    cfg = config(["configured"])
+    with pytest.raises(ToolConfigError):
+        Caller(registry, cfg)
+    result, _, _ = run([{"final": verdict(ALERT_ID)}], cfg=cfg, registry=registry)
+    assert result.failure == "provider_error"
+
+
+def test_tools_without_configure_are_unchanged() -> None:
+    caller = Caller(REGISTRY, config())
+    assert [t.name for t in caller.session.function_tools()] == ALL
