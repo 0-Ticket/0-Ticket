@@ -21,7 +21,7 @@ supersedes: []
 
 ## 계획과 달라진 점
 
-- **결과 종류에 `aggregate`를 더했다(사람 확인 필요).** 계획의 `result_kind`는 `records`/`text` 둘이다. `summarize_http_flow`의 결과는 레코드 목록도 문자열도 아니고(건수 + 필드별 상위 값), 장부에 `call_id`만 넣고, 자르기를 "필드마다 건수가 적은 항목부터 뺀다"로 해야 해서 세 번째 종류로 두었다. `aggregate` 핸들러는 `CallContext.fits(결과)`로 한도(`call_id` 포함)를 확인하며 스스로 줄이고, 레지스트리는 id를 장부에 넣지 않는다. 동작은 계획 그대로이고 `ToolSpec`의 허용 값만 하나 늘었다. #212~#214가 `ToolSpec`을 그대로 쓰므로 알린다.
+- **결과 종류에 `aggregate`를 더했다(확정(계획 "바뀐 점")).** 계획의 `result_kind`는 `records`/`text` 둘이다. `summarize_http_flow`의 결과는 레코드 목록도 문자열도 아니고(건수 + 필드별 상위 값), 장부에 `call_id`만 넣고, 자르기를 "필드마다 건수가 적은 항목부터 뺀다"로 해야 해서 세 번째 종류로 두었다. `aggregate` 핸들러는 `CallContext.fits(결과)`로 한도(`call_id` 포함)를 확인하며 스스로 줄이고, 레지스트리는 id를 장부에 넣지 않는다. 동작은 계획 그대로이고 `ToolSpec`의 허용 값만 하나 늘었다. #212~#214가 `ToolSpec`을 그대로 쓰므로 알린다.
 - **`ToolSpec`에 `check`를 더했다.** 인자 사이의 조건(시간 범위 상한, `kind`와 맞지 않는 필터, 엔티티 type·value 짝)을 실행 전에 검사해 `invalid_argument`로 돌려주는 자리다. 계획의 "인자 정의"를 구현하는 방법이다.
 - **#209·#192 테스트에서 고친 곳이 계획의 "6곳"보다 많다**(지우거나 건너뛴 것은 없다).
   - `tests/test_agent_core.py`: `run()` 도우미, `run_task`를 직접 부르는 `test_retry_counts_toward_max_turns`·`test_unexpected_exception_does_not_escape`도 `registry=REGISTRY`를 넘긴다. 기본 운영 레지스트리에는 테스트용 `lookup_alert`가 없어 허용 목록 오타(`provider_error`)가 되기 때문이다.

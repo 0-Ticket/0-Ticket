@@ -218,3 +218,5 @@ DB 읽기 역할(마이그레이션 `0003`)
 - **`FunctionTool`을 직접 만든다.** strict일 때 선택 인자는 "required + null 허용". PostgreSQL 16 이상의 ADMIN 권한 메모를 기록에 적는다.
 
 ## 바뀐 점
+
+- 2026-11-04 · `ToolSpec.result_kind`에 `aggregate`를 더한다(`records` / `text` / `aggregate`). `summarize_http_flow`가 쓴다. 집계 결과(전체 건수 + 필드별 상위 값·건수)는 레코드 목록(`records`)도 문자열(`text`)도 아니고, 장부에는 `call_id`만 넣으며, 자를 때는 뒤 레코드나 글자가 아니라 필드마다 건수가 적은 항목부터 빼야 하기 때문이다. `aggregate` 핸들러는 집계 객체(dict)를 돌려주고, `CallContext.fits(결과)`(`call_id`를 포함한 JSON 본문 글자 수가 `max_tool_result_chars` 이하인지)로 확인하며 스스로 줄이고 `"truncated": true`를 붙인다. 레지스트리는 결과에 `call_id`를 붙이고 감싸기만 하며 `id_fields`를 보지 않는다(장부에는 `call_id`만). #212~#214 참고: 레코드를 돌려주는 도구는 `records` + `id_fields`, 명령 출력처럼 긴 글은 `text`(레지스트리가 글자 수로 자름), 건수·통계만 돌려주는 도구는 `aggregate`(핸들러가 `ctx.fits`로 한도를 맞춤, 인용은 `call_id`로만)를 쓴다. 사람이 확정함
