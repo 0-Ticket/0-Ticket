@@ -215,3 +215,5 @@ supersedes: []
 - **빈칸 기본값을 그대로 쓴다.** `check_config`는 모양만, 켜지 않은 점검은 `invalid_argument`, 제어 문자는 `\n`·`\t`만 남김, stderr 2,000자, 신호 종료는 `exit_status: null`과 `exit_signal`, `/dev/zero` 같은 경로는 timeout으로, `details`에 주소·계정·명령 원문 없음, `ssh` 마커, 호스트 이름 형식 `[a-z0-9][a-z0-9-]{0,62}`.
 
 ## 바뀐 점
+
+- 2026-11-05 · 암호가 걸린 OpenSSH 형식 개인 키는 지원하지 않는다(그런 키는 `unavailable`, reason `config`). asyncssh가 그 암호를 풀려면 bcrypt(선택 패키지)가 필요한데 확정된 라이브러리가 아니기 때문이다. `passphrase_env`는 암호가 걸린 PKCS#8 PEM 키에만 쓴다. 데모 키는 암호 없이 만든다. 필요해지면 bcrypt를 결정 목록 안건으로 올린다. 사람이 확정함

@@ -21,7 +21,7 @@ supersedes: []
 
 - **Agent Log tool 줄 `output`은 모델에게 보인 결과(한도에 맞춰 줄인 것)다.** 자르기 전 전체가 아니다. `aggregate`는 핸들러가 `ctx.fits`로 직접 줄인 dict를 레지스트리가 그대로 기록하기 때문이다(#211 `summarize_http_flow`, #212 SIEM 도구와 같다). 모델 한도보다 긴 stdout 전체를 감사용으로 남기려면 레지스트리를 바꿔야 한다. 이 이슈에서는 바꾸지 않았다.
 - **`redact.py`를 고쳤다(계획: 테스트가 실패하면 고침).** 여러 줄인 비밀 값(개인 키)은 값 전체와 함께 줄마다 가린다. Agent Log의 모델 호출 줄은 도구 결과를 JSON 문자열로 담는데, 그 안에서는 줄바꿈이 `\n` 이스케이프로 바뀌어 값 전체가 맞지 않았다. 결과 출력에 키가 그대로 나오면 tool 줄은 가려졌지만 model 줄 input에는 키의 줄들이 남았다(`test_private_key_echoed_in_output_is_redacted_from_agent_log`가 찾았다). 한 줄 중간에서 잘린 조각은 여전히 가리지 못한다.
-- **암호가 걸린 OpenSSH 형식 키는 풀리지 않는다.** asyncssh는 OpenSSH 형식 개인 키의 암호를 풀 때 bcrypt(선택 패키지)가 필요하다. bcrypt는 확정된 라이브러리가 아니어서 넣지 않았다. 그런 키를 넣으면 `unavailable`(`config`)이다. 암호가 걸린 PKCS#8 PEM 키(`-----BEGIN ENCRYPTED PRIVATE KEY-----`)는 cryptography로 풀리고 `passphrase_env`로 쓸 수 있다(테스트함). 데모용 읽기 전용 계정 키는 암호 없이 만들고 `.env`로만 다루는 것을 권한다(아래).
+- **암호가 걸린 OpenSSH 형식 키는 풀리지 않는다(확정(계획 "바뀐 점")).** asyncssh는 OpenSSH 형식 개인 키의 암호를 풀 때 bcrypt(선택 패키지)가 필요하다. bcrypt는 확정된 라이브러리가 아니어서 넣지 않았다. 그런 키를 넣으면 `unavailable`(`config`)이다. 암호가 걸린 PKCS#8 PEM 키(`-----BEGIN ENCRYPTED PRIVATE KEY-----`)는 cryptography로 풀리고 `passphrase_env`로 쓸 수 있다(테스트함). 데모용 읽기 전용 계정 키는 암호 없이 만들고 `.env`로만 다룬다(아래). 필요해지면 bcrypt를 결정 목록 안건으로 올린다.
 - **stdout이 상한에서 끊기면 `exit_status`는 `null`이다.** 다 읽지 않고 채널을 닫기 때문이다. `stdout_truncated: true`로 구분한다.
 - **`passphrase_env` 기본값은 빈 문자열이다.** 이름만 `.env.example`에 `SSH_TOOL_KEY_PASSPHRASE`로 두었다. 쓰려면 `config/local.toml`의 `[tools.ssh] passphrase_env = "SSH_TOOL_KEY_PASSPHRASE"`.
 - **테스트 서버는 테스트 파일마다 하나다.** 점검 출력·기록은 테스트마다 비운다. 서버를 테스트마다 새로 띄우면 SSH 테스트만 2분이 걸려 바꿨다.
