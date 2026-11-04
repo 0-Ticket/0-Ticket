@@ -19,3 +19,46 @@ max_turns = 10
 
 [tools]
 # 도구 레지스트리와 단계별 허용 목록은 #211에서 채운다.
+
+# L3 가설 재료 수집(#221, L3 위협 시나리오 입력 D-029). 모두 공개 피드라 비밀 값이 없다.
+# 실행: uv run python -m soc.l3.intel
+[l3.intel]
+# 요약(태그를 지운 평문) 길이 상한. 넘으면 자른다
+summary_max_chars = 1000
+# 요청 단위 제한 시간(초). 출처별 전체 마감 시간은 limits·attack의 deadline_seconds
+connect_timeout_seconds = 10
+read_timeout_seconds = 10
+
+# 출처 종류별 응답 크기 상한(압축을 푼 바이트)과 전체 마감 시간(초)
+[l3.intel.limits.rss]
+max_bytes = 5_242_880  # 5MB
+deadline_seconds = 30
+
+[l3.intel.limits.cisa_kev]
+max_bytes = 10_485_760  # 10MB
+deadline_seconds = 30
+
+# 출처 목록. name은 저장 키의 일부라, 바꾸면 같은 기사가 새로 저장된다.
+# kind: rss | cisa_kev. 주소는 https만 받는다. 리다이렉트는 따라가지 않는다.
+[[l3.intel.sources]]
+name = "boannews"
+kind = "rss"
+url = "https://cdn.boannews.com/rss/gn_rss_allArticle.xml"
+
+[[l3.intel.sources]]
+name = "thehackernews"
+kind = "rss"
+url = "https://feeds.feedburner.com/TheHackersNews"
+
+[[l3.intel.sources]]
+name = "cisa_kev"
+kind = "cisa_kev"
+url = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+
+# MITRE ATT&CK Enterprise(D-040). 같은 버전이 이미 저장돼 있으면 내려받지 않는다.
+# 버전을 올릴 때는 version과 url을 함께 바꾼다. 받은 파일의 버전이 다르면 실패한다.
+[l3.intel.attack]
+version = "20.0"
+url = "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack-20.0.json"
+max_bytes = 104_857_600  # 100MB
+deadline_seconds = 180

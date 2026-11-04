@@ -1,0 +1,9 @@
+{
+  "title": "Broken Catalog",
+  "vulnerabilities": [
+    {
+      "cveID": "CVE-2026-0001",
+      "vulnerabilityName": "Missing dateAdded and shortDescription"
+    }
+  ]
+}

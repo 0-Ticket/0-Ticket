@@ -1,0 +1,13 @@
+<!DOCTYPE rss [
+  <!ENTITY a "aaaaaaaaaa">
+  <!ENTITY b "&a;&a;&a;&a;&a;&a;&a;&a;&a;&a;">
+]>
+<rss version="2.0">
+<channel>
+<title>Doctype Sample</title>
+<item>
+<title>&b;</title>
+<link>https://hn.example.com/2026/11/doctype.html</link>
+</item>
+</channel>
+</rss>
