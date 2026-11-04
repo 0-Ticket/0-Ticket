@@ -171,3 +171,5 @@ L3 헌팅 결과인 Hunt의 공통 계약(JSON Schema)과 `hunts` 테이블을 �
 10. 시각 필드는 기존 계약처럼 epoch_ms 정수다(DB는 `timestamptz`).
 
 ## 바뀐 점
+
+- 2026-11-04 · `src/soc/agent/types.py`(#216)의 `_SUBJECT_ID`에 hunt 패턴(`(hnt|hrn)_`)을 더하고 `tests/test_agent_core.py`에 검사를 더한다. "범위 밖"이었지만, 그대로 두면 틀린 hunt ID 작업이 LLM을 부른 뒤 Agent Log 쓰기에서 `log_error`로 끝나 호출이 낭비되고 기록이 남지 않는다. 사람이 이 PR에서 고치기로 정함
