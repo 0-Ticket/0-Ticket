@@ -21,11 +21,12 @@ from soc.tools.registry import (
 
 
 def default_registry() -> ToolRegistry:
-    """운영 레지스트리: 내부 데이터 도구 3개와 Web 도구 2개."""
+    """운영 레지스트리: 내부 데이터 도구 3개, Web 도구 2개, SIEM 도구 2개(#212)."""
     from soc.tools.internal import INTERNAL_TOOLS
+    from soc.tools.siem import siem_tools
     from soc.tools.web import WEB_TOOLS
 
-    return ToolRegistry([*INTERNAL_TOOLS, *WEB_TOOLS])
+    return ToolRegistry([*INTERNAL_TOOLS, *WEB_TOOLS, *siem_tools()])
 
 
 __all__ = [

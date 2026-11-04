@@ -68,9 +68,53 @@ max_limit = 100
 # 단계별 허용 도구. 여기에 없는 도구는 모델에게 등록되지 않는다(기본 전부 거부).
 # 레지스트리에 없는 이름을 적으면 실행이 provider_error로 끝난다.
 [tools.allowed]
-l1 = ["get_alert", "get_event", "query_records", "query_http_flow", "summarize_http_flow"]
-l2 = ["get_alert", "get_event", "query_records", "query_http_flow", "summarize_http_flow"]
-l3 = ["get_alert", "get_event", "query_records", "query_http_flow", "summarize_http_flow"]
+# SIEM 도구(#212): query_siem은 l1·l2·l3, count_siem은 l2·l3
+l1 = [
+    "get_alert", "get_event", "query_records", "query_http_flow", "summarize_http_flow",
+    "query_siem",
+]
+l2 = [
+    "get_alert", "get_event", "query_records", "query_http_flow", "summarize_http_flow",
+    "query_siem", "count_siem",
+]
+l3 = [
+    "get_alert", "get_event", "query_records", "query_http_flow", "summarize_http_flow",
+    "query_siem", "count_siem",
+]
+
+# SIEM 조회 도구(#212). 수집(#218)과 같은 ELK에 같은 환경변수로 접속한다.
+# SIEM 연결·프로필(D-021)이 생기면 그것으로 바꾼다.
+# 부르는 API는 POST /<index>/_search 하나다. 키는 대상 인덱스의 read 권한만 있는 API 키(D-010).
+[tools.siem]
+# ELK 주소(http(s), 계정 정보 없이)와 읽기 전용 API 키를 담은 환경변수 이름. 값은 .env에만 둔다
+url_env = "ELK_URL"
+api_key_env = "ELK_API_KEY"
+# 요청 단위 제한 시간(초). 넘으면 TOOL_ERROR code=timeout
+connect_timeout_seconds = 5
+read_timeout_seconds = 10
+# 호출 한 번의 전체 마감 시간(초, D-039). 넘으면 TOOL_ERROR code=timeout
+deadline_seconds = 15
+# 응답 크기 상한(압축을 푼 바이트). 넘으면 끊고 TOOL_ERROR code=failed
+max_bytes = 5_242_880  # 5MB
+
+# 조회 대상. name은 코드에 정해진 alerts | web_access | cloudtrail 중 하나다(다른 이름은 provider_error).
+# 대상별 필터·반환 필드는 코드(soc.tools.siem)에 있다. 여기서는 index·time_field만 붙인다.
+# 아래 index는 예시(#218 [[ingest.sources]]와 같은 패턴)다. 실제 값은 config/local.toml에서 바꾼다.
+# 대상을 빼면 모델이 그 대상을 고를 때 invalid_argument다.
+[[tools.siem.targets]]
+name = "alerts"
+index = ".alerts-security.alerts-default"
+time_field = "@timestamp"
+
+[[tools.siem.targets]]
+name = "web_access"
+index = "logs-nginx.access-*,logs-apache.access-*"
+time_field = "@timestamp"
+
+[[tools.siem.targets]]
+name = "cloudtrail"
+index = "logs-aws.cloudtrail-*"
+time_field = "@timestamp"
 
 # L3 가설 재료 수집(#221, L3 위협 시나리오 입력 D-029). 모두 공개 피드라 비밀 값이 없다.
 # 실행: uv run python -m soc.l3.intel

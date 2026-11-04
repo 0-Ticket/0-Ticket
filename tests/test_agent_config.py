@@ -31,7 +31,10 @@ def test_default_llm_and_budget_values() -> None:
 
 
 def test_default_tools_config() -> None:
-    """도구 설정과 단계별 허용 목록(#211). 비밀 값 없이 환경변수 이름도 두지 않는다."""
+    """도구 설정과 단계별 허용 목록(#211, #212).
+
+    비밀 값은 없고, 환경변수 이름은 [tools.siem]에만 있다.
+    """
     tools = load_config(REPO_CONFIG)["tools"]
     assert tools["statement_timeout_ms"] == 5000
     assert tools["connect_timeout_seconds"] == 5
@@ -45,8 +48,10 @@ def test_default_tools_config() -> None:
         "query_http_flow",
         "summarize_http_flow",
     ]
-    for stage in ("l1", "l2", "l3"):
-        assert tools["allowed"][stage] == expected
+    # SIEM 도구(#212): query_siem은 l1·l2·l3, count_siem은 l2·l3
+    assert tools["allowed"]["l1"] == [*expected, "query_siem"]
+    for stage in ("l2", "l3"):
+        assert tools["allowed"][stage] == [*expected, "query_siem", "count_siem"]
 
 
 def test_default_config_has_provider_examples_only_as_comments() -> None:

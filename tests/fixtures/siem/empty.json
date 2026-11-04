@@ -1,0 +1,5 @@
+{
+  "took": 1,
+  "timed_out": false,
+  "hits": {"total": {"value": 0, "relation": "eq"}, "max_score": null, "hits": []}
+}
