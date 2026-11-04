@@ -7,7 +7,7 @@ import httpx2
 import pytest
 from agents import OpenAIChatCompletionsModel
 from fake_model import FakeModel
-from test_agent_core import CONFIG, lookup_alert, make_task, no_sleep
+from test_agent_core import CONFIG, REGISTRY, make_task, no_sleep
 
 from soc.agent import run_agent
 from soc.agent.agent_log import MemoryLogSink
@@ -58,7 +58,7 @@ def run(scenario: str, *, config: dict[str, Any] = CONFIG, sleep: Any = no_sleep
         model_name="fake-model",
         log_sink=sink,
         config=config,
-        tools=[lookup_alert],
+        registry=REGISTRY,
         sleep=sleep,
     )
     return result, model, sink

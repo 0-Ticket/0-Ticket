@@ -5,7 +5,7 @@ from typing import Any
 import psycopg
 import pytest
 from fake_model import FakeModel
-from test_agent_core import CONFIG, lookup_alert, make_task
+from test_agent_core import CONFIG, REGISTRY, make_task
 
 from soc.agent.agent_log import PostgresLogSink
 from soc.agent.runner import run_task
@@ -27,7 +27,7 @@ def run_with_db(url: str, scenario: str) -> Any:
         model_name="fake-model",
         log_sink=PostgresLogSink(url),
         config=CONFIG,
-        tools=[lookup_alert],
+        registry=REGISTRY,
     )
 
 
@@ -70,7 +70,7 @@ def test_unreachable_database_is_log_error(migrated: str) -> None:
         model_name="fake-model",
         log_sink=PostgresLogSink(bad),
         config=CONFIG,
-        tools=[lookup_alert],
+        registry=REGISTRY,
     )
     assert result.ok is False
     assert result.failure == "log_error"
@@ -88,7 +88,7 @@ def test_partial_write_is_rolled_back(migrated: str) -> None:
         model_name="fake-model",
         log_sink=sink,
         config=CONFIG,
-        tools=[lookup_alert],
+        registry=REGISTRY,
     )
     with psycopg.connect(migrated) as conn:
         (count,) = conn.execute("SELECT count(*) FROM agent_logs").fetchone()
@@ -107,7 +107,7 @@ def test_partial_write_is_rolled_back(migrated: str) -> None:
         model_name="fake-model",
         log_sink=Dup(migrated),
         config=CONFIG,
-        tools=[lookup_alert],
+        registry=REGISTRY,
     )
     assert second.failure == "log_error"
     assert fetch(migrated, second.run_id) == []

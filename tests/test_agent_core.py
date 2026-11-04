@@ -5,7 +5,6 @@ import time
 from typing import Any
 
 import pytest
-from agents import function_tool
 from agents.tracing import TracingProcessor, set_trace_processors, set_tracing_disabled
 from fake_model import FakeModel
 
@@ -13,6 +12,7 @@ from soc.agent import FAILURES, AgentResult, AgentTask, TaskPrompt, run_agent
 from soc.agent.agent_log import LogWriteError, MemoryLogSink
 from soc.agent.runner import run_task
 from soc.contracts import validate_contract
+from soc.tools import Arg, ToolRegistry, ToolSpec
 
 ALERT_ID = "alt_01a19f93-1150-7000-8000-000000000004"
 CONFIG: dict[str, Any] = {
@@ -25,11 +25,34 @@ CONFIG: dict[str, Any] = {
         "rate_limit_retries": 3,
     },
     "agent": {
-        "l1": {"max_turns": 3, "max_input_chars": 32_000, "reasoning_effort": "low"},
-        "l2": {"max_turns": 12, "max_input_chars": 64_000, "reasoning_effort": "medium"},
-        "l3": {"max_turns": 10, "max_input_chars": 48_000, "reasoning_effort": "medium"},
+        "l1": {
+            "max_turns": 3,
+            "max_input_chars": 32_000,
+            "reasoning_effort": "low",
+            "max_tool_result_chars": 6_000,
+        },
+        "l2": {
+            "max_turns": 12,
+            "max_input_chars": 64_000,
+            "reasoning_effort": "medium",
+            "max_tool_result_chars": 8_000,
+        },
+        "l3": {
+            "max_turns": 10,
+            "max_input_chars": 48_000,
+            "reasoning_effort": "medium",
+            "max_tool_result_chars": 8_000,
+        },
     },
-    "tools": {},
+    "tools": {
+        "statement_timeout_ms": 5000,
+        "connect_timeout_seconds": 5,
+        "max_range_days": 7,
+        "default_limit": 20,
+        "max_limit": 100,
+        # 테스트용 가짜 도구 lookup_alert만 붙인다(#211). 도구는 레지스트리를 거쳐서만 붙는다.
+        "allowed": {"l1": ["lookup_alert"], "l2": ["lookup_alert"], "l3": ["lookup_alert"]},
+    },
 }
 
 
@@ -37,10 +60,25 @@ async def no_sleep(seconds: float) -> None:
     """429 재시도에서 실제로 기다리지 않는다(#210)."""
 
 
-@function_tool
-def lookup_alert(alert_id: str, note: str = "") -> dict[str, str]:
-    """Alert 하나를 읽는다(테스트용)."""
-    return {"id": alert_id, "title": "Suspicious PowerShell Execution"}
+def _lookup_alert(args: dict[str, Any], ctx: Any) -> list[dict[str, str]]:
+    return [{"id": args["alert_id"], "title": "Suspicious PowerShell Execution"}]
+
+
+# 테스트용 가짜 도구. #209에서는 SDK 함수 도구를 run_task(tools=…)로 넣었고,
+# #211부터는 ToolSpec으로 만들어 레지스트리를 거친다.
+LOOKUP_ALERT = ToolSpec(
+    name="lookup_alert",
+    description="Alert 하나를 읽는다(테스트용).",
+    handler=_lookup_alert,
+    bundle="test",
+    result_kind="records",
+    id_fields=("id",),
+    args=(
+        Arg("alert_id", "string", required=True),
+        Arg("note", "string"),
+    ),
+)
+REGISTRY = ToolRegistry([LOOKUP_ALERT])
 
 
 def make_task(**overrides: Any) -> AgentTask:
@@ -68,7 +106,7 @@ def run(scenario: str, task: AgentTask | None = None, sink: Any = None):
         model_name="fake-model",
         log_sink=sink,
         config=CONFIG,
-        tools=[lookup_alert],
+        registry=REGISTRY,
         sleep=no_sleep,
     )
     return result, model, sink
@@ -257,7 +295,8 @@ def test_log_rows_for_ok_run() -> None:
     assert tool["name"] == "lookup_alert"
     assert tool["tokens_in"] is None and tool["tokens_out"] is None
     assert tool["input"] == {"alert_id": ALERT_ID}
-    assert tool["output"] == {"id": ALERT_ID, "title": "Suspicious PowerShell Execution"}
+    # Agent Log output은 자르기 전 전체 결과다(#211). records 도구는 레코드 목록이다.
+    assert tool["output"] == [{"id": ALERT_ID, "title": "Suspicious PowerShell Execution"}]
     model_rows = [r for r in rows if r["kind"] == "model"]
     assert all(r["name"] == "fake-model" for r in model_rows)
     assert all(isinstance(r["details"]["prompt_version"], str) for r in model_rows)

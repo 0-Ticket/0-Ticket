@@ -62,16 +62,27 @@ class FakeModel(Model):
             raise _error(step["raise"], step.get("retry_after"))
         if "tool_call" in step:
             call = step["tool_call"]
-            item = function_call(call["name"], call["arguments"], call_id=f"call_{n}")
+            items = [function_call(call["name"], call["arguments"], call_id=f"call_{n}")]
+        elif "tool_calls" in step:
+            # 한 응답에 도구 호출 여러 개(#211). call_id는 call_<호출 번호>_<순서>
+            items = [
+                function_call(c["name"], c["arguments"], call_id=f"call_{n}_{i}")
+                for i, c in enumerate(step["tool_calls"])
+            ]
         elif "final" in step:
-            item = assistant_message(json.dumps(step["final"], ensure_ascii=False))
+            items = [assistant_message(json.dumps(step["final"], ensure_ascii=False))]
+        elif "final_fn" in step:
+            # 테스트 코드 안에서만 쓰는 함수 step(#211). 지금까지의 도구 결과 문자열 목록을 받아
+            # 최종 JSON 값을 만든다. 실행 중에 정해지는 call_id(agl_)를 인용할 때 쓴다.
+            value = step["final_fn"](tool_outputs(input))
+            items = [assistant_message(json.dumps(value, ensure_ascii=False))]
         else:
-            item = assistant_message(step["final_text"])
+            items = [assistant_message(step["final_text"])]
         usage = step.get("usage", {})
         tokens_in = usage.get("input_tokens", 10)
         tokens_out = usage.get("output_tokens", 5)
         return ModelResponse(
-            output=[item],
+            output=items,
             usage=Usage(
                 requests=1,
                 input_tokens=tokens_in,
@@ -83,6 +94,17 @@ class FakeModel(Model):
 
     def stream_response(self, *args: Any, **kwargs: Any) -> AsyncIterator[Any]:
         raise NotImplementedError("가짜 모델은 스트리밍을 쓰지 않는다")
+
+
+def tool_outputs(items: Any) -> list[str]:
+    """모델 입력 항목에서 도구 결과(function_call_output) 문자열을 순서대로 꺼낸다."""
+    if not isinstance(items, list):
+        return []
+    out: list[str] = []
+    for item in items:
+        if isinstance(item, dict) and item.get("type") == "function_call_output":
+            out.append(str(item.get("output")))
+    return out
 
 
 def _error(kind: str, retry_after: str | None = None) -> Exception:

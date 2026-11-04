@@ -111,6 +111,12 @@ class LogRecorder(RunHooks[Any]):
         self._attempt = attempt
         self._prompt_version = prompt_version
         self._open: dict[str, tuple[dict[str, Any], float]] = {}
+        # 열린 tool 줄. SDK의 tool_call_id별로 둔다(#211). 한 응답에 도구 호출이 여럿이어도
+        # 줄이 섞이지 않는다. 빈·중복 tool_call_id의 줄은 _unmatched에 두고 ID를 주지 않는다.
+        self._open_tools: dict[str, tuple[dict[str, Any], float]] = {}
+        self._unmatched: list[tuple[dict[str, Any], float]] = []
+        # 레지스트리가 결과를 알려 준 줄의 id. on_tool_end가 output을 덮어쓰지 않는다.
+        self._reported: set[str] = set()
 
     # 훅
 
@@ -133,11 +139,52 @@ class LogRecorder(RunHooks[Any]):
             parsed = json.loads(arguments) if isinstance(arguments, str) else arguments
         except ValueError:
             parsed = arguments
-        row = self._start("tool", tool.name, parsed if parsed is not None else {})
+        row = self._new_row("tool", tool.name, parsed if parsed is not None else {})
         self.tool_log_ids.append(row["id"])
+        call_id = getattr(context, "tool_call_id", None)
+        opened = (row, time.perf_counter())
+        if isinstance(call_id, str) and call_id and call_id not in self._open_tools:
+            self._open_tools[call_id] = opened
+        else:
+            self._unmatched.append(opened)
 
     async def on_tool_end(self, context: Any, agent: Any, tool: Any, result: object) -> None:
-        self._finish("tool", jsonable(result))
+        call_id = getattr(context, "tool_call_id", None)
+        opened = self._open_tools.pop(call_id, None) if isinstance(call_id, str) else None
+        if opened is None:
+            opened = next((o for o in self._unmatched if o[0]["name"] == tool.name), None)
+            if opened is None:
+                return
+            self._unmatched.remove(opened)
+        row, started = opened
+        if row["id"] not in self._reported:
+            row["output"] = jsonable(result)
+        row["duration_ms"] = int((time.perf_counter() - started) * 1000)
+
+    # 도구 레지스트리가 부름(#211)
+
+    def tool_log_id(self, tool_call_id: str) -> str | None:
+        """열린 tool 줄의 id(agl_). 도구 결과의 call_id와 근거 장부 ID가 이 값이다."""
+        opened = self._open_tools.get(tool_call_id)
+        return opened[0]["id"] if opened is not None else None
+
+    def report_tool(self, tool_call_id: str, output: Any, failure: str | None, blocked: bool) -> None:
+        """레지스트리가 알려 준 결과를 그 tool 줄에 남긴다.
+
+        output은 자르기 전 전체 결과(오류면 모델에게 보낸 TOOL_ERROR 문구)다.
+        on_tool_end가 받는 값은 모델에게 보낸 잘린 문자열이라 쓰지 않는다.
+        """
+        opened = self._open_tools.get(tool_call_id)
+        if opened is None:
+            return
+        row = opened[0]
+        row["output"] = None if output is None else jsonable(output)
+        if failure is not None:
+            row["outcome"] = "error"
+            row["details"]["failure"] = failure
+        if blocked:
+            row["details"]["blocked"] = True
+        self._reported.add(row["id"])
 
     # 래퍼·예산 필터가 부름
 
@@ -164,11 +211,14 @@ class LogRecorder(RunHooks[Any]):
 
     def finalize(self, failure: str | None, validation: str | None) -> list[dict[str, Any]]:
         """끝나지 않은 줄을 error로 닫고, 마지막 model 줄에 검증 결과와 실패를 남긴다."""
-        for row, _ in self._open.values():
+        still_open = [*self._open.values(), *self._open_tools.values(), *self._unmatched]
+        for row, _ in still_open:
             row["outcome"] = "error"
             if failure is not None:
                 row["details"]["failure"] = failure
         self._open.clear()
+        self._open_tools.clear()
+        self._unmatched.clear()
         models = [row for row in self.rows if row["kind"] == "model"]
         if models:
             last = models[-1]
@@ -180,6 +230,11 @@ class LogRecorder(RunHooks[Any]):
         return self.rows
 
     def _start(self, kind: str, name: str, value: Any) -> dict[str, Any]:
+        row = self._new_row(kind, name, value)
+        self._open[kind] = (row, time.perf_counter())
+        return row
+
+    def _new_row(self, kind: str, name: str, value: Any) -> dict[str, Any]:
         row: dict[str, Any] = {
             "id": new_id("agl"),
             **self._base,
@@ -196,7 +251,6 @@ class LogRecorder(RunHooks[Any]):
             "details": {"task": self._task, "attempt": self._attempt},
         }
         self.rows.append(row)
-        self._open[kind] = (row, time.perf_counter())
         return row
 
     def _finish(self, kind: str, output: Any) -> dict[str, Any] | None:
