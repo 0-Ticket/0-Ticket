@@ -1,0 +1,8 @@
+{
+  "pit_id": "pit-synthetic-2",
+  "hits": {
+    "hits": [
+      {"_index": ".ds-logs-nginx.access-default-2026.11.04-000001", "_id": "no-sort-1", "_source": {}}
+    ]
+  }
+}

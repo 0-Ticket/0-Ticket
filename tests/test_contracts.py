@@ -197,6 +197,7 @@ def test_unknown_contract_name_is_rejected(name: str) -> None:
 # 모양을 정하지 않은 자유 객체. schema는 안쪽 값을 보지 않는다.
 FREE_OBJECTS = [
     ("raw_record", "original"),
+    ("ingest_checkpoint", "cursor"),
     ("alert", "ocsf"),
     ("ticket", "details"),
     ("hunt", "details"),

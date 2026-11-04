@@ -1,0 +1,24 @@
+[
+  {
+    "case": "after_success",
+    "data": {
+      "siem_profile": "elk-dev",
+      "source_kind": "alert",
+      "source_key": ".alerts-security.alerts-default",
+      "cursor": {"time_ms": 1793678578000},
+      "updated_at": 1793678580000,
+      "last_error": null
+    }
+  },
+  {
+    "case": "after_failure",
+    "data": {
+      "siem_profile": "elk-dev",
+      "source_kind": "event",
+      "source_key": "logs-nginx.access-*",
+      "cursor": {},
+      "updated_at": 1793678580000,
+      "last_error": "http_status"
+    }
+  }
+]

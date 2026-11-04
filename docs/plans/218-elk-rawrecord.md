@@ -70,3 +70,16 @@ ELK의 선택된 Event와 Elastic Security Alert 원본을 RawRecord로 PostgreS
 
 ## 바뀐 점
 
+
+### 2026-11-04 · 사람 확정(#208 방향 반영)
+
+- 조회 대상: Alert는 space별 alias, Event는 지정한 데이터 스트림·인덱스. 대상 이름은 설정(TOML)에 두고 나중에 바꿀 수 있다. 처음 기본값은 웹·클라우드 Event 대상을 우선으로 둔다.
+- 커서: 조회 시각 필드(`time_field`, 설정)의 값을 체크포인트 커서로 쓴다. 실행 안에서는 PIT와 `search_after`로 넘기고, 실행 사이에는 PIT를 이어 쓰지 않고 마지막 커밋 페이지의 시각부터 `gte`로 다시 조회한다(겹치는 문서는 `(siem_profile, siem_ref)`로 건너뛴다). 실제 Event의 시각 필드(`event.ingested` 등)는 실제 응답을 눈으로 본 뒤 설정으로 정한다.
+- 실패 기록: 실패 원인을 종류 코드로 구분해 stderr와 체크포인트의 `last_error`에 남긴다. 원문과 비밀은 남기지 않는다.
+- `original`은 ELK hit 객체(`_index`, `_id`, `_source` 등)를 변경 없이 저장한다.
+- HTTP 클라이언트는 `docs/decisions.md` D-039의 `httpx`.
+
+### 2026-11-04 · 리뷰 후 확인(의도 축 1번)
+
+- 늦게 도착한 문서: `@timestamp` 커서는 색인이 늦게 끝난 문서를 놓친다. 로컬 ES에서 재현했다(0건 놓침 확인, `event.ingested` 커서는 1건 저장). Event의 커서 필드는 `event.ingested`로 바꾸는 것을 제안하며, 실제 ELK에 필드가 있는지 확인한 뒤 확정한다. 확정 전까지 기본값은 `@timestamp`다.
+- 이름: Elastic 데이터 스트림 규칙 `{type}-{dataset}-{namespace}`(dataset에 하이픈 금지)와 Alert의 `.alerts-security.alerts-{space}`를 따른다. 현재 키는 이미 이 규칙에 맞아 바꾼 것은 없다.

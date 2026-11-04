@@ -33,6 +33,7 @@ from soc.contracts.generated import (
     event_schema,
     hunt_schema,
     incident_schema,
+    ingest_checkpoint_schema,
     raw_record_schema,
     ticket_schema,
 )
@@ -44,6 +45,10 @@ SCHEMA_DIR = Path(__file__).resolve().parents[3] / "contracts"
 # 계약 이름 → (schema 파일, 생성 모델)
 _CONTRACTS: dict[str, tuple[str, type[BaseModel]]] = {
     "raw_record": ("raw_record.schema.json", raw_record_schema.RawRecord),
+    "ingest_checkpoint": (
+        "ingest_checkpoint.schema.json",
+        ingest_checkpoint_schema.IngestCheckpoint,
+    ),
     "alert": ("alert.schema.json", alert_schema.Alert),
     "event": ("event.schema.json", event_schema.Event),
     "ticket": ("ticket.schema.json", ticket_schema.Ticket),

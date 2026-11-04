@@ -8,6 +8,9 @@ data/
 # 조직 설정 (내부 주소·접속 대상, 커밋 금지)
 config/local.*
 
+# 개인 로컬 실험 환경(ELK 컨테이너, 합성 데이터 적재 스크립트). 커밋하지 않는다
+.local/
+
 # Python · uv
 .venv/
 __pycache__/
