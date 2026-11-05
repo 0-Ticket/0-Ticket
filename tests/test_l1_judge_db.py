@@ -335,3 +335,22 @@ def test_concurrent_failures_do_not_lose_attempts(db: str, conn: psycopg.Connect
     worker(db, lambda task: failure("provider_error")).handle(subject_id)
     triage = conn.execute("SELECT triage FROM alerts WHERE id = %s", (subject_id,)).fetchone()[0]
     assert triage == {"status": "held", "verdict": None}
+
+
+def test_requeued_held_alert_fails_without_check_violation(
+    db: str, conn: psycopg.Connection
+) -> None:
+    """db·conn에서 보류된 Alert를 pending으로 되돌려도 실패 횟수가 예외 없이 쌓이는지 확인한다."""
+    subject_id = pending_alert(conn)
+    for _ in range(3):
+        worker(db, lambda task: failure("provider_error")).handle(subject_id)
+    conn.execute(
+        "UPDATE alerts SET triage = %s WHERE id = %s",
+        (Jsonb({"status": "pending", "verdict": None}), subject_id),
+    )
+    worker(db, lambda task: failure("provider_error")).handle(subject_id)
+    triage = conn.execute("SELECT triage FROM alerts WHERE id = %s", (subject_id,)).fetchone()[0]
+    assert triage == {"status": "held", "verdict": None}
+    assert conn.execute(
+        "SELECT failures FROM l1_attempts WHERE subject_id = %s", (subject_id,)
+    ).fetchone() == (4,)

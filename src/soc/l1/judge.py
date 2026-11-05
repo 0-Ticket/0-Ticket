@@ -1,6 +1,7 @@
 """DB에서 L1 판정 대상을 읽고 결과를 적용하는 실행기 워커."""
 
 import hashlib
+import logging
 import os
 from collections.abc import Callable
 from datetime import UTC, datetime
@@ -15,6 +16,7 @@ from soc.agent.types import TaskPrompt
 from soc.contracts import to_datetime, to_epoch_ms, validate_contract
 from soc.l1.ticketing import _insert_ticket, _make_ticket
 
+logger = logging.getLogger("soc.l1.judge")
 Run = Callable[[AgentTask], AgentResult]
 _DAY_MS = 86_400_000
 _PROMPT = (
@@ -198,10 +200,12 @@ class L1Worker:
                 if result.failure == "cancelled":
                     return
                 if not result.ok:
+                    logger.warning("L1 실행 실패 subject=%s (%s)", subject_id, result.failure)
                     self._failure(conn, subject_id)
                     return
                 self._apply(conn, subject_id, result.output)
-        except Exception:
+        except Exception as exc:
+            logger.warning("L1 처리 예외 subject=%s (%s)", subject_id, type(exc).__name__)
             with psycopg.connect(self._database_url, autocommit=True, row_factory=dict_row) as conn:
                 self._failure(conn, subject_id)
 
