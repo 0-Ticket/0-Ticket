@@ -151,6 +151,7 @@ def test_migrate_creates_all_tables_on_empty_db(temp_database: str) -> None:
         "0101_ingest_runs.sql",
         "0102_raw_links.sql",
         "0103_normalize_status.sql",
+        "0104_l1_ticketing.sql",
         "0300_threat_intel.sql",
     ]
     with psycopg.connect(temp_database) as conn:
@@ -158,6 +159,7 @@ def test_migrate_creates_all_tables_on_empty_db(temp_database: str) -> None:
             "assets",
             "asset_identifiers",
             "normalize_status",
+            "ticketing_policy",
             "ingest_checkpoints",
             "ingest_runs",
             "raw_links",
@@ -174,7 +176,7 @@ def test_migrate_twice_does_not_reapply(temp_database: str) -> None:
 
     assert applied == []
     with psycopg.connect(temp_database) as conn:
-        assert conn.execute("SELECT count(*) FROM schema_migrations").fetchone() == (9,)
+        assert conn.execute("SELECT count(*) FROM schema_migrations").fetchone() == (10,)
 
 
 def test_failed_migration_rolls_back_only_that_file(temp_database: str, tmp_path: Path) -> None:
@@ -733,10 +735,10 @@ def test_id_arrays_reject_null_ids_and_missing_ids(
     [
         ("ticket", "l3_escalated", "alert_ids", []),
         ("ticket", "l3_escalated", "alert_ids", [ALT_1]),
-        ("ticket", "auto_new", "alert_ids", [ALT_1, ALT_2]),
+        ("ticket", "auto_new", "alert_ids", [ALT_1]),
         ("incident", "analyzing_before_analysis", "ticket_ids", [TKT_1, TKT_2]),
     ],
-    ids=["l3_no_alerts", "l3_with_alert", "auto_two_alerts", "two_tickets"],
+    ids=["l3_no_alerts", "l3_with_alert", "auto_one_alert", "two_tickets"],
 )
 def test_id_arrays_take_values_the_contract_allows(
     migrated: str, name: str, case: str, column: str, value: list[str]

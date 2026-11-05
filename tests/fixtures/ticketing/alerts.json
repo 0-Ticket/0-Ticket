@@ -1,0 +1,121 @@
+[
+  {
+    "case": "auto_alert",
+    "raw_id": "raw_01a19f93-1150-7000-8000-000000000101",
+    "normalization": {
+      "status": "succeeded",
+      "result_kind": "alert",
+      "result_id": "alt_01a19f93-1150-7000-8000-000000000101"
+    },
+    "alert": {
+      "id": "alt_01a19f93-1150-7000-8000-000000000101",
+      "time": 1793678578000,
+      "severity": 4,
+      "title": "Unusual service login",
+      "rule_id": "default-rule",
+      "entities": [{"type": "host", "value": "web-01", "role": "target"}],
+      "assets": [],
+      "triage": null,
+      "ocsf": {"class_uid": 2004},
+      "details": {}
+    }
+  },
+  {
+    "case": "scenario_match",
+    "raw_id": "raw_01a19f93-1150-7000-8000-000000000102",
+    "normalization": {
+      "status": "succeeded",
+      "result_kind": "alert",
+      "result_id": "alt_01a19f93-1150-7000-8000-000000000102"
+    },
+    "alert": {
+      "id": "alt_01a19f93-1150-7000-8000-000000000102",
+      "time": 1793678578100,
+      "severity": 3,
+      "title": "Privileged account login",
+      "rule_id": "scenario-rule",
+      "entities": [{"type": "user", "value": "kim.admin", "role": "actor"}],
+      "assets": [],
+      "triage": null,
+      "ocsf": {"class_uid": 2004},
+      "details": {}
+    }
+  },
+  {
+    "case": "scenario_mismatch",
+    "raw_id": "raw_01a19f93-1150-7000-8000-000000000103",
+    "normalization": {
+      "status": "succeeded",
+      "result_kind": "alert",
+      "result_id": "alt_01a19f93-1150-7000-8000-000000000103"
+    },
+    "alert": {
+      "id": "alt_01a19f93-1150-7000-8000-000000000103",
+      "time": 1793678578200,
+      "severity": 2,
+      "title": "Port scan detected",
+      "rule_id": "other-rule",
+      "entities": [{"type": "ip", "value": "203.0.113.20", "role": "src"}],
+      "assets": [],
+      "triage": null,
+      "ocsf": {"class_uid": 2004},
+      "details": {}
+    }
+  },
+  {
+    "case": "scenario_null_rule",
+    "raw_id": "raw_01a19f93-1150-7000-8000-000000000104",
+    "normalization": {
+      "status": "succeeded",
+      "result_kind": "alert",
+      "result_id": "alt_01a19f93-1150-7000-8000-000000000104"
+    },
+    "alert": {
+      "id": "alt_01a19f93-1150-7000-8000-000000000104",
+      "time": 1793678578300,
+      "severity": 2,
+      "title": "Alert without a rule identifier",
+      "rule_id": null,
+      "entities": [],
+      "assets": [],
+      "triage": null,
+      "ocsf": {"class_uid": 2004},
+      "details": {}
+    }
+  },
+  {
+    "case": "already_triaged",
+    "raw_id": "raw_01a19f93-1150-7000-8000-000000000105",
+    "normalization": {
+      "status": "succeeded",
+      "result_kind": "alert",
+      "result_id": "alt_01a19f93-1150-7000-8000-000000000105"
+    },
+    "alert": {
+      "id": "alt_01a19f93-1150-7000-8000-000000000105",
+      "time": 1793678578400,
+      "severity": 3,
+      "title": "Already triaged alert",
+      "rule_id": "scenario-rule",
+      "entities": [],
+      "assets": [],
+      "triage": {"status": "pending", "verdict": null},
+      "ocsf": {"class_uid": 2004},
+      "details": {}
+    }
+  },
+  {
+    "case": "event_result",
+    "raw_id": "raw_01a19f93-1150-7000-8000-000000000106",
+    "normalization": {
+      "status": "succeeded",
+      "result_kind": "event",
+      "result_id": "evt_01a19f93-1150-7000-8000-000000000106"
+    }
+  },
+  {
+    "case": "failed_normalization",
+    "raw_id": "raw_01a19f93-1150-7000-8000-000000000107",
+    "normalization": {"status": "failed", "result_kind": null, "result_id": null}
+  }
+]
