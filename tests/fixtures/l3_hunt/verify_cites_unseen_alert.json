@@ -1,5 +1,5 @@
 {
-  "description": "도구 결과에 있던 Alert ID를 인용한다. #211 전에는 근거 장부에 없어 evidence_id_error다",
+  "description": "도구 결과에 없던 Alert ID를 인용한다. 근거 장부에 없어 evidence_id_error다",
   "steps": [
     {
       "tool_call": {
@@ -13,9 +13,9 @@
       "final": {
         "result": "confirmed",
         "confidence": 0.9,
-        "reason": "업로드 알럿이 있다",
+        "reason": "다른 알럿이 있다",
         "evidence_ids": [
-          "alt_01a19f93-1150-7000-8000-000000000001"
+          "alt_01a19f93-1150-7000-8000-0000000000ff"
         ],
         "entities": []
       }

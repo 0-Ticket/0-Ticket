@@ -1,11 +1,11 @@
 """L3 가설 헌팅의 저장 규칙과 상태 전이를 실제 PostgreSQL로 확인한다(#223, db 마커).
 
 실행 함수는 두 가지를 넣는다. 가짜 실행 결과(AgentResult를 바로 돌려줌)는 상태 전이·Ticket을,
-run_task + 가짜 모델은 Agent Log·data 주입·실패 경로를 확인한다. 도구 결과의 alt_·evt_가 근거 장부에
-들어가는 것은 #211부터라, run_task 경로로는 confirmed를 만들 수 없다.
+run_task + 가짜 모델 + 가짜 도구(레지스트리, #211)는 Agent Log·data 주입·근거 장부를 거친
+종단 흐름을 확인한다.
 """
 
-import itertools
+import copy
 import json
 from collections.abc import Callable, Iterator
 from pathlib import Path
@@ -14,10 +14,10 @@ from typing import Any
 import httpx
 import psycopg
 import pytest
-from agents import function_tool
 from fake_model import FakeModel
 from psycopg import sql
 from psycopg.types.json import Jsonb
+from tool_helpers import parse
 
 from soc.agent import AgentResult, AgentTask
 from soc.agent.agent_log import MemoryLogSink
@@ -32,6 +32,7 @@ from soc.l3.hunt.command import run_hunt
 from soc.l3.hunt.hypothesize import hypothesize
 from soc.l3.hunt.settings import HuntSettings, read_hunt_settings
 from soc.l3.hunt.verify import HuntVerifier
+from soc.tools import Arg, ToolRegistry, ToolSpec
 
 pytestmark = pytest.mark.db
 
@@ -46,7 +47,6 @@ EVT_1 = SEED["events"][0]["id"]
 CAS_1, CAS_2 = (c["id"] for c in SEED["cases"])
 ALERT_ENTITIES = SEED["alerts"][0]["entities"]
 EVENT_ENTITIES = SEED["events"][0]["entities"]
-AGL_TOOL = "agl_01a19f93-1150-7000-8000-0000000000a2"  # 고정 agl_ 순서에서 두 번째(도구 줄)
 IP_SRC = {"type": "ip", "value": "203.0.113.10", "role": "src"}
 IP_DST = {"type": "ip", "value": "203.0.113.10", "role": "dst"}
 
@@ -155,14 +155,45 @@ def verification(result: str, confidence: float, evidence: list[str], **extra: A
     }
 
 
-@function_tool
-def query_events(entity: str) -> dict[str, Any]:
-    """엔티티로 Event를 찾는다(테스트용)."""
-    return {"records": [{"id": ALT_1, "title": "Web Shell Upload"}]}
+def _query_events(args: dict[str, Any], ctx: Any) -> list[dict[str, Any]]:
+    return [{"id": ALT_1, "title": "Web Shell Upload"}]
+
+
+# 테스트용 가짜 도구. records 결과의 id(alt_)와 호출 기록(agl_)이 근거 장부에 들어간다(#211)
+QUERY_EVENTS = ToolSpec(
+    name="query_events",
+    description="엔티티로 Alert·Event를 찾는다(테스트용).",
+    handler=_query_events,
+    bundle="test",
+    result_kind="records",
+    id_fields=("id",),
+    args=(Arg("entity", "string", required=True),),
+)
+CALL_ID = "<call_id>"  # 시나리오 파일의 자리표시. 실행 중 도구 결과의 call_id(agl_)로 바꾼다
+
+
+def with_call_ids(data: dict[str, Any]) -> dict[str, Any]:
+    """final의 evidence_ids에 든 자리표시를 첫 도구 결과의 call_id로 바꾸는 final_fn step으로."""
+    steps = []
+    for step in data["steps"]:
+        final = step.get("final")
+        if final is None or CALL_ID not in final.get("evidence_ids", []):
+            steps.append(step)
+            continue
+
+        def cite(outputs: list[str], final: dict[str, Any] = final) -> dict[str, Any]:
+            call_id = parse(outputs[0])["call_id"]
+            evidence = [call_id if i == CALL_ID else i for i in final["evidence_ids"]]
+            return {**final, "evidence_ids": evidence}
+
+        steps.append({"final_fn": cite})
+    return {**data, "steps": steps}
 
 
 def via_run_task(name: str, sink: MemoryLogSink) -> tuple[Callable[[AgentTask], Any], FakeModel]:
-    model = FakeModel(scenario(name))
+    model = FakeModel(with_call_ids(scenario(name)))
+    config = copy.deepcopy(load_agent_config())
+    config["tools"]["allowed"]["l3"] = [QUERY_EVENTS.name]
 
     def run(task: AgentTask) -> AgentResult:
         return run_task(
@@ -170,28 +201,11 @@ def via_run_task(name: str, sink: MemoryLogSink) -> tuple[Callable[[AgentTask], 
             model=model,
             model_name="fake-model",
             log_sink=sink,
-            config=load_agent_config(),
-            tools=[query_events],
+            config=config,
+            registry=ToolRegistry([QUERY_EVENTS]),
         )
 
     return run, model
-
-
-@pytest.fixture
-def fixed_agl_ids(monkeypatch: pytest.MonkeyPatch) -> None:
-    """가짜 모델이 도구 줄의 agl_ ID를 미리 알 수 있게 Agent Log ID를 순서대로 고정한다(…a1, …a2).
-
-    #211 전에는 도구 결과에 call_id가 붙지 않아 모델이 agl_ ID를 알 방법이 없다.
-    """
-    counter = itertools.count(1)
-    real = new_id
-
-    def fake_new_id(prefix: str) -> str:
-        if prefix == "agl":
-            return f"agl_01a19f93-1150-7000-8000-{0xA0 + next(counter):012x}"
-        return real(prefix)
-
-    monkeypatch.setattr("soc.agent.agent_log.new_id", fake_new_id)
 
 
 def add_hunt(
@@ -570,7 +584,7 @@ def test_poll_returns_pending_hunts_in_creation_order(db: str, conn: psycopg.Con
 
 
 def test_verify_via_run_task_logs_hunt_and_accepts_tool_log_evidence(
-    db: str, conn: psycopg.Connection, fixed_agl_ids: None
+    db: str, conn: psycopg.Connection
 ) -> None:
     hunt_id = add_hunt(conn)
     sink = MemoryLogSink()
@@ -581,14 +595,13 @@ def test_verify_via_run_task_logs_hunt_and_accepts_tool_log_evidence(
     hunt = store.read_hunt(conn, hunt_id)
     assert hunt is not None
     assert hunt["status"] == "rejected"
-    assert hunt["evidence_ids"] == [AGL_TOOL]
     assert [r["kind"] for r in sink.rows] == ["model", "tool", "model"]
-    assert sink.rows[1]["id"] == AGL_TOOL
+    assert hunt["evidence_ids"] == [sink.rows[1]["id"]]  # 도구 줄 agl_ = 도구 결과의 call_id
     assert {(r["subject_type"], r["subject_id"]) for r in sink.rows} == {("hunt", hunt_id)}
 
 
 def test_confirmed_with_tool_log_only_via_run_task_is_inconclusive(
-    db: str, conn: psycopg.Connection, fixed_agl_ids: None
+    db: str, conn: psycopg.Connection
 ) -> None:
     hunt_id = add_hunt(conn)
     run, _ = via_run_task("verify_confirmed_tool_only", MemoryLogSink())
@@ -604,11 +617,33 @@ def test_confirmed_with_tool_log_only_via_run_task_is_inconclusive(
     assert tickets_of(conn, hunt_id) == []
 
 
-def test_citing_tool_result_alert_via_run_task_is_a_failed_attempt(
+def test_confirmed_with_tool_record_via_run_task_creates_l3_ticket(
     db: str, conn: psycopg.Connection
 ) -> None:
+    """종단: 도구 결과의 alt_가 근거 장부에 들어가(#211) confirmed가 되고 L3 Ticket이 생긴다."""
     hunt_id = add_hunt(conn)
-    run, _ = via_run_task("verify_cites_tool_alert", MemoryLogSink())
+    sink = MemoryLogSink()
+    run, _ = via_run_task("verify_confirmed_tool_record", sink)
+
+    verifier(db, run).handle(hunt_id)
+
+    hunt = store.read_hunt(conn, hunt_id)
+    assert hunt is not None
+    validate_contract("hunt", hunt)
+    assert (hunt["status"], hunt["attempts"]) == ("confirmed", 1)
+    assert hunt["evidence_ids"] == [ALT_1, sink.rows[1]["id"]]
+    assert hunt["entities"] == ALERT_ENTITIES
+    (ticket,) = tickets_of(conn, hunt_id)
+    assert (ticket["origin"], ticket["status"], ticket["alert_ids"]) == ("l3", "escalated", [])
+    assert ticket["entities"] == ALERT_ENTITIES
+
+
+def test_citing_unseen_alert_via_run_task_is_a_failed_attempt(
+    db: str, conn: psycopg.Connection
+) -> None:
+    """도구 결과에 없던 Alert ID를 인용하면 evidence_id_error이고, 시도 1회로 센다."""
+    hunt_id = add_hunt(conn)
+    run, _ = via_run_task("verify_cites_unseen_alert", MemoryLogSink())
 
     verifier(db, run).handle(hunt_id)
 

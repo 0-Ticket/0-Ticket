@@ -5,6 +5,7 @@ from typing import Any
 
 import pytest
 
+from soc.agent.types import contains_forbidden
 from soc.l3.config import load_config
 from soc.l3.hunt.prompts import PROMPT_DIR, load_prompt
 from soc.l3.hunt.settings import ConfigError, read_hunt_settings
@@ -153,19 +154,9 @@ def test_task_prompt_is_the_file_with_content_hash_version(name: str) -> None:
     assert prompt.version == hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
-# #210(머지 전)이 TaskPrompt에서 거부할 문구. 그 이슈가 머지되면 TaskPrompt가 직접 검사한다.
-PHRASES_REJECTED_BY_210 = (
-    "이전 지시",
-    "지시를 무시",
-    "ignore previous",
-    "system prompt",
-    "시스템 프롬프트",
-    "대응을 실행",
-)
-
-
 @pytest.mark.parametrize("name", ["l3_hypothesize", "l3_verify"])
-def test_task_prompt_avoids_phrases_rejected_by_prompt_layers(name: str) -> None:
-    text = " ".join(load_prompt(name).text.split()).casefold()
+def test_task_prompt_avoids_forbidden_phrases(name: str) -> None:
+    """TaskPrompt도 만들 때 거부하지만(#210), 어떤 문구가 걸리는지 여기서 바로 보이게 한다."""
+    text = (PROMPT_DIR / f"{name}.md").read_text(encoding="utf-8")
 
-    assert not [p for p in PHRASES_REJECTED_BY_210 if p.casefold() in text]
+    assert not contains_forbidden(text)

@@ -1,5 +1,5 @@
 {
-  "description": "도구를 한 번 부르고 그 호출 기록(agl_, 테스트가 고정)만 근거로 기각한다",
+  "description": "도구를 한 번 부르고 그 호출 기록(agl_)만 근거로 기각한다. evidence_ids의 \"<call_id>\"는 테스트가 실행 중 도구 결과의 call_id(agl_)로 바꾼다",
   "steps": [
     {
       "tool_call": {
@@ -15,7 +15,7 @@
         "confidence": 0.8,
         "reason": "같은 IP의 업로드 요청이 없다",
         "evidence_ids": [
-          "agl_01a19f93-1150-7000-8000-0000000000a2"
+          "<call_id>"
         ],
         "entities": []
       }
