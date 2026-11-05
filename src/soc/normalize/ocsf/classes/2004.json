@@ -1,0 +1,297 @@
+{
+ "attributes": {
+  "activity_id": {
+   "enum": [
+    "0",
+    "1",
+    "2",
+    "3",
+    "99"
+   ],
+   "requirement": "required",
+   "type": "integer_t"
+  },
+  "activity_name": {
+   "requirement": "optional",
+   "type": "string_t"
+  },
+  "anomaly_analyses": {
+   "is_array": true,
+   "object_type": "anomaly_analysis",
+   "requirement": "optional",
+   "type": "object_t"
+  },
+  "category_name": {
+   "requirement": "optional",
+   "type": "string_t"
+  },
+  "category_uid": {
+   "enum": [
+    "2"
+   ],
+   "requirement": "required",
+   "type": "integer_t"
+  },
+  "class_name": {
+   "requirement": "optional",
+   "type": "string_t"
+  },
+  "class_uid": {
+   "enum": [
+    "2004"
+   ],
+   "requirement": "required",
+   "type": "integer_t"
+  },
+  "comment": {
+   "requirement": "optional",
+   "type": "string_t"
+  },
+  "confidence": {
+   "requirement": "optional",
+   "type": "string_t"
+  },
+  "confidence_id": {
+   "enum": [
+    "0",
+    "1",
+    "2",
+    "3",
+    "99"
+   ],
+   "requirement": "recommended",
+   "type": "integer_t"
+  },
+  "confidence_score": {
+   "requirement": "optional",
+   "type": "integer_t"
+  },
+  "count": {
+   "requirement": "optional",
+   "type": "integer_t"
+  },
+  "device": {
+   "object_type": "device",
+   "requirement": "optional",
+   "type": "object_t"
+  },
+  "duration": {
+   "requirement": "optional",
+   "type": "long_t"
+  },
+  "end_time": {
+   "requirement": "optional",
+   "type": "timestamp_t"
+  },
+  "enrichments": {
+   "is_array": true,
+   "object_type": "enrichment",
+   "requirement": "optional",
+   "type": "object_t"
+  },
+  "evidences": {
+   "is_array": true,
+   "object_type": "evidences",
+   "requirement": "recommended",
+   "type": "object_t"
+  },
+  "finding_info": {
+   "object_type": "finding_info",
+   "requirement": "required",
+   "type": "object_t"
+  },
+  "impact": {
+   "requirement": "optional",
+   "type": "string_t"
+  },
+  "impact_id": {
+   "enum": [
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "99"
+   ],
+   "requirement": "optional",
+   "type": "integer_t"
+  },
+  "impact_score": {
+   "requirement": "optional",
+   "type": "integer_t"
+  },
+  "is_alert": {
+   "requirement": "recommended",
+   "type": "boolean_t"
+  },
+  "malware": {
+   "is_array": true,
+   "object_type": "malware",
+   "requirement": "optional",
+   "type": "object_t"
+  },
+  "malware_scan_info": {
+   "object_type": "malware_scan_info",
+   "requirement": "optional",
+   "type": "object_t"
+  },
+  "message": {
+   "requirement": "recommended",
+   "type": "string_t"
+  },
+  "metadata": {
+   "object_type": "metadata",
+   "requirement": "required",
+   "type": "object_t"
+  },
+  "notes": {
+   "is_array": true,
+   "object_type": "note",
+   "requirement": "optional",
+   "type": "object_t"
+  },
+  "observables": {
+   "is_array": true,
+   "object_type": "observable",
+   "requirement": "recommended",
+   "type": "object_t"
+  },
+  "raw_data": {
+   "requirement": "optional",
+   "type": "string_t"
+  },
+  "raw_data_hash": {
+   "object_type": "fingerprint",
+   "requirement": "optional",
+   "type": "object_t"
+  },
+  "raw_data_size": {
+   "requirement": "optional",
+   "type": "long_t"
+  },
+  "remediation": {
+   "object_type": "remediation",
+   "requirement": "optional",
+   "type": "object_t"
+  },
+  "resources": {
+   "is_array": true,
+   "object_type": "resource_details",
+   "requirement": "recommended",
+   "type": "object_t"
+  },
+  "risk_details": {
+   "requirement": "optional",
+   "type": "string_t"
+  },
+  "risk_level": {
+   "requirement": "optional",
+   "type": "string_t"
+  },
+  "risk_level_id": {
+   "enum": [
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "99"
+   ],
+   "requirement": "optional",
+   "type": "integer_t"
+  },
+  "risk_score": {
+   "requirement": "optional",
+   "type": "integer_t"
+  },
+  "severity": {
+   "requirement": "optional",
+   "type": "string_t"
+  },
+  "severity_id": {
+   "enum": [
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "99"
+   ],
+   "requirement": "required",
+   "type": "integer_t"
+  },
+  "start_time": {
+   "requirement": "optional",
+   "type": "timestamp_t"
+  },
+  "status": {
+   "requirement": "optional",
+   "type": "string_t"
+  },
+  "status_code": {
+   "requirement": "recommended",
+   "type": "string_t"
+  },
+  "status_detail": {
+   "requirement": "recommended",
+   "type": "string_t"
+  },
+  "status_id": {
+   "enum": [
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "99"
+   ],
+   "requirement": "recommended",
+   "type": "integer_t"
+  },
+  "time": {
+   "requirement": "required",
+   "type": "timestamp_t"
+  },
+  "timezone_offset": {
+   "requirement": "recommended",
+   "type": "integer_t"
+  },
+  "type_name": {
+   "requirement": "optional",
+   "type": "string_t"
+  },
+  "type_uid": {
+   "enum": [
+    "200400",
+    "200401",
+    "200402",
+    "200403",
+    "200499"
+   ],
+   "requirement": "required",
+   "type": "long_t"
+  },
+  "unmapped": {
+   "object_type": "object",
+   "requirement": "optional",
+   "type": "object_t"
+  },
+  "vendor_attributes": {
+   "object_type": "vendor_attributes",
+   "requirement": "optional",
+   "type": "object_t"
+  },
+  "vulnerabilities": {
+   "is_array": true,
+   "object_type": "vulnerability",
+   "requirement": "optional",
+   "type": "object_t"
+  }
+ },
+ "name": "detection_finding",
+ "uid": 2004
+}

@@ -1,0 +1,342 @@
+{
+ "attributes": {
+  "activity_id": {
+   "enum": [
+    "0",
+    "1",
+    "10",
+    "11",
+    "12",
+    "13",
+    "14",
+    "15",
+    "16",
+    "17",
+    "18",
+    "19",
+    "2",
+    "20",
+    "21",
+    "22",
+    "23",
+    "24",
+    "25",
+    "26",
+    "27",
+    "28",
+    "29",
+    "3",
+    "30",
+    "31",
+    "32",
+    "33",
+    "34",
+    "35",
+    "36",
+    "37",
+    "38",
+    "39",
+    "4",
+    "40",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "99"
+   ],
+   "requirement": "required",
+   "type": "integer_t"
+  },
+  "activity_name": {
+   "requirement": "optional",
+   "type": "string_t"
+  },
+  "app_name": {
+   "requirement": "optional",
+   "type": "string_t"
+  },
+  "app_protocol_name": {
+   "requirement": "optional",
+   "type": "string_t"
+  },
+  "category_name": {
+   "requirement": "optional",
+   "type": "string_t"
+  },
+  "category_uid": {
+   "enum": [
+    "4"
+   ],
+   "requirement": "required",
+   "type": "integer_t"
+  },
+  "class_name": {
+   "requirement": "optional",
+   "type": "string_t"
+  },
+  "class_uid": {
+   "enum": [
+    "4002"
+   ],
+   "requirement": "required",
+   "type": "integer_t"
+  },
+  "connection_info": {
+   "object_type": "network_connection_info",
+   "requirement": "recommended",
+   "type": "object_t"
+  },
+  "count": {
+   "requirement": "optional",
+   "type": "integer_t"
+  },
+  "cumulative_traffic": {
+   "object_type": "network_traffic",
+   "requirement": "optional",
+   "type": "object_t"
+  },
+  "dst_endpoint": {
+   "object_type": "network_endpoint",
+   "requirement": "recommended",
+   "type": "object_t"
+  },
+  "duration": {
+   "requirement": "optional",
+   "type": "long_t"
+  },
+  "end_time": {
+   "requirement": "optional",
+   "type": "timestamp_t"
+  },
+  "enrichments": {
+   "is_array": true,
+   "object_type": "enrichment",
+   "requirement": "optional",
+   "type": "object_t"
+  },
+  "file": {
+   "object_type": "file",
+   "requirement": "optional",
+   "type": "object_t"
+  },
+  "http_cookies": {
+   "is_array": true,
+   "object_type": "http_cookie",
+   "requirement": "recommended",
+   "type": "object_t"
+  },
+  "http_request": {
+   "object_type": "http_request",
+   "requirement": "recommended",
+   "type": "object_t"
+  },
+  "http_response": {
+   "object_type": "http_response",
+   "requirement": "recommended",
+   "type": "object_t"
+  },
+  "http_status": {
+   "requirement": "recommended",
+   "type": "integer_t"
+  },
+  "ja4_fingerprint_list": {
+   "is_array": true,
+   "object_type": "ja4_fingerprint",
+   "requirement": "optional",
+   "type": "object_t"
+  },
+  "message": {
+   "requirement": "recommended",
+   "type": "string_t"
+  },
+  "metadata": {
+   "object_type": "metadata",
+   "requirement": "required",
+   "type": "object_t"
+  },
+  "network_observation_point": {
+   "object_type": "network_endpoint",
+   "requirement": "optional",
+   "type": "object_t"
+  },
+  "observables": {
+   "is_array": true,
+   "object_type": "observable",
+   "requirement": "recommended",
+   "type": "object_t"
+  },
+  "observation_point": {
+   "requirement": "optional",
+   "type": "string_t"
+  },
+  "observation_point_id": {
+   "enum": [
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "99"
+   ],
+   "requirement": "optional",
+   "type": "integer_t"
+  },
+  "packet_list": {
+   "is_array": true,
+   "object_type": "packet",
+   "requirement": "optional",
+   "type": "object_t"
+  },
+  "proxy": {
+   "object_type": "network_proxy",
+   "requirement": "recommended",
+   "type": "object_t"
+  },
+  "raw_data": {
+   "requirement": "optional",
+   "type": "string_t"
+  },
+  "raw_data_hash": {
+   "object_type": "fingerprint",
+   "requirement": "optional",
+   "type": "object_t"
+  },
+  "raw_data_size": {
+   "requirement": "optional",
+   "type": "long_t"
+  },
+  "severity": {
+   "requirement": "optional",
+   "type": "string_t"
+  },
+  "severity_id": {
+   "enum": [
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "99"
+   ],
+   "requirement": "required",
+   "type": "integer_t"
+  },
+  "src_endpoint": {
+   "object_type": "network_endpoint",
+   "requirement": "recommended",
+   "type": "object_t"
+  },
+  "start_time": {
+   "requirement": "optional",
+   "type": "timestamp_t"
+  },
+  "status": {
+   "requirement": "recommended",
+   "type": "string_t"
+  },
+  "status_code": {
+   "requirement": "recommended",
+   "type": "string_t"
+  },
+  "status_detail": {
+   "requirement": "recommended",
+   "type": "string_t"
+  },
+  "status_id": {
+   "enum": [
+    "0",
+    "1",
+    "2",
+    "99"
+   ],
+   "requirement": "recommended",
+   "type": "integer_t"
+  },
+  "time": {
+   "requirement": "required",
+   "type": "timestamp_t"
+  },
+  "timezone_offset": {
+   "requirement": "recommended",
+   "type": "integer_t"
+  },
+  "tls": {
+   "object_type": "tls",
+   "requirement": "optional",
+   "type": "object_t"
+  },
+  "traffic": {
+   "object_type": "network_traffic",
+   "requirement": "recommended",
+   "type": "object_t"
+  },
+  "type_name": {
+   "requirement": "optional",
+   "type": "string_t"
+  },
+  "type_uid": {
+   "enum": [
+    "400200",
+    "400201",
+    "400202",
+    "400203",
+    "400204",
+    "400205",
+    "400206",
+    "400207",
+    "400208",
+    "400209",
+    "400210",
+    "400211",
+    "400212",
+    "400213",
+    "400214",
+    "400215",
+    "400216",
+    "400217",
+    "400218",
+    "400219",
+    "400220",
+    "400221",
+    "400222",
+    "400223",
+    "400224",
+    "400225",
+    "400226",
+    "400227",
+    "400228",
+    "400229",
+    "400230",
+    "400231",
+    "400232",
+    "400233",
+    "400234",
+    "400235",
+    "400236",
+    "400237",
+    "400238",
+    "400239",
+    "400240",
+    "400299"
+   ],
+   "requirement": "required",
+   "type": "long_t"
+  },
+  "unmapped": {
+   "object_type": "object",
+   "requirement": "optional",
+   "type": "object_t"
+  }
+ },
+ "constraints": {
+  "at_least_one": [
+   "http_request",
+   "http_response"
+  ]
+ },
+ "name": "http_activity",
+ "uid": 4002
+}

@@ -146,14 +146,18 @@ def test_migrate_creates_all_tables_on_empty_db(temp_database: str) -> None:
         "0001_common_tables.sql",
         "0002_hunts.sql",
         "0003_agent_reader.sql",
+        "0004_asset_lookup.sql",
         "0100_ingest_checkpoint.sql",
         "0101_ingest_runs.sql",
         "0102_raw_links.sql",
+        "0103_normalize_status.sql",
         "0300_threat_intel.sql",
     ]
     with psycopg.connect(temp_database) as conn:
-        # 수집 체크포인트·실행 이력(#218)과 L3 수집 테이블(#221)은 공통 계약이 아니라 TABLES에 없다
         other_tables = {
+            "assets",
+            "asset_identifiers",
+            "normalize_status",
             "ingest_checkpoints",
             "ingest_runs",
             "raw_links",
@@ -170,7 +174,7 @@ def test_migrate_twice_does_not_reapply(temp_database: str) -> None:
 
     assert applied == []
     with psycopg.connect(temp_database) as conn:
-        assert conn.execute("SELECT count(*) FROM schema_migrations").fetchone() == (7,)
+        assert conn.execute("SELECT count(*) FROM schema_migrations").fetchone() == (9,)
 
 
 def test_failed_migration_rolls_back_only_that_file(temp_database: str, tmp_path: Path) -> None:

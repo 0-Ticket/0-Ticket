@@ -8,10 +8,11 @@ from typing import Any
 import pytest
 
 from soc.contracts import validate_contract
+from soc.entities import normalize_entity_value
 from soc.l2.branch.candidates import rank_candidates
 from soc.l2.branch.context import build_context
 from soc.l2.branch.read import BranchRows
-from soc.l2.branch.signals import classify_entities, normalize_value
+from soc.l2.branch.signals import classify_entities
 from soc.l2.config import BranchSettings
 
 FIXTURE = Path(__file__).parent / "fixtures" / "l2" / "branch.json"
@@ -119,7 +120,7 @@ def test_normalization_is_type_specific_and_shared_wins() -> None:
 
     signals = classify_entities(entities, SETTINGS)
 
-    assert normalize_value("ip", entities[0]["value"]) == "2001:db8::1"
+    assert normalize_entity_value("ip", entities[0]["value"]) == "2001:db8::1"
     assert [(signal.value, signal.level) for signal in signals] == [
         ("2001:db8::1", "weak"),
         ("root", "strong"),

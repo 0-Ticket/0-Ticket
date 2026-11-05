@@ -14,7 +14,7 @@
         {"type": "host", "value": "web-01", "role": "dst"}
       ],
       "assets": [
-        {"entity_value": "web-01", "name": "웹서버", "criticality": 5, "owner": null}
+        {"entity": {"type": "host", "value": "web-01"}, "name": "웹서버", "criticality": 5, "owner": null}
       ],
       "triage": null,
       "ocsf": {
@@ -42,7 +42,7 @@
         {"type": "host", "value": "db-01", "role": "target"}
       ],
       "assets": [
-        {"entity_value": "db-01", "name": "고객 DB", "criticality": 5, "owner": "정보보호팀"}
+        {"entity": {"type": "host", "value": "db-01"}, "name": "고객 DB", "criticality": 5, "owner": "정보보호팀"}
       ],
       "triage": null,
       "ocsf": {"class_uid": 2004, "severity_id": 3, "time": 1793678578100},
