@@ -208,3 +208,5 @@ supersedes: []
 11. **마이그레이션은 없다.** 필요한 테이블이 모두 있다.
 
 ## 바뀐 점
+
+- 2026-11-05 · 마무리 중 #210·#211이 main에 머지돼 최신 `origin/main`으로 rebase한다. #211로 도구 결과의 `alt_`·`evt_`가 근거 장부에 들어가므로, 완료 기준 "`run_task` 경로: 도구 결과의 `alt_`를 인용하면 `evidence_id_error`"는 "`run_task` 경로: 도구 결과의 `alt_`를 근거로 `confirmed` → L3 Ticket, 도구 결과에 없던 `alt_`를 인용하면 `evidence_id_error`"로 바꾼다. `run_task` 경로 테스트는 `ToolRegistry`·`ToolSpec`으로 가짜 도구를 넣는다. 사람이 정함
