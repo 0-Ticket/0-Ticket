@@ -64,4 +64,18 @@ supersedes: []
   - `/api/threat-news` 200·5건, `?limit=2` 200·`next_cursor` 있음
   - `?limit=zz` 422, `hnt_nope` 404, POST 405, `/docs` 404
   - 바인딩 `127.0.0.1:8000`
-- **Groq로 `soc.l3 hunt`를 돌린 DB로는 아직 확인하지 않았다.** 이 세션에 `LLM_API_KEY`가 없다(완료 기준 미충족, 아래 확인 뒤 채운다).
+- Groq로 `soc.l3 hunt`를 돌린 DB로 확인했다. 로컬 PostgreSQL 16(UTF-8)에 마이그레이션 4개, 에이전트 읽기 계정과 `AGENT_DATABASE_URL`은 #211 기록대로 만들었다. `config/local.toml`의 `[llm]`만 Groq `openai/gpt-oss-120b`이고 `strict_mode`는 기본값(`true`)이다
+  - `soc.l3 hunt` 종료 0
+    - 수집: thehackernews 50건, cisa_kev 1,768건, ATT&CK 706건. boannews는 `network` 실패. 같은 주소를 curl로 부르면 200이라 네트워크 정책 차단은 아니다(프록시 터널이 중간에 끊김)
+    - 가설 생성 1건 저장. 검증 1건은 `provider_error`로 `pending`(시도 1)
+  - 검증의 `provider_error`는 Groq HTTP 400 `tool_use_failed`였다(429 재시도 뒤). DB 복사본에서 `strict_mode = false`로 다시 돌려도 같은 400이라 strict 때문이 아니다. `strict_mode`는 기본값으로 두었다. 실제 모델 확인은 #224
+  - `/api/hunts` 200·1건(`pending`), `?status=pending` 200·1건, `?status=confirmed` 200·0건
+  - `/api/hunts/{id}` 200
+    - `techniques` 1건, 이름 있음
+    - `ticket_id` null
+    - `runs` 2건: `l3_hypothesize` `ok`, `l3_verify` `error`·`provider_error`
+    - `input`·`output` 없음
+  - `/api/threat-news` 200·50건·`next_cursor` 있음
+    - `?limit=200`으로 끝까지 넘기면 10페이지 1,818건이다. 중복이 없고 DB 건수와 같다
+    - `?source=thehackernews&limit=200` 200·50건, `?source=cisa_kev&limit=200` 200·200건·`next_cursor` 있음, `?source=boannews` 200·0건
+  - `hnt_nope` 404, `?limit=zz` 422
