@@ -48,6 +48,12 @@ type TicketId = Annotated[
 ]
 
 
+type IncidentId = Annotated[
+    str,
+    Field(pattern="^inc_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"),
+]
+
+
 type CaseId = Annotated[
     str,
     Field(pattern="^cas_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"),

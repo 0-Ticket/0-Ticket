@@ -1,7 +1,6 @@
 """L2 분류에 필요한 기존 행을 읽는다. 이 모듈은 DB에 쓰지 않는다."""
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta
 from typing import Any
 
 import psycopg
@@ -9,12 +8,6 @@ from psycopg.rows import dict_row
 
 from soc.contracts import to_epoch_ms, validate_contract
 
-_OPEN_STATUSES = ("analyzing", "awaiting_review", "human_handling")
-_OPEN_INCIDENTS_QUERY = """
-SELECT * FROM incidents
-WHERE status = ANY(%s) AND updated_at >= %s AND updated_at <= %s
-ORDER BY updated_at DESC
-"""
 _TIME_FIELDS = {
     "alert": ("time",),
     "event": ("time",),
@@ -32,19 +25,13 @@ class BranchRows:
     hunt: dict[str, Any] | None
     evidence_ids: tuple[str, ...]
     missing_evidence_count: int
-    incidents: tuple[dict[str, Any], ...]
 
 
 def read_branch_data(
     conn: psycopg.Connection,
     ticket_id: str,
-    now: datetime,
-    candidate_window_ms: int,
 ) -> BranchRows:
-    """Ticket 하나와 근거, 시간 창 안의 열린 Incident를 읽는다."""
-    to_epoch_ms(now)  # 시간대가 붙은 datetime인지 경계에서 확인한다
-    if candidate_window_ms <= 0:
-        raise ValueError("candidate_window_ms는 양수여야 한다")
+    """Ticket 하나와 Alert·Event·Hunt 근거를 읽는다. Incident는 읽지 않는다."""
 
     ticket_row = _fetch_one(conn, "SELECT * FROM tickets WHERE id = %s", (ticket_id,))
     if ticket_row is None:
@@ -83,9 +70,6 @@ def read_branch_data(
     )
     confirmed_evidence = tuple(item for item in evidence_ids if item in existing)
 
-    cutoff = now - timedelta(milliseconds=candidate_window_ms)
-    incident_rows = _fetch_all(conn, _OPEN_INCIDENTS_QUERY, (list(_OPEN_STATUSES), cutoff, now))
-    incidents = tuple(_contract_row("incident", row) for row in incident_rows)
     return BranchRows(
         ticket=ticket,
         alerts=alerts,
@@ -93,7 +77,6 @@ def read_branch_data(
         hunt=hunt,
         evidence_ids=confirmed_evidence,
         missing_evidence_count=len(evidence_ids) - len(confirmed_evidence),
-        incidents=incidents,
     )
 
 

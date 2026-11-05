@@ -17,11 +17,8 @@ def test_default_config_reads_into_branch_settings() -> None:
     assert set(config) == {"l2"}
     assert settings.candidate_window_ms == 86_400_000
     assert settings.max_candidates == 5
-    assert settings.strong_signal_types == frozenset(
-        {"file_hash", "process", "url", "domain", "user"}
-    )
-    assert settings.weak_signal_types == frozenset({"ip", "host"})
-    assert settings.shared_entity_values == ()
+    assert settings.candidate_source == "vector"
+    assert settings.top_k == 50
 
 
 def test_local_overrides_default_and_only_l2_is_returned(tmp_path: Path) -> None:
@@ -29,9 +26,8 @@ def test_local_overrides_default_and_only_l2_is_returned(tmp_path: Path) -> None
         "[l2.branch]\n"
         "candidate_window_ms = 1000\n"
         "max_candidates = 5\n"
-        'strong_signal_types = ["file_hash"]\n'
-        'weak_signal_types = ["ip", "host", "user", "domain", "url", "process"]\n'
-        "shared_entity_values = []\n"
+        'candidate_source = "vector"\n'
+        "top_k = 50\n"
         "[other]\nx = 1\n",
         encoding="utf-8",
     )
@@ -46,9 +42,8 @@ def test_local_overrides_default_and_only_l2_is_returned(tmp_path: Path) -> None
             "branch": {
                 "candidate_window_ms": 1000,
                 "max_candidates": 2,
-                "strong_signal_types": ["file_hash"],
-                "weak_signal_types": ["ip", "host", "user", "domain", "url", "process"],
-                "shared_entity_values": [],
+                "candidate_source": "vector",
+                "top_k": 50,
             }
         }
     }
@@ -62,11 +57,11 @@ def test_local_overrides_default_and_only_l2_is_returned(tmp_path: Path) -> None
         lambda c: c["branch"].update(candidate_window_ms=True),
         lambda c: c["branch"].update(max_candidates=0),
         lambda c: c["branch"].update(max_candidates="5"),
-        lambda c: c["branch"].update(strong_signal_types=["file_hash", "email"]),
-        lambda c: c["branch"].update(weak_signal_types=["ip", "file_hash"]),
-        lambda c: c["branch"].update(weak_signal_types=["ip"]),
-        lambda c: c["branch"].update(shared_entity_values=[""]),
-        lambda c: c["branch"].update(shared_frequency_threshold=10),
+        lambda c: c["branch"].update(candidate_source="direct"),
+        lambda c: c["branch"].update(candidate_source=1),
+        lambda c: c["branch"].update(top_k=0),
+        lambda c: c["branch"].update(top_k=True),
+        lambda c: c["branch"].update(strong_signal_types=[]),
     ],
 )
 def test_bad_settings_are_rejected(change) -> None:
