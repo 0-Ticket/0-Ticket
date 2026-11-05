@@ -66,6 +66,7 @@
 | ID | 결정 | 메모 |
 |---|---|---|
 | D-029 | L3 위협 시나리오 입력은 보안 뉴스(보안뉴스·The Hacker News RSS, CISA KEV)와 MITRE ATT&CK을 코드(`soc.l3.intel`)로 수집한다. 에이전트에는 웹 접근을 주지 않는다 | 수집한 제목·요약은 밖에서 온 문자열이다(`docs/security.md`). 에이전트에는 L3 헌팅 코드가 `AgentTask.data`로만 넘긴다(#221) |
+| D-030 | L3 실행 방식. 실행기(`uv run python -m soc.agent`)의 L3 단계에서 생성 워커(수집 → 가설 생성, `soc.l3.hunt.generate`)와 검증 워커(`soc.l3.hunt.verify`)로 주기 실행한다. 수동 명령(`uv run python -m soc.l3 hunt`)은 그대로 둔다. 기본은 꺼짐(`[executor.l3] interval_seconds = 0`)이고 `config/local.toml`에서 켠다 | 가설 생성은 마지막 시도부터 `[l3.hunt] generate_interval_seconds`(기본 하루)마다 한다. 마지막 시도는 `cancelled`가 아닌 `l3_hypothesize` Agent Log와 프로세스 안 기록 중 늦은 것이다. 종료로 `cancelled`가 된 검증 run은 시도 횟수에 넣지 않는다(#245) |
 | D-040 | 데이터셋 MITRE ATT&CK Enterprise(공식 STIX JSON, `mitre-attack/attack-stix-data`). 원본은 커밋하지 않고 실행할 때 받아, 폐기·대체되지 않은 기법의 ID·이름·전술·버전만 저장한다 | 버전마다 쌓고 쓰는 쪽이 설정 버전으로 고른다. 이용 약관에 따라 README "제3자 데이터" 절에 MITRE 고지문을 싣는다(#221) |
 
 ### 저장
@@ -120,7 +121,6 @@
 
 | ID | 정할 것 | 예시 | 담당 단계 |
 |---|---|---|---|
-| D-030 | L3 실행 방식 | 수동 명령 실행, 주기 실행은 설정으로 켬 | L3 |
 
 ## 추후
 
@@ -137,6 +137,7 @@
 
 새 기록을 맨 위에 쓴다.
 
+- #245 · L3 실행 방식(D-030)을 담당자가 정함에서 확정으로 옮김. 실행기 L3 단계에서 생성·검증 워커로 주기 실행, 수동 명령 유지, 기본 꺼짐. L3 담당이 정함(#245)
 - #261 · L2 분석 결과 저장(D-045)을 Artifact·제안 테이블로 확정하고, D-028의 새 Ticket 재분석은 자동 분석 가능한 Incident에만 적용한다고 명확히 함. L2 담당이 정함
 - #250 · Incident 분류 방법(D-027)에서 엔티티 등급·겹침을 제거하고 후보 경로를 최고 유사도 순 vector와 최근 활동순 recent로 확정했다. 에이전트나 코드 검사가 실패하면 기존 후보에 붙이지 않고 새 Incident를 만들며, 저장 직전 Ticket과 Incident 상태를 다시 확인한다. L2 담당이 정함(#250)
 - #257 · 벡터 DB 클라이언트와 임베딩 실행 라이브러리(D-044)를 버전과 함께 확정하고, 임베딩 모델(D-031)이 D-044를 가리키게 함. L2 담당이 정함(#257)
