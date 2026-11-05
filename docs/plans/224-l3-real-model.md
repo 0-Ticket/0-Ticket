@@ -175,3 +175,6 @@ supersedes: []
 9. **브랜치는 `feat/224-l3-real-model`이고 push하지 않는다**(`AGENTS.md`).
 
 ## 바뀐 점
+
+- 2026-11-05 · 실측 `local.toml`(`[tools.allowed] l3` 축소)로 도구 담당 테스트 2건(`test_tools_siem.py`·`test_tools_ssh.py`의 기본값 검사, #212·#213)도 실패했다. 같은 방식(`default_config_dir`)으로 고치고 PR 본문으로 도구 담당에게 알린다. 사람이 정함
+- 2026-11-05 · 400 `tool_use_failed`가 Foundry에서 재현되지 않아(검증 9 run, 도구 호출 37회) 코어를 고치지 않는다. 완료 기준 중 "재현됐으면 확정받은 수정 뒤 같은 run이 실패하지 않는다"는 해당 없음이다. 위협 없음 판정 흔들림은 별도 안건으로만 기록하고 이 이슈에서 프롬프트를 고치지 않는다. 사람이 정함
