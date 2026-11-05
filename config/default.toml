@@ -75,10 +75,12 @@ poll_limit = 10
 workers = ["soc.l2.branch:build_worker", "soc.l2.analyze:build_worker"]
 
 [executor.l3]
-# L3는 기본으로 돌지 않는다(L3 실행 방식, D-030)
+# L3는 기본으로 돌지 않는다(L3 실행 방식, D-030). 켤 때는 config/local.toml에서 interval_seconds를
+# 바꾼다. 권장: interval_seconds = 600, poll_limit = 10. 환경변수 DATABASE_URL이 필요하다.
+# 생성 워커(차례면 수집 → 가설 생성)가 검증 워커보다 앞이라, 새 Hunt가 같은 라운드에서 검증된다(#245)
 interval_seconds = 0
 poll_limit = 10
-workers = []
+workers = ["soc.l3.hunt.generate:build_worker", "soc.l3.hunt.verify:build_worker"]
 
 [tools]
 # 도구 레지스트리(도구 구현 방식, D-023, #211). 내부 데이터·Web 도구는 환경변수 AGENT_DATABASE_URL
@@ -318,8 +320,11 @@ max_hypotheses = 1
 lookback_days = 7
 # 이 확신도 미만인 confirmed는 inconclusive로 저장한다
 confirm_threshold = 0.7
-# 검증 run 시도 한도. 실패가 이 횟수에 이르면 Hunt는 failed다
+# 검증 run 시도 한도. 실패가 이 횟수에 이르면 Hunt는 failed다. 종료로 끊긴 run(cancelled)은 세지 않는다
 max_attempts = 2
+# 실행기 생성 워커의 가설 생성 간격(초, #245). 마지막 시도(실패 포함, cancelled 제외)부터 센다.
+# 수동 명령(soc.l3 hunt)은 이 값을 보지 않고 매번 생성한다
+generate_interval_seconds = 86400
 
 # 정규화(#234). 실행: uv run python -m soc.normalize (한 번 실행하고 끝난다. 주기 실행은 cron이 한다)
 # DB 주소는 환경변수 DATABASE_URL. 자산 조회도 같은 연결로 한다.

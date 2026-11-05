@@ -444,7 +444,8 @@ def test_default_config_executor_values(default_config_dir: Path) -> None:
     assert [section[s]["workers"] for s in ("l1", "l2", "l3")] == [
         ["soc.l1.judge:build_worker"],
         ["soc.l2.branch:build_worker", "soc.l2.analyze:build_worker"],
-        [],
+        # L3 워커(#245). 생성이 먼저라 같은 라운드에서 검증된다
+        ["soc.l3.hunt.generate:build_worker", "soc.l3.hunt.verify:build_worker"],
     ]
     workers = {
         "soc.l1.judge:build_worker": FakeWorker("l1", "l1"),
@@ -454,6 +455,7 @@ def test_default_config_executor_values(default_config_dir: Path) -> None:
     executor = Executor(
         load_full_config(default_config_dir), resolve=lambda path: lambda _: workers[path]
     )
+    # L3는 interval_seconds = 0이라 워커를 만들지 않고 띄우지도 않는다(workers에 L3가 없어도 된다)
     assert executor.stages == ["l1", "l2"]
 
 

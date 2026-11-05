@@ -15,6 +15,8 @@ from soc.l3.hunt.prompts import load_prompt
 from soc.l3.hunt.settings import HuntSettings
 
 Run = Callable[[AgentTask], AgentResult]
+# Agent Log details.task. 생성 워커가 마지막 시도를 이 이름으로 찾는다(#245)
+TASK = "l3_hypothesize"
 
 
 @dataclass
@@ -54,7 +56,7 @@ def hypothesize(
     agent_result = run(
         AgentTask(
             stage="l3",
-            task="l3_hypothesize",
+            task=TASK,
             prompt=load_prompt("l3_hypothesize"),
             data={"news": news, "cases": cases, "max_hypotheses": settings.max_hypotheses},
             output_contract="hunt_hypotheses",

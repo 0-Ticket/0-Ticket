@@ -13,7 +13,8 @@ import psycopg
 
 from soc.agent import run_agent
 from soc.l3.hunt import store
-from soc.l3.hunt.hypothesize import HypothesizeResult, Run, hypothesize
+from soc.l3.hunt.generate import collect_and_hypothesize, format_hypothesize
+from soc.l3.hunt.hypothesize import Run
 from soc.l3.hunt.settings import ConfigError, read_hunt_settings
 from soc.l3.hunt.verify import HuntVerifier
 from soc.l3.intel import collect as intel
@@ -47,13 +48,17 @@ def run_hunt(
 
     try:
         with psycopg.connect(database_url, autocommit=True) as conn:
-            if intel_settings is not None:
-                with client_factory(intel_settings) as client:
-                    results = intel.collect(intel_settings, conn, client, now=clock())
-                for line in intel.format_results(results):
-                    out(f"수집 {line}")  # 실패한 출처가 있어도 저장된 뉴스로 계속한다
-            made = hypothesize(conn, settings, run=run, now=clock())
-            out(_format_hypothesize(made, settings.attack_version))
+            # 실패한 출처가 있어도 저장된 뉴스로 계속한다. 생성 워커와 같은 함수다(#245)
+            made = collect_and_hypothesize(
+                conn,
+                settings,
+                intel_settings,
+                run=run,
+                client_factory=client_factory,
+                clock=clock,
+                out=out,
+            )
+            out(format_hypothesize(made, settings.attack_version))
             verifier = HuntVerifier(database_url, settings, run=run, clock=clock)
             hunt_ids = verifier.poll(None)
             for hunt_id in hunt_ids:
@@ -66,13 +71,3 @@ def run_hunt(
     summary = ", ".join(f"{s} {counts.get(s, 0)}" for s in STATUSES)
     out(f"검증: Hunt {len(hunt_ids)}건 / {summary}")
     return 1 if made.failure else 0
-
-
-def _format_hypothesize(made: HypothesizeResult, attack_version: str) -> str:
-    if made.skipped == "no_attack_version":
-        return f"가설 생성: 건너뜀(ATT&CK {attack_version} 기법이 DB에 없다. 수집을 먼저 한다)"
-    return (
-        f"가설 생성: 저장 {len(made.saved)}, 없는 기법으로 버림 {made.unknown_technique},"
-        f" 한도 초과로 버림 {made.over_limit}, 버린 참조 {made.dropped_refs},"
-        f" 실패 {made.failure or '없음'}"
-    )
