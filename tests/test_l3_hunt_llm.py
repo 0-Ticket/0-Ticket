@@ -1,4 +1,7 @@
-"""실제 LLM으로 L3 검증 run 1건(#224, llm·db 마커). 기본 실행과 CI에서는 돌지 않는다.
+"""실제 LLM으로 L3 검증 run 1건(#224, llm 마커). 기본 실행과 CI에서는 돌지 않는다.
+
+DB도 쓰지만 db 마커는 붙이지 않는다. CI의 db job(uv run pytest -m db)이 이 테스트를
+고르지 않게 하기 위해서다.
 
 실행: DATABASE_URL=… LLM_API_KEY=… uv run pytest -m llm tests/test_l3_hunt_llm.py
 - 모델 연결은 config/local.toml의 [llm](키는 환경변수 LLM_API_KEY), 도구 허용 목록도 그 설정을 쓴다
@@ -24,7 +27,7 @@ from soc.l3.hunt.dev_seed import seed
 from soc.l3.hunt.settings import read_hunt_settings
 from soc.l3.hunt.verify import HuntVerifier
 
-pytestmark = [pytest.mark.llm, pytest.mark.db]
+pytestmark = pytest.mark.llm
 
 READER = "soc_agent_reader"
 
