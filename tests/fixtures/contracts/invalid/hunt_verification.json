@@ -1,0 +1,220 @@
+[
+  {
+    "case": "unknown_result",
+    "violations": [
+      {
+        "path": "result",
+        "rule": "enum"
+      }
+    ],
+    "data": {
+      "result": "pending",
+      "confidence": 0.85,
+      "reason": "웹 서버에서 의심 요청과 프로세스 실행이 이어졌다",
+      "evidence_ids": [
+        "evt_01a19f93-1150-7000-8000-000000000005",
+        "agl_01a19f93-1150-7000-8000-000000000009"
+      ],
+      "entities": [
+        {
+          "type": "ip",
+          "value": "203.0.113.10",
+          "role": "src"
+        }
+      ]
+    }
+  },
+  {
+    "case": "confidence_over_one",
+    "violations": [
+      {
+        "path": "confidence",
+        "rule": "maximum"
+      }
+    ],
+    "data": {
+      "result": "confirmed",
+      "confidence": 1.5,
+      "reason": "웹 서버에서 의심 요청과 프로세스 실행이 이어졌다",
+      "evidence_ids": [
+        "evt_01a19f93-1150-7000-8000-000000000005",
+        "agl_01a19f93-1150-7000-8000-000000000009"
+      ],
+      "entities": [
+        {
+          "type": "ip",
+          "value": "203.0.113.10",
+          "role": "src"
+        }
+      ]
+    }
+  },
+  {
+    "case": "confidence_null",
+    "violations": [
+      {
+        "path": "confidence",
+        "rule": "type"
+      }
+    ],
+    "data": {
+      "result": "confirmed",
+      "confidence": null,
+      "reason": "웹 서버에서 의심 요청과 프로세스 실행이 이어졌다",
+      "evidence_ids": [
+        "evt_01a19f93-1150-7000-8000-000000000005",
+        "agl_01a19f93-1150-7000-8000-000000000009"
+      ],
+      "entities": [
+        {
+          "type": "ip",
+          "value": "203.0.113.10",
+          "role": "src"
+        }
+      ]
+    }
+  },
+  {
+    "case": "empty_reason",
+    "violations": [
+      {
+        "path": "reason",
+        "rule": "minLength"
+      }
+    ],
+    "data": {
+      "result": "confirmed",
+      "confidence": 0.85,
+      "reason": "",
+      "evidence_ids": [
+        "evt_01a19f93-1150-7000-8000-000000000005",
+        "agl_01a19f93-1150-7000-8000-000000000009"
+      ],
+      "entities": [
+        {
+          "type": "ip",
+          "value": "203.0.113.10",
+          "role": "src"
+        }
+      ]
+    }
+  },
+  {
+    "case": "evidence_id_prefix",
+    "violations": [
+      {
+        "path": "evidence_ids[0]",
+        "rule": "pattern"
+      }
+    ],
+    "data": {
+      "result": "confirmed",
+      "confidence": 0.85,
+      "reason": "웹 서버에서 의심 요청과 프로세스 실행이 이어졌다",
+      "evidence_ids": [
+        "tkt_01a19f93-1150-7000-8000-000000000001"
+      ],
+      "entities": [
+        {
+          "type": "ip",
+          "value": "203.0.113.10",
+          "role": "src"
+        }
+      ]
+    }
+  },
+  {
+    "case": "duplicate_evidence",
+    "violations": [
+      {
+        "path": "evidence_ids",
+        "rule": "uniqueItems"
+      }
+    ],
+    "data": {
+      "result": "confirmed",
+      "confidence": 0.85,
+      "reason": "웹 서버에서 의심 요청과 프로세스 실행이 이어졌다",
+      "evidence_ids": [
+        "evt_01a19f93-1150-7000-8000-000000000005",
+        "evt_01a19f93-1150-7000-8000-000000000005"
+      ],
+      "entities": [
+        {
+          "type": "ip",
+          "value": "203.0.113.10",
+          "role": "src"
+        }
+      ]
+    }
+  },
+  {
+    "case": "entity_type",
+    "violations": [
+      {
+        "path": "entities[0].type",
+        "rule": "enum"
+      }
+    ],
+    "data": {
+      "result": "confirmed",
+      "confidence": 0.85,
+      "reason": "웹 서버에서 의심 요청과 프로세스 실행이 이어졌다",
+      "evidence_ids": [
+        "evt_01a19f93-1150-7000-8000-000000000005",
+        "agl_01a19f93-1150-7000-8000-000000000009"
+      ],
+      "entities": [
+        {
+          "type": "email",
+          "value": "203.0.113.10",
+          "role": "src"
+        }
+      ]
+    }
+  },
+  {
+    "case": "missing_entities",
+    "violations": [
+      {
+        "path": "entities",
+        "rule": "required"
+      }
+    ],
+    "data": {
+      "result": "confirmed",
+      "confidence": 0.85,
+      "reason": "웹 서버에서 의심 요청과 프로세스 실행이 이어졌다",
+      "evidence_ids": [
+        "evt_01a19f93-1150-7000-8000-000000000005",
+        "agl_01a19f93-1150-7000-8000-000000000009"
+      ]
+    }
+  },
+  {
+    "case": "extra_field",
+    "violations": [
+      {
+        "path": "(root)",
+        "rule": "additionalProperties"
+      }
+    ],
+    "data": {
+      "result": "confirmed",
+      "confidence": 0.85,
+      "reason": "웹 서버에서 의심 요청과 프로세스 실행이 이어졌다",
+      "evidence_ids": [
+        "evt_01a19f93-1150-7000-8000-000000000005",
+        "agl_01a19f93-1150-7000-8000-000000000009"
+      ],
+      "entities": [
+        {
+          "type": "ip",
+          "value": "203.0.113.10",
+          "role": "src"
+        }
+      ],
+      "decided_at": 1
+    }
+  }
+]

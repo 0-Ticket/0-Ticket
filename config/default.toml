@@ -198,3 +198,22 @@ version = "20.0"
 url = "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack-20.0.json"
 max_bytes = 104_857_600  # 100MB
 deadline_seconds = 180
+
+# L3 가설 헌팅(#223). 실행: uv run python -m soc.l3 hunt
+# 수집 → 가설 생성 run 1회 → pending Hunt 검증. ATT&CK 기법은 [l3.intel.attack] version으로 고른다.
+[l3.hunt]
+# 헌팅 전에 soc.l3.intel 수집을 한 번 돌린다. 수집이 실패해도 저장된 뉴스로 계속한다
+collect_before = true
+# 가설 생성 입력: 최근 news_window_days일 뉴스 최대 news_limit건(발행 시각이 없으면 처음 받은 시각),
+# 최근 확정 Case 최대 case_limit건
+news_window_days = 3
+news_limit = 5
+case_limit = 3
+# 가설 생성 run 한 번에 저장할 가설 수. 넘는 것은 버린다
+max_hypotheses = 1
+# 검증 run의 조회 기간(일). 검증을 시작한 시각부터 거슬러 센다
+lookback_days = 7
+# 이 확신도 미만인 confirmed는 inconclusive로 저장한다
+confirm_threshold = 0.7
+# 검증 run 시도 한도. 실패가 이 횟수에 이르면 Hunt는 failed다
+max_attempts = 2

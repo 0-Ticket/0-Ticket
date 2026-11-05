@@ -1,0 +1,25 @@
+{
+  "description": "도구 결과(records)에 있던 Alert ID와 그 호출 기록을 근거로 confirmed를 낸다. evidence_ids의 \"<call_id>\"는 테스트가 실행 중 도구 결과의 call_id(agl_)로 바꾼다",
+  "steps": [
+    {
+      "tool_call": {
+        "name": "query_events",
+        "arguments": {
+          "entity": "203.0.113.10"
+        }
+      }
+    },
+    {
+      "final": {
+        "result": "confirmed",
+        "confidence": 0.9,
+        "reason": "업로드 알럿이 있다",
+        "evidence_ids": [
+          "alt_01a19f93-1150-7000-8000-000000000001",
+          "<call_id>"
+        ],
+        "entities": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "description": "가설 3개: 올바른 것(입력에 없던 뉴스 99·Case 참조 포함), 없는 기법 T9999, 올바른 것",
+  "steps": [
+    {
+      "final": {
+        "hypotheses": [
+          {
+            "hypothesis": "공개 웹 서버의 업로드 기능으로 웹셸이 올라왔다",
+            "attack_techniques": [
+              "T1190",
+              "T1505.003"
+            ],
+            "news_ids": [
+              1,
+              99
+            ],
+            "case_ids": [
+              "cas_01a19f93-1150-7000-8000-000000000001",
+              "cas_01a19f93-1150-7000-8000-000000000999"
+            ]
+          },
+          {
+            "hypothesis": "없는 기법을 쓰는 가설",
+            "attack_techniques": [
+              "T9999"
+            ],
+            "news_ids": [
+              3
+            ],
+            "case_ids": []
+          },
+          {
+            "hypothesis": "웹셸로 셸 명령을 실행했다",
+            "attack_techniques": [
+              "T1059.004"
+            ],
+            "news_ids": [
+              3
+            ],
+            "case_ids": []
+          }
+        ]
+      }
+    }
+  ]
+}

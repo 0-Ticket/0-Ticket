@@ -1,0 +1,8 @@
+{
+  "description": "모델 호출이 실패한다",
+  "steps": [
+    {
+      "raise": "provider_error"
+    }
+  ]
+}

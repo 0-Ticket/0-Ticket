@@ -31,7 +31,9 @@ from soc.contracts.generated import (
     alert_schema,
     case_schema,
     event_schema,
+    hunt_hypotheses_schema,
     hunt_schema,
+    hunt_verification_schema,
     incident_schema,
     raw_record_schema,
     ticket_schema,
@@ -50,6 +52,15 @@ _CONTRACTS: dict[str, tuple[str, type[BaseModel]]] = {
     "incident": ("incident.schema.json", incident_schema.Incident),
     "case": ("case.schema.json", case_schema.Case),
     "hunt": ("hunt.schema.json", hunt_schema.Hunt),
+    # L3 내부 출력 계약(#223). 가설 생성·검증 run의 AgentTask.output_contract로 쓴다
+    "hunt_hypotheses": (
+        "hunt_hypotheses.schema.json",
+        hunt_hypotheses_schema.HuntHypotheses,
+    ),
+    "hunt_verification": (
+        "hunt_verification.schema.json",
+        hunt_verification_schema.HuntVerification,
+    ),
     "agent_log": ("agent_log.schema.json", agent_log_schema.AgentLog),
     "entity": ("common/entity.schema.json", entity_schema.Entity),
     "asset": ("common/asset.schema.json", asset_schema.Asset),

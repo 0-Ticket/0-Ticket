@@ -1,0 +1,262 @@
+[
+  {
+    "case": "empty_hypothesis",
+    "violations": [
+      {
+        "path": "hypotheses[0].hypothesis",
+        "rule": "minLength"
+      }
+    ],
+    "data": {
+      "hypotheses": [
+        {
+          "hypothesis": "",
+          "attack_techniques": [
+            "T1190",
+            "T1505.003"
+          ],
+          "news_ids": [
+            1,
+            2
+          ],
+          "case_ids": [
+            "cas_01a19f93-1150-7000-8000-000000000001"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "case": "no_techniques",
+    "violations": [
+      {
+        "path": "hypotheses[0].attack_techniques",
+        "rule": "minItems"
+      }
+    ],
+    "data": {
+      "hypotheses": [
+        {
+          "hypothesis": "공개 웹 서버의 취약점으로 웹셸이 올라왔다",
+          "attack_techniques": [],
+          "news_ids": [
+            1,
+            2
+          ],
+          "case_ids": [
+            "cas_01a19f93-1150-7000-8000-000000000001"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "case": "technique_pattern",
+    "violations": [
+      {
+        "path": "hypotheses[0].attack_techniques[0]",
+        "rule": "pattern"
+      }
+    ],
+    "data": {
+      "hypotheses": [
+        {
+          "hypothesis": "공개 웹 서버의 취약점으로 웹셸이 올라왔다",
+          "attack_techniques": [
+            "T190"
+          ],
+          "news_ids": [
+            1,
+            2
+          ],
+          "case_ids": [
+            "cas_01a19f93-1150-7000-8000-000000000001"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "case": "duplicate_technique",
+    "violations": [
+      {
+        "path": "hypotheses[0].attack_techniques",
+        "rule": "uniqueItems"
+      }
+    ],
+    "data": {
+      "hypotheses": [
+        {
+          "hypothesis": "공개 웹 서버의 취약점으로 웹셸이 올라왔다",
+          "attack_techniques": [
+            "T1190",
+            "T1190"
+          ],
+          "news_ids": [
+            1,
+            2
+          ],
+          "case_ids": [
+            "cas_01a19f93-1150-7000-8000-000000000001"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "case": "news_id_zero",
+    "violations": [
+      {
+        "path": "hypotheses[0].news_ids[0]",
+        "rule": "minimum"
+      }
+    ],
+    "data": {
+      "hypotheses": [
+        {
+          "hypothesis": "공개 웹 서버의 취약점으로 웹셸이 올라왔다",
+          "attack_techniques": [
+            "T1190",
+            "T1505.003"
+          ],
+          "news_ids": [
+            0
+          ],
+          "case_ids": [
+            "cas_01a19f93-1150-7000-8000-000000000001"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "case": "news_id_string",
+    "violations": [
+      {
+        "path": "hypotheses[0].news_ids[0]",
+        "rule": "type"
+      }
+    ],
+    "data": {
+      "hypotheses": [
+        {
+          "hypothesis": "공개 웹 서버의 취약점으로 웹셸이 올라왔다",
+          "attack_techniques": [
+            "T1190",
+            "T1505.003"
+          ],
+          "news_ids": [
+            "1"
+          ],
+          "case_ids": [
+            "cas_01a19f93-1150-7000-8000-000000000001"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "case": "case_id_prefix",
+    "violations": [
+      {
+        "path": "hypotheses[0].case_ids[0]",
+        "rule": "pattern"
+      }
+    ],
+    "data": {
+      "hypotheses": [
+        {
+          "hypothesis": "공개 웹 서버의 취약점으로 웹셸이 올라왔다",
+          "attack_techniques": [
+            "T1190",
+            "T1505.003"
+          ],
+          "news_ids": [
+            1,
+            2
+          ],
+          "case_ids": [
+            "inc_01a19f93-1150-7000-8000-000000000001"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "case": "missing_case_ids",
+    "violations": [
+      {
+        "path": "hypotheses[0].case_ids",
+        "rule": "required"
+      }
+    ],
+    "data": {
+      "hypotheses": [
+        {
+          "hypothesis": "공개 웹 서버의 취약점으로 웹셸이 올라왔다",
+          "attack_techniques": [
+            "T1190",
+            "T1505.003"
+          ],
+          "news_ids": [
+            1,
+            2
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "case": "extra_field",
+    "violations": [
+      {
+        "path": "hypotheses[0]",
+        "rule": "additionalProperties"
+      }
+    ],
+    "data": {
+      "hypotheses": [
+        {
+          "hypothesis": "공개 웹 서버의 취약점으로 웹셸이 올라왔다",
+          "attack_techniques": [
+            "T1190",
+            "T1505.003"
+          ],
+          "news_ids": [
+            1,
+            2
+          ],
+          "case_ids": [
+            "cas_01a19f93-1150-7000-8000-000000000001"
+          ],
+          "entities": []
+        }
+      ]
+    }
+  },
+  {
+    "case": "not_a_list",
+    "violations": [
+      {
+        "path": "hypotheses",
+        "rule": "type"
+      }
+    ],
+    "data": {
+      "hypotheses": {
+        "hypothesis": "공개 웹 서버의 취약점으로 웹셸이 올라왔다",
+        "attack_techniques": [
+          "T1190",
+          "T1505.003"
+        ],
+        "news_ids": [
+          1,
+          2
+        ],
+        "case_ids": [
+          "cas_01a19f93-1150-7000-8000-000000000001"
+        ]
+      }
+    }
+  }
+]
