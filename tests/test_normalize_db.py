@@ -22,8 +22,10 @@ from soc.db.migrate import migrate
 from soc.ids import new_id
 from soc.normalize import run as run_module
 from soc.normalize.config import Settings
-from soc.normalize.run import exit_code, run
-from soc.normalize.store import claim_batch, save_failure, save_success
+from soc.normalize.mapping import RawRow
+from soc.normalize.mapping import normalize as map_normalize
+from soc.normalize.run import exit_code, run, run_failed
+from soc.normalize.store import claim_failed_batch, claim_pending_batch, save_failure, save_success
 
 pytestmark = pytest.mark.db
 
@@ -169,22 +171,70 @@ def test_an_empty_asset_table_is_a_successful_no_match(conn: psycopg.Connection)
     assert conn.execute("SELECT assets FROM alerts").fetchone() == ([],)
 
 
-def test_second_run_retries_only_failures_and_adds_no_duplicates(conn: psycopg.Connection) -> None:
+def test_normalize_does_not_retry_failed_records(conn: psycopg.Connection) -> None:
     add_raw_records(conn, CASES)
     run(SETTINGS, conn, owner())
     alerts, events = count(conn, "alerts"), count(conn, "events")
 
     second = run(SETTINGS, conn, owner())
 
-    assert (second.claimed, second.succeeded, second.failed) == (len(FAILURES),) + (
-        0,
-        len(FAILURES),
-    )
+    assert (second.claimed, second.succeeded, second.failed) == (0, 0, 0)
+    assert (count(conn, "alerts"), count(conn, "events")) == (alerts, events)
+    attempts = conn.execute(
+        "SELECT DISTINCT attempts FROM normalize_status WHERE status = 'failed'"
+    ).fetchall()
+    assert attempts == [(1,)]
+
+
+def test_retry_run_retries_only_failures_and_adds_no_duplicates(conn: psycopg.Connection) -> None:
+    add_raw_records(conn, CASES)
+    run(SETTINGS, conn, owner())
+    alerts, events = count(conn, "alerts"), count(conn, "events")
+
+    second = run_failed(SETTINGS, conn, owner())
+
+    assert (second.claimed, second.succeeded, second.failed) == (len(FAILURES), 0, len(FAILURES))
     assert (count(conn, "alerts"), count(conn, "events")) == (alerts, events)
     attempts = conn.execute(
         "SELECT DISTINCT attempts FROM normalize_status WHERE status = 'failed'"
     ).fetchall()
     assert attempts == [(2,)]
+
+
+def test_retry_succeeds_after_mapping_is_corrected(
+    conn: psycopg.Connection, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    failing = next(c for c in CASES if c["case"] == "alert_without_title")
+    raw_id = add_raw_records(conn, [failing])["alert_without_title"]
+    before = originals_hash(conn)
+    run(SETTINGS, conn, owner())
+
+    def corrected_mapping(raw: RawRow):
+        original = dict(raw.original)
+        source = {**original["_source"], "kibana.alert.rule.name": "Recovered rule"}
+        original["_source"] = source
+        return map_normalize(RawRow(raw.id, raw.kind, original))
+
+    monkeypatch.setattr(run_module, "normalize", corrected_mapping)
+    result = run_failed(SETTINGS, conn, owner())
+
+    assert (result.claimed, result.succeeded, result.failed) == (1, 1, 0)
+    status = conn.execute(
+        "SELECT status, attempts, result_kind, result_id FROM normalize_status WHERE raw_id = %s",
+        (raw_id,),
+    ).fetchone()
+    assert status[:3] == ("succeeded", 2, "alert")
+    assert status[3] is not None
+    assert conn.execute("SELECT count(*) FROM alerts WHERE raw_id = %s", (raw_id,)).fetchone() == (
+        1,
+    )
+    assert originals_hash(conn) == before
+
+    second = run_failed(SETTINGS, conn, owner())
+    assert second.claimed == 0
+    assert conn.execute("SELECT count(*) FROM alerts WHERE raw_id = %s", (raw_id,)).fetchone() == (
+        1,
+    )
 
 
 def test_run_does_not_modify_originals(conn: psycopg.Connection) -> None:
@@ -196,9 +246,9 @@ def test_run_does_not_modify_originals(conn: psycopg.Connection) -> None:
     assert originals_hash(conn) == before
 
 
-def test_new_records_are_taken_before_old_failures(conn: psycopg.Connection) -> None:
+def test_normalize_processes_pending_while_failed_waits_for_retry(conn: psycopg.Connection) -> None:
     failing = [c for c in CASES if c["case"] == "alert_without_title"]
-    add_raw_records(conn, failing)
+    failed_id = add_raw_records(conn, failing)["alert_without_title"]
     run(SETTINGS, conn, owner())
     ok = [c for c in CASES if c["case"] == "alert_flat_keys"]
     add_raw_records(conn, ok)
@@ -207,6 +257,20 @@ def test_new_records_are_taken_before_old_failures(conn: psycopg.Connection) -> 
     result = run(small, conn, owner())
 
     assert (result.claimed, result.succeeded) == (1, 1)
+    assert conn.execute(
+        "SELECT status, attempts FROM normalize_status WHERE raw_id = %s", (failed_id,)
+    ).fetchone() == ("failed", 1)
+    new_raw = {
+        **ok[0],
+        "case": "alert_new",
+        "original": {**ok[0]["original"], "_id": "alert-new"},
+    }
+    new_id = add_raw_records(conn, [new_raw])["alert_new"]
+    retry = run_failed(SETTINGS, conn, owner())
+    assert (retry.claimed, retry.failed) == (1, 1)
+    assert conn.execute(
+        "SELECT count(*) FROM normalize_status WHERE raw_id = %s", (new_id,)
+    ).fetchone() == (0,)
 
 
 def test_claimed_records_are_not_given_to_another_worker(
@@ -214,8 +278,8 @@ def test_claimed_records_are_not_given_to_another_worker(
 ) -> None:
     add_raw_records(conn, CASES)
     with psycopg.connect(migrated, autocommit=True) as other:
-        first = claim_batch(conn, owner(), 200, 600)
-        second = claim_batch(other, owner(), 200, 600)
+        first = claim_pending_batch(conn, owner(), 200, 600)
+        second = claim_pending_batch(other, owner(), 200, 600)
 
     assert len(first) == len(CASES)
     assert second == []
@@ -234,9 +298,9 @@ def test_late_worker_cannot_write_after_losing_its_lease(conn: psycopg.Connectio
     case = next(c for c in CASES if c["case"] == "alert_flat_keys")
     raw_id = add_raw_records(conn, [case])["alert_flat_keys"]
     late, current = owner(), owner()
-    claim_batch(conn, late, 200, 600)
+    claim_pending_batch(conn, late, 200, 600)
     expire_lease(conn)
-    assert [raw.id for raw in claim_batch(conn, current, 200, 600)] == [raw_id]
+    assert [raw.id for raw in claim_pending_batch(conn, current, 200, 600)] == [raw_id]
     row = {"id": new_id("alt")}
 
     late_saved = save_success(conn, late, raw_id, "alert", row)
@@ -247,6 +311,27 @@ def test_late_worker_cannot_write_after_losing_its_lease(conn: psycopg.Connectio
     assert conn.execute(
         "SELECT status, lease_owner FROM normalize_status WHERE raw_id = %s", (raw_id,)
     ).fetchone() == ("pending", current)
+
+
+def test_late_retry_worker_cannot_write_after_losing_its_lease(
+    conn: psycopg.Connection,
+) -> None:
+    failing = [c for c in CASES if c["case"] == "alert_without_title"]
+    raw_id = add_raw_records(conn, failing)["alert_without_title"]
+    run(SETTINGS, conn, owner())
+    late, current = owner(), owner()
+    assert [raw.id for raw in claim_failed_batch(conn, late, 200, 600)] == [raw_id]
+    expire_lease(conn)
+    assert [raw.id for raw in claim_failed_batch(conn, current, 200, 600)] == [raw_id]
+
+    late_saved = save_success(conn, late, raw_id, "alert", {"id": new_id("alt")})
+    late_failed = save_failure(conn, late, raw_id, "db_error")
+
+    assert (late_saved, late_failed) == (False, False)
+    assert count(conn, "alerts") == 0
+    assert conn.execute(
+        "SELECT status, lease_owner FROM normalize_status WHERE raw_id = %s", (raw_id,)
+    ).fetchone() == ("failed", current)
 
 
 def test_failure_cannot_overwrite_a_success(conn: psycopg.Connection) -> None:
@@ -266,7 +351,7 @@ def test_result_is_not_saved_when_the_insert_fails(conn: psycopg.Connection) -> 
     case = next(c for c in CASES if c["case"] == "alert_flat_keys")
     raw_id = add_raw_records(conn, [case])["alert_flat_keys"]
     me = owner()
-    claim_batch(conn, me, 200, 600)
+    claim_pending_batch(conn, me, 200, 600)
     broken = {"id": new_id("alt"), "raw_id": raw_id}
 
     with pytest.raises((KeyError, psycopg.Error)):

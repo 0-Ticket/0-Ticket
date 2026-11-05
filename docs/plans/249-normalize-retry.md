@@ -44,13 +44,13 @@ W02 정규화 명령은 미처리 자료(`pending`)만 처리하고, 별도 W03 
 
 ## 완료 기준
 
-- [ ] W02 실행은 `pending`만 선택하고 `failed`·`succeeded`는 선택하지 않는다.
-- [ ] W03 실행은 `failed`만 선택하고, 새 RawRecord 상태 행을 만들거나 `pending`·`succeeded`를 선택하지 않는다.
-- [ ] 실패 한 건은 다른 자료의 처리를 막지 않는다. 실패 코드는 원문과 예외 메시지 없이 기록되고, 반복 실패 시 시도 횟수가 증가한다.
-- [ ] 매핑 오류로 실패한 자료가 매핑 수정 후 W03에서 성공하면 결과가 한 건만 저장되고 상태가 `succeeded`가 된다. RawRecord 원본은 바뀌지 않는다.
-- [ ] 이미 성공한 자료는 W03 재실행으로 다시 처리되지 않는다.
-- [ ] W03 실행 중 중단된 실패 자료는 임대 만료 후 재선택된다. 임대를 잃은 작업자의 늦은 결과는 저장되지 않고, 결과·성공 상태는 원자적으로 기록된다.
-- [ ] 합성 fixture와 DB 테스트 및 공통 검사(`uv run ruff format --check .`, `uv run ruff check .`, `uv run pytest`, `uv run pytest -m db`)가 통과한다.
+- [x] W02 실행은 `pending`만 선택하고 `failed`·`succeeded`는 선택하지 않는다.
+- [x] W03 실행은 `failed`만 선택하고, 새 RawRecord 상태 행을 만들거나 `pending`·`succeeded`를 선택하지 않는다.
+- [x] 실패 한 건은 다른 자료의 처리를 막지 않는다. 실패 코드는 원문과 예외 메시지 없이 기록되고, 반복 실패 시 시도 횟수가 증가한다.
+- [x] 매핑 오류로 실패한 자료가 매핑 수정 후 W03에서 성공하면 결과가 한 건만 저장되고 상태가 `succeeded`가 된다. RawRecord 원본은 바뀌지 않는다.
+- [x] 이미 성공한 자료는 W03 재실행으로 다시 처리되지 않는다.
+- [x] W03 실행 중 중단된 실패 자료는 임대 만료 후 재선택된다. 임대를 잃은 작업자의 늦은 결과는 저장되지 않고, 결과·성공 상태는 원자적으로 기록된다.
+- [x] 합성 fixture와 DB 테스트 및 공통 검사(`uv run ruff format --check .`, `uv run ruff check .`, `uv run pytest`, `uv run pytest -m db`)가 통과한다.
 
 ## 토론으로 정한 것
 

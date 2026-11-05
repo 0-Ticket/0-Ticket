@@ -1,8 +1,10 @@
-"""정규화 한 번 실행. 원본을 한 묶음 임대해 건마다 변환·검증·자산 조회·저장한다.
+"""W02 pending 원본과 W03 failed 원본을 한 묶음씩 정규화한다.
 
-한 건이 실패해도 나머지는 계속 처리한다. 실패한 건은 상태에 코드만 남기고, 다음 실행이 다시 고른다.
+W02는 새 원본에 pending 상태를 만든 뒤 pending만 고르고, W03 재시도는 failed만 고른다.
+한 건이 실패해도 나머지는 계속 처리한다.
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 import psycopg
@@ -13,7 +15,7 @@ from soc.normalize.config import Settings
 from soc.normalize.errors import NormalizeError
 from soc.normalize.mapping import RawRow, normalize
 from soc.normalize.ocsf_schema import validate_ocsf
-from soc.normalize.store import claim_batch, save_failure, save_success
+from soc.normalize.store import claim_failed_batch, claim_pending_batch, save_failure, save_success
 
 
 @dataclass
@@ -36,15 +38,36 @@ class RunResult:
 
 
 def run(settings: Settings, conn: psycopg.Connection, owner: str) -> RunResult:
-    """원본 한 묶음을 정규화한다.
+    """pending 원본 한 묶음을 정규화한다.
 
     Args:
         settings: 정규화 설정.
         conn: DB 연결(autocommit). 결과 저장과 자산 조회에 함께 쓴다.
         owner: 이번 실행을 가리키는 임대 소유자 값.
     """
+    return _run_batch(settings, conn, owner, claim_pending_batch)
+
+
+def run_failed(settings: Settings, conn: psycopg.Connection, owner: str) -> RunResult:
+    """failed 원본 한 묶음을 다시 정규화한다.
+
+    Args:
+        settings: 정규화 설정.
+        conn: DB 연결(autocommit). 결과 저장과 자산 조회에 함께 쓴다.
+        owner: 이번 실행을 가리키는 임대 소유자 값.
+    """
+    return _run_batch(settings, conn, owner, claim_failed_batch)
+
+
+def _run_batch(
+    settings: Settings,
+    conn: psycopg.Connection,
+    owner: str,
+    claim: Callable[[psycopg.Connection, str, int, int], list[RawRow]],
+) -> RunResult:
+    """한 상태 종류의 원본을 맡아 건마다 변환·검증·자산 조회·저장한다."""
     result = RunResult()
-    for raw in claim_batch(conn, owner, settings.batch_size, settings.lease_seconds):
+    for raw in claim(conn, owner, settings.batch_size, settings.lease_seconds):
         result.claimed += 1
         try:
             saved = _normalize_and_save(settings, conn, owner, raw)

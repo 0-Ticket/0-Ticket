@@ -4,7 +4,7 @@
 시각 비교는 모두 DB의 now()를 쓴다. SQL은 매개변수로만 값을 넣는다.
 """
 
-from typing import Any
+from typing import Any, Literal
 
 import psycopg
 from psycopg import sql
@@ -56,7 +56,7 @@ UPDATE normalize_status
 SET lease_owner = %s, lease_expires_at = now() + make_interval(secs => %s), last_attempt_at = now()
 WHERE raw_id IN (
     SELECT raw_id FROM normalize_status
-    WHERE status <> 'succeeded' AND (lease_expires_at IS NULL OR lease_expires_at < now())
+    WHERE status = %s AND (lease_expires_at IS NULL OR lease_expires_at < now())
     ORDER BY last_attempt_at NULLS FIRST, raw_id
     LIMIT %s
     FOR UPDATE SKIP LOCKED
@@ -85,13 +85,13 @@ WHERE raw_id = %s AND lease_owner = %s AND lease_expires_at > now() AND status <
 """
 
 
-def claim_batch(
+def claim_pending_batch(
     conn: psycopg.Connection, owner: str, batch_size: int, lease_seconds: int
 ) -> list[RawRow]:
-    """처리할 원본을 최대 batch_size건 임대해 읽어 온다.
+    """미처리 원본을 최대 batch_size건 임대해 읽어 온다.
 
-    아직 상태 행이 없는 원본에 행을 만든 뒤, 성공하지 않았고 임대가 없거나 만료된 행을
-    시도한 지 오래된 순서로 잡는다. 다른 작업자가 잠근 행은 건너뛴다.
+    아직 상태 행이 없는 원본에 행을 만든 뒤, pending 상태이고 임대가 없거나 만료된 행을 잡는다.
+    다른 작업자가 잠근 행은 건너뛴다.
 
     Args:
         conn: 쓰기 연결(autocommit).
@@ -100,7 +100,35 @@ def claim_batch(
         lease_seconds: 임대 시간(초).
     """
     conn.execute(_ADD_STATUS_ROWS, (batch_size,))
-    claimed = conn.execute(_LEASE, (owner, lease_seconds, batch_size)).fetchall()
+    return _claim_batch(conn, owner, batch_size, lease_seconds, "pending")
+
+
+def claim_failed_batch(
+    conn: psycopg.Connection, owner: str, batch_size: int, lease_seconds: int
+) -> list[RawRow]:
+    """실패한 원본만 최대 batch_size건 임대해 읽어 온다.
+
+    새 상태 행은 만들지 않는다. 임대가 없거나 만료된 failed 행을 마지막 시도 시각 순서로
+    잡으며, 다른 작업자가 잠근 행은 건너뛴다.
+
+    Args:
+        conn: 쓰기 연결(autocommit).
+        owner: 이번 실행을 가리키는 임대 소유자 값.
+        batch_size: 한 번에 잡을 최대 건수.
+        lease_seconds: 임대 시간(초).
+    """
+    return _claim_batch(conn, owner, batch_size, lease_seconds, "failed")
+
+
+def _claim_batch(
+    conn: psycopg.Connection,
+    owner: str,
+    batch_size: int,
+    lease_seconds: int,
+    status: Literal["pending", "failed"],
+) -> list[RawRow]:
+    """주어진 상태의 원본을 임대하고 읽어 온다."""
+    claimed = conn.execute(_LEASE, (owner, lease_seconds, status, batch_size)).fetchall()
     ids = [row[0] for row in claimed]
     rows = conn.execute(
         "SELECT id, kind, original FROM raw_records WHERE id = ANY(%s) ORDER BY id", (ids,)

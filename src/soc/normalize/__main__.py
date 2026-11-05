@@ -9,16 +9,24 @@ import os
 import sys
 import tomllib
 import uuid
+from collections.abc import Callable
 
 import psycopg
 
 from soc.api.db import DATABASE_URL_ENV
-from soc.normalize.config import ConfigError, load_settings
+from soc.normalize.config import ConfigError, Settings, load_settings
 from soc.normalize.run import RunResult, exit_code, run
 
 
 def main() -> int:
     """설정을 읽고 연결을 열어 정규화를 한 번 실행한다."""
+    return _run_command(run)
+
+
+def _run_command(
+    action: Callable[[Settings, psycopg.Connection, str], RunResult],
+) -> int:
+    """설정·DB 연결을 준비하고 실행 함수 하나를 호출한다."""
     try:
         settings = load_settings()
     except (ConfigError, OSError, tomllib.TOMLDecodeError) as error:
@@ -32,7 +40,7 @@ def main() -> int:
         with psycopg.connect(
             url, autocommit=True, connect_timeout=settings.connect_timeout_seconds
         ) as conn:
-            result = run(settings, conn, uuid.uuid4().hex)
+            result = action(settings, conn, uuid.uuid4().hex)
     except psycopg.Error:
         print("DB에 접속하지 못했거나 조회·저장에 실패했다", file=sys.stderr)
         return 1
