@@ -45,7 +45,7 @@ flowchart LR
 - L1 Ticket 생성 모드: 기본은 모든 알럿을 Ticket으로, 설정으로 시나리오 모드를 켜면 시나리오 일치 알럿만 바로 Ticket, 나머지는 L1 1차 판정(Ticket 생성 모드, D-033).
 - Case로 가는 승인은 사람만 한다. 위협이 아닌 Incident는 L2가 분석 후 종결하거나, 사람이 검토 중 또는 직접 처리(반려 한도 도달)를 끝낼 때 종결한다.
 
-## 단계끼리 주고받는 데이터 (RawRecord, Alert, Event, Ticket, Incident, Case, Hunt, Agent Log)
+## 단계끼리 주고받는 데이터 (RawRecord, Alert, Event, Ticket, Incident, Incident Artifact, Proposal, Case, Hunt, Agent Log)
 
 각 단계가 만들어 DB에 쌓고, 다음 단계가 읽어 가는 데이터다. 여기에는 이름과 뜻만 적고, 필드는 그 데이터를 처음 만드는 이슈에서 정한다. 표에 데이터를 추가하면 절 제목의 괄호에도 추가한다.
 
@@ -55,6 +55,7 @@ flowchart LR
 | Alert, Event | 원본을 OCSF로 정규화한 알럿과 이벤트 |
 | Ticket | 판정이 필요한 알럿 하나 또는 묶음 |
 | Incident | 같은 공격으로 보이는 Ticket들의 묶음. L2 분석과 사람 검토의 단위 |
+| Incident Artifact, Proposal | L2의 라운드별 분석 보고서와 개별 탐지 룰·대응 방안 제안. 사람이 검토한다 |
 | Case | 사람이 확정한 사고 |
 | Hunt | L3 가설 하나와 검증 결과 |
 | Agent Log | 에이전트가 무엇을 조회하고 어떻게 판단했는지의 기록 |
@@ -73,4 +74,5 @@ flowchart LR
 
 <!-- 구조를 바꾸면 한 줄씩 추가한다. 형식: - YYYY-MM-DD · 무엇을 왜 바꿨는지 -->
 
+- 2026-11-06 · L2 분석 결과를 사람 검토 단계로 넘기는 Incident Artifact와 Proposal을 데이터 표에 추가함(#261)
 - 2026-11-03 · 원본(RawRecord)을 데이터 표에 추가하고 필드 기준을 `contracts/`로 둠, L1 Ticket 생성 모드를 적음, L2와 사람이 위협이 아닌 Incident를 종결할 수 있게 흐름을 고침(#192). 원칙 1의 "사고 확정"은 Case 확정을 뜻하므로 그대로 둠

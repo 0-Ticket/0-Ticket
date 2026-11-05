@@ -1,0 +1,21 @@
+[
+  {
+    "case": "timeline_and_entity",
+    "data": {
+      "timeline": [
+        {
+          "time": 1793678400000,
+          "summary": "의심 요청 뒤 프로세스가 실행됐다",
+          "evidence_ids": ["evt_01a19f93-1150-7000-8000-000000000005"]
+        }
+      ],
+      "entities": [
+        {
+          "entity": {"type": "ip", "value": "203.0.113.10", "role": "src"},
+          "evidence_ids": ["alt_01a19f93-1150-7000-8000-000000000004"]
+        }
+      ],
+      "evidence_ids": ["agl_01a19f93-1150-7000-8000-000000000009"]
+    }
+  }
+]

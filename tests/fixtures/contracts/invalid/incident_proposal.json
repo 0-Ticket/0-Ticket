@@ -1,0 +1,14 @@
+[
+  {
+    "case": "empty_body",
+    "violations": [{"path": "body", "rule": "minLength"}],
+    "data": {
+      "id": "prp_01a19f93-1150-7000-8000-000000000013",
+      "artifact_id": "art_01a19f93-1150-7000-8000-000000000011",
+      "kind": "response_action",
+      "seq": 1,
+      "body": "",
+      "created_at": 1793678580000
+    }
+  }
+]

@@ -30,7 +30,8 @@ class Incident(BaseModel):
         list[types_schema.TicketId], Field(description="1개 이상. 중복 없음", min_length=1)
     ]
     entities: Annotated[
-        list[entity_schema.Entity], Field(description="소속 Ticket 엔티티를 모은 것")
+        list[entity_schema.Entity],
+        Field(description="소속 Ticket 엔티티와 L2 조사에서 근거와 함께 확인한 엔티티를 모은 것"),
     ]
     severity: Annotated[
         int, Field(description="소속 Alert 심각도 중 최대. 소속 Alert가 없으면 0", ge=0, le=6)

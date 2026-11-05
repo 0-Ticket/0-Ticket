@@ -43,7 +43,7 @@
       "items": {"$ref": "common/types.schema.json#/definitions/ticket_id"}
     },
     "entities": {
-      "description": "소속 Ticket 엔티티를 모은 것",
+      "description": "소속 Ticket 엔티티와 L2 조사에서 근거와 함께 확인한 엔티티를 모은 것",
       "type": "array",
       "items": {"$ref": "common/entity.schema.json"}
     },

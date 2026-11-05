@@ -1,0 +1,11 @@
+[
+  {
+    "case": "timeline_without_evidence",
+    "violations": [{"path": "timeline[0].evidence_ids", "rule": "minItems"}],
+    "data": {
+      "timeline": [{"time": 1793678400000, "summary": "확인됨", "evidence_ids": []}],
+      "entities": [],
+      "evidence_ids": []
+    }
+  }
+]

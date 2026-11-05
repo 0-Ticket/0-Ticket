@@ -4,6 +4,7 @@ from typing import Any
 
 import pytest
 
+from soc.l2.analyze import worker as analyze_worker
 from soc.l2.branch import worker
 from soc.store import CollectionMismatch, StoreError
 
@@ -71,3 +72,22 @@ def test_build_worker_rejects_collection_mismatch(monkeypatch: pytest.MonkeyPatc
 
     with pytest.raises(CollectionMismatch):
         worker.build_worker(config())
+
+
+def test_build_analyze_worker_reads_shared_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    full = config()
+    full["l2"]["analyze"] = {
+        "lookback_ms": 1000,
+        "max_analysis_rounds": 5,
+        "max_seed_entities": 10,
+        "max_related_per_entity": 20,
+    }
+    full["tools"] = {"max_range_days": 7}
+    full["asset_lookup"] = {"statement_timeout_ms": 5000}
+    full["l3"] = {"intel": {"attack": {"version": "20.0"}}}
+    monkeypatch.setenv("DATABASE_URL", "postgresql://not-used")
+
+    built = analyze_worker.build_worker(full)
+
+    assert built.stage == "l2"
+    assert built.name == "l2_analyze"

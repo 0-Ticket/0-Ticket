@@ -1,0 +1,50 @@
+[
+  {
+    "case": "conclusive",
+    "data": {
+      "id": "art_01a19f93-1150-7000-8000-000000000011",
+      "incident_id": "inc_01a19f93-1150-7000-8000-000000000003",
+      "analysis_round": 1,
+      "verdict": "succeeded",
+      "summary": "침해가 확인됐다",
+      "assessed_severity": 5,
+      "timeline": [
+        {
+          "time": 1793678400000,
+          "summary": "의심 요청 뒤 프로세스가 실행됐다",
+          "evidence_ids": ["evt_01a19f93-1150-7000-8000-000000000005"]
+        }
+      ],
+      "techniques": [
+        {
+          "id": "T1059.001",
+          "name": "PowerShell",
+          "evidence_ids": ["evt_01a19f93-1150-7000-8000-000000000005"]
+        }
+      ],
+      "impact": "웹 서버 프로세스가 실행됐다",
+      "cause": "취약한 요청 처리가 악용됐다",
+      "further_risk": "같은 경로의 재실행 가능성이 있다",
+      "evidence_ids": ["evt_01a19f93-1150-7000-8000-000000000005"],
+      "created_at": 1793678580000
+    }
+  },
+  {
+    "case": "inconclusive_without_timeline",
+    "data": {
+      "id": "art_01a19f93-1150-7000-8000-000000000012",
+      "incident_id": "inc_01a19f93-1150-7000-8000-000000000003",
+      "analysis_round": 2,
+      "verdict": "inconclusive",
+      "summary": "근거가 부족하다",
+      "assessed_severity": 1,
+      "timeline": [],
+      "techniques": [],
+      "impact": "",
+      "cause": "",
+      "further_risk": "추가 로그가 필요하다",
+      "evidence_ids": [],
+      "created_at": 1793678580000
+    }
+  }
+]

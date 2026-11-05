@@ -1,0 +1,18 @@
+[
+  {
+    "case": "technique_without_evidence",
+    "violations": [{"path": "techniques[0].evidence_ids", "rule": "minItems"}],
+    "data": {
+      "verdict": "attempted",
+      "summary": "시도가 확인됐다",
+      "assessed_severity": 3,
+      "techniques": [{"id": "T1059", "evidence_ids": []}],
+      "impact": "",
+      "cause": "",
+      "further_risk": "추가 확인이 필요하다",
+      "detection_rules": [],
+      "response_actions": [],
+      "evidence_ids": []
+    }
+  }
+]

@@ -72,7 +72,7 @@ workers = ["soc.l1.judge:build_worker"]
 [executor.l2]
 interval_seconds = 10
 poll_limit = 10
-workers = ["soc.l2.branch:build_worker"]
+workers = ["soc.l2.branch:build_worker", "soc.l2.analyze:build_worker"]
 
 [executor.l3]
 # L3는 기본으로 돌지 않는다(L3 실행 방식, D-030)
@@ -239,6 +239,13 @@ max_candidates = 5
 candidate_source = "vector"
 # Qdrant에서 가져올 비슷한 Ticket 수
 top_k = 50
+
+# L2 Incident 분석(#261). 성공·실패한 분석 라운드 수가 한도에 이르면 모델을 부르지 않는다.
+[l2.analyze]
+lookback_ms = 86_400_000
+max_analysis_rounds = 5
+max_seed_entities = 10
+max_related_per_entity = 20
 
 # 벡터 저장소와 임베딩(#257, Qdrant D-013, 임베딩 모델 D-031, 실행 라이브러리 D-044).
 # L2·L3가 함께 쓰는 공통 계층이다. 컬렉션 이름은 용도·모델 ID·revision·ONNX 파일에서 코드가 만든다.

@@ -16,6 +16,8 @@ DEFINITIONS = {
     "evt": "event_id",
     "tkt": "ticket_id",
     "inc": "incident_id",
+    "art": "artifact_id",
+    "prp": "proposal_id",
     "cas": "case_id",
     "agl": "agent_log_id",
     "run": "run_id",

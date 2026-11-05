@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "incident_proposal.schema.json",
+  "title": "IncidentProposal",
+  "description": "L2 Artifact에서 분리해 저장한 탐지 또는 대응 제안",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "artifact_id", "kind", "seq", "body", "created_at"],
+  "properties": {
+    "id": {"$ref": "common/types.schema.json#/definitions/proposal_id"},
+    "artifact_id": {"$ref": "common/types.schema.json#/definitions/artifact_id"},
+    "kind": {"type": "string", "enum": ["detection_rule", "response_action"]},
+    "seq": {"type": "integer", "minimum": 1, "maximum": 2147483647},
+    "body": {"type": "string", "minLength": 1},
+    "created_at": {"$ref": "common/types.schema.json#/definitions/epoch_ms"}
+  }
+}
