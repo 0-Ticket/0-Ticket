@@ -248,6 +248,11 @@ class FakeSearchStore(FakeStore):
         self.deleted.append((key, value))
 
 
+class FailingUpsertStore(FakeStore):
+    def upsert(self, point_id: str, vector: list[float], payload: dict[str, str]) -> None:
+        raise CollectionMissing()
+
+
 def ok(output: dict[str, Any]) -> AgentResult:
     return AgentResult(
         ok=True,
@@ -362,6 +367,32 @@ def test_worker_links_existing_and_reopens_awaiting_review(
     assert ticket["status"] == "linked"
 
 
+def test_existing_incident_severity_uses_max_of_old_and_current_ticket(
+    l2_database: tuple[str, dict[str, Any]],
+) -> None:
+    database_url, sample = l2_database
+    target = sample["incidents"][2]
+
+    worker(
+        database_url,
+        run=lambda _: ok(
+            {
+                "decision": "existing",
+                "incident_id": target["id"],
+                "confidence": 0.9,
+                "reason": "같은 공격이다",
+                "similar_ticket_ids": [],
+            }
+        ),
+    ).handle(sample["tickets"][0]["id"])
+
+    with psycopg.connect(database_url) as conn:
+        severity = conn.execute(
+            "SELECT severity FROM incidents WHERE id = %s", (target["id"],)
+        ).fetchone()[0]
+    assert severity == sample["alerts"][0]["severity"]
+
+
 def test_agent_failure_creates_new_incident(
     l2_database: tuple[str, dict[str, Any]],
 ) -> None:
@@ -420,6 +451,61 @@ def test_save_rechecks_ticket_state_after_model_run(
             (sample["tickets"][1]["id"],),
         ).fetchone()[0]
     assert count == 0
+
+
+def test_save_rechecks_incident_state_after_model_run(
+    l2_database: tuple[str, dict[str, Any]],
+) -> None:
+    database_url, sample = l2_database
+    target = sample["incidents"][1]
+
+    def close_incident(task: Any) -> AgentResult:
+        with psycopg.connect(database_url, autocommit=True) as conn:
+            conn.execute("UPDATE incidents SET status = 'confirmed' WHERE id = %s", (target["id"],))
+        return ok(
+            {
+                "decision": "existing",
+                "incident_id": target["id"],
+                "confidence": 0.9,
+                "reason": "같은 공격이다",
+                "similar_ticket_ids": [],
+            }
+        )
+
+    worker(database_url, run=close_incident).handle(sample["tickets"][1]["id"])
+
+    with psycopg.connect(database_url, row_factory=psycopg.rows.dict_row) as conn:
+        ticket = conn.execute(
+            "SELECT * FROM tickets WHERE id = %s", (sample["tickets"][1]["id"],)
+        ).fetchone()
+        incident = conn.execute(
+            "SELECT * FROM incidents WHERE %s = ANY(ticket_ids)",
+            (sample["tickets"][1]["id"],),
+        ).fetchone()
+    assert incident["id"] != target["id"]
+    assert ticket["details"]["l2_branch"]["decision_fallback"] == "incident_closed"
+
+
+def test_upsert_failure_does_not_rollback_postgres(
+    l2_database: tuple[str, dict[str, Any]],
+) -> None:
+    database_url, sample = l2_database
+    with psycopg.connect(database_url, autocommit=True) as conn:
+        conn.execute("DELETE FROM incidents")
+
+    worker(
+        database_url,
+        run=lambda _: pytest.fail("후보가 없으면 모델을 부르지 않는다"),
+        store=FailingUpsertStore(),
+    ).handle(sample["tickets"][0]["id"])
+
+    with psycopg.connect(database_url) as conn:
+        status = conn.execute(
+            "SELECT status FROM tickets WHERE id = %s", (sample["tickets"][0]["id"],)
+        ).fetchone()[0]
+        count = conn.execute("SELECT count(*) FROM incidents").fetchone()[0]
+    assert status == "linked"
+    assert count == 1
 
 
 def test_worker_poll_orders_escalated_ticket_ids(
@@ -519,6 +605,57 @@ def test_vector_query_failure_falls_back_to_recent(
         ).fetchone()
     assert ticket["details"]["l2_branch"]["candidate_source"] == "recent"
     assert ticket["details"]["l2_branch"]["candidate_fallback"] == fallback
+
+
+def test_empty_embedding_text_uses_recent_without_indexing(
+    l2_database: tuple[str, dict[str, Any]],
+) -> None:
+    database_url, sample = l2_database
+    ticket_id = sample["tickets"][0]["id"]
+    vector_store = FakeSearchStore()
+    with psycopg.connect(database_url) as conn:
+        conn.execute("DELETE FROM incidents")
+        conn.execute(
+            "UPDATE alerts SET title = '' WHERE id = %s",
+            (sample["alerts"][0]["id"],),
+        )
+        conn.execute("UPDATE tickets SET verdict = NULL WHERE id = %s", (ticket_id,))
+
+    worker(
+        database_url,
+        run=lambda _: pytest.fail("후보가 없으면 모델을 부르지 않는다"),
+        store=vector_store,
+        settings=SETTINGS,
+    ).handle(ticket_id)
+
+    with psycopg.connect(database_url, row_factory=psycopg.rows.dict_row) as conn:
+        ticket = conn.execute("SELECT * FROM tickets WHERE id = %s", (ticket_id,)).fetchone()
+    assert ticket["details"]["l2_branch"]["candidate_source"] == "recent"
+    assert ticket["details"]["l2_branch"]["candidate_fallback"] == "empty_text"
+    assert vector_store.upserts == []
+
+
+def test_invalid_vector_hit_count_is_recorded_before_recent_fallback(
+    l2_database: tuple[str, dict[str, Any]],
+) -> None:
+    database_url, sample = l2_database
+    vector_store = FakeSearchStore(
+        (SearchHit("bad-point", 0.99, {"incident_id": sample["incidents"][0]["id"]}),)
+    )
+
+    worker(
+        database_url,
+        run=lambda _: failed("provider_error"),
+        store=vector_store,
+        settings=SETTINGS,
+    ).handle(sample["tickets"][1]["id"])
+
+    with psycopg.connect(database_url, row_factory=psycopg.rows.dict_row) as conn:
+        ticket = conn.execute(
+            "SELECT * FROM tickets WHERE id = %s", (sample["tickets"][1]["id"],)
+        ).fetchone()
+    assert ticket["details"]["l2_branch"]["candidate_fallback"] == "no_valid_candidates"
+    assert ticket["details"]["l2_branch"]["invalid_hit_count"] == 1
 
 
 def test_reindex_ensures_collection_and_indexes_consistent_linked_ticket(

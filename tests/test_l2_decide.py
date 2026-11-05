@@ -5,8 +5,12 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from fake_model import FakeModel
+from test_agent_core import CONFIG, REGISTRY
 
 from soc.agent import AgentResult
+from soc.agent.agent_log import MemoryLogSink
+from soc.agent.runner import run_task
 from soc.agent.types import contains_forbidden
 from soc.l2.branch.context import BranchContext
 from soc.l2.branch.decide import (
@@ -146,6 +150,29 @@ def test_result_accepts_shown_candidate_and_similar_ticket(sample: dict[str, Any
     assert decision.incident_id == candidates[0].incident["id"]
     assert decision.source == "agent"
     assert decision.fallback is None
+
+
+def test_fake_model_output_passes_contract_and_candidate_checks(sample: dict[str, Any]) -> None:
+    parsed = parse_hits(search_hits(sample))
+    candidates = final_candidates(
+        provisional_candidates(
+            parsed.hits, {row["id"]: row for row in sample["incidents"]}, max_candidates=2
+        ),
+        {row["id"]: row for row in sample["tickets"]},
+    ).items
+    agent_result = run_task(
+        make_task(candidate_context(), candidates, "vector"),
+        model=FakeModel("l2_classify_existing"),
+        model_name="fake-model",
+        log_sink=MemoryLogSink(),
+        config=CONFIG,
+        registry=REGISTRY,
+    )
+
+    decision = resolve_decision(agent_result, candidates)
+
+    assert decision.incident_id == candidates[0].incident["id"]
+    assert decision.source == "agent"
 
 
 @pytest.mark.parametrize(
