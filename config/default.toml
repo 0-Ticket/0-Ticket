@@ -240,6 +240,18 @@ weak_signal_types = ["ip", "host"]
 # 여러 Incident에 공통으로 나와 묶는 점수에서 뺄 값
 shared_entity_values = []
 
+# 벡터 저장소와 임베딩(#257, Qdrant D-013, 임베딩 모델 D-031, 실행 라이브러리 D-044).
+# L2·L3가 함께 쓰는 공통 계층이다. 컬렉션 이름은 용도·모델 ID·revision·ONNX 파일에서 코드가 만든다.
+[store.qdrant]
+# Qdrant 주소(http(s), 계정 정보 없이)를 담은 환경변수 이름. 값은 .env에만 둔다
+url_env = "QDRANT_URL"
+
+[store.embedder]
+# 기본 임베딩 모델(D-031). dense 표현만 쓰고 1024차원·Cosine이다.
+# revision을 바꾸면 컬렉션 이름이 달라져 색인을 다시 만들어야 한다(옛 컬렉션은 사람이 지운다).
+model_id = "BAAI/bge-m3"
+revision = "5617a9f61b028005a4858fdac845db406aefb181"
+
 # L3 가설 재료 수집(#221, L3 위협 시나리오 입력 D-029). 모두 공개 피드라 비밀 값이 없다.
 # 실행: uv run python -m soc.l3.intel
 [l3.intel]

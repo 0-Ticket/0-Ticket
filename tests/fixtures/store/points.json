@@ -1,0 +1,20 @@
+{
+  "_note": "손으로 만든 벡터 저장소 샘플(#257). 실제 기업 로그나 공개 데이터셋이 아니다. text는 임베딩할 짧은 한국어 문장, payload는 동등 조건 필터와 전체 삭제를 확인하는 값이다.",
+  "points": [
+    {
+      "id": "0b4a1f6e-8c21-4b7a-9f10-3d5c6e7a8b90",
+      "text": "같은 사용자 계정으로 SSH 로그인 실패가 짧은 시간에 반복됐다",
+      "payload": {"group": "brute_force", "severity": "high", "rank": 1, "linked": true}
+    },
+    {
+      "id": "1c5b2a7f-9d32-4c8b-8e21-4e6d7f8b9c01",
+      "text": "같은 출처 주소에서 관리자 계정 로그인 실패가 계속됐다",
+      "payload": {"group": "brute_force", "severity": "low", "rank": 2, "linked": true}
+    },
+    {
+      "id": "2d6c3b80-ae43-4d9c-9f32-5f7e8a9c0d12",
+      "text": "내부 호스트가 처음 보는 외부 주소로 큰 파일을 올렸다",
+      "payload": {"group": "exfiltration", "severity": "high", "rank": 3, "linked": false}
+    }
+  ]
+}
