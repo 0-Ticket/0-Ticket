@@ -7,16 +7,16 @@ from soc.agent.config import load_config
 REPO_CONFIG = Path(__file__).resolve().parents[1] / "config"
 
 
-def test_default_config_has_only_known_sections_and_no_secrets() -> None:
-    config = load_config(REPO_CONFIG)
+def test_default_config_has_only_known_sections_and_no_secrets(default_config_dir: Path) -> None:
+    config = load_config(default_config_dir)
     assert {"llm", "agent", "tools"} <= set(config)
     assert config["llm"]["api_key_env"] == "LLM_API_KEY"
     for stage in ("l1", "l2", "l3"):
         assert isinstance(config["agent"][stage]["max_turns"], int)
 
 
-def test_default_llm_and_budget_values() -> None:
-    config = load_config(REPO_CONFIG)
+def test_default_llm_and_budget_values(default_config_dir: Path) -> None:
+    config = load_config(default_config_dir)
     llm = config["llm"]
     assert llm["base_url"] == "" and llm["model"] == ""  # 실제 값은 config/local.toml
     assert llm["strict_mode"] is True
@@ -30,12 +30,12 @@ def test_default_llm_and_budget_values() -> None:
     assert tool_chars == [6_000, 8_000, 8_000]  # #211
 
 
-def test_default_tools_config() -> None:
+def test_default_tools_config(default_config_dir: Path) -> None:
     """도구 설정과 단계별 허용 목록(#211, #212, #213).
 
     비밀 값은 없고, 환경변수 이름은 [tools.siem]·[tools.ssh]에만 있다.
     """
-    tools = load_config(REPO_CONFIG)["tools"]
+    tools = load_config(default_config_dir)["tools"]
     assert tools["statement_timeout_ms"] == 5000
     assert tools["connect_timeout_seconds"] == 5
     assert tools["max_range_days"] == 7
