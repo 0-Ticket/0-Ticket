@@ -36,6 +36,8 @@ supersedes: []
 - **`threat_news`·`attack_techniques`를 L3 밖(화면용 API)에서도 읽는다.** 마이그레이션 0300 머리말의 "L3만 읽는 테이블"은 고치지 않았다(적용한 파일은 고치지 않는다, D-035).
 - **응답 모델은 API 전용이다.** 감싸는 모양(목록, `techniques`, `runs`, `next_cursor`)의 TypeScript 타입을 만드는 방법은 첫 화면 이슈가 정한다(데이터 계약, D-003). FastAPI가 `/openapi.json`을 만든다.
 - **CORS를 두지 않았다.** 화면 개발 서버가 다른 출처에서 부르면 막힌다. 첫 화면 이슈가 Vite 프록시를 쓸지, CORS를 열지 정한다.
+- **실제 모델로 만든 `confirmed` Hunt와 L3 Ticket은 API에서 보지 못했다.** Groq 확인에서 검증 run이 HTTP 400 `tool_use_failed`로 실패해 Hunt가 `pending`으로 남았다(아래 "확인 방법"). `ticket_id`와 `confirmed` 경로는 샘플 테스트로만 확인했다. 실제 모델 확인은 #224
+- **`config/local.toml`의 `[llm]`에 값이 있으면 `tests/test_agent_config.py::test_default_llm_and_budget_values`가 실패한다.** 기본값이 비어 있는지 보는 테스트가 local.toml을 덮어쓴 설정을 읽는다. 실제 모델 확인 뒤 테스트를 돌릴 때는 local.toml을 잠시 치운다
 - **로컬 PostgreSQL은 UTF-8로 만든다.** `initdb`를 로캘 없이 돌리면 SQL_ASCII가 되어 한글 샘플 INSERT가 `UnicodeEncodeError`로 실패한다(`-E UTF8 --locale=C.UTF-8`). compose와 CI 컨테이너는 UTF-8이다.
 
 ## 확인 방법
