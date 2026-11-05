@@ -9,13 +9,18 @@ Python 3.13과 [uv](https://docs.astral.sh/uv/)가 필요합니다.
 ```bash
 uv sync                 # 의존성 설치
 cp .env.example .env    # 필요한 값만 채움
-uv run pytest           # 테스트 (실제 LLM·DB·Qdrant 테스트는 기본 제외)
+uv run pytest           # 테스트 (실제 LLM·DB·Qdrant·임베딩 모델 테스트는 기본 제외)
 uv run ruff check .     # 린트
 uv run ruff format .    # 포맷
 docker compose up -d    # 개발용 PostgreSQL·Qdrant (.env의 POSTGRES_* 필요)
 ```
 
 실제 LLM·DB·Qdrant가 필요한 테스트는 `uv run pytest -m llm`, `-m db`, `-m qdrant`로 따로 실행합니다.
+`-m db`·`-m qdrant`는 `.env`의 `DATABASE_URL`·`QDRANT_URL`이 필요합니다.
+
+`uv run pytest -m embedder`는 실제 BGE-M3 ONNX 모델을 Hugging Face 기본 캐시에 내려받습니다.
+첫 실행은 `onnx/model.onnx_data` 약 2.27GB를 받아 시간과 디스크를 씁니다(두 번째부터는 캐시를
+씁니다). CI는 이 테스트를 돌리지 않습니다.
 
 ## 문서
 
