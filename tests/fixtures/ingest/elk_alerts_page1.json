@@ -1,0 +1,18 @@
+{
+  "pit_id": "pit-synthetic-2",
+  "hits": {
+    "hits": [
+      {
+        "_index": ".internal.alerts-security.alerts-default-000001",
+        "_id": "alert-1",
+        "_source": {
+          "@timestamp": "2026-11-04T02:00:00.000Z",
+          "kibana.alert.rule.name": "가짜 규칙: 반복 로그인 실패",
+          "kibana.alert.severity": "medium",
+          "user": {"name": "fake-user"}
+        },
+        "sort": [1793757600000, 3]
+      }
+    ]
+  }
+}

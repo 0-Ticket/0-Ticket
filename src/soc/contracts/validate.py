@@ -35,6 +35,8 @@ from soc.contracts.generated import (
     hunt_schema,
     hunt_verification_schema,
     incident_schema,
+    ingest_checkpoint_schema,
+    ingest_run_schema,
     raw_record_schema,
     ticket_schema,
 )
@@ -46,6 +48,11 @@ SCHEMA_DIR = Path(__file__).resolve().parents[3] / "contracts"
 # 계약 이름 → (schema 파일, 생성 모델)
 _CONTRACTS: dict[str, tuple[str, type[BaseModel]]] = {
     "raw_record": ("raw_record.schema.json", raw_record_schema.RawRecord),
+    "ingest_checkpoint": (
+        "ingest_checkpoint.schema.json",
+        ingest_checkpoint_schema.IngestCheckpoint,
+    ),
+    "ingest_run": ("ingest_run.schema.json", ingest_run_schema.IngestRun),
     "alert": ("alert.schema.json", alert_schema.Alert),
     "event": ("event.schema.json", event_schema.Event),
     "ticket": ("ticket.schema.json", ticket_schema.Ticket),
@@ -182,6 +189,9 @@ def _extra_violations(name: str, data: dict[str, Any]) -> list[Violation]:
     # 여기서는 4002 == 4002.0이 참이므로, schema에서 integer를 빼면 float가 이 비교를 지나간다.
     if name == "event" and data["ocsf_class"] != data["ocsf"]["class_uid"]:
         return [Violation("ocsf.class_uid", "equals_ocsf_class")]
+    # ingest_runs의 CHECK(finished_at >= started_at)와 같은 규칙
+    if name == "ingest_run" and data["finished_at"] < data["started_at"]:
+        return [Violation("finished_at", "not_before_started_at")]
     return []
 
 

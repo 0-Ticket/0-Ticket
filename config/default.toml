@@ -144,6 +144,60 @@ name = "cloudtrail"
 index = "logs-aws.cloudtrail-*"
 time_field = "@timestamp"
 
+# ELK 원본 수집(#218). Event·Alert 원본을 RawRecord로 보관하고 체크포인트로 이어서 조회한다.
+# 실행: uv run python -m soc.ingest (한 번 실행하고 끝난다. 주기 실행은 cron이 한다)
+[ingest]
+# 저장하는 RawRecord·체크포인트의 siem_profile. 바꾸면 같은 문서가 새로 저장된다
+siem_profile = "elk-default"
+# ELK 주소(http(s), 계정 정보 없이)와 읽기 전용 API 키를 담은 환경변수 이름(D-010)
+url_env = "ELK_URL"
+api_key_env = "ELK_API_KEY"
+# 한 번에 받는 문서 수(최대 10000)
+page_size = 500
+# 요청 단위 제한 시간(초)
+connect_timeout_seconds = 10
+read_timeout_seconds = 30
+# 응답 하나(PIT 열기, 페이지 하나)의 크기 상한(압축을 푼 바이트)과 마감 시간(초)
+max_bytes = 52_428_800  # 50MB
+deadline_seconds = 60
+
+# 조회 대상. kind: alert | event, key: alias·인덱스·데이터 스트림 패턴, time_field: 커서로 쓰는 시각 필드.
+# (kind, key)마다 체크포인트가 하나다. key를 바꾸면 그 대상은 처음부터 다시 조회한다.
+# Alert는 space별 alias(기본 space는 default).
+[[ingest.sources]]
+kind = "alert"
+key = ".alerts-security.alerts-default"
+time_field = "@timestamp"
+
+# Event는 웹·클라우드를 먼저 둔다. time_field는 아직 @timestamp다.
+# @timestamp를 커서로 쓰면 색인이 늦게 끝난 문서(@timestamp가 커서보다 과거)를 놓친다(로컬 확인: .local/elk/late_arrival.py).
+# event.ingested(ECS, 도착 시각)는 그 문제를 줄인다. 실제 ELK에 필드가 있는지 확인한 뒤 바꾼다:
+#   curl -s "$ELK_URL/logs-nginx.access-*/_search?size=1&filter_path=hits.hits._source.event.ingested"
+[[ingest.sources]]
+kind = "event"
+key = "logs-nginx.access-*"
+time_field = "@timestamp"
+
+[[ingest.sources]]
+kind = "event"
+key = "logs-apache.access-*"
+time_field = "@timestamp"
+
+[[ingest.sources]]
+kind = "event"
+key = "logs-aws.cloudtrail-*"
+time_field = "@timestamp"
+
+[[ingest.sources]]
+kind = "event"
+key = "logs-azure.activitylogs-*"
+time_field = "@timestamp"
+
+[[ingest.sources]]
+kind = "event"
+key = "logs-gcp.audit-*"
+time_field = "@timestamp"
+
 # SSH 호스트 점검 도구(#213, SSH 도구 D-011, asyncssh D-041). 읽기 전용 계정으로 접속한다.
 # 점검(processes, listening_ports, recent_logins, auth_log_tail, file_hash)의 명령과 인자 모양은
 # 코드(soc.tools.ssh)에 있다. 설정은 호스트마다 켤 점검만 정하고, 명령 문자열은 받지 않는다.

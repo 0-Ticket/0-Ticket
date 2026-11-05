@@ -1,0 +1,37 @@
+{
+  "records": [
+    {
+      "id": "raw_01a19f93-1150-7000-8000-000000000201",
+      "kind": "alert",
+      "siem_profile": "elk-dev",
+      "siem_ref": ".internal.alerts-security.alerts-default-000001/a1b2c3",
+      "fetched_at": 1793678580000,
+      "original": {
+        "_index": ".internal.alerts-security.alerts-default-000001",
+        "_id": "a1b2c3",
+        "_source": {"@timestamp": "2026-11-03T04:02:58.000Z", "kibana.alert.rule.name": "SQL Injection Attempt"},
+        "sort": [1793678578000]
+      }
+    },
+    {
+      "id": "raw_01a19f93-1150-7000-8000-000000000202",
+      "kind": "alert",
+      "siem_profile": "elk-dev",
+      "siem_ref": ".internal.alerts-security.alerts-default-000002/a1b2c3",
+      "fetched_at": 1793678580000,
+      "original": {
+        "_index": ".internal.alerts-security.alerts-default-000002",
+        "_id": "a1b2c3",
+        "_source": {"@timestamp": "2026-11-03T04:02:59.000Z", "kibana.alert.rule.name": "Path Traversal Attempt"},
+        "sort": [1793678579000]
+      }
+    }
+  ],
+  "checkpoint": {
+    "siem_profile": "elk-dev",
+    "source_kind": "alert",
+    "source_key": ".alerts-security.alerts-default",
+    "cursor": {"time_ms": 1793678579000},
+    "updated_at": 1793678580000
+  }
+}
