@@ -73,6 +73,42 @@
       },
       "events": [
         {
+          "ago_ms": 7980000,
+          "summary": "login success user=svc-monitor from 192.0.2.10 (monitor-01)",
+          "entities": [
+            {"type": "user", "value": "svc-monitor", "role": "target"},
+            {"type": "ip", "value": "192.0.2.10", "role": "src"},
+            {"type": "host", "value": "monitor-01", "role": "src"},
+            {"type": "host", "value": "db-03", "role": "dst"}
+          ],
+          "ocsf": {"class_uid": 3002, "activity_id": 1, "status_id": 1, "user": {"name": "svc-monitor"}, "src_endpoint": {"ip": "192.0.2.10", "hostname": "monitor-01"}},
+          "original": {"event": "login", "result": "success", "user": "svc-monitor"}
+        },
+        {
+          "ago_ms": 7920000,
+          "summary": "login success user=svc-monitor from 192.0.2.10 (monitor-01)",
+          "entities": [
+            {"type": "user", "value": "svc-monitor", "role": "target"},
+            {"type": "ip", "value": "192.0.2.10", "role": "src"},
+            {"type": "host", "value": "monitor-01", "role": "src"},
+            {"type": "host", "value": "db-03", "role": "dst"}
+          ],
+          "ocsf": {"class_uid": 3002, "activity_id": 1, "status_id": 1, "user": {"name": "svc-monitor"}, "src_endpoint": {"ip": "192.0.2.10", "hostname": "monitor-01"}},
+          "original": {"event": "login", "result": "success", "user": "svc-monitor"}
+        },
+        {
+          "ago_ms": 7860000,
+          "summary": "login success user=svc-monitor from 192.0.2.10 (monitor-01)",
+          "entities": [
+            {"type": "user", "value": "svc-monitor", "role": "target"},
+            {"type": "ip", "value": "192.0.2.10", "role": "src"},
+            {"type": "host", "value": "monitor-01", "role": "src"},
+            {"type": "host", "value": "db-03", "role": "dst"}
+          ],
+          "ocsf": {"class_uid": 3002, "activity_id": 1, "status_id": 1, "user": {"name": "svc-monitor"}, "src_endpoint": {"ip": "192.0.2.10", "hostname": "monitor-01"}},
+          "original": {"event": "login", "result": "success", "user": "svc-monitor"}
+        },
+        {
           "ago_ms": 7800000,
           "summary": "password changed for svc-monitor by dba.choi",
           "entities": [
@@ -85,10 +121,11 @@
         },
         {
           "ago_ms": 7260000,
-          "summary": "login failed user=svc-monitor reason=bad_password from 192.0.2.10",
+          "summary": "login failed user=svc-monitor reason=bad_password from 192.0.2.10 (monitor-01)",
           "entities": [
             {"type": "user", "value": "svc-monitor", "role": "target"},
             {"type": "ip", "value": "192.0.2.10", "role": "src"},
+            {"type": "host", "value": "monitor-01", "role": "src"},
             {"type": "host", "value": "db-03", "role": "dst"}
           ],
           "ocsf": {"class_uid": 3002, "activity_id": 1, "status_id": 2, "user": {"name": "svc-monitor"}, "src_endpoint": {"ip": "192.0.2.10", "hostname": "monitor-01"}},
@@ -96,10 +133,11 @@
         },
         {
           "ago_ms": 7200000,
-          "summary": "login failed user=svc-monitor reason=bad_password from 192.0.2.10",
+          "summary": "login failed user=svc-monitor reason=bad_password from 192.0.2.10 (monitor-01)",
           "entities": [
             {"type": "user", "value": "svc-monitor", "role": "target"},
             {"type": "ip", "value": "192.0.2.10", "role": "src"},
+            {"type": "host", "value": "monitor-01", "role": "src"},
             {"type": "host", "value": "db-03", "role": "dst"}
           ],
           "ocsf": {"class_uid": 3002, "activity_id": 1, "status_id": 2, "user": {"name": "svc-monitor"}, "src_endpoint": {"ip": "192.0.2.10", "hostname": "monitor-01"}},
@@ -107,10 +145,11 @@
         },
         {
           "ago_ms": 7140000,
-          "summary": "login failed user=svc-monitor reason=bad_password from 192.0.2.10",
+          "summary": "login failed user=svc-monitor reason=bad_password from 192.0.2.10 (monitor-01)",
           "entities": [
             {"type": "user", "value": "svc-monitor", "role": "target"},
             {"type": "ip", "value": "192.0.2.10", "role": "src"},
+            {"type": "host", "value": "monitor-01", "role": "src"},
             {"type": "host", "value": "db-03", "role": "dst"}
           ],
           "ocsf": {"class_uid": 3002, "activity_id": 1, "status_id": 2, "user": {"name": "svc-monitor"}, "src_endpoint": {"ip": "192.0.2.10", "hostname": "monitor-01"}},

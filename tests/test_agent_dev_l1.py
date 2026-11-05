@@ -81,6 +81,33 @@ def test_sample_has_two_scenarios_of_each_kind() -> None:
         assert scenario["events"], scenario["name"]  # 도구로 찾을 Event가 있다
 
 
+def test_benign_service_account_shows_its_normal_baseline_in_list_view() -> None:
+    """정상 근거가 query_records 목록(summary·entities)에 보여야 한다(#215 맥 실측 뒤 점검).
+
+    고치기 전 샘플은 감시 서버라는 단서(monitor-01)가 ocsf 안에만 있고 목록에는 없었으며, 비밀번호
+    변경 전의 성공 로그인도 없어 4라운드 모두 malicious로 판정됐다. 정상이라는 근거(같은 출처의
+    평소 성공 로그인 → 비밀번호 변경 → 같은 출처·같은 간격의 실패)를 목록에서 볼 수 있게 했다.
+    """
+    scenario = next(s for s in load_seed()["scenarios"] if s["name"] == "benign_service_account")
+    events = sorted(scenario["events"], key=lambda e: -e["ago_ms"])  # 오래된 것부터
+    change = next(i for i, e in enumerate(events) if "password changed" in e["summary"])
+    logins = [e for e in events if e["ocsf"]["class_uid"] == 3002]
+    for login in logins:
+        values = {(x["type"], x["value"]) for x in login["entities"]}
+        assert {("ip", "192.0.2.10"), ("host", "monitor-01")} <= values
+        assert "monitor-01" in login["summary"]
+    before = [e for e in events[:change] if e["ocsf"]["class_uid"] == 3002]
+    after = [e for e in events[change + 1 :] if e["ocsf"]["class_uid"] == 3002]
+    assert before and all(e["ocsf"]["status_id"] == 1 for e in before)  # 평소 성공
+    assert after and all(e["ocsf"]["status_id"] == 2 for e in after)  # 변경 뒤 실패
+    gaps = {
+        group[n]["ago_ms"] - group[n + 1]["ago_ms"]
+        for group in (before, after)
+        for n in range(len(group) - 1)
+    }
+    assert gaps == {60_000}  # 감시 주기와 같은 1분 간격
+
+
 def test_sample_does_not_share_entities_with_l3_seed() -> None:
     """같은 개발 DB에 L3 시드가 있어도 모델이 다른 시나리오의 레코드를 근거로 들지 않게 한다."""
     l3 = load_l3_seed()

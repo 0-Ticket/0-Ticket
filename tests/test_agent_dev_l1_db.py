@@ -34,7 +34,7 @@ FIXTURES = Path(__file__).parent / "fixtures"
 AGENT_LOG = json.loads((FIXTURES / "contracts" / "valid" / "agent_log.json").read_text("utf-8"))
 NOW = datetime(2026, 11, 5, 3, 0, tzinfo=UTC)
 TABLES = ("raw_records", "alerts", "events", "hunts")
-SEED_COUNTS = {"alerts": 6, "events": 17, "raw_records": 23}
+SEED_COUNTS = {"alerts": 6, "events": 20, "raw_records": 26}
 
 
 @pytest.fixture
@@ -157,4 +157,4 @@ def test_main_commands(db: str, monkeypatch: pytest.MonkeyPatch) -> None:
     assert cli("run") == 0
     assert len(calls) == 6
     assert cli("remove") == 0
-    assert out[-1] == "지움: alerts 6, events 17, raw_records 23"
+    assert out[-1] == "지움: alerts 6, events 20, raw_records 26"
