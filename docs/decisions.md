@@ -74,7 +74,8 @@
 | D-012 | RDB는 PostgreSQL | |
 | D-013 | 벡터 DB는 Qdrant. 판정이 끝난 Ticket·Case를 넣고 용도마다 컬렉션을 따로 둔다. L2 분류 후보용 컬렉션에는 Incident에 붙은 `linked` Ticket을 넣고 payload에 소속 Incident를 달아, 새 Ticket과 비슷한 Ticket이 속한 Incident를 후보로 삼는다 | Incident는 Ticket이 붙을수록 텍스트가 길어져 닮은 부분이 묻히거나 입력 길이에서 잘릴 수 있으므로 통째로 임베딩하지 않는다. 분류 후보용 컬렉션은 PostgreSQL을 베낀 파생 색인이고 payload의 관계는 복사본이며 권위 원본은 PostgreSQL이다. 일부 point 누락은 자동으로 감지하지 않고 PostgreSQL에서 컬렉션을 다시 만드는 명령으로 복구한다. Qdrant 쓰기는 PostgreSQL 트랜잭션이나 outbox에 묶지 않는다 |
 | D-014 | Ticket·Case는 외부 도구 없이 자체 테이블과 내부 화면으로 관리한다 | |
-| D-031 | 기본 임베딩 모델은 BAAI bge-m3의 dense 표현이며 로컬 ONNX로 실행한다. 기본 벡터는 1024차원이고 거리 방식은 Cosine이다. 모델 ID와 revision은 설정 값이며 컬렉션 이름은 용도·모델 ID·revision에서 파생한다 | sparse·multi-vector는 쓰지 않고 torch를 설치하지 않는다. ONNX 실행 라이브러리와 정확한 revision은 처음 쓰는 이슈에서 정하되 revision은 고정한다. 임베더가 출력 차원을 알려 주고 컬렉션은 그 값을 사용해 작은 차원의 가짜 임베더로도 테스트할 수 있게 한다 |
+| D-031 | 기본 임베딩 모델은 BAAI bge-m3의 dense 표현이며 로컬 ONNX로 실행한다. 기본 벡터는 1024차원이고 거리 방식은 Cosine이다. 모델 ID와 revision은 설정 값이며 컬렉션 이름은 용도·모델 ID·revision에서 파생한다 | sparse·multi-vector는 쓰지 않고 torch를 설치하지 않는다. 실행 라이브러리는 D-044를 따른다. revision은 설정 값이지만 고정한다. 임베더가 출력 차원을 알려 주고 컬렉션은 그 값을 사용해 작은 차원의 가짜 임베더로도 테스트할 수 있게 한다 |
+| D-044 | 벡터 DB 클라이언트와 임베딩 실행은 `qdrant-client==1.20.0`, `onnxruntime==1.31.1`, `huggingface-hub==2.4.0`, `tokenizers==0.23.3`, `numpy==2.5.4`. FastEmbed는 bge-m3를 공식 지원하지 않아 쓰지 않고, torch를 끌어오는 경로도 쓰지 않는다 | 2GB가 넘는 torch를 `uv sync`와 CI에 올리지 않기 위해서다. bge-m3 ONNX는 외부 데이터 방식이라 `model.onnx`와 함께 약 2.27GB의 `model.onnx_data`를 요구하고, tokenizer 파일도 같은 revision에서 받는다. 모델 ID와 revision은 설정 값이다(D-031) |
 
 ### 데이터 계약 · DB
 
@@ -135,6 +136,7 @@
 
 새 기록을 맨 위에 쓴다.
 
+- #257 · 벡터 DB 클라이언트와 임베딩 실행 라이브러리(D-044)를 버전과 함께 확정하고, 임베딩 모델(D-031)이 D-044를 가리키게 함. L2 담당이 정함(#257)
 - #248 · Incident 분류 방법(D-027)의 후보 경로를 벡터 검색 우선·직접 조회 선택과 fallback으로 바꾸고, Qdrant(D-013)에 용도별 컬렉션과 분류 후보용 `linked` Ticket 적재를 명시함. 팀 합의(#248). 기본 임베딩 모델(D-031)을 bge-m3 dense·로컬 ONNX·1024차원·Cosine으로 확정하고 모델 ID·revision별로 컬렉션을 가름. L2 담당이 정함
 - #251 · L1 판정 결과 조건(D-025)을 확정했다. `[agent.l1].confidence_threshold`는 0.8이고, 확정 판정만 상태에 적용한다. Alert 1차 판정의 benign은 `held`, 임계값 이상 malicious는 Ticket으로 승격한다. Ticket은 임계값 이상 benign이면 `closed`, malicious이면 `escalated`; `undetermined`·낮은 확신도·최종 실패는 `held`다. 실패는 최초 실행 포함 3회까지 시도하고 `cancelled`는 세지 않는다. 상태를 다시 확인한 뒤 Alert 갱신과 Ticket 생성을 한 트랜잭션으로 한다. 실패 횟수의 저장 위치는 구현 이슈에서 정한다.
 - #234 · D-007 검증 방식을 클래스별 공식 JSON Schema 파일에서 OCSF 서버의 1.9.0 클래스·객체 정의로 바꾼다. OCSF가 클래스별 JSON Schema를 배포하지 않는다는 근거로 사람이 B안을 승인했다. 계획과 구현 위치는 `docs/plans/234-ocsf-alert-event.md`의 "바뀐 점"과 `src/soc/normalize/ocsf/SOURCE.md`에 기록했다.
