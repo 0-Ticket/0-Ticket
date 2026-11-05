@@ -10,8 +10,8 @@ from soc.l3.intel.collect import ConfigError, read_settings
 REPO_CONFIG = Path(__file__).resolve().parents[1] / "config"
 
 
-def test_default_config_reads_into_settings() -> None:
-    config = load_config(REPO_CONFIG)
+def test_default_config_reads_into_settings(default_config_dir: Path) -> None:
+    config = load_config(default_config_dir)
     assert set(config) == {"l3"}
     settings = read_settings(config["l3"])
     assert [(s.name, s.kind) for s in settings.sources] == [
@@ -60,10 +60,6 @@ def test_missing_l3_section_gives_empty(tmp_path: Path) -> None:
     assert load_config(tmp_path) == {"l3": {}}
 
 
-def valid_l3() -> dict:
-    return read_l3(REPO_CONFIG)
-
-
 def read_l3(directory: Path) -> dict:
     return load_config(directory)["l3"]
 
@@ -81,8 +77,8 @@ def read_l3(directory: Path) -> dict:
         lambda c: c["intel"]["limits"].pop("cisa_kev"),
     ],
 )
-def test_bad_settings_are_rejected(change) -> None:
-    l3 = valid_l3()
+def test_bad_settings_are_rejected(change, default_config_dir: Path) -> None:
+    l3 = read_l3(default_config_dir)
     change(l3)
     with pytest.raises(ConfigError):
         read_settings(l3)

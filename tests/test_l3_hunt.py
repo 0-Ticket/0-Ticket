@@ -1,6 +1,7 @@
 """L3 가설 헌팅의 DB 없는 규칙(#223): 설정, 결과 낮추기, 엔티티 합치기, 작업 프롬프트."""
 
 import hashlib
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -30,8 +31,9 @@ def l3(**hunt: Any) -> dict[str, Any]:
     return {"hunt": {**base, **hunt}, "intel": {"attack": {"version": "20.0"}}}
 
 
-def test_default_config_has_hunt_settings() -> None:
-    settings = read_hunt_settings(load_config()["l3"])
+def test_default_config_has_hunt_settings(default_config_dir: Path) -> None:
+    defaults = load_config(default_config_dir)["l3"]
+    settings = read_hunt_settings(defaults)
 
     assert settings.collect_before is True
     assert (settings.news_window_days, settings.news_limit, settings.case_limit) == (3, 5, 3)
@@ -39,7 +41,7 @@ def test_default_config_has_hunt_settings() -> None:
     assert settings.lookback_days == 7
     assert settings.confirm_threshold == 0.7
     assert settings.max_attempts == 2
-    assert settings.attack_version == load_config()["l3"]["intel"]["attack"]["version"]
+    assert settings.attack_version == defaults["intel"]["attack"]["version"]
 
 
 @pytest.mark.parametrize(

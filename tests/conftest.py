@@ -6,13 +6,30 @@ DATABASE_URL로 접속해 soc_test_<랜덤> DB를 만들고, 테스트가 끝나
 
 import os
 import secrets
+import shutil
 from collections.abc import Iterator
 from contextlib import contextmanager
+from pathlib import Path
 
 import psycopg
 import pytest
 from psycopg import sql
 from psycopg.conninfo import make_conninfo
+
+REPO_CONFIG = Path(__file__).resolve().parents[1] / "config"
+
+
+@pytest.fixture
+def default_config_dir(tmp_path: Path) -> Path:
+    """저장소 config/default.toml만 복사한 폴더(#224).
+
+    기본값을 검사하는 테스트가 config/local.toml(커밋 안 함, 사람마다 다름)의 영향을 받지 않게 한다.
+    설정 로더에 load_config(default_config_dir)로 넘긴다.
+    """
+    directory = tmp_path / "default-config"
+    directory.mkdir()
+    shutil.copyfile(REPO_CONFIG / "default.toml", directory / "default.toml")
+    return directory
 
 
 class HiddenUrl(str):

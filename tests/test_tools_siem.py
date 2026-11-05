@@ -752,8 +752,8 @@ def test_api_key_and_url_are_redacted_from_agent_log(elk: FakeElk) -> None:
 # 기본 설정·운영 레지스트리·마커
 
 
-def test_default_config_has_siem_settings_without_secrets() -> None:
-    tools = load_config(REPO / "config")["tools"]
+def test_default_config_has_siem_settings_without_secrets(default_config_dir: Path) -> None:
+    tools = load_config(default_config_dir)["tools"]
     siem = tools["siem"]
     assert siem["url_env"] == "ELK_URL"
     assert siem["api_key_env"] == "ELK_API_KEY"

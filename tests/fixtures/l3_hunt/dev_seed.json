@@ -1,0 +1,136 @@
+{
+  "description": "개발 DB 전용 시드(#224, uv run python -m soc.l3 dev-seed). 손으로 만든 값이다. ago_ms는 넣는 시점의 지금에서 뺄 밀리초다. IP는 문서용 대역, 도메인은 example.com, 계정은 가짜 이름이다",
+  "scenarios": [
+    {
+      "name": "threat",
+      "hunt": {
+        "hypothesis": "외부 IP가 쇼핑몰 웹 서버의 파일 업로드 기능으로 웹셸을 올리고, 그 웹셸로 서버에서 명령을 실행했다",
+        "attack_techniques": ["T1190", "T1505.003"]
+      },
+      "alerts": [
+        {
+          "ago_ms": 86400000,
+          "severity": 4,
+          "title": "Web Shell Upload",
+          "rule_id": "dev-seed-webshell-upload",
+          "entities": [
+            {"type": "ip", "value": "203.0.113.45", "role": "src"},
+            {"type": "host", "value": "web-01", "role": "dst"},
+            {"type": "url", "value": "https://shop.example.com/uploads/img_7731.php", "role": "target"}
+          ],
+          "ocsf": {
+            "class_uid": 2004,
+            "finding_info": {"title": "Web Shell Upload"}
+          },
+          "original": {"rule": "Web Shell Upload", "host": "web-01"}
+        }
+      ],
+      "events": [
+        {
+          "ago_ms": 86460000,
+          "summary": "POST /upload.php 200",
+          "entities": [
+            {"type": "ip", "value": "203.0.113.45", "role": "src"},
+            {"type": "url", "value": "https://shop.example.com/upload.php", "role": "target"}
+          ],
+          "ocsf": {
+            "class_uid": 4002,
+            "http_request": {
+              "http_method": "POST",
+              "url": {"hostname": "shop.example.com", "path": "/upload.php"},
+              "user_agent": "python-requests/2.31.0"
+            },
+            "http_response": {"code": 200},
+            "src_endpoint": {"ip": "203.0.113.45"}
+          },
+          "original": {"request": "POST /upload.php", "status": 200}
+        },
+        {
+          "ago_ms": 86100000,
+          "summary": "GET /uploads/img_7731.php?cmd=id 200",
+          "entities": [
+            {"type": "ip", "value": "203.0.113.45", "role": "src"},
+            {"type": "url", "value": "https://shop.example.com/uploads/img_7731.php", "role": "target"}
+          ],
+          "ocsf": {
+            "class_uid": 4002,
+            "http_request": {
+              "http_method": "GET",
+              "url": {"hostname": "shop.example.com", "path": "/uploads/img_7731.php", "query_string": "cmd=id"},
+              "user_agent": "python-requests/2.31.0"
+            },
+            "http_response": {"code": 200},
+            "src_endpoint": {"ip": "203.0.113.45"}
+          },
+          "original": {"request": "GET /uploads/img_7731.php?cmd=id", "status": 200}
+        },
+        {
+          "ago_ms": 85800000,
+          "summary": "GET /uploads/img_7731.php?cmd=cat+/etc/passwd 200",
+          "entities": [
+            {"type": "ip", "value": "203.0.113.45", "role": "src"},
+            {"type": "url", "value": "https://shop.example.com/uploads/img_7731.php", "role": "target"}
+          ],
+          "ocsf": {
+            "class_uid": 4002,
+            "http_request": {
+              "http_method": "GET",
+              "url": {"hostname": "shop.example.com", "path": "/uploads/img_7731.php", "query_string": "cmd=cat+/etc/passwd"},
+              "user_agent": "python-requests/2.31.0"
+            },
+            "http_response": {"code": 200},
+            "src_endpoint": {"ip": "203.0.113.45"}
+          },
+          "original": {"request": "GET /uploads/img_7731.php?cmd=cat+/etc/passwd", "status": 200}
+        }
+      ]
+    },
+    {
+      "name": "no_threat",
+      "hunt": {
+        "hypothesis": "외부 IP가 VPN 계정에 비밀번호 무차별 대입을 해서 로그인에 성공했다",
+        "attack_techniques": ["T1110.001", "T1078"]
+      },
+      "alerts": [],
+      "events": [
+        {
+          "ago_ms": 172800000,
+          "summary": "VPN 로그인 성공 user=minji.park",
+          "entities": [
+            {"type": "ip", "value": "198.51.100.23", "role": "src"},
+            {"type": "user", "value": "minji.park", "role": "actor"},
+            {"type": "host", "value": "vpn-01", "role": "dst"}
+          ],
+          "ocsf": {
+            "class_uid": 3002,
+            "activity_id": 1,
+            "status_id": 1,
+            "user": {"name": "minji.park"},
+            "src_endpoint": {"ip": "198.51.100.23"},
+            "dst_endpoint": {"hostname": "vpn-01"}
+          },
+          "original": {"event": "vpn_login", "result": "success", "user": "minji.park"}
+        },
+        {
+          "ago_ms": 172500000,
+          "summary": "GET /index.html 200",
+          "entities": [
+            {"type": "ip", "value": "198.51.100.77", "role": "src"},
+            {"type": "url", "value": "https://shop.example.com/index.html", "role": "target"}
+          ],
+          "ocsf": {
+            "class_uid": 4002,
+            "http_request": {
+              "http_method": "GET",
+              "url": {"hostname": "shop.example.com", "path": "/index.html"},
+              "user_agent": "Mozilla/5.0"
+            },
+            "http_response": {"code": 200},
+            "src_endpoint": {"ip": "198.51.100.77"}
+          },
+          "original": {"request": "GET /index.html", "status": 200}
+        }
+      ]
+    }
+  ]
+}
