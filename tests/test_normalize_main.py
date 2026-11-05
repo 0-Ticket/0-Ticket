@@ -3,6 +3,7 @@
 import pytest
 
 from soc.normalize.__main__ import main
+from soc.normalize.retry import main as retry_main
 
 
 def test_missing_write_database_url_exits_with_2(
@@ -11,4 +12,13 @@ def test_missing_write_database_url_exits_with_2(
     monkeypatch.delenv("DATABASE_URL", raising=False)
 
     assert main() == 2
+    assert "DATABASE_URL" in capsys.readouterr().err
+
+
+def test_retry_command_requires_write_database_url(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+
+    assert retry_main() == 2
     assert "DATABASE_URL" in capsys.readouterr().err
