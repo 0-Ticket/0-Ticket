@@ -35,10 +35,10 @@ supersedes: []
 
 ## 확인 방법
 
-- `uv run ruff format --check .`: 217개 파일 검사 통과
+- `uv run ruff format .`: 218개 파일 변경 없음
 - `uv run ruff check .`: 통과
 - Windows의 `uv run pytest`: 1,121개 통과, 293개 제외, 1개 실패. 기존
   `test_name_ending_in_newline_is_not_a_migration`이 줄바꿈 파일명을 만들 수 없어 실패했다.
-- Linux 재검사를 위해 Docker를 확인했지만 Docker Desktop 엔진이 실행 중이 아니어서 돌리지
-  못했다.
+- WSL Ubuntu의 임시 uv·Python 3.13.18 환경에서 `uv run --locked pytest`: 1,122개 통과,
+  293개 제외
 - 문서만 바뀌어 새 fixture나 동작 테스트는 추가하지 않았다.
