@@ -1,0 +1,371 @@
+{
+  "description": "L1 실측용 개발 DB 시드(#215, uv run python -m soc.agent.dev_l1). 손으로 만든 값이다. ago_ms는 넣는 시점의 지금에서 뺄 밀리초다. IP는 문서용 대역, 도메인은 example.com, 계정·호스트는 가짜 이름이다. 엔티티 값은 L3 시드(tests/fixtures/l3_hunt/dev_seed.json)와 겹치지 않는다. expected는 사람이 읽는 참고값이고 단언하지 않는다",
+  "task_prompt": "[작업: L1 Alert 1차 판정(측정용)]\n<data> 안의 alert 하나가 위협인지 판정한다.\n\n- window_start_ms·window_end_ms는 코드가 계산한 조회 구간(UTC epoch 밀리초)이다. 시각은 직접 계산하지 않는다.\n- 판정 전에 도구로 같은 호스트·계정·IP의 Event와 Alert를 조회한다. query_records 등 도구의 start_ms에는 window_start_ms를, end_ms에는 window_end_ms를 그대로 넣는다.\n- decision은 다음 중 하나다.\n  - benign: 정상 활동으로 설명된다. 그렇게 본 근거 ID를 든다\n  - malicious: 공격 흔적이 확인된다. 그 근거 ID를 든다\n  - undetermined: 근거가 부족해 어느 쪽으로도 판단할 수 없다\n- confidence는 0~1 사이의 확신도다. reason에는 판단 이유를 짧게 적는다.\n- evidence_ids에는 근거 장부에 있는 ID(alt_, evt_, 도구 결과의 call_id인 agl_)만 쓴다.\n\n답은 아래 모양의 JSON 하나다.\n{\"decision\": \"benign\", \"confidence\": 0.8, \"reason\": \"이유\", \"evidence_ids\": [\"evt_…\"]}",
+  "scenarios": [
+    {
+      "name": "benign_scheduled_task",
+      "expected": "benign",
+      "alert": {
+        "ago_ms": 3600000,
+        "severity": 3,
+        "title": "Scheduled Task Created",
+        "rule_id": "dev-l1-schtask-create",
+        "entities": [
+          {"type": "host", "value": "fin-ws-12", "role": "target"},
+          {"type": "user", "value": "it.yoon", "role": "actor"},
+          {"type": "process", "value": "schtasks.exe", "role": null}
+        ],
+        "ocsf": {"class_uid": 2004, "finding_info": {"title": "Scheduled Task Created"}},
+        "original": {"rule": "Scheduled Task Created", "host": "fin-ws-12"}
+      },
+      "events": [
+        {
+          "ago_ms": 3605000,
+          "summary": "schtasks.exe /create /tn WeeklyDiskCleanup /sc weekly by it.yoon",
+          "entities": [
+            {"type": "host", "value": "fin-ws-12", "role": "target"},
+            {"type": "user", "value": "it.yoon", "role": "actor"},
+            {"type": "process", "value": "schtasks.exe", "role": null}
+          ],
+          "ocsf": {
+            "class_uid": 1007,
+            "activity_id": 1,
+            "process": {"name": "schtasks.exe", "cmd_line": "schtasks.exe /create /tn WeeklyDiskCleanup /tr cleanmgr.exe /sc weekly", "parent_process": {"name": "mmc.exe"}},
+            "actor": {"user": {"name": "it.yoon"}},
+            "device": {"hostname": "fin-ws-12"}
+          },
+          "original": {"event": "process_start", "image": "schtasks.exe", "host": "fin-ws-12"}
+        },
+        {
+          "ago_ms": 522000000,
+          "summary": "schtasks.exe /create /tn WeeklyDiskCleanup /sc weekly by it.yoon on fin-ws-11",
+          "entities": [
+            {"type": "host", "value": "fin-ws-11", "role": "target"},
+            {"type": "user", "value": "it.yoon", "role": "actor"},
+            {"type": "process", "value": "schtasks.exe", "role": null}
+          ],
+          "ocsf": {
+            "class_uid": 1007,
+            "activity_id": 1,
+            "process": {"name": "schtasks.exe", "cmd_line": "schtasks.exe /create /tn WeeklyDiskCleanup /tr cleanmgr.exe /sc weekly", "parent_process": {"name": "mmc.exe"}},
+            "actor": {"user": {"name": "it.yoon"}},
+            "device": {"hostname": "fin-ws-11"}
+          },
+          "original": {"event": "process_start", "image": "schtasks.exe", "host": "fin-ws-11"}
+        }
+      ]
+    },
+    {
+      "name": "benign_service_account",
+      "expected": "benign",
+      "alert": {
+        "ago_ms": 7200000,
+        "severity": 3,
+        "title": "Multiple Failed Logins",
+        "rule_id": "dev-l1-failed-logins",
+        "entities": [
+          {"type": "user", "value": "svc-monitor", "role": "target"},
+          {"type": "ip", "value": "192.0.2.10", "role": "src"},
+          {"type": "host", "value": "db-03", "role": "dst"}
+        ],
+        "ocsf": {"class_uid": 2004, "finding_info": {"title": "Multiple Failed Logins"}},
+        "original": {"rule": "Multiple Failed Logins", "user": "svc-monitor"}
+      },
+      "events": [
+        {
+          "ago_ms": 7980000,
+          "summary": "login success user=svc-monitor from 192.0.2.10 (monitor-01)",
+          "entities": [
+            {"type": "user", "value": "svc-monitor", "role": "target"},
+            {"type": "ip", "value": "192.0.2.10", "role": "src"},
+            {"type": "host", "value": "monitor-01", "role": "src"},
+            {"type": "host", "value": "db-03", "role": "dst"}
+          ],
+          "ocsf": {"class_uid": 3002, "activity_id": 1, "status_id": 1, "user": {"name": "svc-monitor"}, "src_endpoint": {"ip": "192.0.2.10", "hostname": "monitor-01"}},
+          "original": {"event": "login", "result": "success", "user": "svc-monitor"}
+        },
+        {
+          "ago_ms": 7920000,
+          "summary": "login success user=svc-monitor from 192.0.2.10 (monitor-01)",
+          "entities": [
+            {"type": "user", "value": "svc-monitor", "role": "target"},
+            {"type": "ip", "value": "192.0.2.10", "role": "src"},
+            {"type": "host", "value": "monitor-01", "role": "src"},
+            {"type": "host", "value": "db-03", "role": "dst"}
+          ],
+          "ocsf": {"class_uid": 3002, "activity_id": 1, "status_id": 1, "user": {"name": "svc-monitor"}, "src_endpoint": {"ip": "192.0.2.10", "hostname": "monitor-01"}},
+          "original": {"event": "login", "result": "success", "user": "svc-monitor"}
+        },
+        {
+          "ago_ms": 7860000,
+          "summary": "login success user=svc-monitor from 192.0.2.10 (monitor-01)",
+          "entities": [
+            {"type": "user", "value": "svc-monitor", "role": "target"},
+            {"type": "ip", "value": "192.0.2.10", "role": "src"},
+            {"type": "host", "value": "monitor-01", "role": "src"},
+            {"type": "host", "value": "db-03", "role": "dst"}
+          ],
+          "ocsf": {"class_uid": 3002, "activity_id": 1, "status_id": 1, "user": {"name": "svc-monitor"}, "src_endpoint": {"ip": "192.0.2.10", "hostname": "monitor-01"}},
+          "original": {"event": "login", "result": "success", "user": "svc-monitor"}
+        },
+        {
+          "ago_ms": 7800000,
+          "summary": "password changed for svc-monitor by dba.choi",
+          "entities": [
+            {"type": "user", "value": "svc-monitor", "role": "target"},
+            {"type": "user", "value": "dba.choi", "role": "actor"},
+            {"type": "host", "value": "db-03", "role": "dst"}
+          ],
+          "ocsf": {"class_uid": 3001, "activity_id": 3, "user": {"name": "svc-monitor"}, "actor": {"user": {"name": "dba.choi"}}},
+          "original": {"event": "password_change", "user": "svc-monitor"}
+        },
+        {
+          "ago_ms": 7260000,
+          "summary": "login failed user=svc-monitor reason=bad_password from 192.0.2.10 (monitor-01)",
+          "entities": [
+            {"type": "user", "value": "svc-monitor", "role": "target"},
+            {"type": "ip", "value": "192.0.2.10", "role": "src"},
+            {"type": "host", "value": "monitor-01", "role": "src"},
+            {"type": "host", "value": "db-03", "role": "dst"}
+          ],
+          "ocsf": {"class_uid": 3002, "activity_id": 1, "status_id": 2, "user": {"name": "svc-monitor"}, "src_endpoint": {"ip": "192.0.2.10", "hostname": "monitor-01"}},
+          "original": {"event": "login", "result": "failure", "user": "svc-monitor"}
+        },
+        {
+          "ago_ms": 7200000,
+          "summary": "login failed user=svc-monitor reason=bad_password from 192.0.2.10 (monitor-01)",
+          "entities": [
+            {"type": "user", "value": "svc-monitor", "role": "target"},
+            {"type": "ip", "value": "192.0.2.10", "role": "src"},
+            {"type": "host", "value": "monitor-01", "role": "src"},
+            {"type": "host", "value": "db-03", "role": "dst"}
+          ],
+          "ocsf": {"class_uid": 3002, "activity_id": 1, "status_id": 2, "user": {"name": "svc-monitor"}, "src_endpoint": {"ip": "192.0.2.10", "hostname": "monitor-01"}},
+          "original": {"event": "login", "result": "failure", "user": "svc-monitor"}
+        },
+        {
+          "ago_ms": 7140000,
+          "summary": "login failed user=svc-monitor reason=bad_password from 192.0.2.10 (monitor-01)",
+          "entities": [
+            {"type": "user", "value": "svc-monitor", "role": "target"},
+            {"type": "ip", "value": "192.0.2.10", "role": "src"},
+            {"type": "host", "value": "monitor-01", "role": "src"},
+            {"type": "host", "value": "db-03", "role": "dst"}
+          ],
+          "ocsf": {"class_uid": 3002, "activity_id": 1, "status_id": 2, "user": {"name": "svc-monitor"}, "src_endpoint": {"ip": "192.0.2.10", "hostname": "monitor-01"}},
+          "original": {"event": "login", "result": "failure", "user": "svc-monitor"}
+        }
+      ]
+    },
+    {
+      "name": "malicious_powershell",
+      "expected": "malicious",
+      "alert": {
+        "ago_ms": 5400000,
+        "severity": 5,
+        "title": "Encoded PowerShell Command",
+        "rule_id": "dev-l1-encoded-powershell",
+        "entities": [
+          {"type": "host", "value": "hr-ws-07", "role": "target"},
+          {"type": "user", "value": "hana.lee", "role": "actor"},
+          {"type": "process", "value": "powershell.exe", "role": null}
+        ],
+        "ocsf": {"class_uid": 2004, "finding_info": {"title": "Encoded PowerShell Command"}},
+        "original": {"rule": "Encoded PowerShell Command", "host": "hr-ws-07"}
+      },
+      "events": [
+        {
+          "ago_ms": 5405000,
+          "summary": "powershell.exe -NoProfile -WindowStyle Hidden -EncodedCommand <생략> parent=winword.exe",
+          "entities": [
+            {"type": "host", "value": "hr-ws-07", "role": "target"},
+            {"type": "user", "value": "hana.lee", "role": "actor"},
+            {"type": "process", "value": "powershell.exe", "role": null}
+          ],
+          "ocsf": {
+            "class_uid": 1007,
+            "activity_id": 1,
+            "process": {"name": "powershell.exe", "cmd_line": "powershell.exe -NoProfile -WindowStyle Hidden -EncodedCommand <생략>", "parent_process": {"name": "winword.exe"}},
+            "actor": {"user": {"name": "hana.lee"}},
+            "device": {"hostname": "hr-ws-07"}
+          },
+          "original": {"event": "process_start", "image": "powershell.exe", "parent": "winword.exe"}
+        },
+        {
+          "ago_ms": 5398000,
+          "summary": "hr-ws-07 → 203.0.113.80:443 dl.example.net (powershell.exe)",
+          "entities": [
+            {"type": "host", "value": "hr-ws-07", "role": "src"},
+            {"type": "ip", "value": "203.0.113.80", "role": "dst"},
+            {"type": "domain", "value": "dl.example.net", "role": "dst"}
+          ],
+          "ocsf": {"class_uid": 4001, "activity_id": 1, "dst_endpoint": {"ip": "203.0.113.80", "port": 443, "hostname": "dl.example.net"}, "src_endpoint": {"hostname": "hr-ws-07"}, "traffic": {"bytes_in": 482113}},
+          "original": {"event": "network_connect", "dst": "203.0.113.80:443"}
+        },
+        {
+          "ago_ms": 5390000,
+          "summary": "file created C:\\Users\\hana.lee\\AppData\\Roaming\\upd.exe by powershell.exe",
+          "entities": [
+            {"type": "host", "value": "hr-ws-07", "role": "target"},
+            {"type": "file_hash", "value": "0000000000000000000000000000000000000000000000000000000000000001", "role": null}
+          ],
+          "ocsf": {"class_uid": 1001, "activity_id": 1, "file": {"name": "upd.exe", "path": "C:\\Users\\hana.lee\\AppData\\Roaming\\upd.exe"}, "device": {"hostname": "hr-ws-07"}},
+          "original": {"event": "file_create", "path": "C:\\Users\\hana.lee\\AppData\\Roaming\\upd.exe"}
+        },
+        {
+          "ago_ms": 5385000,
+          "summary": "upd.exe started parent=powershell.exe",
+          "entities": [
+            {"type": "host", "value": "hr-ws-07", "role": "target"},
+            {"type": "process", "value": "upd.exe", "role": null}
+          ],
+          "ocsf": {"class_uid": 1007, "activity_id": 1, "process": {"name": "upd.exe", "parent_process": {"name": "powershell.exe"}}, "device": {"hostname": "hr-ws-07"}},
+          "original": {"event": "process_start", "image": "upd.exe", "parent": "powershell.exe"}
+        }
+      ]
+    },
+    {
+      "name": "malicious_web_attack",
+      "expected": "malicious",
+      "alert": {
+        "ago_ms": 10800000,
+        "severity": 4,
+        "title": "SQL Injection Attempt",
+        "rule_id": "dev-l1-sqli",
+        "entities": [
+          {"type": "ip", "value": "203.0.113.99", "role": "src"},
+          {"type": "host", "value": "store-web-01", "role": "dst"},
+          {"type": "url", "value": "https://store.example.com/product", "role": "target"}
+        ],
+        "ocsf": {"class_uid": 2004, "finding_info": {"title": "SQL Injection Attempt"}},
+        "original": {"rule": "SQL Injection Attempt", "host": "store-web-01"}
+      },
+      "events": [
+        {
+          "ago_ms": 10800000,
+          "summary": "GET /product?id=1'+UNION+SELECT+username,password+FROM+users-- 200 bytes=48211",
+          "entities": [
+            {"type": "ip", "value": "203.0.113.99", "role": "src"},
+            {"type": "url", "value": "https://store.example.com/product", "role": "target"}
+          ],
+          "ocsf": {
+            "class_uid": 4002,
+            "http_request": {"http_method": "GET", "url": {"hostname": "store.example.com", "path": "/product", "query_string": "id=1'+UNION+SELECT+username,password+FROM+users--"}, "user_agent": "sqlmap/1.8"},
+            "http_response": {"code": 200, "length": 48211},
+            "src_endpoint": {"ip": "203.0.113.99"}
+          },
+          "original": {"request": "GET /product?id=1' UNION SELECT ...", "status": 200}
+        },
+        {
+          "ago_ms": 10500000,
+          "summary": "POST /admin/login 302 → /admin",
+          "entities": [
+            {"type": "ip", "value": "203.0.113.99", "role": "src"},
+            {"type": "url", "value": "https://store.example.com/admin/login", "role": "target"}
+          ],
+          "ocsf": {
+            "class_uid": 4002,
+            "http_request": {"http_method": "POST", "url": {"hostname": "store.example.com", "path": "/admin/login"}, "user_agent": "Mozilla/5.0"},
+            "http_response": {"code": 302},
+            "src_endpoint": {"ip": "203.0.113.99"}
+          },
+          "original": {"request": "POST /admin/login", "status": 302}
+        },
+        {
+          "ago_ms": 10440000,
+          "summary": "GET /admin/export?table=customers 200 bytes=2093311",
+          "entities": [
+            {"type": "ip", "value": "203.0.113.99", "role": "src"},
+            {"type": "url", "value": "https://store.example.com/admin/export", "role": "target"}
+          ],
+          "ocsf": {
+            "class_uid": 4002,
+            "http_request": {"http_method": "GET", "url": {"hostname": "store.example.com", "path": "/admin/export", "query_string": "table=customers"}, "user_agent": "Mozilla/5.0"},
+            "http_response": {"code": 200, "length": 2093311},
+            "src_endpoint": {"ip": "203.0.113.99"}
+          },
+          "original": {"request": "GET /admin/export?table=customers", "status": 200}
+        }
+      ]
+    },
+    {
+      "name": "ambiguous_new_location",
+      "expected": "undetermined",
+      "alert": {
+        "ago_ms": 14400000,
+        "severity": 3,
+        "title": "Login From New Location",
+        "rule_id": "dev-l1-new-location",
+        "entities": [
+          {"type": "user", "value": "jiwoo.kang", "role": "actor"},
+          {"type": "ip", "value": "198.51.100.140", "role": "src"},
+          {"type": "host", "value": "mail-gw", "role": "dst"}
+        ],
+        "ocsf": {"class_uid": 2004, "finding_info": {"title": "Login From New Location"}},
+        "original": {"rule": "Login From New Location", "user": "jiwoo.kang"}
+      },
+      "events": [
+        {
+          "ago_ms": 14400000,
+          "summary": "mail login success user=jiwoo.kang from 198.51.100.140",
+          "entities": [
+            {"type": "user", "value": "jiwoo.kang", "role": "actor"},
+            {"type": "ip", "value": "198.51.100.140", "role": "src"},
+            {"type": "host", "value": "mail-gw", "role": "dst"}
+          ],
+          "ocsf": {"class_uid": 3002, "activity_id": 1, "status_id": 1, "user": {"name": "jiwoo.kang"}, "src_endpoint": {"ip": "198.51.100.140"}},
+          "original": {"event": "login", "result": "success", "user": "jiwoo.kang"}
+        },
+        {
+          "ago_ms": 100800000,
+          "summary": "mail login success user=jiwoo.kang from 192.0.2.30",
+          "entities": [
+            {"type": "user", "value": "jiwoo.kang", "role": "actor"},
+            {"type": "ip", "value": "192.0.2.30", "role": "src"},
+            {"type": "host", "value": "mail-gw", "role": "dst"}
+          ],
+          "ocsf": {"class_uid": 3002, "activity_id": 1, "status_id": 1, "user": {"name": "jiwoo.kang"}, "src_endpoint": {"ip": "192.0.2.30"}},
+          "original": {"event": "login", "result": "success", "user": "jiwoo.kang"}
+        }
+      ]
+    },
+    {
+      "name": "ambiguous_port_scan",
+      "expected": "undetermined",
+      "alert": {
+        "ago_ms": 18000000,
+        "severity": 2,
+        "title": "Port Scan Detected",
+        "rule_id": "dev-l1-port-scan",
+        "entities": [
+          {"type": "ip", "value": "198.51.100.60", "role": "src"},
+          {"type": "host", "value": "api-02", "role": "dst"}
+        ],
+        "ocsf": {"class_uid": 2004, "finding_info": {"title": "Port Scan Detected"}},
+        "original": {"rule": "Port Scan Detected", "src": "198.51.100.60"}
+      },
+      "events": [
+        {
+          "ago_ms": 18010000,
+          "summary": "198.51.100.60 → api-02 ports 21,22,23,25,3389 refused",
+          "entities": [
+            {"type": "ip", "value": "198.51.100.60", "role": "src"},
+            {"type": "host", "value": "api-02", "role": "dst"}
+          ],
+          "ocsf": {"class_uid": 4001, "activity_id": 1, "status_id": 2, "src_endpoint": {"ip": "198.51.100.60"}, "dst_endpoint": {"hostname": "api-02"}},
+          "original": {"event": "network_connect", "result": "refused", "ports": [21, 22, 23, 25, 3389]}
+        },
+        {
+          "ago_ms": 18000000,
+          "summary": "198.51.100.60 → api-02:443 established bytes_in=612",
+          "entities": [
+            {"type": "ip", "value": "198.51.100.60", "role": "src"},
+            {"type": "host", "value": "api-02", "role": "dst"}
+          ],
+          "ocsf": {"class_uid": 4001, "activity_id": 1, "status_id": 1, "src_endpoint": {"ip": "198.51.100.60"}, "dst_endpoint": {"hostname": "api-02", "port": 443}, "traffic": {"bytes_in": 612}},
+          "original": {"event": "network_connect", "result": "established", "port": 443}
+        }
+      ]
+    }
+  ]
+}

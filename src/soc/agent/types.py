@@ -1,9 +1,9 @@
-"""파이프와 에이전트가 주고받는 값: AgentTask, TaskPrompt, AgentResult, failure 값."""
+"""파이프와 에이전트가 주고받는 값: AgentTask, TaskPrompt, AgentResult, failure 값, AgentWorker."""
 
 import re
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
-from typing import Any, Literal
+from typing import Any, Literal, Protocol
 
 from soc.contracts import CONTRACT_NAMES
 
@@ -137,3 +137,24 @@ class AgentResult:
     run_id: str
     usage: dict[str, int] = field(default_factory=dict)
     cited_evidence_ids: list[str] = field(default_factory=list)
+
+
+class AgentWorker(Protocol):
+    """실행기(soc.agent.executor)가 돌리는 파이프 워커의 모양(#215). 각 단계 담당이 만든다.
+
+    - stage: 등록한 [executor.<stage>]와 같다. name: 단계 안에서 유일하다(실행기 로그에 쓴다)
+    - poll(limit): 처리할 subject ID를 최대 limit개 돌려준다. 결과가 기록된 건은 다시 내지 않는다.
+      실행기는 항상 정수를 넘긴다(limit에 None도 받는 워커도 이 모양을 만족한다)
+    - handle(subject_id): 한 건을 처리한다. 멱등이다. run_agent를 부르고 결과를 자기 테이블에 쓴다.
+      예외는 실행기가 잡는다. 종료 중에는 run_agent가 failure="cancelled"로 돌아온다.
+      이벤트 루프를 새로 만들거나 바꾸는 코드(asyncio.run 등)를 쓰지 않는다
+    등록은 모듈의 build_worker(config) -> AgentWorker 함수로 한다
+    (docs/plans/215-executor-l1-e2e.md).
+    """
+
+    stage: Stage
+    name: str
+
+    def poll(self, limit: int) -> Sequence[str]: ...
+
+    def handle(self, subject_id: str) -> None: ...

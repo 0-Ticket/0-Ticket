@@ -8,8 +8,9 @@ base_url = ""
 model = ""
 # 키를 담은 환경변수 이름. 키가 필요 없는 제공자(Ollama)는 빈 문자열로 둔다.
 api_key_env = "LLM_API_KEY"
-# 도구 정의의 strict 사용 여부. 적용은 도구 레지스트리(#211), 제공자 수용 여부 확인은 #215.
-strict_mode = true
+# 도구 정의의 strict 사용 여부(적용은 도구 레지스트리, #211). 기본 LLM(Foundry)은 strict를 켜면
+# 최종 답이 빈 문자열로 와서 끈다(#224 실측, #215). strict를 받는 제공자는 local.toml에서 켤 수 있다.
+strict_mode = false
 # 모델 호출 한 번의 타임아웃(초). 넘으면 provider_error.
 timeout_seconds = 60
 # 429일 때 다시 부르는 횟수. Retry-After(초) 또는 1·2·4초를 기다리고(최대 60초), 넘으면 rate_limited.
@@ -51,6 +52,32 @@ max_turns = 10
 max_input_chars = 48000
 reasoning_effort = "medium"
 max_tool_result_chars = 8000
+
+# 실행기(#215). 실행: uv run python -m soc.agent (Ctrl+C·SIGTERM으로 끝낸다)
+# 단계마다 스레드 하나, 단계 안에서는 한 번에 1건. 한 라운드에 등록 순서대로 워커마다
+# poll(poll_limit) → 받은 ID마다 handle을 하고, 라운드가 끝나면 interval_seconds만큼 쉰다.
+# 워커가 없거나 interval_seconds = 0인 단계는 돌지 않는다.
+# workers: "soc.<모듈>:build_worker" 목록. build_worker(config)는 설정 전체를 받아 AgentWorker를
+# 돌려준다(soc.agent.AgentWorker, docs/plans/215-executor-l1-e2e.md). soc. 밖의 모듈은 받지 않는다.
+[executor]
+# 종료할 때 진행 중인 run이 cancelled로 끝나기를 기다리는 시간(초). 넘으면 그냥 끝낸다
+shutdown_timeout_seconds = 30
+
+[executor.l1]
+interval_seconds = 10
+poll_limit = 10
+workers = []
+
+[executor.l2]
+interval_seconds = 10
+poll_limit = 10
+workers = []
+
+[executor.l3]
+# L3는 기본으로 돌지 않는다(L3 실행 방식, D-030)
+interval_seconds = 0
+poll_limit = 10
+workers = []
 
 [tools]
 # 도구 레지스트리(도구 구현 방식, D-023, #211). 내부 데이터·Web 도구는 환경변수 AGENT_DATABASE_URL

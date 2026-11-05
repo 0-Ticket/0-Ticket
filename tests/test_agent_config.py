@@ -19,7 +19,9 @@ def test_default_llm_and_budget_values(default_config_dir: Path) -> None:
     config = load_config(default_config_dir)
     llm = config["llm"]
     assert llm["base_url"] == "" and llm["model"] == ""  # 실제 값은 config/local.toml
-    assert llm["strict_mode"] is True
+    # Foundry는 도구 정의에 strict를 켜면 최종 답이 빈 문자열로 온다(#224 실측).
+    # #215에서 기본값을 바꿨다
+    assert llm["strict_mode"] is False
     assert llm["timeout_seconds"] == 60
     assert llm["rate_limit_retries"] == 3
     assert "api_version" not in llm
