@@ -118,11 +118,23 @@ supersedes: []
   `http://localhost:6333`에서 258초, `http://127.0.0.1:6333`에서 27초였다. 코드 문제가
   아니라 이름 풀이 문제이고, CI(Ubuntu)는 `localhost`로도 빠르다.
 
+- **이 이슈의 테스트는 구현보다 나중에 썼다.** 절차(`prompts/dev.md` 5번, AGENTS.md 원칙 3)는
+  테스트를 먼저 쓰고 실패를 확인하라고 하는데, 설정·임베더·저장소를 먼저 쓰고 테스트를
+  나중에 썼다. 처음 실행에서 전부 통과해서 **빨간 상태를 한 번도 보지 않았다.** 그래서 이
+  테스트들이 실제로 깨질 수 있는지는 확인되지 않았다. 이 코드를 고치는 사람은 고치기 전에
+  해당 테스트가 먼저 실패하는지 확인하는 편이 안전하다.
+- `-m db`는 이 컴퓨터에서 돌리지 못했다. 5432를 compose가 아닌 다른 PostgreSQL이 쓰고 있어
+  `.env`의 계정으로는 붙지 않는다. `-m "db or qdrant"`의 db 쪽은 CI에서 처음 돈다.
+
 ## 확인 방법
 
 - `uv run ruff format --check .`: 통과
 - `uv run ruff check .`: 통과
-- `uv run pytest`: 통과 (store 기본 테스트 54개 포함)
+- `uv run pytest`: 1,197개 통과, 1개 실패(store 기본 테스트 54개 포함). 실패는 기존
+  `test_name_ending_in_newline_is_not_a_migration`으로, 테스트 자체가 Linux·macOS에서만
+  만들 수 있는 파일 이름을 쓴다(#248 기록과 같다). CI는 Ubuntu라 통과한다
+- `uv run pytest -m "db or qdrant" --collect-only`: 350개 선택(db 329 + qdrant 21).
+  CI 명령이 새 테스트를 빠뜨리지 않는지 확인했다
 - `QDRANT_URL=http://127.0.0.1:6333 uv run pytest -m qdrant`: 21개 통과, 27.09초
   (compose의 `qdrant/qdrant:v1.19.2`, `/readyz` 확인 뒤 실행).
   `http://localhost:6333`으로도 21개 통과, 258.03초
