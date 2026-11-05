@@ -4,6 +4,6 @@
 """
 
 from soc.agent.runner import run_agent
-from soc.agent.types import FAILURES, AgentResult, AgentTask, TaskPrompt
+from soc.agent.types import FAILURES, AgentResult, AgentTask, AgentWorker, TaskPrompt
 
-__all__ = ["FAILURES", "AgentResult", "AgentTask", "TaskPrompt", "run_agent"]
+__all__ = ["FAILURES", "AgentResult", "AgentTask", "AgentWorker", "TaskPrompt", "run_agent"]
