@@ -22,13 +22,14 @@ W02의 성공 결과 위치를 통해 Alert만 읽고, 현재 정책에 따라 T
 ## 다음 사람이 알아야 할 것
 
 - D-020 인증·인가가 구현되기 전까지 정책 API에 접근 가능한 클라이언트는 활성 Ticket 정책을 바꿀 수 있다. 기본 API 바인딩은 `127.0.0.1`이지만 `[api].host`로 변경할 수 있다.
+- 운영 ELK에서 실제 `Alert.rule_id` 대응 필드는 확인하지 않았다. 운영 전 사람이 ELK 데이터로 W02 매핑을 확인해야 한다.
 - 마이그레이션은 기존 `auto`·`scenario`·`l1` Ticket 중 Alert가 하나가 아니거나 Alert ID가 중복된 행이 있으면 명확한 오류로 중단하며 데이터를 자동 수정하지 않는다.
 - 조건부 `maxItems`는 JSON Schema 검사에서 적용된다. 저장 전 `validate_contract("ticket", ...)`를 통과시켜야 한다. 생성 Pydantic 모델만 직접 검사하면 이 조건을 적용하지 않는다.
 
 ## 확인 방법
 
 - `uv run python scripts/generate_contracts.py`: 생성 코드 갱신 성공.
-- `uv run ruff format --check .`: 227개 파일 포맷 확인 통과.
+- `uv run ruff format .`: 227개 파일, 변경 없음.
 - `uv run ruff check .`: 통과.
 - `git diff --check`: 통과.
 - `uv run pytest`: 1,135 passed, 313 deselected.
