@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "incident_analysis.schema.json",
+  "title": "IncidentAnalysis",
+  "description": "L2 Incident 보고 run의 출력",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "verdict", "summary", "assessed_severity", "techniques", "impact", "cause",
+    "further_risk", "detection_rules", "response_actions", "evidence_ids"
+  ],
+  "properties": {
+    "verdict": {
+      "type": "string",
+      "enum": ["not_threat", "attempted", "succeeded", "inconclusive"]
+    },
+    "summary": {"type": "string", "minLength": 1},
+    "assessed_severity": {"$ref": "common/types.schema.json#/definitions/severity"},
+    "techniques": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "evidence_ids"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^T[0-9]{4}(\\.[0-9]{3})?$"},
+          "evidence_ids": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {"$ref": "common/types.schema.json#/definitions/evidence_id"}
+          }
+        }
+      }
+    },
+    "impact": {"type": "string"},
+    "cause": {"type": "string"},
+    "further_risk": {"type": "string"},
+    "detection_rules": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1}
+    },
+    "response_actions": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1}
+    },
+    "evidence_ids": {
+      "description": "어느 기법에도 붙지 않은 근거. 비어도 된다",
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "common/types.schema.json#/definitions/evidence_id"}
+    }
+  }
+}

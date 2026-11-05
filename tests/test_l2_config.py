@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from soc.l2.config import ConfigError, load_config, read_settings
+from soc.l2.config import ConfigError, load_config, read_analyze_settings, read_settings
 
 REPO_CONFIG = Path(__file__).resolve().parents[1] / "config"
 
@@ -19,6 +19,34 @@ def test_default_config_reads_into_branch_settings() -> None:
     assert settings.max_candidates == 5
     assert settings.candidate_source == "vector"
     assert settings.top_k == 50
+
+
+def test_default_config_reads_into_analyze_settings() -> None:
+    settings = read_analyze_settings(load_config(REPO_CONFIG)["l2"])
+
+    assert settings.lookback_ms == 86_400_000
+    assert settings.max_analysis_rounds == 5
+    assert settings.max_seed_entities == 10
+    assert settings.max_related_per_entity == 20
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        lambda c: c.pop("analyze"),
+        lambda c: c["analyze"].update(lookback_ms=0),
+        lambda c: c["analyze"].update(max_analysis_rounds=True),
+        lambda c: c["analyze"].update(max_seed_entities="10"),
+        lambda c: c["analyze"].update(max_related_per_entity=0),
+        lambda c: c["analyze"].update(extra=1),
+    ],
+)
+def test_bad_analyze_settings_are_rejected(change) -> None:
+    l2 = copy.deepcopy(load_config(REPO_CONFIG)["l2"])
+    change(l2)
+
+    with pytest.raises(ConfigError):
+        read_analyze_settings(l2)
 
 
 def test_local_overrides_default_and_only_l2_is_returned(tmp_path: Path) -> None:

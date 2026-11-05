@@ -35,6 +35,10 @@ from soc.contracts.generated import (
     hunt_hypotheses_schema,
     hunt_schema,
     hunt_verification_schema,
+    incident_analysis_schema,
+    incident_artifact_schema,
+    incident_findings_schema,
+    incident_proposal_schema,
     incident_schema,
     ingest_checkpoint_schema,
     ingest_run_schema,
@@ -72,6 +76,22 @@ _CONTRACTS: dict[str, tuple[str, type[BaseModel]]] = {
     "branch_decision": (
         "branch_decision.schema.json",
         branch_decision_schema.BranchDecision,
+    ),
+    "incident_findings": (
+        "incident_findings.schema.json",
+        incident_findings_schema.IncidentFindings,
+    ),
+    "incident_analysis": (
+        "incident_analysis.schema.json",
+        incident_analysis_schema.IncidentAnalysis,
+    ),
+    "incident_artifact": (
+        "incident_artifact.schema.json",
+        incident_artifact_schema.IncidentArtifact,
+    ),
+    "incident_proposal": (
+        "incident_proposal.schema.json",
+        incident_proposal_schema.IncidentProposal,
     ),
     "agent_log": ("agent_log.schema.json", agent_log_schema.AgentLog),
     "entity": ("common/entity.schema.json", entity_schema.Entity),

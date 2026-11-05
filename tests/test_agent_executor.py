@@ -443,12 +443,13 @@ def test_default_config_executor_values(default_config_dir: Path) -> None:
     assert [section[s]["poll_limit"] for s in ("l1", "l2", "l3")] == [10, 10, 10]
     assert [section[s]["workers"] for s in ("l1", "l2", "l3")] == [
         ["soc.l1.judge:build_worker"],
-        ["soc.l2.branch:build_worker"],
+        ["soc.l2.branch:build_worker", "soc.l2.analyze:build_worker"],
         [],
     ]
     workers = {
         "soc.l1.judge:build_worker": FakeWorker("l1", "l1"),
         "soc.l2.branch:build_worker": FakeWorker("l2", "l2"),
+        "soc.l2.analyze:build_worker": FakeWorker("l2", "l2_analyze"),
     }
     executor = Executor(
         load_full_config(default_config_dir), resolve=lambda path: lambda _: workers[path]

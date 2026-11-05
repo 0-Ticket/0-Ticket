@@ -11,7 +11,20 @@ import threading
 import time
 
 # 접두사 목록의 기준. contracts/common/types.schema.json의 ID 정의와 맞춘다.
-PREFIXES = ("raw", "alt", "evt", "tkt", "inc", "cas", "agl", "run", "hnt", "hrn")
+PREFIXES = (
+    "raw",
+    "alt",
+    "evt",
+    "tkt",
+    "inc",
+    "art",
+    "prp",
+    "cas",
+    "agl",
+    "run",
+    "hnt",
+    "hrn",
+)
 
 _COUNTER_MAX = 0xFFF
 _lock = threading.Lock()

@@ -12,6 +12,12 @@ _BRANCH_KEYS = {
     "candidate_source",
     "top_k",
 }
+_ANALYZE_KEYS = (
+    "lookback_ms",
+    "max_analysis_rounds",
+    "max_seed_entities",
+    "max_related_per_entity",
+)
 
 
 class ConfigError(ValueError):
@@ -24,6 +30,14 @@ class BranchSettings:
     max_candidates: int
     candidate_source: str
     top_k: int
+
+
+@dataclass(frozen=True)
+class AnalyzeSettings:
+    lookback_ms: int
+    max_analysis_rounds: int
+    max_seed_entities: int
+    max_related_per_entity: int
 
 
 def load_config(directory: Path | None = None) -> dict[str, Any]:
@@ -52,6 +66,18 @@ def read_settings(l2: dict[str, Any]) -> BranchSettings:
     if candidate_source not in ("vector", "recent"):
         raise ConfigError("L2 branch candidate_source는 vector 또는 recent여야 한다")
     return BranchSettings(candidate_window_ms, max_candidates, candidate_source, top_k)
+
+
+def read_analyze_settings(l2: dict[str, Any]) -> AnalyzeSettings:
+    """[l2.analyze]를 검증해 코드가 쓰는 값으로 바꾼다."""
+    try:
+        analyze = l2["analyze"]
+        if not isinstance(analyze, dict) or set(analyze) != set(_ANALYZE_KEYS):
+            raise ConfigError("L2 analyze 설정 키가 올바르지 않다")
+        values = [_positive_int(analyze[key]) for key in _ANALYZE_KEYS]
+    except (KeyError, TypeError):
+        raise ConfigError("L2 analyze 설정이 올바르지 않다") from None
+    return AnalyzeSettings(*values)
 
 
 def _positive_int(value: object) -> int:

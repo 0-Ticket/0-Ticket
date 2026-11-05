@@ -1,0 +1,35 @@
+{
+  "findings": {
+    "timeline": [
+      {
+        "time": 1793678400000,
+        "summary": "의심 요청 뒤 프로세스가 실행됐다",
+        "evidence_ids": ["evt_01a19f93-1150-7000-8000-000000000005"]
+      }
+    ],
+    "entities": [
+      {
+        "entity": {"type": "ip", "value": "203.0.113.10", "role": "src"},
+        "evidence_ids": ["alt_01a19f93-1150-7000-8000-000000000004"]
+      }
+    ],
+    "evidence_ids": ["agl_01a19f93-1150-7000-8000-000000000009"]
+  },
+  "analysis": {
+    "verdict": "succeeded",
+    "summary": "침해가 확인됐다",
+    "assessed_severity": 5,
+    "techniques": [
+      {
+        "id": "T1059.001",
+        "evidence_ids": ["evt_01a19f93-1150-7000-8000-000000000005"]
+      }
+    ],
+    "impact": "웹 서버 프로세스가 실행됐다",
+    "cause": "취약한 요청 처리가 악용됐다",
+    "further_risk": "같은 경로의 재실행 가능성이 있다",
+    "detection_rules": ["의심 요청 뒤 자식 프로세스 실행을 탐지한다"],
+    "response_actions": ["담당자가 서버를 확인한다"],
+    "evidence_ids": ["agl_01a19f93-1150-7000-8000-000000000010"]
+  }
+}

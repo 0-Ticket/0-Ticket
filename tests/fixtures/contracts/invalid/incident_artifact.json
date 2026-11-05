@@ -1,0 +1,24 @@
+[
+  {
+    "case": "conclusive_without_timeline_or_evidence",
+    "violations": [
+      {"path": "evidence_ids", "rule": "minItems"},
+      {"path": "timeline", "rule": "minItems"}
+    ],
+    "data": {
+      "id": "art_01a19f93-1150-7000-8000-000000000011",
+      "incident_id": "inc_01a19f93-1150-7000-8000-000000000003",
+      "analysis_round": 1,
+      "verdict": "not_threat",
+      "summary": "위협이 아니다",
+      "assessed_severity": 0,
+      "timeline": [],
+      "techniques": [],
+      "impact": "",
+      "cause": "",
+      "further_risk": "없음",
+      "evidence_ids": [],
+      "created_at": 1793678580000
+    }
+  }
+]

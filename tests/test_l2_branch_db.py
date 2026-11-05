@@ -11,8 +11,11 @@ from psycopg import sql
 from psycopg.types.json import Jsonb
 
 from soc.agent import AgentResult
+from soc.asset_lookup import AssetLookupError
 from soc.contracts import to_datetime
 from soc.db.migrate import migrate
+from soc.l2.analyze import context as analyze_context
+from soc.l2.analyze.worker import L2AnalyzeWorker
 from soc.l2.branch import build_branch
 from soc.l2.branch.read import (
     _RECENT_INCIDENTS_QUERY,
@@ -22,7 +25,7 @@ from soc.l2.branch.read import (
     read_recent_incidents,
 )
 from soc.l2.branch.worker import L2BranchWorker
-from soc.l2.config import BranchSettings
+from soc.l2.config import AnalyzeSettings, BranchSettings
 from soc.l2.reindex import reindex
 from soc.store import CollectionMissing, SearchHit, StoreError
 
@@ -34,6 +37,12 @@ SETTINGS = BranchSettings(
     max_candidates=5,
     candidate_source="vector",
     top_k=50,
+)
+ANALYZE_SETTINGS = AnalyzeSettings(
+    lookback_ms=86_400_000,
+    max_analysis_rounds=5,
+    max_seed_entities=10,
+    max_related_per_entity=20,
 )
 TIME_FIELDS = {
     "fetched_at",
@@ -298,6 +307,57 @@ def worker(
         store or FakeStore(),
         run=run,
         clock=lambda: to_datetime(1793764800000),
+    )
+
+
+def analyze_worker(database_url: str, run: Any) -> L2AnalyzeWorker:
+    return L2AnalyzeWorker(
+        database_url,
+        ANALYZE_SETTINGS,
+        max_range_days=7,
+        asset_statement_timeout_ms=5000,
+        attack_version="20.0",
+        run=run,
+        clock=lambda: to_datetime(1793764800000),
+    )
+
+
+def analysis_outputs(sample: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+    alert_id = sample["alerts"][0]["id"]
+    event_id = sample["events"][0]["id"]
+    log_id = sample["agent_logs"][0]["id"]
+    return (
+        {
+            "timeline": [
+                {
+                    "time": sample["events"][0]["time"],
+                    "summary": "의심 요청 뒤 프로세스가 실행됐다",
+                    "evidence_ids": [event_id],
+                }
+            ],
+            "entities": [
+                {
+                    "entity": {"type": "ip", "value": "203.0.113.55", "role": "src"},
+                    "evidence_ids": [alert_id],
+                }
+            ],
+            "evidence_ids": [log_id],
+        },
+        {
+            "verdict": "succeeded",
+            "summary": "침해가 확인됐다",
+            "assessed_severity": 5,
+            "techniques": [
+                {"id": "T1059.001", "evidence_ids": [event_id]},
+                {"id": "T9999", "evidence_ids": [alert_id]},
+            ],
+            "impact": "프로세스 실행",
+            "cause": "취약한 요청 처리",
+            "further_risk": "재실행 가능성",
+            "detection_rules": ["요청 뒤 프로세스 실행을 탐지한다"],
+            "response_actions": ["담당자가 서버를 확인한다"],
+            "evidence_ids": [],
+        },
     )
 
 
@@ -697,3 +757,252 @@ def test_reindex_counts_multiple_incident_membership_as_failure(
     assert vector_store.dropped == 1
     assert vector_store.ensured == 1
     assert vector_store.upserts == []
+
+
+def prepare_analyzing_incident(
+    database_url: str, sample: dict[str, Any], *, analysis_round: int = 0
+) -> str:
+    incident_id = sample["incidents"][0]["id"]
+    ticket_id = sample["tickets"][0]["id"]
+    with psycopg.connect(database_url) as conn:
+        conn.execute("DELETE FROM incidents WHERE id <> %s", (incident_id,))
+        conn.execute("UPDATE tickets SET status = 'linked' WHERE id = %s", (ticket_id,))
+        conn.execute(
+            "UPDATE incidents SET status = 'analyzing', analysis_round = %s, details = '{}' "
+            "WHERE id = %s",
+            (analysis_round, incident_id),
+        )
+        conn.execute(
+            "INSERT INTO attack_techniques (attack_version, technique_id, name, tactics) "
+            "VALUES ('20.0', 'T1059.001', 'PowerShell', ARRAY['execution'])"
+        )
+    return incident_id
+
+
+def test_analyze_worker_saves_artifact_proposals_and_incident_atomically(
+    l2_database: tuple[str, dict[str, Any]],
+) -> None:
+    database_url, sample = l2_database
+    incident_id = prepare_analyzing_incident(database_url, sample)
+    findings, analysis = analysis_outputs(sample)
+    tasks = []
+
+    def run(task):
+        tasks.append(task)
+        return ok(findings if task.task == "l2_investigate" else analysis)
+
+    analyzer = analyze_worker(database_url, run)
+    analyzer.handle(incident_id)
+    analyzer.handle(incident_id)
+
+    with psycopg.connect(database_url, row_factory=psycopg.rows.dict_row) as conn:
+        incident = conn.execute("SELECT * FROM incidents WHERE id = %s", (incident_id,)).fetchone()
+        artifact = conn.execute(
+            "SELECT * FROM incident_artifacts WHERE incident_id = %s", (incident_id,)
+        ).fetchone()
+        proposals = conn.execute("SELECT * FROM incident_proposals ORDER BY kind, seq").fetchall()
+    assert [task.task for task in tasks] == ["l2_investigate", "l2_report"]
+    assert set(tasks[0].allowed_evidence_ids) >= {
+        sample["alerts"][0]["id"],
+        sample["events"][0]["id"],
+        sample["agent_logs"][0]["id"],
+    }
+    assert incident["status"] == "awaiting_review"
+    assert incident["analysis_round"] == 1
+    assert incident["summary"] == analysis["summary"]
+    assert incident["details"]["l2_analyze"] == {
+        "asset_lookup_failed": False,
+        "dropped_techniques": 1,
+    }
+    assert {item["value"] for item in incident["entities"]} >= {"203.0.113.55"}
+    assert artifact["verdict"] == "succeeded"
+    assert artifact["techniques"] == [
+        {"id": "T1059.001", "name": "PowerShell", "evidence_ids": [sample["events"][0]["id"]]}
+    ]
+    assert set(artifact["evidence_ids"]) == {
+        sample["alerts"][0]["id"],
+        sample["events"][0]["id"],
+        sample["agent_logs"][0]["id"],
+    }
+    assert [(row["kind"], row["seq"], row["body"]) for row in proposals] == [
+        ("detection_rule", 1, analysis["detection_rules"][0]),
+        ("response_action", 1, analysis["response_actions"][0]),
+    ]
+
+
+def test_analyze_worker_retries_only_report_without_repeating_investigation(
+    l2_database: tuple[str, dict[str, Any]],
+) -> None:
+    database_url, sample = l2_database
+    incident_id = prepare_analyzing_incident(database_url, sample)
+    findings, analysis = analysis_outputs(sample)
+    results = iter([ok(findings), failed("provider_error"), ok(analysis)])
+    tasks = []
+
+    def run(task):
+        tasks.append(task)
+        return next(results)
+
+    analyze_worker(database_url, run).handle(incident_id)
+
+    assert [task.task for task in tasks] == ["l2_investigate", "l2_report", "l2_report"]
+    assert tasks[1] is tasks[2]
+    with psycopg.connect(database_url) as conn:
+        assert conn.execute(
+            "SELECT analysis_round, status FROM incidents WHERE id = %s", (incident_id,)
+        ).fetchone() == (1, "awaiting_review")
+
+
+@pytest.mark.parametrize(
+    ("result", "expected_round"),
+    [(failed("format_error"), 1), (failed("cancelled"), 0)],
+    ids=["failed", "cancelled"],
+)
+def test_analyze_worker_failure_round_and_cancelled(
+    l2_database: tuple[str, dict[str, Any]], result: AgentResult, expected_round: int
+) -> None:
+    database_url, sample = l2_database
+    incident_id = prepare_analyzing_incident(database_url, sample)
+    calls = 0
+
+    def run(_):
+        nonlocal calls
+        calls += 1
+        return result
+
+    analyze_worker(database_url, run).handle(incident_id)
+
+    with psycopg.connect(database_url, row_factory=psycopg.rows.dict_row) as conn:
+        incident = conn.execute("SELECT * FROM incidents WHERE id = %s", (incident_id,)).fetchone()
+        artifact_count = conn.execute(
+            "SELECT count(*) AS count FROM incident_artifacts"
+        ).fetchone()["count"]
+    assert calls == 1
+    assert incident["analysis_round"] == expected_round
+    assert incident["status"] == "analyzing"
+    assert artifact_count == 0
+
+
+def test_analyze_worker_marks_round_limit_once_and_then_stops_polling(
+    l2_database: tuple[str, dict[str, Any]],
+) -> None:
+    database_url, sample = l2_database
+    incident_id = prepare_analyzing_incident(database_url, sample, analysis_round=5)
+    analyzer = analyze_worker(database_url, lambda _: pytest.fail("한도에서 모델을 부르면 안 된다"))
+
+    assert incident_id in analyzer.poll(10)
+    analyzer.handle(incident_id)
+
+    assert incident_id not in analyzer.poll(10)
+    with psycopg.connect(database_url) as conn:
+        details = conn.execute(
+            "SELECT details FROM incidents WHERE id = %s", (incident_id,)
+        ).fetchone()[0]
+    assert details["l2_analyze"]["stopped"] == "round_limit"
+
+
+def test_reanalysis_receives_previous_artifact(
+    l2_database: tuple[str, dict[str, Any]],
+) -> None:
+    database_url, sample = l2_database
+    incident_id = prepare_analyzing_incident(database_url, sample)
+    findings, analysis = analysis_outputs(sample)
+    tasks = []
+
+    def run(task):
+        tasks.append(task)
+        return ok(findings if task.task == "l2_investigate" else analysis)
+
+    analyzer = analyze_worker(database_url, run)
+    analyzer.handle(incident_id)
+    with psycopg.connect(database_url) as conn:
+        conn.execute("UPDATE incidents SET status = 'analyzing' WHERE id = %s", (incident_id,))
+    analyzer.handle(incident_id)
+
+    previous = tasks[2].data["previous_artifact"]
+    assert previous["analysis_round"] == 1
+    assert tasks[3].data["previous_artifact"] == previous
+    assert set(previous["evidence_ids"]) <= set(tasks[2].allowed_evidence_ids)
+    with psycopg.connect(database_url) as conn:
+        assert conn.execute(
+            "SELECT analysis_round FROM incidents WHERE id = %s", (incident_id,)
+        ).fetchone() == (2,)
+        assert conn.execute(
+            "SELECT count(*) FROM incident_artifacts WHERE incident_id = %s", (incident_id,)
+        ).fetchone() == (2,)
+
+
+def test_asset_lookup_failure_is_shown_to_both_runs_and_incident(
+    l2_database: tuple[str, dict[str, Any]], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    database_url, sample = l2_database
+    incident_id = prepare_analyzing_incident(database_url, sample)
+    findings, analysis = analysis_outputs(sample)
+    tasks = []
+
+    def fail_lookup(*_args, **_kwargs):
+        raise AssetLookupError
+
+    monkeypatch.setattr(analyze_context, "lookup_assets", fail_lookup)
+
+    def run(task):
+        tasks.append(task)
+        return ok(findings if task.task == "l2_investigate" else analysis)
+
+    analyze_worker(database_url, run).handle(incident_id)
+
+    assert [task.data["asset_lookup_failed"] for task in tasks] == [True, True]
+    with psycopg.connect(database_url) as conn:
+        details = conn.execute(
+            "SELECT details FROM incidents WHERE id = %s", (incident_id,)
+        ).fetchone()[0]
+    assert details["l2_analyze"]["asset_lookup_failed"] is True
+
+
+def test_store_rechecks_round_after_model_calls(
+    l2_database: tuple[str, dict[str, Any]],
+) -> None:
+    database_url, sample = l2_database
+    incident_id = prepare_analyzing_incident(database_url, sample)
+    findings, analysis = analysis_outputs(sample)
+
+    def run(task):
+        if task.task == "l2_report":
+            with psycopg.connect(database_url) as conn:
+                conn.execute(
+                    "UPDATE incidents SET analysis_round = 3 WHERE id = %s", (incident_id,)
+                )
+            return ok(analysis)
+        return ok(findings)
+
+    analyze_worker(database_url, run).handle(incident_id)
+
+    with psycopg.connect(database_url) as conn:
+        assert conn.execute(
+            "SELECT analysis_round, status FROM incidents WHERE id = %s", (incident_id,)
+        ).fetchone() == (3, "analyzing")
+        assert conn.execute("SELECT count(*) FROM incident_artifacts").fetchone() == (0,)
+
+
+@pytest.mark.parametrize(
+    ("verdict", "expected_status"),
+    [("not_threat", "dismissed"), ("inconclusive", "awaiting_review")],
+)
+def test_analysis_verdict_sets_terminal_status(
+    l2_database: tuple[str, dict[str, Any]], verdict: str, expected_status: str
+) -> None:
+    database_url, sample = l2_database
+    incident_id = prepare_analyzing_incident(database_url, sample)
+    findings, analysis = analysis_outputs(sample)
+    analysis = {**analysis, "verdict": verdict}
+    if verdict == "inconclusive":
+        findings = {"timeline": [], "entities": [], "evidence_ids": []}
+        analysis = {**analysis, "techniques": [], "evidence_ids": []}
+    results = iter((ok(findings), ok(analysis)))
+
+    analyze_worker(database_url, lambda _: next(results)).handle(incident_id)
+
+    with psycopg.connect(database_url) as conn:
+        assert conn.execute(
+            "SELECT status FROM incidents WHERE id = %s", (incident_id,)
+        ).fetchone() == (expected_status,)
