@@ -152,6 +152,7 @@ def test_migrate_creates_all_tables_on_empty_db(temp_database: str) -> None:
         "0102_raw_links.sql",
         "0103_normalize_status.sql",
         "0104_l1_ticketing.sql",
+        "0105_l1_attempts.sql",
         "0300_threat_intel.sql",
     ]
     with psycopg.connect(temp_database) as conn:
@@ -160,6 +161,7 @@ def test_migrate_creates_all_tables_on_empty_db(temp_database: str) -> None:
             "asset_identifiers",
             "normalize_status",
             "ticketing_policy",
+            "l1_attempts",
             "ingest_checkpoints",
             "ingest_runs",
             "raw_links",
@@ -176,7 +178,7 @@ def test_migrate_twice_does_not_reapply(temp_database: str) -> None:
 
     assert applied == []
     with psycopg.connect(temp_database) as conn:
-        assert conn.execute("SELECT count(*) FROM schema_migrations").fetchone() == (10,)
+        assert conn.execute("SELECT count(*) FROM schema_migrations").fetchone() == (11,)
 
 
 def test_failed_migration_rolls_back_only_that_file(temp_database: str, tmp_path: Path) -> None:

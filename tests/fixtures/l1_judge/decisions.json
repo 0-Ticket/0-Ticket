@@ -1,0 +1,11 @@
+[
+  {"subject": "alert", "decision": "benign", "confidence": 0.9, "status": "held"},
+  {"subject": "alert", "decision": "malicious", "confidence": 0.79, "status": "held"},
+  {"subject": "alert", "decision": "malicious", "confidence": 0.8, "status": "promoted"},
+  {"subject": "alert", "decision": "undetermined", "confidence": 0.9, "status": "held"},
+  {"subject": "ticket", "decision": "benign", "confidence": 0.79, "status": "held"},
+  {"subject": "ticket", "decision": "benign", "confidence": 0.8, "status": "closed"},
+  {"subject": "ticket", "decision": "malicious", "confidence": 0.79, "status": "held"},
+  {"subject": "ticket", "decision": "malicious", "confidence": 0.8, "status": "escalated"},
+  {"subject": "ticket", "decision": "undetermined", "confidence": 0.9, "status": "held"}
+]
