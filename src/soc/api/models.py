@@ -8,7 +8,7 @@ JSON 문자열 그대로 돌려준다. 화면은 텍스트로만 보인다(D-019
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, StrictStr
 
 from soc.contracts.generated.hunt_schema import Hunt
 
@@ -79,3 +79,16 @@ class NewsItem(_Model):
 class NewsPage(_Model):
     items: list[NewsItem]
     next_cursor: str | None
+
+
+class TicketingPolicyBody(_Model):
+    """Ticket 정책 API 요청·응답 모양. W04 엔드포인트는 현재 인증되지 않는다."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    mode: Literal["auto", "scenario"]
+    scenario_rule_ids: list[StrictStr]
+
+
+class TicketingPolicyResponse(TicketingPolicyBody):
+    pass

@@ -86,6 +86,7 @@ workers = []
 statement_timeout_ms = 5000
 # 접속 시간 상한(초). 접속이 안 되면 TOOL_ERROR code=unavailable
 connect_timeout_seconds = 5
+
 # 시간 범위 인자(start_ms~end_ms)로 한 번에 볼 수 있는 일 수
 max_range_days = 7
 # 목록 도구의 limit 기본값과 상한
@@ -119,6 +120,7 @@ url_env = "ELK_URL"
 api_key_env = "ELK_API_KEY"
 # 요청 단위 제한 시간(초). 넘으면 TOOL_ERROR code=timeout
 connect_timeout_seconds = 5
+
 read_timeout_seconds = 10
 # 호출 한 번의 전체 마감 시간(초, D-039). 넘으면 TOOL_ERROR code=timeout
 deadline_seconds = 15
@@ -316,7 +318,7 @@ connect_timeout_seconds = 5
 statement_timeout_ms = 5000
 
 # 화면용 API(FastAPI, D-016, #239). 실행: uv run python -m soc.api
-# DB 주소는 환경변수 DATABASE_URL. 요청마다 읽기 전용 세션으로 연결한다.
+# DB 주소는 환경변수 DATABASE_URL. 조회 요청은 읽기 전용이고, W04 정책 PUT만 쓰기 연결을 쓴다.
 # 기법 이름은 [l3.intel.attack] version의 attack_techniques에서 찾는다.
 [api]
 # 바인딩 주소. 인증(D-020)이 생기기 전까지 로컬에만 연다
@@ -326,3 +328,8 @@ port = 8000
 statement_timeout_ms = 5000
 # DB 접속 시간 상한(초)
 connect_timeout_seconds = 5
+
+# Ticket 정책(#246). 정책 API에서 저장한 활성 DB 행이 있으면 이 기본값보다 우선한다.
+[ticketing]
+mode = "auto"
+scenario_rule_ids = []
