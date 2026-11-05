@@ -177,7 +177,7 @@ supersedes: []
 
 | ID | 무엇을 모르는가 | 임시 처리 | 확인 방법 | 고칠 곳 |
 |---|---|---|---|---|
-| U-01 | 알럿이 가리키는 원본 이벤트의 키. 연결 필드는 `kibana.alert.ancestors`다. 기준 데이터셋에서 알럿 52건 모두 이 필드를 가지고, `event` 항목 54개의 `index`는 전부 `logs-endpoint.*`다 | 연결하지 않는다. 연결 추출은 후속 이슈 | 조직 ELK 알럿 한 건의 `ancestors` 모양과, 그 `index`가 Event 조회 대상에 드는지 확인 | 연결 추출 코드(후속), `raw_links`(#218) |
+| U-01 | 조직 ELK에서 Alert가 가리키는 원본 이벤트의 참조 필드와 `index`·`id` 모양. 공개 기준 데이터셋에서는 후보 필드 `kibana.alert.ancestors`가 Alert 52건에 있었고, `type=event`인 54개 항목의 `index`는 모두 `logs-endpoint.*`였다 | 참조 필드를 사용하거나 연결하지 않는다. 실제 ELK에서 P01 확인 후 연결 추출을 계획한다 | 조직 ELK Alert 한 건의 참조 구조와 해당 `index`가 Event 조회 대상에 포함되는지 확인 | 연결 추출 후속 이슈, `raw_links`(#218) |
 | U-02 | 이벤트 커서 `event.ingested`가 실제 색인에 자동으로 들어가는지 | 커서는 `@timestamp` | `_search?size=1&filter_path=hits.hits._source.event.ingested` | `config`의 `time_field`(#218) |
 | U-03 | 모든 룰 종류에서 `kibana.alert.original_time`이 채워지는지 | 없으면 `@timestamp` | 룰 종류별 알럿 문서 확인 | Alert `time` 매핑 |
 | U-04 | `kibana.alert.rule.rule_id`가 사용자가 정한 룰 ID인지 | `rule_id`로 쓴다 | 룰 생성 후 값 비교 | Alert `rule_id` |
@@ -189,6 +189,10 @@ supersedes: []
 
 ## 바뀐 점
 
+- 2026-11-05 · `entity_value`에서 `entity: {type, value}`로 바꾸는 공통 Asset 계약 변경 승인을 받았다는 사용자 확인을 기록한다. 앞서 남긴 승인 기록 미확인 상태를 갱신한다.
+- 2026-11-05 · 사용자가 확정한 결과 계약을 명시한다. `kind=event` 원본 하나는 OCSF Event 하나로, `kind=alert` 원본 하나는 OCSF Detection Finding(class_uid 2004) 하나로 정규화한다. 프로젝트는 `kind=event`에서 Alert를 만들지 않으며, ELK가 생성한 `kind=alert` 원본만 Alert로 정규화한다. 같은 RawRecord의 재수집·재처리는 원본 식별자 기준으로 중복을 막는다.
+- 2026-11-05 · 같은 활동을 가리키는 Event와 Alert는 각각 보존하고 관계로 연결한다. 한 Alert가 여러 Event를 대표할 수 있으므로 1:1을 가정하지 않는다. `kibana.alert.ancestors`는 공개 데이터셋에서 확인한 후보일 뿐이며, 실제 조직 ELK에서 P01이 필드와 대상 인덱스를 확인하기 전에는 사용하지 않는다. 연결 추출과 `link_by_refs` 호출은 W01 후속 이슈다. 이 기록은 위 "토론으로 정한 것"의 필드 경로를 실제 ELK에서 확정된 값으로 간주하지 않도록 범위를 좁힌다.
+- 2026-11-05 · 머지 검토 시점의 이슈 상태를 다시 확인했다: #208(P01)과 #219(P05)는 닫혔고 #218(W01)과 #241(P06)은 열려 있다. #208의 닫힘은 실제 ELK 확인을 뜻하지 않는다. ELK 환경이 없어 U-01은 미확인으로 유지한다.
 - 2026-11-05 · P01·P05·W01·P06 이슈가 열린 상태여도 현재 방향을 확정 가정으로 보고 진행하라는 사용자 지시에 따라 W02 구현을 진행한다. 이슈가 닫혔거나 병합됐다는 뜻은 아니며, 병합 전 최종 선행 결정을 대조한다.
 - 2026-11-05 · 자산 조회는 읽기 계정(`AGENT_DATABASE_URL`)이 아니라 정규화가 쓰는 `DATABASE_URL` 연결로 한다(사람 결정, P06 계획 바뀐 점의 읽기 계정 결정을 바꿈). 그래서 `0004`에 `GRANT`가 없고 `docs/security.md`는 바꾸지 않으며, `[asset_lookup]`에는 `statement_timeout_ms`만 둔다(문장 시간 상한은 조회 트랜잭션에만 적용).
 - 2026-11-05 · OCSF 검증은 공식 클래스별 JSON Schema 대신 OCSF 서버의 1.9.0 클래스·객체 정의로 한다(D-007 해석 변경, 사람 승인 B안). OCSF가 클래스별 JSON Schema 파일을 배포하지 않아서다. 정의 파일은 `contracts/ocsf/`가 아니라 `src/soc/normalize/ocsf/`에 둔다(`tests/test_contracts.py`가 `contracts/` 아래 모든 `*.schema.json`을 계약으로 세기 때문). 출처와 만든 방법은 `ocsf/SOURCE.md`.

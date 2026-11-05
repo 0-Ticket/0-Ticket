@@ -45,3 +45,11 @@ supersedes: [192-data-contracts.md]
 - 주요 테스트: `tests/test_normalize_mapping.py`(샘플 18건 변환·실패 코드, OCSF 검사), `tests/test_normalize_db.py`(반복 실행, 임대 상실, 실패 덮어쓰기 거부, 원본 해시 불변, 자산 붙이기), `tests/test_asset_lookup.py`, `tests/test_normalize_config.py`, `tests/test_normalize_main.py`.
 - 임시 DB에서 CLI 실행: 샘플 18건 중 성공 11건(알럿 2, 이벤트 9), 실패 7건(`schema_failed` 3, `validation_failed` 4). 두 번째 실행은 실패 7건만 다시 잡았고 결과가 늘지 않았다.
 - 실제 ELK에서는 확인하지 않았다. 합성 샘플로만 검증했다.
+
+## 추가 합의 (2026-11-05)
+
+- `kind=event` RawRecord는 OCSF Event 하나, `kind=alert` RawRecord는 Detection Finding(class_uid 2004) 하나로 정규화한다. 프로젝트는 Event에서 Alert를 만들지 않는다. ELK가 생성해 Alert 저장소에 쓴 `kind=alert` 원본만 정규화한다.
+- 같은 RawRecord의 재수집·재처리는 원본 식별자 기준으로 중복을 막는다. 동일 활동을 가리키는 Event와 Alert는 각각 보존하고 관계로 연결한다. 한 Alert가 여러 Event를 대표할 수 있으므로 1:1로 가정하지 않는다.
+- 연결 필드 후보 `kibana.alert.ancestors`는 공개 데이터셋에서만 확인했다. ELK 환경이 아직 구성되지 않아 실제 조직 ELK의 필드와 참조 대상 인덱스는 검증하지 못했다. 따라서 W02는 연결을 만들지 않으며, 실제 확인 후 추출·`link_by_refs` 호출과 미해결 쌍 재처리를 W01 후속 이슈에서 다룬다.
+- 이 기록을 갱신할 때 확인한 GitHub 상태는 #208(P01)·#219(P05) 닫힘, #218(W01)·#241(P06) 열림이다. P01이 닫혀도 ELK의 실제 참조 필드는 검증되지 않았으므로 U-01은 미확인이다.
+- Asset 승인 상태 갱신(2026-11-05): 사용자가 공통 Asset 계약 변경 승인을 받았다고 확인했다. 위의 승인 기록 미확인 문구는 당시 확인 상태를 남긴 것이며, 현재 W02에서는 승인 대기 항목으로 취급하지 않는다.
