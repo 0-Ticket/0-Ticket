@@ -13,7 +13,7 @@ from soc.api import __main__ as api_main
 from soc.api import db
 from soc.api.app import create_app
 from soc.api.config import ConfigError, load_settings
-from soc.api.routes import hunts, threat_news
+from soc.api.routes import hunts, threat_news, ticketing_policy
 from soc.ids import new_id
 
 # 닫힌 포트의 가짜 주소. 비밀번호와 호스트가 응답·로그에 나오지 않는지 본다
@@ -34,10 +34,15 @@ def write_config(directory: Path, text: str) -> Path:
 # 라우트
 
 
-API_PATHS = ["/api/hunts", "/api/hunts/{hunt_id}", "/api/threat-news"]
+API_PATHS = [
+    "/api/hunts",
+    "/api/hunts/{hunt_id}",
+    "/api/threat-news",
+    "/api/ticketing-policy",
+]
 
 
-def test_routes_are_get_only_under_api_and_openapi_is_the_only_other_route() -> None:
+def test_api_routes_are_connected_and_openapi_is_the_only_other_route() -> None:
     app = create_app(load_settings())
     # FastAPI 0.162는 include_router한 라우터를 내부 객체(_IncludedRouter)로 감싸 app.routes에 둔다.
     # 그래서 앱 바로 아래의 Starlette 라우트와, 포함한 라우터 각각의 라우트를 따로 본다
@@ -45,17 +50,25 @@ def test_routes_are_get_only_under_api_and_openapi_is_the_only_other_route() -> 
     assert [(r.path, sorted(r.methods or ())) for r in direct] == [
         ("/openapi.json", ["GET", "HEAD"])
     ]
-    included = [*hunts.router.routes, *threat_news.router.routes]
+    included = [*hunts.router.routes, *threat_news.router.routes, *ticketing_policy.router.routes]
     assert all(isinstance(r, APIRoute) for r in included)
-    assert sorted("/api" + r.path for r in included) == API_PATHS
+    assert sorted({"/api" + r.path for r in included}) == API_PATHS
+    methods_by_path: dict[str, set[str]] = {}
     for route in included:
-        assert route.methods == {"GET"}
+        methods_by_path.setdefault(route.path, set()).update(route.methods or ())
         assert route.include_in_schema
+    assert methods_by_path == {
+        "/hunts": {"GET"},
+        "/hunts/{hunt_id}": {"GET"},
+        "/threat-news": {"GET"},
+        "/ticketing-policy": {"GET", "PUT"},
+    }
     # 앱에 실제로 붙은 모양은 OpenAPI 문서로 본다
     paths = app.openapi()["paths"]
     assert sorted(paths) == API_PATHS
-    for operations in paths.values():
-        assert list(operations) == ["get"]
+    for path, operations in paths.items():
+        expected_operations = ["get", "put"] if path == "/api/ticketing-policy" else ["get"]
+        assert list(operations) == expected_operations
 
 
 def test_docs_pages_are_off(client: TestClient) -> None:

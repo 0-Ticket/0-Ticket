@@ -40,12 +40,19 @@ def _invalid(fields: list[str]) -> JSONResponse:
 
 
 async def _validation(request: Request, exc: RequestValidationError) -> JSONResponse:
+    body_fields: set[str] = set()
     # loc는 ("query", <쿼리 이름>, ...) 모양이다. 쿼리 이름은 라우트가 정한 이름이라 입력값이 아니다
     names: list[str] = []
     for error in exc.errors():
         loc = error.get("loc", ())
+        if loc and loc[0] == "body":
+            field = loc[1] if len(loc) > 1 else None
+            body_fields.add(field if field in {"mode", "scenario_rule_ids"} else "body")
+            continue
         if len(loc) >= 2 and loc[0] == "query" and loc[1] not in names:
             names.append(str(loc[1]))
+    if body_fields:
+        return _error(422, "invalid_body", fields=sorted(body_fields))
     return _invalid(sorted(names))
 
 
