@@ -51,6 +51,7 @@
 | D-022 | 에이전트 프레임워크는 OpenAI Agents SDK(`openai-agents==0.24.0`, `openai==3.42.1`). Chat Completions 경로(`OpenAIChatCompletionsModel`)로 붙이고, 에이전트를 실행하는 코드 진입점에서 `set_tracing_disabled(True)`로 트레이싱을 끈다 | 트레이싱은 기본으로 켜져 있고 모델 입력·출력을 OpenAI 서버로 보낸다(`docs/security.md`). 환경변수에 맡기지 않는다. 구조화 출력(`output_type`)과 병렬 도구 호출은 쓰지 않는다. 함께 들어오는 패키지는 `uv.lock`으로 고정한다 |
 | D-023 | 에이전트 도구는 파이썬 함수 도구 레지스트리(`soc.tools`의 `ToolRegistry`·`ToolSpec`)로 만들고 Agents SDK 함수 도구(`FunctionTool`)로 감싼다. MCP 서버는 쓰지 않는다 | 도구는 단계별 허용 목록(`[tools.allowed]`)에 있는 것만 SDK에 등록한다. MCP 노출은 필요해지면 레지스트리 위에 얹는다(#211) |
 | D-024 | 에이전트 구조는 에이전트 하나 + L1·L2·L3 프롬프트 오버라이딩 + 단계별 스레드다. 파이프는 `run_agent(AgentTask) -> AgentResult`(동기) 하나로 부른다 | 단계별 스레드는 "스레드마다 실행 루프"다. `run_agent`가 안에서 `Runner.run_sync`를 쓴다(#209 계획). 실행기(`soc.agent.executor`)는 단계 스레드마다 asyncio 이벤트 루프를 하나 만들어 그 스레드의 기본 루프로 등록하고, `run_sync`가 그 루프를 쓰게 한다. 루프에서 직접 비동기 코드를 돌리지는 않고, 종료할 때 진행 중인 run을 취소(`cancelled`)하는 데만 쓴다(#215) |
+| D-025 | L1 판정 결과 조건. 확신도 임계값은 `[agent.l1]`의 `confidence_threshold = 0.8`이다. `pending` Alert는 `benign`이면 확신도와 관계없이 `held`(Ticket 없음), `malicious`이고 임계값 이상이면 `promoted`와 `origin=l1` Ticket 생성, 그 밖에는 `held`다. `new` Ticket은 `benign`이고 임계값 이상이면 `closed`, `malicious`이고 임계값 이상이면 `escalated`, 그 밖에는 `held`다. 실패한 작업은 최초 실행을 포함해 총 3회까지 시도하고, 마지막에도 실패하면 `held`로 둔다. `cancelled`는 실패 횟수에 넣지 않는다 | `undetermined`, 임계값 미만, 형식·근거·최종 실행 오류는 보류한다. Alert 승격과 Ticket 생성은 한 트랜잭션으로 처리하며, 현재 상태가 `pending`/`new`일 때만 결과를 적용해 재실행으로 중복 생성하지 않는다. 실패 횟수는 워커 재시작 뒤에도 유지한다. 정확한 저장 위치는 구현 이슈에서 정한다(#251) |
 
 ### L2
 
@@ -117,7 +118,6 @@
 
 | ID | 정할 것 | 예시 | 담당 단계 |
 |---|---|---|---|
-| D-025 | L1 판정 결과 조건 | 확신도 임계값(설정, 예: 0.8) 이상이면 종결 또는 L2 승격, 미만이거나 형식 오류·호출 실패면 보류. 사람에게 넘기지 않음 | L1 |
 | D-030 | L3 실행 방식 | 수동 명령 실행, 주기 실행은 설정으로 켬 | L3 |
 
 ## 추후
@@ -136,6 +136,7 @@
 새 기록을 맨 위에 쓴다.
 
 - #248 · Incident 분류 방법(D-027)의 후보 경로를 벡터 검색 우선·직접 조회 선택과 fallback으로 바꾸고, Qdrant(D-013)에 용도별 컬렉션과 분류 후보용 `linked` Ticket 적재를 명시함. 팀 합의(#248). 기본 임베딩 모델(D-031)을 bge-m3 dense·로컬 ONNX·1024차원·Cosine으로 확정하고 모델 ID·revision별로 컬렉션을 가름. L2 담당이 정함
+- #251 · L1 판정 결과 조건(D-025)을 확정했다. `[agent.l1].confidence_threshold`는 0.8이고, 확정 판정만 상태에 적용한다. Alert 1차 판정의 benign은 `held`, 임계값 이상 malicious는 Ticket으로 승격한다. Ticket은 임계값 이상 benign이면 `closed`, malicious이면 `escalated`; `undetermined`·낮은 확신도·최종 실패는 `held`다. 실패는 최초 실행 포함 3회까지 시도하고 `cancelled`는 세지 않는다. 상태를 다시 확인한 뒤 Alert 갱신과 Ticket 생성을 한 트랜잭션으로 한다. 실패 횟수의 저장 위치는 구현 이슈에서 정한다.
 - #234 · D-007 검증 방식을 클래스별 공식 JSON Schema 파일에서 OCSF 서버의 1.9.0 클래스·객체 정의로 바꾼다. OCSF가 클래스별 JSON Schema를 배포하지 않는다는 근거로 사람이 B안을 승인했다. 계획과 구현 위치는 `docs/plans/234-ocsf-alert-event.md`의 "바뀐 점"과 `src/soc/normalize/ocsf/SOURCE.md`에 기록했다.
 - #246 · D-033 구현 메모를 갱신해 정규화(W02)와 정책 분기·직접 Ticket 생성(W04)의 경계를 나눈다. D-043 추가: 관리자 API가 갱신한 단일 PostgreSQL 정책 행은 TOML보다 우선하고, Alert별 스냅샷을 적용한다. 기존 분기 결과는 유지하며 이력은 저장하지 않는다.
 - #246 · 사용자가 W04 정책 API를 앱에 연결하되 인증·인가는 후속 작업으로 미루도록 정했다. W04 API는 인증 연결 전까지 접근 제어 없이 노출된다.

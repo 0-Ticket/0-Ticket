@@ -441,14 +441,24 @@ def test_default_config_executor_values(default_config_dir: Path) -> None:
     assert section["shutdown_timeout_seconds"] == 30
     assert [section[s]["interval_seconds"] for s in ("l1", "l2", "l3")] == [10, 10, 0]
     assert [section[s]["poll_limit"] for s in ("l1", "l2", "l3")] == [10, 10, 10]
-    assert [section[s]["workers"] for s in ("l1", "l2", "l3")] == [[], [], []]
-    # 기본 설정에는 워커가 없어 띄울 단계가 없다
-    assert Executor(load_full_config(default_config_dir)).stages == []
+    assert [section[s]["workers"] for s in ("l1", "l2", "l3")] == [
+        ["soc.l1.judge:build_worker"],
+        [],
+        [],
+    ]
+    fake = FakeWorker("l1", "l1")
+    executor = Executor(
+        load_full_config(default_config_dir), resolve=resolver({"build_worker": fake})
+    )
+    assert executor.stages == ["l1"]
 
 
 def test_main_without_workers_exits_zero(
     default_config_dir: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
+    (default_config_dir / "local.toml").write_text(
+        "[executor.l1]\nworkers = []\n", encoding="utf-8"
+    )
     assert main([], config_dir=default_config_dir) == 0
     assert "등록된 워커가 없다" in capsys.readouterr().err
 

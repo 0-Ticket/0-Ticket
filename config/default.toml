@@ -36,6 +36,7 @@ rate_limit_retries = 3
 # reasoning_effort: Chat Completions의 reasoning_effort(low | medium | high).
 # max_tool_result_chars: 모델에게 보내는 도구 결과 JSON 본문의 글자 수 상한. 넘으면 뒤 레코드부터 뺀다(#211).
 [agent.l1]
+confidence_threshold = 0.8
 max_turns = 6
 max_input_chars = 32000
 reasoning_effort = "low"
@@ -66,7 +67,7 @@ shutdown_timeout_seconds = 30
 [executor.l1]
 interval_seconds = 10
 poll_limit = 10
-workers = []
+workers = ["soc.l1.judge:build_worker"]
 
 [executor.l2]
 interval_seconds = 10
