@@ -23,11 +23,14 @@ supersedes: [234-ocsf-alert-event.md]
 
 - W03도 한 번 실행하고 끝난다. 실행 주기는 외부 cron에서 정한다.
 - 새 설정, 마이그레이션, 상태 테이블은 추가하지 않았다. DB 테스트는 `DATABASE_URL`로 연결해 격리된 임시 DB를 만들고 지운다.
+- 실제 ELK 연결은 이 작업에서 검증하지 않았다. W03은 이미 저장된 RawRecord만 처리한다.
+- 기본 테스트 통과 뒤 `tests/test_tools_ssh.py`의 `FakeSshServer`에서 asyncio pending-task 종료 경고 3건이 출력됐다.
 
 ## 확인 방법
 
-- `uv run ruff format --check .` — 통과.
+- `uv run ruff format .` — 219개 파일 변경 없음.
 - `uv run ruff check .` — 통과.
-- `uv run pytest` — 1,123개 통과, 296개 기본 제외.
+- `uv run ruff format --check .` — 219개 파일 형식 확인.
+- `uv run pytest` — 1,123개 통과, 296개 기본 제외. 종료 코드 0; `FakeSshServer` pending-task 경고 3건.
 - `uv run pytest -m db` — 292개 통과, 1,127개 기본 제외.
-- 정규화 DB 테스트 19개 통과. 일회용 PostgreSQL 컨테이너를 사용했고 저장소 `.env`는 만들거나 수정하지 않았다.
+- DB 검사는 일회용 PostgreSQL 컨테이너를 사용했고 저장소 `.env`는 만들거나 수정하지 않았다.
