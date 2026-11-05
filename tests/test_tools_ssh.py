@@ -707,8 +707,8 @@ def test_redactor_hides_multiline_key_and_passphrase() -> None:
 # 기본 설정·운영 레지스트리·마커
 
 
-def test_default_config_has_ssh_settings_and_no_hosts() -> None:
-    tools = load_config(REPO / "config")["tools"]
+def test_default_config_has_ssh_settings_and_no_hosts(default_config_dir: Path) -> None:
+    tools = load_config(default_config_dir)["tools"]
     ssh = tools["ssh"]
     assert ssh == {
         "key_env": "SSH_TOOL_PRIVATE_KEY",
