@@ -144,7 +144,7 @@ def test_alert_promotion_then_ticket_decision_reaches_l2(db: str, conn: psycopg.
     assert status == "new" and ids == [alert_id]
     assert ticket_id in runner.poll(10)
     runner.handle(ticket_id)
-    branch = read_branch_data(conn, ticket_id, NOW, 86_400_000)
+    branch = read_branch_data(conn, ticket_id)
     assert branch.ticket["status"] == "escalated"
     assert branch.ticket["verdict"] == verdict(alert_id)
     assert branch.ticket["entities"] == entities
