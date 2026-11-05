@@ -443,21 +443,24 @@ def test_default_config_executor_values(default_config_dir: Path) -> None:
     assert [section[s]["poll_limit"] for s in ("l1", "l2", "l3")] == [10, 10, 10]
     assert [section[s]["workers"] for s in ("l1", "l2", "l3")] == [
         ["soc.l1.judge:build_worker"],
-        [],
+        ["soc.l2.branch:build_worker"],
         [],
     ]
-    fake = FakeWorker("l1", "l1")
+    workers = {
+        "soc.l1.judge:build_worker": FakeWorker("l1", "l1"),
+        "soc.l2.branch:build_worker": FakeWorker("l2", "l2"),
+    }
     executor = Executor(
-        load_full_config(default_config_dir), resolve=resolver({"build_worker": fake})
+        load_full_config(default_config_dir), resolve=lambda path: lambda _: workers[path]
     )
-    assert executor.stages == ["l1"]
+    assert executor.stages == ["l1", "l2"]
 
 
 def test_main_without_workers_exits_zero(
     default_config_dir: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     (default_config_dir / "local.toml").write_text(
-        "[executor.l1]\nworkers = []\n", encoding="utf-8"
+        "[executor.l1]\nworkers = []\n[executor.l2]\nworkers = []\n", encoding="utf-8"
     )
     assert main([], config_dir=default_config_dir) == 0
     assert "등록된 워커가 없다" in capsys.readouterr().err

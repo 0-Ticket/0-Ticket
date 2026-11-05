@@ -1,0 +1,56 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "branch_decision.schema.json",
+  "title": "BranchDecision",
+  "description": "L2 Ticket 분류 run의 출력. 어느 DB 레코드에도 그대로 저장하지 않는다",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["decision", "incident_id", "confidence", "reason", "similar_ticket_ids"],
+  "properties": {
+    "decision": {
+      "description": "새 Incident를 만들지, 입력 후보 하나에 붙일지",
+      "type": "string",
+      "enum": ["new", "existing"]
+    },
+    "incident_id": {
+      "description": "existing이면 후보 Incident ID, new이면 null. 실제 후보인지는 코드가 확인한다",
+      "anyOf": [
+        {"$ref": "common/types.schema.json#/definitions/incident_id"},
+        {"type": "null"}
+      ]
+    },
+    "confidence": {
+      "description": "분류 확신도. 기록만 하고 판정 임계로 쓰지 않는다",
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "reason": {
+      "description": "분류 이유",
+      "type": "string",
+      "minLength": 1
+    },
+    "similar_ticket_ids": {
+      "description": "입력에 보인 비슷한 Ticket ID의 부분집합. 실제 부분집합인지는 코드가 확인한다",
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "common/types.schema.json#/definitions/ticket_id"}
+    }
+  },
+  "allOf": [
+    {
+      "if": {"required": ["decision"], "properties": {"decision": {"const": "new"}}},
+      "then": {
+        "properties": {
+          "incident_id": {"type": "null"},
+          "similar_ticket_ids": {"maxItems": 0}
+        }
+      },
+      "else": {
+        "properties": {
+          "incident_id": {"$ref": "common/types.schema.json#/definitions/incident_id"}
+        }
+      }
+    }
+  ]
+}

@@ -6,13 +6,11 @@ from pathlib import Path
 from typing import Any
 
 CONFIG_DIR = Path(__file__).resolve().parents[3] / "config"
-ENTITY_TYPES = frozenset({"ip", "host", "user", "domain", "url", "file_hash", "process"})
 _BRANCH_KEYS = {
     "candidate_window_ms",
     "max_candidates",
-    "strong_signal_types",
-    "weak_signal_types",
-    "shared_entity_values",
+    "candidate_source",
+    "top_k",
 }
 
 
@@ -24,9 +22,8 @@ class ConfigError(ValueError):
 class BranchSettings:
     candidate_window_ms: int
     max_candidates: int
-    strong_signal_types: frozenset[str]
-    weak_signal_types: frozenset[str]
-    shared_entity_values: tuple[str, ...]
+    candidate_source: str
+    top_k: int
 
 
 def load_config(directory: Path | None = None) -> dict[str, Any]:
@@ -47,39 +44,20 @@ def read_settings(l2: dict[str, Any]) -> BranchSettings:
             raise ConfigError("L2 branch 설정 키가 올바르지 않다")
         candidate_window_ms = _positive_int(branch["candidate_window_ms"])
         max_candidates = _positive_int(branch["max_candidates"])
-        strong = _entity_types(branch["strong_signal_types"])
-        weak = _entity_types(branch["weak_signal_types"])
-        shared = _strings(branch["shared_entity_values"])
+        candidate_source = branch["candidate_source"]
+        top_k = _positive_int(branch["top_k"])
     except (KeyError, TypeError):
         raise ConfigError("L2 branch 설정이 올바르지 않다") from None
 
-    if strong & weak or strong | weak != ENTITY_TYPES:
-        raise ConfigError("강한·보조 신호 종류가 겹치거나 빠졌다")
-    return BranchSettings(candidate_window_ms, max_candidates, strong, weak, shared)
+    if candidate_source not in ("vector", "recent"):
+        raise ConfigError("L2 branch candidate_source는 vector 또는 recent여야 한다")
+    return BranchSettings(candidate_window_ms, max_candidates, candidate_source, top_k)
 
 
 def _positive_int(value: object) -> int:
     if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
         raise ConfigError("L2 branch의 수 설정은 양의 정수여야 한다")
     return value
-
-
-def _entity_types(value: object) -> frozenset[str]:
-    values = _strings(value)
-    if len(values) != len(set(values)) or not set(values) <= ENTITY_TYPES:
-        raise ConfigError("L2 branch 신호 종류가 올바르지 않다")
-    return frozenset(values)
-
-
-def _strings(value: object) -> tuple[str, ...]:
-    if not isinstance(value, list) or any(
-        not isinstance(item, str) or not item.strip() for item in value
-    ):
-        raise ConfigError("L2 branch 목록 설정이 올바르지 않다")
-    values = tuple(item.strip() for item in value)
-    if len(values) != len(set(values)):
-        raise ConfigError("L2 branch 목록 설정에 중복이 있다")
-    return values
 
 
 def _read(path: Path) -> dict[str, Any]:

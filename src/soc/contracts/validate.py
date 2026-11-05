@@ -29,6 +29,7 @@ from referencing.jsonschema import DRAFT7
 from soc.contracts.generated import (
     agent_log_schema,
     alert_schema,
+    branch_decision_schema,
     case_schema,
     event_schema,
     hunt_hypotheses_schema,
@@ -67,6 +68,10 @@ _CONTRACTS: dict[str, tuple[str, type[BaseModel]]] = {
     "hunt_verification": (
         "hunt_verification.schema.json",
         hunt_verification_schema.HuntVerification,
+    ),
+    "branch_decision": (
+        "branch_decision.schema.json",
+        branch_decision_schema.BranchDecision,
     ),
     "agent_log": ("agent_log.schema.json", agent_log_schema.AgentLog),
     "entity": ("common/entity.schema.json", entity_schema.Entity),

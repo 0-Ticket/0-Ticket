@@ -24,6 +24,7 @@ CONTRACT_NAMES = (
     "hunt",
     "hunt_hypotheses",
     "hunt_verification",
+    "branch_decision",
     "agent_log",
     "entity",
     "asset",

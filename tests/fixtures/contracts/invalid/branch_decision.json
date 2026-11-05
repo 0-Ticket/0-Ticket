@@ -1,0 +1,49 @@
+[
+  {
+    "case": "new_with_incident",
+    "violations": [{"path": "incident_id", "rule": "type"}],
+    "data": {
+      "decision": "new",
+      "incident_id": "inc_01a19f93-1150-7000-8000-000000000001",
+      "confidence": 0.8,
+      "reason": "새 사고다",
+      "similar_ticket_ids": []
+    }
+  },
+  {
+    "case": "new_with_similar_ticket",
+    "violations": [{"path": "similar_ticket_ids", "rule": "maxItems"}],
+    "data": {
+      "decision": "new",
+      "incident_id": null,
+      "confidence": 0.8,
+      "reason": "새 사고다",
+      "similar_ticket_ids": ["tkt_01a19f93-1150-7000-8000-000000000001"]
+    }
+  },
+  {
+    "case": "existing_without_incident",
+    "violations": [{"path": "incident_id", "rule": "type"}],
+    "data": {
+      "decision": "existing",
+      "incident_id": null,
+      "confidence": 0.8,
+      "reason": "기존 사고다",
+      "similar_ticket_ids": []
+    }
+  },
+  {
+    "case": "duplicate_similar_ticket",
+    "violations": [{"path": "similar_ticket_ids", "rule": "uniqueItems"}],
+    "data": {
+      "decision": "existing",
+      "incident_id": "inc_01a19f93-1150-7000-8000-000000000001",
+      "confidence": 0.8,
+      "reason": "기존 사고다",
+      "similar_ticket_ids": [
+        "tkt_01a19f93-1150-7000-8000-000000000001",
+        "tkt_01a19f93-1150-7000-8000-000000000001"
+      ]
+    }
+  }
+]

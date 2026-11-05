@@ -1,0 +1,22 @@
+[
+  {
+    "case": "existing",
+    "data": {
+      "decision": "existing",
+      "incident_id": "inc_01a19f93-1150-7000-8000-000000000001",
+      "confidence": 0.91,
+      "reason": "후보의 활동과 입력 Ticket이 이어진다",
+      "similar_ticket_ids": ["tkt_01a19f93-1150-7000-8000-000000000001"]
+    }
+  },
+  {
+    "case": "new",
+    "data": {
+      "decision": "new",
+      "incident_id": null,
+      "confidence": 0.72,
+      "reason": "같은 공격으로 볼 후보가 없다",
+      "similar_ticket_ids": []
+    }
+  }
+]

@@ -72,7 +72,7 @@ workers = ["soc.l1.judge:build_worker"]
 [executor.l2]
 interval_seconds = 10
 poll_limit = 10
-workers = []
+workers = ["soc.l2.branch:build_worker"]
 
 [executor.l3]
 # L3는 기본으로 돌지 않는다(L3 실행 방식, D-030)
@@ -235,10 +235,10 @@ hosts = []
 candidate_window_ms = 86_400_000
 # 다음 단계에 보여 줄 후보 수 상한
 max_candidates = 5
-strong_signal_types = ["file_hash", "process", "url", "domain", "user"]
-weak_signal_types = ["ip", "host"]
-# 여러 Incident에 공통으로 나와 묶는 점수에서 뺄 값
-shared_entity_values = []
+# 후보 조회 경로. vector | recent
+candidate_source = "vector"
+# Qdrant에서 가져올 비슷한 Ticket 수
+top_k = 50
 
 # 벡터 저장소와 임베딩(#257, Qdrant D-013, 임베딩 모델 D-031, 실행 라이브러리 D-044).
 # L2·L3가 함께 쓰는 공통 계층이다. 컬렉션 이름은 용도·모델 ID·revision·ONNX 파일에서 코드가 만든다.
