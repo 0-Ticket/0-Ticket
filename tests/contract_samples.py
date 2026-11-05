@@ -14,6 +14,8 @@ SCHEMA_DIR = Path(__file__).resolve().parents[1] / "contracts"
 
 CONTRACT_NAMES = (
     "raw_record",
+    "ingest_checkpoint",
+    "ingest_run",
     "alert",
     "event",
     "ticket",

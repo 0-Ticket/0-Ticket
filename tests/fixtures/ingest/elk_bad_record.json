@@ -1,0 +1,13 @@
+{
+  "pit_id": "pit-synthetic-3",
+  "hits": {
+    "hits": [
+      {
+        "_index": ".ds-logs-nginx.access-default-2026.11.04-000001",
+        "_id": "nul-1",
+        "_source": {"@timestamp": "2026-11-04T01:06:00.000Z", "message": "a\u0000b"},
+        "sort": [1793754360000, 14]
+      }
+    ]
+  }
+}

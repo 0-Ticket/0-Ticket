@@ -1,0 +1,57 @@
+[
+  {
+    "case": "missing_updated_at",
+    "violations": [{"path": "updated_at", "rule": "required"}],
+    "data": {
+      "siem_profile": "elk-dev",
+      "source_kind": "alert",
+      "source_key": ".alerts-security.alerts-default",
+      "cursor": {}
+    }
+  },
+  {
+    "case": "source_kind_not_in_list",
+    "violations": [{"path": "source_kind", "rule": "enum"}],
+    "data": {
+      "siem_profile": "elk-dev",
+      "source_kind": "log",
+      "source_key": ".alerts-security.alerts-default",
+      "cursor": {},
+      "updated_at": 1793678580000
+    }
+  },
+  {
+    "case": "empty_source_key",
+    "violations": [{"path": "source_key", "rule": "minLength"}],
+    "data": {
+      "siem_profile": "elk-dev",
+      "source_kind": "alert",
+      "source_key": "",
+      "cursor": {},
+      "updated_at": 1793678580000
+    }
+  },
+  {
+    "case": "cursor_not_object",
+    "violations": [{"path": "cursor", "rule": "type"}],
+    "data": {
+      "siem_profile": "elk-dev",
+      "source_kind": "alert",
+      "source_key": ".alerts-security.alerts-default",
+      "cursor": [1793678578000],
+      "updated_at": 1793678580000
+    }
+  },
+  {
+    "case": "last_error_is_removed",
+    "violations": [{"path": "(root)", "rule": "additionalProperties"}],
+    "data": {
+      "siem_profile": "elk-dev",
+      "source_kind": "alert",
+      "source_key": ".alerts-security.alerts-default",
+      "cursor": {},
+      "updated_at": 1793678580000,
+      "last_error": "http_status"
+    }
+  }
+]

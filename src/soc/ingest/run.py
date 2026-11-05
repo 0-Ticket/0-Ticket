@@ -1,0 +1,190 @@
+"""설정의 조회 대상을 차례로 수집한다.
+
+대상마다 체크포인트를 읽고, 페이지마다 RawRecord를 만들어 원본과 다음 위치를 한 트랜잭션으로
+저장한다(store.save_page). 첫 실패에서 그 대상의 실행을 멈춘다. 같은 실행 안에서 다시 시도하거나
+실패한 페이지를 건너뛰지 않는다. 체크포인트는 마지막 성공 페이지에 남아 다음 실행이 거기서
+다시 조회한다.
+한 대상이 실패해도 다음 대상은 계속한다.
+대상마다 실행이 끝나면(성공·실패 모두) 실행 이력 한 행을 남긴다(store.record_run).
+"""
+
+import sys
+import time
+from collections.abc import Callable
+from contextlib import closing
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from typing import Any
+
+import httpx
+import psycopg
+
+from soc.contracts import ContractError, to_epoch_ms
+from soc.ids import new_id
+from soc.ingest import elk, store
+from soc.ingest.config import Settings, Source
+from soc.ingest.errors import IngestError
+
+
+@dataclass
+class SourceResult:
+    """조회 대상 하나의 실행 결과. 출력 한 줄과 종료 코드를 만드는 데 쓴다.
+
+    필드:
+        name: 대상 이름(Source.name, "kind:key" 형식).
+        started_at: 이 대상의 실행을 시작한 시각(epoch ms). 실행 이력에 쓴다.
+        pages: 저장까지 끝난 페이지 수. 빈 페이지는 세지 않는다.
+        inserted: 이번 실행에서 새로 저장한 원본 수. 이미 있던 문서는 세지 않는다.
+        failure: 실패 종류 코드. 성공이면 None.
+    """
+
+    name: str
+    started_at: int
+    pages: int = 0
+    inserted: int = 0
+    failure: str | None = None
+
+
+def run(
+    settings: Settings,
+    conn: psycopg.Connection,
+    client: httpx.Client,
+    *,
+    clock: Callable[[], float] = time.monotonic,
+) -> list[SourceResult]:
+    """설정의 조회 대상을 순서대로 수집한다. 한 대상이 실패해도 다음 대상은 계속한다.
+
+    인자:
+        settings: read_settings()가 만든 설정.
+        conn: autocommit 연결. 트랜잭션은 store.save_page가 연다.
+        client: ELK HTTP 클라이언트(elk.make_client로 만든다).
+        clock: 응답 마감 시간을 재는 함수. 테스트에서 바꿔 끼운다.
+
+    반환:
+        대상마다 하나의 SourceResult. 설정 순서와 같다.
+    """
+    return [_run_source(settings, source, conn, client, clock) for source in settings.sources]
+
+
+def _run_source(
+    settings: Settings,
+    source: Source,
+    conn: psycopg.Connection,
+    client: httpx.Client,
+    clock: Callable[[], float],
+) -> SourceResult:
+    """대상 하나를 수집한다. 첫 실패에서 멈추고, 끝나면 실행 이력을 남긴다.
+
+    인자:
+        settings: 설정(siem_profile 등).
+        source: 이번에 수집할 대상.
+        conn: autocommit 연결.
+        client: ELK HTTP 클라이언트.
+        clock: 응답 마감 시간을 재는 함수.
+
+    반환:
+        이 대상의 SourceResult. 실패하면 failure에 종류 코드가 있다.
+
+    부수 효과:
+        실패하면 stderr에 "대상: 실패 종류" 한 줄을 쓴다. 성공·실패(0건 포함) 모두 실행 이력 한 행
+        (outcome은 "ok" 또는 실패 종류 코드)을 쌓는다. 이력 쓰기가 DB 오류로 실패하면 무시한다.
+    """
+    result = SourceResult(name=source.name, started_at=_now_ms())
+    try:
+        checkpoint = store.load_checkpoint(conn, settings.siem_profile, source.kind, source.key)
+        # 체크포인트가 없거나 cursor가 비어 있으면 처음부터 조회한다
+        # (빈 cursor는 0100 시기에 첫 페이지 실패로 남은 행에만 있다)
+        start_ms = None if checkpoint is None else checkpoint["cursor"].get("time_ms")
+        with closing(elk.iter_pages(client, settings, source, start_ms, clock=clock)) as pages:
+            for hits in pages:
+                fetched_at = _now_ms()
+                records = [_raw_record(settings, source, hit, fetched_at) for hit in hits]
+                next_checkpoint = {
+                    "siem_profile": settings.siem_profile,
+                    "source_kind": source.kind,
+                    "source_key": source.key,
+                    # 마지막 hit의 첫 정렬 값이 time_field 시각(epoch ms)이다
+                    "cursor": {"time_ms": hits[-1]["sort"][0]},
+                    "updated_at": fetched_at,
+                }
+                result.inserted += store.save_page(conn, records, next_checkpoint)
+                result.pages += 1
+    except IngestError as exc:
+        result.failure = exc.kind
+    except ContractError:
+        result.failure = "contract_rejected"
+    except psycopg.Error:
+        result.failure = "db_error"
+
+    if result.failure is not None:
+        # 대상 이름과 종류 코드만 쓴다. 응답 본문, 원본, 주소, 인증 값은 쓰지 않는다.
+        print(f"{result.name}: 실패 {result.failure}", file=sys.stderr)
+    try:
+        store.record_run(
+            conn,
+            {
+                "siem_profile": settings.siem_profile,
+                "source_kind": source.kind,
+                "source_key": source.key,
+                "started_at": result.started_at,
+                # 시계가 뒤로 가도 이력 계약(finished_at >= started_at)을 어기지 않게 한다
+                "finished_at": max(_now_ms(), result.started_at),
+                "outcome": result.failure or "ok",
+                "pages": result.pages,
+                "inserted": result.inserted,
+            },
+        )
+    except psycopg.Error:
+        # 이력은 덤이다. 원본·체크포인트는 이미 커밋됐고, 실패 종류는 위 stderr 줄에 남는다.
+        pass
+    return result
+
+
+def _raw_record(
+    settings: Settings, source: Source, hit: dict[str, Any], fetched_at: int
+) -> dict[str, Any]:
+    """ELK hit 하나를 RawRecord 계약 모양의 dict로 만든다.
+
+    인자:
+        settings: siem_profile을 얻는 데 쓴다.
+        source: kind를 얻는 데 쓴다.
+        hit: ELK 검색 응답의 hit 객체. 바꾸지 않고 original에 그대로 넣는다.
+        fetched_at: 가져온 시각(epoch ms).
+
+    반환:
+        id(new_id("raw")), kind, siem_profile, siem_ref("<_index>/<_id>"), fetched_at,
+        original을 담은 dict.
+    """
+    return {
+        "id": new_id("raw"),
+        "kind": source.kind,
+        "siem_profile": settings.siem_profile,
+        "siem_ref": f"{hit['_index']}/{hit['_id']}",
+        "fetched_at": fetched_at,
+        "original": hit,
+    }
+
+
+def _now_ms() -> int:
+    """현재 UTC 시각을 epoch 밀리초로 돌려준다."""
+    return to_epoch_ms(datetime.now(UTC))
+
+
+def format_results(results: list[SourceResult]) -> list[str]:
+    """대상마다 출력 한 줄을 만든다. 건수와 실패 종류만 쓴다.
+
+    인자:
+        results: run()이 돌려준 결과 목록.
+
+    반환:
+        "이름: 페이지 n, 새로 저장 n, 실패 종류(또는 없음)" 형식의 줄 목록.
+    """
+    return [
+        f"{r.name}: 페이지 {r.pages}, 새로 저장 {r.inserted}, 실패 {r.failure or '없음'}"
+        for r in results
+    ]
+
+
+def exit_code(results: list[SourceResult]) -> int:
+    """인자 results 중 실패가 하나라도 있으면 1, 아니면 0을 돌려준다."""
+    return 1 if any(r.failure for r in results) else 0

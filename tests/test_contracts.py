@@ -143,7 +143,11 @@ def test_invalid_samples_are_rejected(name: str, sample: dict) -> None:
 
 # 위반 rule 이름의 약속: JSON Schema 키워드, JSON 사전 검사(json), schema 밖 규칙의 이름.
 # Pydantic 오류 이름(string_pattern_mismatch, less_than_equal 등)이 나오면 약속이 깨진 것이다.
-CONTRACT_RULES = set(Draft7Validator.VALIDATORS) | {"json", "equals_ocsf_class"}
+CONTRACT_RULES = set(Draft7Validator.VALIDATORS) | {
+    "json",
+    "equals_ocsf_class",
+    "not_before_started_at",
+}
 
 
 def test_invalid_samples_break_only_promised_rules() -> None:
@@ -197,6 +201,7 @@ def test_unknown_contract_name_is_rejected(name: str) -> None:
 # 모양을 정하지 않은 자유 객체. schema는 안쪽 값을 보지 않는다.
 FREE_OBJECTS = [
     ("raw_record", "original"),
+    ("ingest_checkpoint", "cursor"),
     ("alert", "ocsf"),
     ("ticket", "details"),
     ("hunt", "details"),
