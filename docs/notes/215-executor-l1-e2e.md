@@ -3,10 +3,10 @@ issue: 215
 date: 2026-11-05
 owner: Pandyo
 plan: 215-executor-l1-e2e.md
-supersedes: []
+supersedes: ["224-l3-real-model.md"]  # "strict 빈 응답 (코어 담당 안건)"의 빈 응답 원인을 보완한다(아래 "#224 기록 보완")
 ---
 
-# 실행기와 워커 틀을 만들고, 워커 없이 L1 판정을 실제 모델로 잴 준비를 했다
+# 실행기와 워커 틀을 만들고, 워커 없이 L1 판정을 실제 모델로 재 보니 예산은 그대로 둬도 된다
 
 ## 한 일
 
@@ -17,9 +17,13 @@ supersedes: []
   - SIGINT·SIGTERM을 받으면 진행 중인 `run_agent`를 `cancelled`로 끝내고 기다린다. Agent Log도 남는다.
 - **워커 틀.** `soc.agent.AgentWorker` Protocol과 등록 함수 `build_worker(config) -> AgentWorker`를 정했다. L1·L2 워커는 각 담당이 만든다(아래 "워커 틀", 알림 초안).
 - **`[llm] strict_mode` 기본값 `false`.** Foundry는 strict를 켜면 최종 답이 빈 문자열이다(#224). 기본 LLM(D-009)·에이전트 구조(D-024) 메모를 고쳤다.
-- **L1 측정 명령(`uv run python -m soc.agent.dev_l1 seed|run|remove`).** 개발 DB에 L1 시드(Alert 6, Event 17)를 넣고, L1 워커 없이 Alert마다 `run_agent`를 한 번 부른다. 실제 모델 호출은 사람이 맥에서 한다(아래 "다시 재는 법").
+- **L1 측정 명령(`uv run python -m soc.agent.dev_l1 seed|run|remove`).** 개발 DB에 L1 시드(Alert 6, Event 20)를 넣고, L1 워커 없이 Alert마다 `run_agent`를 한 번 부른다. 조회 구간은 코드가 계산해 넘긴다. 실제 모델 호출은 사람이 맥에서 했다(아래 "다시 재는 법").
 - **`llm` 테스트 1건(`tests/test_l1_e2e_llm.py`).** 임시 DB에서 위협 Alert 1건을 실제 모델로 판정해 Verdict 계약·근거 장부·Agent Log를 본다.
-- **실측 결과는 아직 없다.** 사람이 맥에서 잰 뒤 이 파일의 "실측 결과"를 채운다.
+- **실측(사람, 맥, Foundry `gpt-oss-120b`).**
+  - 고친 입력으로 6 run을 쟀다. 6/6이 계약·근거 검사를 통과했고, 빈 응답 0%, 평균 2턴, 평균 약 4,700토큰·$0.00085였다(설계 추정 1.1만~1.8만 토큰·$0.0035보다 적다).
+  - 처음 입력은 모델에게 epoch 밀리초 산수를 시켰고, 모델 호출의 38~48%가 빈 응답이었다.
+  - `budget_exceeded` 0건이고 6턴에 닿은 run이 없어 `[agent.l1]` 예산은 바꾸지 않았다.
+- **샘플 1건 보완.** 실측에서 4번 모두 malicious로 나온 `benign_service_account`는 정상 근거가 도구 목록에 보이지 않게 만들어져 있었다. 근거를 더했다(아래 "샘플 점검").
 
 ## 계획과 달라진 점
 
@@ -28,6 +32,8 @@ supersedes: []
 - **측정용 작업 프롬프트는 샘플 파일(`tests/fixtures/l1_e2e/dev_seed.json`의 `task_prompt`)에 뒀다.** L1 코드가 아니라 측정용이라 `src/`의 프롬프트 폴더에 두지 않았다.
 - **설정 로더에 `load_full_config`를 더했다.** 실행기가 `[executor]`를 읽고 설정 전체를 `build_worker`에 넘기기 위해서다. `load_config`(세 절만)는 그대로다.
 - **맥 실측 뒤 측정 입력에 조회 구간을 더했다(사람이 정함).** 처음 입력에는 Alert 시각만 있고 프롬프트가 "앞뒤 하루를 본다"고 해서, 모델이 epoch 밀리초 산수를 했다. 빈 응답이 많아(아래 "실측 결과") 코드가 계산한 `window_start_ms`·`window_end_ms`를 넣고, 프롬프트는 그 값을 도구에 그대로 쓰라고 바꿨다.
+- **`benign_service_account` 샘플을 고쳤다(재측정 뒤 점검).** 아래 "샘플 점검". 고친 샘플로는 아직 재지 않았다.
+- **#224 기록을 고치지 않고 이 기록에서 보완했다.** 지난 기록은 고쳐 쓰지 않는 규칙(`docs/notes/README.md`) 때문이다. `supersedes`에 `224-l3-real-model.md`를 적었다.
 - **집계 SQL이 시작 시각(`since`)부터만 센다.** 처음에는 "최근 1일"이라 고치기 전 18 run이 섞인다. 빈 응답 수도 센다.
 - **세부 동작**
   - `[executor]`에 모르는 키가 있으면 시작하지 않는다.
@@ -60,6 +66,17 @@ def build_worker(config: dict[str, Any]) -> AgentWorker: ...  # 각 담당 모�
 | 예외 | 실행기가 잡아 로그만 남긴다. 같은 건이 계속 실패하면 매 라운드 다시 나오므로 시도 횟수는 워커가 센다 |
 | 종료 | `run_agent`가 `failure = "cancelled"`로 돌아온다. 실패 횟수에 넣지 않고 다음 실행에서 다시 하기를 권한다 |
 | 스레드 | `handle`은 단계 스레드에서 돈다. `asyncio.run`처럼 이벤트 루프를 만들거나 바꾸는 코드를 쓰지 않는다(종료 때 취소가 닿지 않는다). DB 연결은 `handle`마다 연다 |
+
+### 지금 등록할 수 있는 워커
+
+- **아직 없다.** 기본 설정은 모든 단계가 `workers = []`라 `uv run python -m soc.agent`는 "등록된 워커가 없다"로 끝난다(종료 코드 0).
+  - L1 워커: 없음. 이슈와 담당이 없다.
+  - L2 워커: 없음. #227(분류 판정·저장)이 만들고 #228이 등록한다.
+  - L3 HuntVerifier: 모양(`stage`·`name`·`poll`·`handle`)은 맞는다. 하지만 `build_worker` 함수가 없다. 생성자에 DB 주소와 헌팅 설정이 필요하기 때문이다.
+- **L3 3-c가 할 일:**
+  - `soc.l3.hunt.verify:build_worker(config)`를 더한다. `DATABASE_URL`을 읽고 `read_hunt_settings(config["l3"])`로 설정을 만든다.
+  - `[executor.l3]`에 `workers`를 적고 `interval_seconds`를 켠다.
+  - `cancelled`를 시도 횟수에 넣지 않게 고친다(아래 "취소가 동작하는 방식과 한계").
 
 ### 취소가 동작하는 방식과 한계
 
@@ -235,32 +252,85 @@ FROM runs;
 
 | 항목 | 값 |
 |---|---|
-| 빈 응답(모델 호출 중 message·function_call 없이 추론만) | 38~48% |
-| 같은 설정의 L3 검증 빈 응답(비교) | 4%(51호출 중 2) |
-| 빈 응답의 추론 끝 | 모두 "query_records를 부르자"는 계획. 그 앞에 epoch 밀리초 ±1일 산수가 반복됨 |
+| 항목 | low (12 run) | medium (6 run) |
+|---|---|---|
+| 계약·근거 통과 | 6 (50%) | 4 (67%) |
+| 빈 응답(모델 호출 중 message·function_call 없이 추론만) | 38~48%(두 설정의 범위) | 6/16 (38%) |
+| 평균 턴 / 최대 턴 | 2.3 / 3 | |
+| 도구 호출 / 도구 오류 | 8 / 1 | |
+| 평균 토큰(입력·출력) | 5,985 · 360 | |
+| 평균 비용 | $0.0011 | |
 
-- 그 밖의 숫자(통과 수, 턴, 토큰, 비용, decision)는 이 기록에 받지 않았다. 필요하면 사람이 채운다.
+- 비교: 같은 설정의 L3 검증 빈 응답은 4%(51호출 중 2)였다.
+- 빈 응답의 추론 끝은 모두 "query_records를 부르자"는 계획이었고, 그 앞에 epoch 밀리초 ±1일 산수가 반복됐다.
+- medium 6 run의 비용·토큰은 다른 run과 합산돼 따로 나누지 못했다(빈칸).
 
 #### 고친 뒤 (1라운드, 6 run)
 
 - 입력: `window_start_ms`·`window_end_ms`(코드가 계산, Alert 시각 6일 전 ~ 1일 뒤)를 더하고, 프롬프트는 그 값을 도구에 그대로 넣으라고 함
-- 설정: `reasoning_effort` (사람이 적음), 나머지는 `[agent.l1]` 기본값
+- 설정: `reasoning_effort` low(기본값), 나머지도 `[agent.l1]` 기본값
+- 샘플: `benign_service_account`를 보완하기 전 샘플
 
 | 항목 | 값 |
 |---|---|
-| run 수 / 계약·근거 통과(`validation = ok`) | |
-| 모델 호출 / 빈 응답 / 빈 응답 비율 | |
-| `budget_exceeded` / `max_turns` 6에 닿은 run | |
-| 평균 턴 / 최대 턴 | |
-| 평균 도구 호출 / 도구 오류(코드별) | |
-| 평균 토큰(입력·출력) / 평균 비용 / 합계 비용 | |
-| 시나리오별 decision(정상 2·위협 2·애매 2) | |
-| `llm` 테스트 | |
+| run 수 / 계약·근거 통과(`validation = ok`) | 6 / 6 |
+| 모델 호출 / 빈 응답 / 빈 응답 비율 | 12 / 0 / 0% |
+| `budget_exceeded` / `max_turns` 6에 닿은 run | 0 / 0 |
+| 평균 턴 / 최대 턴 | 2.0 / 2 |
+| 평균 도구 호출 / 도구 오류 | 1.0(합계 6) / 0 |
+| 평균 토큰(입력·출력) | 4,399 · 313 |
+| 평균 비용 / 합계 비용 | $0.000848 / $0.005086 |
+| 429 | 0 |
+| `llm` 테스트 | (사람이 붙임) |
+
+시나리오별 decision(고친 뒤 1라운드):
+
+| 시나리오 | 기대 | 결과 |
+|---|---|---|
+| `benign_scheduled_task` | benign | benign |
+| `benign_service_account` | benign | malicious(고치기 전 3라운드를 합쳐 4번 모두 malicious) |
+| `malicious_powershell` | malicious | malicious |
+| `malicious_web_attack` | malicious | malicious |
+| `ambiguous_new_location` | undetermined | benign(0.8) |
+| `ambiguous_port_scan` | undetermined | malicious(0.9) |
+
+- **판정 정확도는 측정용 프롬프트 기준이다.** L1 품질이 아니다. L1 프롬프트가 정해지면 다시 잰다.
+- **애매한 두 시나리오가 `undetermined`로 나오지 않았다.** 모델이 높은 확신도(0.8, 0.9)로 한쪽을 골랐다. 확신도 임계값(판정 결과 조건, D-025)과 프롬프트를 정할 때 볼 관찰이다.
+- 도구 호출이 run마다 1번이었다. 조회 구간을 그대로 받아 한 번에 넓게 본 것으로 보인다(`query_records` 목록에는 summary·entities만 나온다).
+
+#### 샘플 점검 (`benign_service_account`)
+
+- **샘플이 정상으로 보이게 만들어지지 않았다.** 그래서 모델의 과잉 판정으로 기록하지 않고 샘플을 고쳤다.
+  - 감시 서버라는 단서(`monitor-01`)가 `ocsf.src_endpoint.hostname`에만 있었다. `query_records` 목록(summary·entities)에는 보이지 않는다.
+  - 비밀번호 변경 전의 평소 성공 로그인이 없었다.
+  - 도구를 한 번 부른 모델에게 보인 것은 "다른 사용자가 서비스 계정 비밀번호를 바꿨고, 곧 한 IP에서 로그인이 3번 실패했다"뿐이었다. 정상 근거가 없으니 의심 쪽으로 읽힌다.
+- **고친 것:**
+  - 비밀번호 변경 전에 같은 출처(`192.0.2.10`, `monitor-01`)에서 1분 간격 성공 로그인 3건을 더했다.
+  - 로그인 Event의 entities와 summary에 `monitor-01`을 넣었다.
+  - 정상이라고 알려 주는 문장은 넣지 않았다. 근거 기록만 더했다.
+  - `test_benign_service_account_shows_its_normal_baseline_in_list_view`가 고친 모양을 지킨다(고치기 전 샘플로는 실패함을 확인).
+- **고친 샘플로는 아직 재지 않았다.** 다음 실측에서도 malicious가 나오면 그때는 모델의 과잉 판정으로 본다.
+
+#### #224 기록 보완 (빈 응답의 원인)
+
+`docs/notes/224-l3-real-model.md` "strict 빈 응답 (코어 담당 안건)"을 이 기록에서 보완한다.
+
+- strict를 끈 뒤에도 L1 측정에서 모델 호출의 38~48%가 빈 응답이었다.
+  - 이 빈 응답은 #224의 strict 빈 응답과 모양이 다르다. #224는 content가 빈 문자열이었고, 여기는 message도 function_call도 없이 추론만 있었다.
+  - 이번 실측으로 본 원인은 추론 강도(low·medium 모두 남)나 서비스(같은 Foundry 배포)가 아니라 입력이었다. 입력이 모델에게 epoch 밀리초 산수를 시켰다. 조회 구간을 코드가 계산해 넘기자 0%(12호출 중 0)가 됐다.
+- **코어 안건 정정:**
+  1. 안건 1(`strict_mode` 기본값): 끝남. #215에서 `false`로 바꿨다.
+  2. 안건 2(빈 content를 다른 형식 오류와 구분해 기록할지): 빈 응답은 strict만의 문제가 아니다. 입력이 산수를 시키면 strict를 꺼도 생긴다. 구분해 기록한다면 "빈 content"와 "추론만 있는 응답" 두 모양을 함께 본다.
+  3. 빈 응답이 나면 지금 코어는 형식 오류 재요청 1회 뒤 `format_error`로 끝난다. 재요청이 이 빈 응답을 고친다는 근거는 없다. 고치기 전 low 12 run 중 6건만 통과했다.
+- 코어는 이번에도 고치지 않았다. 먼저 입력에서 산수를 없애는 것(파이프가 구간을 계산해 넘기기)을 권한다.
 
 ### 예산 판단
 
-- 기준(계획): `budget_exceeded` 0건이고 `max_turns` 6에 닿은 run이 없으면 `[agent.l1]` 기본값을 그대로 둔다. 하나라도 있으면 사람이 수치를 보고 정한다.
-- 바꾸면 `config/default.toml`, `tests/test_agent_config.py`, 이 기록을 함께 고치고 아래 알림 목록에 더한다.
+- 기준(계획): `budget_exceeded` 0건이고 `max_turns` 6에 닿은 run이 없으면 `[agent.l1]` 기본값을 그대로 둔다.
+- **결과: 예산 값을 바꾸지 않았다(사람이 정함).** 고친 뒤 6 run에서 `budget_exceeded` 0, 최대 턴 2(한도 6)였다. 고치기 전 low 12 run도 최대 3턴이었다.
+  - `max_turns` 6, `max_input_chars` 32,000, `max_tool_result_chars` 6,000, `reasoning_effort` low를 그대로 둔다.
+  - 추론 강도를 올려도 빈 응답이 줄지 않았다(medium 38%). 원인은 입력이었다(아래 "#224 기록 보완").
+- 실데이터(수집 #218·#234 이후)와 L1 프롬프트로 다시 잴 때 이 기준으로 다시 본다.
 
 ### 연구 레포 설계 문서 수정 알림 목록
 
@@ -270,7 +340,9 @@ FROM runs;
 - `설계/01-SDK와 모델.md` "`strict` 처리": "기본값은 `true`, 거부되면 끈다" → Foundry는 400이 아니라 빈 답으로 거부해서 기본값을 `false`로 바꿨다(#224, #215).
 - `설계/02-인터페이스.md` "AgentWorker", `파이프 전달 사항.md` 2·3절: 등록 방법(`[executor.<stage>] workers = ["soc.<모듈>:build_worker"]`, `build_worker(config)`), 설정 키(`interval_seconds`, `poll_limit`, `shutdown_timeout_seconds`), "`handle` 안에서 이벤트 루프를 만들지 않는다"를 더한다.
 - `설계/08-실행기.md`: 바꿀 것 없음(이미 "스레드마다 이벤트 루프"). 실행 명령 `uv run python -m soc.agent`와 기본값(L1·L2 10초·10건, L3 0, 종료 대기 30초)은 더하면 좋다.
-- `설계/03-에이전트 내부.md` "예산", `설계/01-SDK와 모델.md` "비용": 실측 뒤 값을 바꾸면 더한다.
+- `설계/03-에이전트 내부.md` "예산": 바꿀 것 없음. L1 실측(고친 입력 6 run)에서 `budget_exceeded` 0, 최대 2턴이었다.
+- `설계/01-SDK와 모델.md` "비용": 바꿀 것 없음. 첫 실측 수치(평균 약 4,700토큰, 약 $0.00085)를 참고로 더하면 좋다(설계 추정 1.1만~1.8만 토큰, $0.0035).
+- `설계/02-인터페이스.md`·`파이프 전달 사항.md`: **L1 입력에서 조회 구간은 코드가 계산해 넘긴다.** 시각 산수를 모델에게 시키면 빈 응답이 늘었다(L1 측정 38~48% → 고친 뒤 0%).
 
 ### 담당 알림 초안 (사람이 올림)
 
@@ -287,7 +359,9 @@ L1 담당:
 - handle 안에서 asyncio.run 등 이벤트 루프를 만들지 않기, DB 연결은 handle마다
 - [llm] strict_mode 기본값이 false가 됐습니다(Foundry, #224)
 - 측정용 L1 실측 수치와 방법: docs/notes/215-executor-l1-e2e.md (측정용 프롬프트·입력 기준이라 L1 프롬프트가 정해지면 다시 잽니다)
-- 조회 구간은 코드가 계산해 data로 넘기고, 프롬프트는 "그 값을 도구의 start_ms·end_ms에 그대로 넣으라"고 써 주세요. 모델에게 epoch 밀리초 산수를 시켰더니 빈 응답이 38~48%였습니다(L3는 코드가 window를 넘겨 4%)
+- 조회 구간은 코드가 계산해 data로 넘기고, 프롬프트는 "그 값을 도구의 start_ms·end_ms에 그대로 넣으라"고 써 주세요. 모델에게 epoch 밀리초 산수를 시켰더니 빈 응답이 38~48%였습니다(코드가 구간을 넘기자 0%)
+- 측정 판정 정확도(6건 중 3건 정답)는 측정용 프롬프트 기준이라 L1 품질이 아닙니다
+- 애매한 시나리오 2건이 undetermined로 나오지 않고 0.8·0.9 확신도로 한쪽을 골랐습니다. 확신도 임계값(D-025)과 프롬프트를 정할 때 봐 주세요
 - 판정 결과 조건(D-025)은 L1 담당이 정합니다
 ```
 
@@ -311,13 +385,14 @@ L2 담당(#228):
 ## 확인 방법
 
 - `uv run ruff format --check .`, `uv run ruff check .`: 통과
-- `uv run pytest`: 963건 통과(`config/local.toml` 없음). 조회 구간을 더하기 전에는 962건
+- `uv run pytest`: 964건 통과(`config/local.toml` 없음). 조회 구간을 더하기 전 962건, 샘플 점검 테스트를 더하기 전 963건
 - `uv run pytest -m db`: 243건 통과. Docker가 없어 임시 PostgreSQL 16(trust 인증)으로 돌렸다
+- `uv run pytest -m llm tests/test_l1_e2e_llm.py`(사람, 맥, Foundry): (사람이 붙임)
 - `uv run pytest -m llm tests/test_l1_e2e_llm.py`(세션, 모델 설정 없음): `provider_error`(LLM 연결 설정이 없다)로 실패. 시드·읽기 계정·`run_agent`까지 연결만 확인했다(실제 모델 호출 0회)
 - 실행기 테스트(`tests/test_agent_executor.py`) 10번 반복: 매번 34건 통과
 - 테스트를 먼저 쓰고, `AgentWorker`가 없어 실행기 테스트 파일이 수집 단계에서 실패하는 것을 봤다(`dev_l1`은 위 "계획과 달라진 점")
 - 손으로 확인
-  - 가짜 모델 + 임시 DB + 실제 도구(읽기 계정): `seed`(Alert 6, Event 17, RawRecord 23) → 위협 Alert 1건 `run_task`. `query_records`가 그 호스트의 Event 4건을 돌려줬고, Verdict가 계약·근거 장부를 통과했다(`ok`). Agent Log 3줄(model·tool·model)
+  - 가짜 모델 + 임시 DB + 실제 도구(읽기 계정), 샘플 보완 전: `seed`(Alert 6, Event 17, RawRecord 23) → 위협 Alert 1건 `run_task`. `query_records`가 그 호스트의 Event 4건을 돌려줬고, Verdict가 계약·근거 장부를 통과했다(`ok`). Agent Log 3줄(model·tool·model)
   - 같은 DB에서 `runs_l1.sql`(2 run)·`summary_l1.sql`이 돈다
   - `since`·빈 응답을 더한 SQL: 가짜 Agent Log(추론만 있는 호출 1, 정상 호출 3, `since` 전 run 1)로 `empty_responses` 1/4, `since` 전 run 제외를 확인했다
   - 실제 프로세스에 SIGTERM: "종료 중" 출력 후 종료 코드 0
