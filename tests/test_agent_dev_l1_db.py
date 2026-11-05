@@ -126,6 +126,10 @@ def test_run_calls_run_once_per_seeded_alert(conn: psycopg.Connection) -> None:
     alert_ids = [a.alert["id"] for a in seeded_alerts(conn)]
     assert [t.subject_id for t in tasks] == alert_ids
     assert all(t.task == TASK_NAME and t.allowed_evidence_ids == (t.subject_id,) for t in tasks)
+    # 조회 구간은 코드가 Alert 시각으로 계산해 넘긴다
+    times = {a.alert["id"]: a.alert["time"] for a in seeded_alerts(conn)}
+    for t in tasks:
+        assert t.data["window_start_ms"] < times[t.subject_id] < t.data["window_end_ms"]
     assert len(lines) == 6 and not any("이유 본문" in line for line in lines)
     # 판정 결과는 Alert에 쓰지 않는다(L1 워커의 일)
     assert conn.execute("SELECT count(*) FROM alerts WHERE triage IS NOT NULL").fetchone() == (0,)

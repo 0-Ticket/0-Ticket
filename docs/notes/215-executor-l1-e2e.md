@@ -27,6 +27,8 @@ supersedes: []
 - **샘플 1건의 시각을 고쳤다.** `benign_scheduled_task`의 "지난주 같은 작업" Event가 7.04일 전이라 도구가 한 번에 보는 범위(`max_range_days` 7일)를 넘었다. 6일 전으로 옮겼다.
 - **측정용 작업 프롬프트는 샘플 파일(`tests/fixtures/l1_e2e/dev_seed.json`의 `task_prompt`)에 뒀다.** L1 코드가 아니라 측정용이라 `src/`의 프롬프트 폴더에 두지 않았다.
 - **설정 로더에 `load_full_config`를 더했다.** 실행기가 `[executor]`를 읽고 설정 전체를 `build_worker`에 넘기기 위해서다. `load_config`(세 절만)는 그대로다.
+- **맥 실측 뒤 측정 입력에 조회 구간을 더했다(사람이 정함).** 처음 입력에는 Alert 시각만 있고 프롬프트가 "앞뒤 하루를 본다"고 해서, 모델이 epoch 밀리초 산수를 했다. 빈 응답이 많아(아래 "실측 결과") 코드가 계산한 `window_start_ms`·`window_end_ms`를 넣고, 프롬프트는 그 값을 도구에 그대로 쓰라고 바꿨다.
+- **집계 SQL이 시작 시각(`since`)부터만 센다.** 처음에는 "최근 1일"이라 고치기 전 18 run이 섞인다. 빈 응답 수도 센다.
 - **세부 동작**
   - `[executor]`에 모르는 키가 있으면 시작하지 않는다.
   - 단계 절이 빠지면 그 단계는 돌지 않는 것으로 본다.
@@ -38,13 +40,15 @@ supersedes: []
 ### 워커 틀 (L1·L2·L3 공통)
 
 ```python
-class AgentWorker(Protocol):                       # soc.agent.AgentWorker
-    stage: Literal["l1", "l2", "l3"]               # 등록한 [executor.<stage>]와 같아야 함
-    name: str                                      # 단계 안에서 유일
+class AgentWorker(Protocol):  # soc.agent.AgentWorker
+    stage: Literal["l1", "l2", "l3"]  # 등록한 [executor.<stage>]와 같아야 함
+    name: str  # 단계 안에서 유일
+
     def poll(self, limit: int) -> Sequence[str]: ...
     def handle(self, subject_id: str) -> None: ...
 
-def build_worker(config: dict[str, Any]) -> AgentWorker: ...   # 각 담당 모듈
+
+def build_worker(config: dict[str, Any]) -> AgentWorker: ...  # 각 담당 모듈
 ```
 
 | 항목 | 약속 |
@@ -84,14 +88,23 @@ def build_worker(config: dict[str, Any]) -> AgentWorker: ...   # 각 담당 모�
 ### L1 측정 시드와 실측의 함정
 
 - **측정용 작업 프롬프트와 입력 모양은 L1 코드가 아니다.**
-  - 입력은 `data = {"alert": {id, time, severity, title, rule_id, entities}}`이고, 근거 장부는 그 Alert ID로 시작한다.
+  - 입력은 `data = {"alert": {id, time, severity, title, rule_id, entities}, "window_start_ms", "window_end_ms"}`이다. 근거 장부는 그 Alert ID로 시작한다.
+  - 조회 구간은 코드가 Alert 시각으로 계산한다: 6일 전부터 1일 뒤까지(합 7일 = `[tools] max_range_days` 기본값). 시나리오의 Alert·Event는 모두 이 구간 안에 있다(테스트로 확인).
   - L1 담당이 정할 프롬프트·입력과 다를 수 있다. 그때는 수치를 다시 잰다.
+  - **시각 산수를 모델에게 시키지 않는다.**
+    - 고치기 전 입력(Alert 시각만, "앞뒤 하루를 본다")에서는 모델 호출의 38~48%가 빈 응답이었다. message도 function_call도 없이 추론만 있었다.
+    - 같은 설정의 L3 검증은 4%(51호출 중 2)였다.
+    - 빈 응답의 추론 끝은 모두 "query_records를 부르자"는 계획이었다. 그 앞에 epoch 밀리초 ±1일 산수가 반복됐다.
+    - L3 검증은 코드가 계산한 `window`(`from`·`to`)를 받아 이 산수가 없다.
+    - L1 워커도 조회 구간을 코드가 계산해 `data`로 넘기고, 프롬프트는 "그 값을 도구의 start_ms·end_ms에 그대로 넣는다"고 쓰는 것이 좋다.
+    - 고친 뒤 수치는 아래 "고친 뒤"에 채운다. 가설이 맞는지는 그 수치로 본다.
   - Alert에 판정 결과(`triage`)는 쓰지 않는다.
 - **시드 표시는 RawRecord `siem_profile = "dev-seed-l1"`이다.**
   - L3 시드(`dev-seed`)와 서로 지우지 않는다.
   - 엔티티 값도 L3 시드와 겹치지 않는다(테스트로 확인).
   - 같은 개발 DB의 다른 Alert·Event(수집 데이터 등)는 모델이 도구로 볼 수 있다. 실측은 시드 말고는 비어 있는 개발 DB에서 하는 것이 좋다.
 - **`[tools.allowed] l1`에서 `query_siem`을 빼고 잰다.** ELK가 없으면 도구 오류가 되고, 그 오류도 도구 오류 수에 섞인다.
+- **집계 SQL은 `since`부터 센다.** 고치기 전 run이 같은 DB에 남아 있으므로 이번 라운드의 `seed` 직전 시각을 `-v since=…`로 넘긴다.
 - **집계 SQL은 `remove` 전에 돌린다.** 시나리오 이름을 Alert → RawRecord로 찾기 때문이다. Agent Log는 지워도 남지만 시나리오 칸이 비게 된다.
 - **`run_agent`가 모델을 부르기 전에 실패하면 Agent Log가 남지 않는다**(키 없음, 연결 설정 없음 등). 그런 run은 `run` 출력 줄(`failure=`)에서만 보인다.
 - `decision`은 Agent Log에서 읽지 않는다(본문을 읽게 되므로). `run` 출력 줄로 센다.
@@ -112,16 +125,20 @@ l1 = ["get_alert", "get_event", "query_records", "query_http_flow", "summarize_h
 
 환경변수: `DATABASE_URL`, `AGENT_DATABASE_URL`(읽기 계정, `docs/notes/211-tool-registry.md`), `LLM_API_KEY`.
 
+고친 뒤 1라운드(6 run):
+
 ```bash
 uv run python -m soc.db.migrate
-uv run python -m soc.agent.dev_l1 seed            # 라운드마다(이전 시드를 지우고 다시 넣음)
-uv run python -m soc.agent.dev_l1 run             # 라운드마다(6 run). 출력 줄을 저장해 둔다
-# 3라운드를 마치면
-psql "$DATABASE_URL" -f runs_l1.sql               # run별 숫자
-psql "$DATABASE_URL" -f summary_l1.sql            # 합계·평균
+SINCE="$(date -u '+%Y-%m-%d %H:%M:%S+00')"         # 이번 라운드 시작 시각(이전 run을 빼기 위해)
+uv run python -m soc.agent.dev_l1 seed            # 이전 시드를 지우고 다시 넣음
+uv run python -m soc.agent.dev_l1 run | tee l1_round.txt   # 6 run. 출력 줄로 decision을 센다
+psql "$DATABASE_URL" -v since="$SINCE" -f runs_l1.sql      # run별 숫자
+psql "$DATABASE_URL" -v since="$SINCE" -f summary_l1.sql   # 합계·평균·빈 응답
 uv run python -m soc.agent.dev_l1 remove
 uv run pytest -m llm tests/test_l1_e2e_llm.py     # 1 run(임시 DB)
 ```
+
+여러 라운드를 잴 때는 `SINCE`를 첫 라운드 전에 한 번만 정하고, `seed` → `run`을 라운드마다 되풀이한 뒤 SQL을 돌린다.
 
 `run` 출력 한 줄의 모양(이유 본문 없음):
 
@@ -145,6 +162,10 @@ SELECT min(l.started_at) AS started_at,
               + coalesce(sum(l.tokens_out), 0) * 0.60) / 1e6, 6) AS cost_usd,
        round(max(extract(epoch FROM l.started_at) * 1000 + l.duration_ms)
              - min(extract(epoch FROM l.started_at) * 1000)) AS span_ms,
+       count(*) FILTER (WHERE l.kind = 'model' AND l.outcome = 'ok' AND NOT EXISTS (
+           SELECT 1 FROM jsonb_array_elements(
+               CASE WHEN jsonb_typeof(l.output) = 'array' THEN l.output ELSE '[]'::jsonb END) e
+           WHERE e->>'type' IN ('message', 'function_call'))) AS empty_responses,
        max(length(l.input::text)) FILTER (WHERE l.kind = 'model') AS max_model_input_len,
        sum((l.details->>'retries')::int) FILTER (WHERE l.kind = 'model') AS retries_429,
        string_agg(DISTINCT l.details->>'failure', ',') FILTER (WHERE l.kind = 'model') AS run_failure,
@@ -153,7 +174,7 @@ FROM agent_logs l
 LEFT JOIN alerts a ON a.id = l.subject_id
 LEFT JOIN raw_records r ON r.id = a.raw_id
 WHERE l.stage = 'l1' AND l.details->>'task' = 'l1_e2e_probe'
-  AND l.started_at >= now() - interval '1 day'
+  AND l.started_at >= :'since'::timestamptz
 GROUP BY l.run_id
 ORDER BY 1;
 ```
@@ -166,19 +187,26 @@ WITH runs AS (
          count(*) FILTER (WHERE kind = 'model') AS turns,
          count(*) FILTER (WHERE kind = 'tool') AS tool_calls,
          count(*) FILTER (WHERE kind = 'tool' AND outcome = 'error') AS tool_errors,
+         count(*) FILTER (WHERE kind = 'model' AND outcome = 'ok' AND NOT EXISTS (
+             SELECT 1 FROM jsonb_array_elements(
+                 CASE WHEN jsonb_typeof(output) = 'array' THEN output ELSE '[]'::jsonb END) e
+             WHERE e->>'type' IN ('message', 'function_call'))) AS empty_responses,
          coalesce(sum(tokens_in), 0) AS tokens_in,
          coalesce(sum(tokens_out), 0) AS tokens_out,
          max(details->>'validation') AS validation,
          bool_or(details->>'failure' = 'budget_exceeded') AS budget_exceeded
   FROM agent_logs
   WHERE stage = 'l1' AND details->>'task' = 'l1_e2e_probe'
-    AND started_at >= now() - interval '1 day'
+    AND started_at >= :'since'::timestamptz
   GROUP BY run_id
 )
 SELECT count(*) AS runs,
        count(*) FILTER (WHERE validation = 'ok') AS validation_ok,
        count(*) FILTER (WHERE budget_exceeded) AS budget_exceeded,
        count(*) FILTER (WHERE turns >= 6) AS hit_max_turns_6,
+       sum(turns) AS model_calls,
+       sum(empty_responses) AS empty_responses,
+       round(100.0 * sum(empty_responses) / nullif(sum(turns), 0), 1) AS empty_pct,
        round(avg(turns), 1) AS avg_turns,
        max(turns) AS max_turns,
        round(avg(tool_calls), 1) AS avg_tool_calls,
@@ -192,19 +220,41 @@ SELECT count(*) AS runs,
 FROM runs;
 ```
 
+- `empty_responses`는 성공한 모델 호출 중 출력 항목에 `message`도 `function_call`도 없는 것(추론만 있는 응답)이다. 항목의 `type`만 보고 본문은 읽지 않는다.
 - `max_model_input_len`은 Agent Log에 저장된 입력 JSON의 길이다. 예산 검사(`max_input_chars`)와 같은 값이 아니라 근사로만 본다.
 - 비교 기준(설계 추정): 평균 L1 작업 약 1.1만~1.8만 토큰, 약 $0.0035.
 
-### 실측 결과 (사람이 채움)
+### 실측 결과
+
+#### 고치기 전 (low 12 run, medium 6 run)
+
+사람이 맥에서 쟀다(2026-11-05).
+
+- 입력: Alert 시각만 있고, 프롬프트는 "alert.time 앞뒤 하루 안을 먼저 본다"
+- 설정: `reasoning_effort` low로 12 run(2라운드), medium으로 6 run(1라운드), 모두 18 run. 나머지는 `[agent.l1]` 기본값
+
+| 항목 | 값 |
+|---|---|
+| 빈 응답(모델 호출 중 message·function_call 없이 추론만) | 38~48% |
+| 같은 설정의 L3 검증 빈 응답(비교) | 4%(51호출 중 2) |
+| 빈 응답의 추론 끝 | 모두 "query_records를 부르자"는 계획. 그 앞에 epoch 밀리초 ±1일 산수가 반복됨 |
+
+- 그 밖의 숫자(통과 수, 턴, 토큰, 비용, decision)는 이 기록에 받지 않았다. 필요하면 사람이 채운다.
+
+#### 고친 뒤 (1라운드, 6 run)
+
+- 입력: `window_start_ms`·`window_end_ms`(코드가 계산, Alert 시각 6일 전 ~ 1일 뒤)를 더하고, 프롬프트는 그 값을 도구에 그대로 넣으라고 함
+- 설정: `reasoning_effort` (사람이 적음), 나머지는 `[agent.l1]` 기본값
 
 | 항목 | 값 |
 |---|---|
 | run 수 / 계약·근거 통과(`validation = ok`) | |
+| 모델 호출 / 빈 응답 / 빈 응답 비율 | |
 | `budget_exceeded` / `max_turns` 6에 닿은 run | |
 | 평균 턴 / 최대 턴 | |
 | 평균 도구 호출 / 도구 오류(코드별) | |
 | 평균 토큰(입력·출력) / 평균 비용 / 합계 비용 | |
-| 시나리오별 decision(정상 2·위협 2·애매 2 × 3라운드) | |
+| 시나리오별 decision(정상 2·위협 2·애매 2) | |
 | `llm` 테스트 | |
 
 ### 예산 판단
@@ -237,6 +287,7 @@ L1 담당:
 - handle 안에서 asyncio.run 등 이벤트 루프를 만들지 않기, DB 연결은 handle마다
 - [llm] strict_mode 기본값이 false가 됐습니다(Foundry, #224)
 - 측정용 L1 실측 수치와 방법: docs/notes/215-executor-l1-e2e.md (측정용 프롬프트·입력 기준이라 L1 프롬프트가 정해지면 다시 잽니다)
+- 조회 구간은 코드가 계산해 data로 넘기고, 프롬프트는 "그 값을 도구의 start_ms·end_ms에 그대로 넣으라"고 써 주세요. 모델에게 epoch 밀리초 산수를 시켰더니 빈 응답이 38~48%였습니다(L3는 코드가 window를 넘겨 4%)
 - 판정 결과 조건(D-025)은 L1 담당이 정합니다
 ```
 
@@ -260,7 +311,7 @@ L2 담당(#228):
 ## 확인 방법
 
 - `uv run ruff format --check .`, `uv run ruff check .`: 통과
-- `uv run pytest`: 962건 통과(`config/local.toml` 없음)
+- `uv run pytest`: 963건 통과(`config/local.toml` 없음). 조회 구간을 더하기 전에는 962건
 - `uv run pytest -m db`: 243건 통과. Docker가 없어 임시 PostgreSQL 16(trust 인증)으로 돌렸다
 - `uv run pytest -m llm tests/test_l1_e2e_llm.py`(세션, 모델 설정 없음): `provider_error`(LLM 연결 설정이 없다)로 실패. 시드·읽기 계정·`run_agent`까지 연결만 확인했다(실제 모델 호출 0회)
 - 실행기 테스트(`tests/test_agent_executor.py`) 10번 반복: 매번 34건 통과
@@ -268,6 +319,7 @@ L2 담당(#228):
 - 손으로 확인
   - 가짜 모델 + 임시 DB + 실제 도구(읽기 계정): `seed`(Alert 6, Event 17, RawRecord 23) → 위협 Alert 1건 `run_task`. `query_records`가 그 호스트의 Event 4건을 돌려줬고, Verdict가 계약·근거 장부를 통과했다(`ok`). Agent Log 3줄(model·tool·model)
   - 같은 DB에서 `runs_l1.sql`(2 run)·`summary_l1.sql`이 돈다
+  - `since`·빈 응답을 더한 SQL: 가짜 Agent Log(추론만 있는 호출 1, 정상 호출 3, `since` 전 run 1)로 `empty_responses` 1/4, `since` 전 run 제외를 확인했다
   - 실제 프로세스에 SIGTERM: "종료 중" 출력 후 종료 코드 0
   - `uv run python -m soc.agent`(기본 설정): "등록된 워커가 없다" 후 종료 코드 0
 - 주요 테스트

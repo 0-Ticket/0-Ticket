@@ -3,6 +3,7 @@
 L1 워커 없이 L1 판정 작업(AgentTask)을 run_agent에 직접 넣어, 실제 모델로 도구 호출 → Verdict →
 Agent Log를 끝까지 돌리고 턴·토큰을 잰다. 4층 작업 프롬프트와 입력(data) 모양은 측정용이고
 L1 코드가 아니다. L1 담당이 정할 모양과 다를 수 있다. Alert에 판정 결과(triage)는 쓰지 않는다.
+입력은 {"alert": {...}, "window_start_ms", "window_end_ms"}이고, 조회 구간은 코드가 계산한다.
 
 - seed: 이전 시드를 지우고 tests/fixtures/l1_e2e/dev_seed.json의 Alert·Event를 넣는다(한 트랜잭션).
   레코드 시각은 넣는 시점의 지금에서 ago_ms를 뺀다
@@ -37,6 +38,12 @@ from soc.ids import new_id
 SEED_PATH = Path(__file__).resolve().parents[3] / "tests" / "fixtures" / "l1_e2e" / "dev_seed.json"
 SEED_PROFILE = "dev-seed-l1"
 TASK_NAME = "l1_e2e_probe"
+DAY_MS = 86_400_000
+# 조회 구간: Alert 시각 6일 전부터 1일 뒤까지(합 7일 = [tools] max_range_days 기본값).
+# 코드가 계산해 data로 넘긴다. 모델에게 epoch 밀리초 산수를 시키면 도구 호출 직전에 멈추는
+# 빈 응답이 늘었다(#215 맥 실측, docs/notes/215-executor-l1-e2e.md).
+WINDOW_BEFORE_MS = 6 * DAY_MS
+WINDOW_AFTER_MS = 1 * DAY_MS
 
 _RAW_COLUMNS = ("id", "kind", "siem_profile", "siem_ref", "fetched_at", "original")
 _ALERT_COLUMNS = (
@@ -210,12 +217,19 @@ def seeded_alerts(conn: psycopg.Connection) -> list[SeededAlert]:
 
 
 def build_task(alert: Mapping[str, Any], prompt: TaskPrompt) -> AgentTask:
-    """Alert 하나의 L1 1차 판정 작업. 근거 장부는 그 Alert ID로 시작한다."""
+    """Alert 하나의 L1 1차 판정 작업. 근거 장부는 그 Alert ID로 시작한다.
+
+    조회 구간(window_start_ms, window_end_ms)은 Alert 시각으로 코드가 계산한다.
+    """
     return AgentTask(
         stage="l1",
         task=TASK_NAME,
         prompt=prompt,
-        data={"alert": dict(alert)},
+        data={
+            "alert": dict(alert),
+            "window_start_ms": alert["time"] - WINDOW_BEFORE_MS,
+            "window_end_ms": alert["time"] + WINDOW_AFTER_MS,
+        },
         output_contract="verdict",
         cited_ids=lambda output: output["evidence_ids"],
         subject_type="alert",

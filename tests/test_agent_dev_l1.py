@@ -8,10 +8,13 @@ from urllib.parse import urlsplit
 import pytest
 
 from soc.agent import AgentResult
+from soc.agent.config import load_config
 from soc.agent.dev_l1 import (
     SEED_PATH,
     SEED_PROFILE,
     TASK_NAME,
+    WINDOW_AFTER_MS,
+    WINDOW_BEFORE_MS,
     build_parser,
     build_rows,
     build_task,
@@ -92,12 +95,17 @@ def test_sample_does_not_share_entities_with_l3_seed() -> None:
     assert SEED_PROFILE != L3_SEED_PROFILE
 
 
-def test_records_are_within_tool_range_days() -> None:
-    """도구는 한 번에 max_range_days(기본 7일)까지 본다. 시나리오 하나는 그 안에 있다."""
+def test_window_fits_tool_range_and_covers_scenario_records(default_config_dir: Path) -> None:
+    """도구는 한 번에 max_range_days(기본 7일)까지 본다. 코드가 넘기는 조회 구간은 그 안이고,
+    시나리오의 Alert·Event는 모두 그 구간 안에 있다(모델이 구간을 그대로 쓰면 다 보인다)."""
+    max_range_ms = load_config(default_config_dir)["tools"]["max_range_days"] * DAY_MS
+    assert 0 < WINDOW_BEFORE_MS + WINDOW_AFTER_MS <= max_range_ms
     for scenario in load_seed()["scenarios"]:
-        agos = [r["ago_ms"] for r in (scenario["alert"], *scenario["events"])]
-        assert max(agos) - min(agos) < 7 * DAY_MS, scenario["name"]
-        assert max(agos) < 7 * DAY_MS
+        alert_ago = scenario["alert"]["ago_ms"]
+        for record in (scenario["alert"], *scenario["events"]):
+            offset = alert_ago - record["ago_ms"]  # Alert 시각 기준, 뒤면 양수
+            assert -WINDOW_BEFORE_MS <= offset < WINDOW_AFTER_MS, scenario["name"]
+        assert max(r["ago_ms"] for r in scenario["events"]) < 7 * DAY_MS
 
 
 def test_rows_pass_contracts_and_use_now() -> None:
@@ -141,6 +149,14 @@ def test_task_prompt_has_no_forbidden_phrase_and_stable_version() -> None:
     assert re.fullmatch(r"[0-9a-f]{64}", prompt.version)
 
 
+def test_task_prompt_tells_model_to_use_window_as_is() -> None:
+    """모델에게 시각 산수를 시키지 않는다(#215 맥 실측: 산수를 시키면 빈 응답이 늘었다)."""
+    text = task_prompt(load_seed()).text
+    assert "window_start_ms" in text and "window_end_ms" in text
+    assert "그대로" in text and "직접 계산하지 않는다" in text
+    assert "앞뒤 하루" not in text
+
+
 def test_build_task_is_l1_alert_verdict_task() -> None:
     alert = {"id": ALERT_ID, "time": NOW_MS, "severity": 3, "title": "t", "rule_id": None}
     alert["entities"] = []
@@ -148,7 +164,11 @@ def test_build_task_is_l1_alert_verdict_task() -> None:
     assert (task.stage, task.task, task.output_contract) == ("l1", TASK_NAME, "verdict")
     assert (task.subject_type, task.subject_id) == ("alert", ALERT_ID)
     assert task.allowed_evidence_ids == (ALERT_ID,)
-    assert task.data == {"alert": alert}
+    assert task.data == {
+        "alert": alert,
+        "window_start_ms": NOW_MS - WINDOW_BEFORE_MS,
+        "window_end_ms": NOW_MS + WINDOW_AFTER_MS,
+    }
     assert list(task.cited_ids({"evidence_ids": ["evt_x"]})) == ["evt_x"]
 
 
