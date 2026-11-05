@@ -92,6 +92,7 @@
 |---|---|---|
 | D-015 | 화면은 React + Vite + TypeScript | |
 | D-016 | 화면용 API는 FastAPI | |
+| D-042 | 화면용 API 실행·의존성: `fastapi==0.162.0`, `uvicorn==0.54.0`. 테스트는 Starlette TestClient(`httpx2`)로 한다 | 기본 바인딩은 127.0.0.1이다. 인증(D-020)이 생기면 그 이슈에서 다시 정한다. TestClient는 HTTP 클라이언트(httpx, D-039)가 아니라 openai가 끌어오는 `httpx2`를 쓴다(#239) |
 | D-017 | 화면 세부 도구: Tailwind CSS + shadcn/ui, TanStack Query, React Router, MSW(mock API), Vitest + Testing Library, Node LTS + pnpm, ESLint + Prettier | 화면 검사 명령은 첫 화면 이슈에서 정한다 |
 | D-018 | 차트는 Recharts | |
 | D-019 | 로그 원문과 LLM 출력은 화면과 알림에서 텍스트로만 표시한다 | `docs/security.md` "화면" |
@@ -132,6 +133,8 @@
 ## 기록
 
 새 기록을 맨 위에 쓴다.
+
+- #239 · 화면용 API 실행·의존성(D-042) 추가: fastapi·uvicorn 버전 고정, TestClient는 `httpx2`, 기본 바인딩 127.0.0.1. L3 담당이 정함(#239)
 
 - #213 · SSH 라이브러리 asyncssh(D-041) 추가, SSH 도구(D-011) 메모에 원격 셸 해석을 막는 구체 방법(코드 상수 점검, 허용 문자 인자 검사, `-` 거부, `shlex.quote`)을 채움. 팀 합의(#213)
 - #211 · 도구 구현 방식(D-023)을 후보에서 확정으로 옮김. MCP 서버 대신 파이썬 함수 도구 레지스트리를 Agents SDK 함수 도구로 감싸고, MCP 노출은 필요해지면 레지스트리 위에 얹는다. 팀 합의(#211)
