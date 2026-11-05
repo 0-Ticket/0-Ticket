@@ -2,21 +2,36 @@
   {
     "case": "criticality_above_five",
     "violations": [{"path": "criticality", "rule": "maximum"}],
-    "data": {"entity_value": "web-01", "name": "웹서버", "criticality": 6, "owner": null}
+    "data": {"entity": {"type": "host", "value": "web-01"}, "name": "웹서버", "criticality": 6, "owner": null}
   },
   {
     "case": "criticality_zero",
     "violations": [{"path": "criticality", "rule": "minimum"}],
-    "data": {"entity_value": "web-01", "name": "웹서버", "criticality": 0, "owner": null}
+    "data": {"entity": {"type": "host", "value": "web-01"}, "name": "웹서버", "criticality": 0, "owner": null}
   },
   {
     "case": "empty_entity_value",
-    "violations": [{"path": "entity_value", "rule": "minLength"}],
-    "data": {"entity_value": "", "name": "웹서버", "criticality": 3, "owner": null}
+    "violations": [{"path": "entity.value", "rule": "minLength"}],
+    "data": {"entity": {"type": "host", "value": ""}, "name": "웹서버", "criticality": 3, "owner": null}
+  },
+  {
+    "case": "unknown_entity_type",
+    "violations": [{"path": "entity.type", "rule": "enum"}],
+    "data": {"entity": {"type": "mac", "value": "web-01"}, "name": "웹서버", "criticality": 3, "owner": null}
+  },
+  {
+    "case": "entity_with_role",
+    "violations": [{"path": "entity", "rule": "additionalProperties"}],
+    "data": {"entity": {"type": "host", "value": "web-01", "role": "src"}, "name": "웹서버", "criticality": 3, "owner": null}
+  },
+  {
+    "case": "missing_entity",
+    "violations": [{"path": "entity", "rule": "required"}],
+    "data": {"name": "웹서버", "criticality": 3, "owner": null}
   },
   {
     "case": "missing_owner",
     "violations": [{"path": "owner", "rule": "required"}],
-    "data": {"entity_value": "web-01", "name": "웹서버", "criticality": 3}
+    "data": {"entity": {"type": "host", "value": "web-01"}, "name": "웹서버", "criticality": 3}
   }
 ]

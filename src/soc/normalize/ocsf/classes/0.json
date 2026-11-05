@@ -1,0 +1,155 @@
+{
+ "attributes": {
+  "activity_id": {
+   "enum": [
+    "0",
+    "99"
+   ],
+   "requirement": "required",
+   "type": "integer_t"
+  },
+  "activity_name": {
+   "requirement": "optional",
+   "type": "string_t"
+  },
+  "category_name": {
+   "requirement": "optional",
+   "type": "string_t"
+  },
+  "category_uid": {
+   "enum": [
+    "0"
+   ],
+   "requirement": "required",
+   "type": "integer_t"
+  },
+  "class_name": {
+   "requirement": "optional",
+   "type": "string_t"
+  },
+  "class_uid": {
+   "enum": [
+    "0"
+   ],
+   "requirement": "required",
+   "type": "integer_t"
+  },
+  "count": {
+   "requirement": "optional",
+   "type": "integer_t"
+  },
+  "duration": {
+   "requirement": "optional",
+   "type": "long_t"
+  },
+  "end_time": {
+   "requirement": "optional",
+   "type": "timestamp_t"
+  },
+  "enrichments": {
+   "is_array": true,
+   "object_type": "enrichment",
+   "requirement": "optional",
+   "type": "object_t"
+  },
+  "message": {
+   "requirement": "recommended",
+   "type": "string_t"
+  },
+  "metadata": {
+   "object_type": "metadata",
+   "requirement": "required",
+   "type": "object_t"
+  },
+  "observables": {
+   "is_array": true,
+   "object_type": "observable",
+   "requirement": "recommended",
+   "type": "object_t"
+  },
+  "raw_data": {
+   "requirement": "optional",
+   "type": "string_t"
+  },
+  "raw_data_hash": {
+   "object_type": "fingerprint",
+   "requirement": "optional",
+   "type": "object_t"
+  },
+  "raw_data_size": {
+   "requirement": "optional",
+   "type": "long_t"
+  },
+  "severity": {
+   "requirement": "optional",
+   "type": "string_t"
+  },
+  "severity_id": {
+   "enum": [
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "99"
+   ],
+   "requirement": "required",
+   "type": "integer_t"
+  },
+  "start_time": {
+   "requirement": "optional",
+   "type": "timestamp_t"
+  },
+  "status": {
+   "requirement": "recommended",
+   "type": "string_t"
+  },
+  "status_code": {
+   "requirement": "recommended",
+   "type": "string_t"
+  },
+  "status_detail": {
+   "requirement": "recommended",
+   "type": "string_t"
+  },
+  "status_id": {
+   "enum": [
+    "0",
+    "1",
+    "2",
+    "99"
+   ],
+   "requirement": "recommended",
+   "type": "integer_t"
+  },
+  "time": {
+   "requirement": "required",
+   "type": "timestamp_t"
+  },
+  "timezone_offset": {
+   "requirement": "recommended",
+   "type": "integer_t"
+  },
+  "type_name": {
+   "requirement": "optional",
+   "type": "string_t"
+  },
+  "type_uid": {
+   "enum": [
+    "0",
+    "99"
+   ],
+   "requirement": "required",
+   "type": "long_t"
+  },
+  "unmapped": {
+   "object_type": "object",
+   "requirement": "optional",
+   "type": "object_t"
+  }
+ },
+ "name": "base_event",
+ "uid": 0
+}

@@ -245,6 +245,22 @@ confirm_threshold = 0.7
 # 검증 run 시도 한도. 실패가 이 횟수에 이르면 Hunt는 failed다
 max_attempts = 2
 
+# 정규화(#234). 실행: uv run python -m soc.normalize (한 번 실행하고 끝난다. 주기 실행은 cron이 한다)
+# DB 주소는 환경변수 DATABASE_URL. 자산 조회도 같은 연결로 한다.
+[normalize]
+# 한 번 실행에서 맡는 원본 수
+batch_size = 200
+# 작업자가 한 묶음을 맡는 시간(초). 묶음을 다 처리하는 시간보다 길어야 한다.
+# 넘으면 다음 작업자가 아직 처리하지 못한 원본을 다시 맡을 수 있다
+lease_seconds = 600
+# 결과를 저장하는 DB의 접속 시간 상한(초)
+connect_timeout_seconds = 5
+
+# 자산 조회(#241). 정규화가 Entity마다 자산 정보를 붙일 때 쓴다
+[asset_lookup]
+# 조회 문장 하나의 시간 상한(밀리초). 넘으면 정규화가 asset_lookup_failed로 실패한다
+statement_timeout_ms = 5000
+
 # 화면용 API(FastAPI, D-016, #239). 실행: uv run python -m soc.api
 # DB 주소는 환경변수 DATABASE_URL. 요청마다 읽기 전용 세션으로 연결한다.
 # 기법 이름은 [l3.intel.attack] version의 attack_techniques에서 찾는다.

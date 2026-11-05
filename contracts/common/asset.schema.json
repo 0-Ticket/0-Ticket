@@ -5,12 +5,17 @@
   "description": "Lookup으로 붙인 자산 정보",
   "type": "object",
   "additionalProperties": false,
-  "required": ["entity_value", "name", "criticality", "owner"],
+  "required": ["entity", "name", "criticality", "owner"],
   "properties": {
-    "entity_value": {
-      "description": "어느 엔티티의 자산 정보인지(Entity.value)",
-      "type": "string",
-      "minLength": 1
+    "entity": {
+      "description": "어느 엔티티의 자산 정보인지. 조회에 쓴 정규화 키(Entity.type, 정규화한 Entity.value)",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "value"],
+      "properties": {
+        "type": {"$ref": "entity.schema.json#/properties/type"},
+        "value": {"$ref": "entity.schema.json#/properties/value"}
+      }
     },
     "name": {
       "description": "자산 이름",

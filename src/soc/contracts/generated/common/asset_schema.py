@@ -3,19 +3,33 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
 type Criticality = Annotated[int, Field(description="중요도 1~5. 5가 가장 중요", ge=1, le=5)]
 
 
+class Entity(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    type: Annotated[
+        Literal["ip", "host", "user", "domain", "url", "file_hash", "process"],
+        Field(description="엔티티 종류"),
+    ]
+    value: Annotated[str, Field(description="엔티티 값", min_length=1)]
+
+
 class Asset(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    entity_value: Annotated[
-        str, Field(description="어느 엔티티의 자산 정보인지(Entity.value)", min_length=1)
+    entity: Annotated[
+        Entity,
+        Field(
+            description="어느 엔티티의 자산 정보인지. 조회에 쓴 정규화 키(Entity.type, 정규화한 Entity.value)"
+        ),
     ]
     name: Annotated[str | None, Field(description="자산 이름")]
     criticality: Annotated[Criticality | None, Field(description="중요도 1~5. 5가 가장 중요")]
