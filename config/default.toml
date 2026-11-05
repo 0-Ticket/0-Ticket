@@ -72,7 +72,7 @@ workers = ["soc.l1.judge:build_worker"]
 [executor.l2]
 interval_seconds = 10
 poll_limit = 10
-workers = []
+workers = ["soc.l2.branch:build_worker"]
 
 [executor.l3]
 # L3는 기본으로 돌지 않는다(L3 실행 방식, D-030)

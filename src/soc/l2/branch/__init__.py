@@ -14,4 +14,11 @@ def build_branch(
     return build_context(read_branch_data(conn, ticket_id))
 
 
-__all__ = ["build_branch"]
+def build_worker(config: dict[str, object]):
+    """실행기 등록용 지연 import. worker가 이 모듈의 build_branch를 다시 가져온다."""
+    from soc.l2.branch.worker import build_worker as factory
+
+    return factory(config)  # type: ignore[arg-type]
+
+
+__all__ = ["build_branch", "build_worker"]
