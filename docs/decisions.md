@@ -27,7 +27,7 @@
 |---|---|---|
 | D-001 | 백엔드는 Python 3.13 + uv. 린트·포맷 ruff, 테스트 pytest | CI와 같은 명령 |
 | D-002 | 설정 파일은 TOML. 기본 설정 위에 조직 설정 파일을 덮어쓴다 | 비밀 값은 넣지 않고 환경변수 이름만 적는다. 조직 설정 파일은 `config/local.toml`처럼 `config/local.*` 이름을 쓰고 커밋하지 않는다 |
-| D-003 | 데이터 계약의 원본은 JSON Schema. Python(Pydantic)·TypeScript 코드는 생성하고, 생성 코드는 직접 고치지 않는다 | 계약 원본은 `contracts/`(JSON Schema draft-07). Python은 datamodel-code-generator로 `src/soc/contracts/generated/`에 생성한다. TypeScript는 json-schema-to-typescript로 생성하되 Node 설정과 함께 첫 화면 이슈에서 붙인다. 생성은 `scripts/generate_contracts.py`, CI는 `--check`로 차이를 검사한다 |
+| D-003 | 데이터 계약의 원본은 JSON Schema. Python(Pydantic)·TypeScript 코드는 생성하고, 생성 코드는 직접 고치지 않는다 | 계약 원본은 `contracts/`(JSON Schema draft-07). Python은 datamodel-code-generator로 `src/soc/contracts/generated/`에 생성한다. TypeScript는 json-schema-to-typescript로 contracts/에서 생성한다. API 전용 포장 타입은 응답 모델이 내보내는 JSON Schema에서 같은 도구로 생성한다(#266). 생성은 `scripts/generate_contracts.py`, CI는 `--check`로 차이를 검사한다 |
 | D-004 | 라이선스는 Apache-2.0 | |
 | D-039 | HTTP 클라이언트는 httpx(`httpx==0.28.1`). 리다이렉트는 따라가지 않는다 | 응답 크기 상한은 스트리밍하면서 압축을 푼 바이트로 세고, 요청 단위 timeout과 별도로 출처별 전체 마감 시간을 둔다. openai 3.x가 끌어오는 `httpx2`와 따로 설치된다. httpx는 2024-12 이후 릴리스가 없어, 보안 수정이 필요한데 나오지 않으면 다시 논의한다(#221) |
 | D-041 | SSH 라이브러리는 asyncssh(`asyncssh==2.24.1`) | 라이선스는 EPL-2.0 OR GPL-2.0-or-later이고, 수정 없이 import만 한다. 버전은 고정하고 함께 들어오는 패키지는 `uv.lock`으로 고정한다(#213) |
@@ -98,7 +98,7 @@
 | D-015 | 화면은 React + Vite + TypeScript | |
 | D-016 | 화면용 API는 FastAPI | |
 | D-042 | 화면용 API 실행·의존성: `fastapi==0.162.0`, `uvicorn==0.54.0`. 테스트는 Starlette TestClient(`httpx2`)로 한다 | 기본 바인딩은 127.0.0.1이다. 인증(D-020)이 생기면 그 이슈에서 다시 정한다. TestClient는 HTTP 클라이언트(httpx, D-039)가 아니라 openai가 끌어오는 `httpx2`를 쓴다(#239) |
-| D-017 | 화면 세부 도구: Tailwind CSS + shadcn/ui, TanStack Query, React Router, MSW(mock API), Vitest + Testing Library, Node LTS + pnpm, ESLint + Prettier | 화면 검사 명령은 첫 화면 이슈에서 정한다 |
+| D-017 | 화면 세부 도구: Tailwind CSS + shadcn/ui, TanStack Query, React Router, MSW(mock API), Vitest + Testing Library, Node LTS + pnpm, ESLint + Prettier | frontend/에서 pnpm lint(ESLint + Prettier 검사), pnpm test(Vitest run), pnpm build(TypeScript 검사 + Vite 빌드). CI도 같은 명령(#266) |
 | D-018 | 차트는 Recharts | |
 | D-019 | 로그 원문과 LLM 출력은 화면과 알림에서 텍스트로만 표시한다 | `docs/security.md` "화면" |
 
@@ -136,6 +136,8 @@
 ## 기록
 
 새 기록을 맨 위에 쓴다.
+
+- #266 · 화면 검사 명령(D-017)과 API 응답 TypeScript 생성 방식(D-003)을 확정했다. 사용자가 UI 연결 계획과 추가 시드 안전 조건을 확정함.
 
 - #245 · L3 실행 방식(D-030)을 담당자가 정함에서 확정으로 옮김. 실행기 L3 단계에서 생성·검증 워커로 주기 실행, 수동 명령 유지, 기본 꺼짐. L3 담당이 정함(#245)
 - #261 · L2 분석 결과 저장(D-045)을 Artifact·제안 테이블로 확정하고, D-028의 새 Ticket 재분석은 자동 분석 가능한 Incident에만 적용한다고 명확히 함. L2 담당이 정함
