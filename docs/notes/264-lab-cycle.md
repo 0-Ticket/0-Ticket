@@ -47,7 +47,6 @@ supersedes: []
 - **테스트가 고정한 "알려진 문제".** `filebeat-*`의 nginx 샘플은 Base Event(0)가 되고 4002는 0건이다. 정규화를 고치는 사람은 `test_lab_shaped_alert_flows_to_incident_artifact_and_rerun_adds_nothing`의 `{0: 5}` 단언을 바꾼다.
 - **한 바퀴 테스트의 L2는 가짜다.** L2 분류는 recent 경로·가짜 임베더·메모리 벡터 저장소, L2 분석은 가짜 실행이다. L1만 가짜 모델로 `run_agent`(도구 등록, 근거 장부, Agent Log)를 거친다. 실제 bge-m3·Qdrant·모델은 서버 확인 항목이다.
 - **L1 도구 테스트에는 읽기 계정이 필요하다.** 테스트가 `soc_agent_reader` 멤버 임시 LOGIN 역할을 만들고 끝나면 지운다(`tests/test_tools_db.py`와 같은 방식). 역할은 클러스터 전체에 생기므로 이름에 랜덤 꼬리를 붙인다.
-- **이 환경에서는 Qdrant 테스트(`-m qdrant`)를 돌리지 못했다.** 이 이슈는 Qdrant 코드를 바꾸지 않았고, CI의 db job이 PostgreSQL·Qdrant로 돌린다.
 
 ## 발견한 문제 (후속 이슈 후보)
 
@@ -266,4 +265,12 @@ SELECT asset_id, 'ip', '<공격자 IP>' FROM attacker;
 
 ## 확인 방법
 
-(마무리에서 채운다)
+- `uv run ruff format --check .`, `uv run ruff check .`, `uv run python scripts/generate_contracts.py --check` 통과.
+- `uv run pytest`: 1278 통과(개발 전 1256, 새 테스트 22).
+- `uv run pytest -m "db or qdrant"`: 401 통과. 로컬 PostgreSQL 16과 Qdrant `v1.19.2` 컨테이너로 돌렸다.
+- 주요 테스트
+  - `tests/ingest/unit/test_tls.py`: `[ingest] ca_cert_path`의 빈 값·키 없음·정상 PEM·없는 파일·PEM 아님·폴더·문자열 아님, `make_client`의 `verify`, 명령의 종료 코드 2.
+  - `tests/test_tools_siem.py`의 `test_ca_cert_path_becomes_ssl_context`, `test_missing_ca_cert_path_key_keeps_default_verification`, `test_bad_ca_cert_path_fails_with_config_reason`.
+  - `tests/test_lab_cycle_db.py`의 `test_lab_shaped_alert_flows_to_incident_artifact_and_rerun_adds_nothing`(수집 9건 → 정규화 성공 9·실패 0, 4002 0건 → Ticket 4 → L1 escalated 4·`get_alert` 도구 줄 4 → Incident 1 → Artifact 1, 2회차 증가 0), `test_l3_ticket_from_lab_records_enters_l2_branch`.
+- 한 바퀴 테스트가 실제로 어긋남을 잡는지 한 번 확인했다: WAF 알럿 샘플의 `kibana.alert.rule.name`을 잠시 다른 이름으로 바꾸자 정규화 실패 1건(`validation_failed`)으로 테스트가 실패했고, 샘플은 되돌렸다.
+- 실제 랩 ELK, 실제 모델, 실제 bge-m3로는 확인하지 않았다(서버 확인 항목).
