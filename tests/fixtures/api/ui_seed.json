@@ -712,7 +712,7 @@
       "id": "hnt_01a19f93-1266-7000-8000-000000000001",
       "hunt_run_id": "hrn_01a19f93-1266-7000-8000-000000000001",
       "status": "pending",
-      "hypothesis": "웹셸 업로드 뒤 명령 실행이 있었을 것이다",
+      "hypothesis": "[dev-seed-ui] 웹셸 업로드 뒤 명령 실행이 있었을 것이다",
       "attack_techniques": [
         "T1190"
       ],
@@ -732,7 +732,7 @@
       "id": "hnt_01a19f93-1266-7000-8000-000000000002",
       "hunt_run_id": "hrn_01a19f93-1266-7000-8000-000000000001",
       "status": "confirmed",
-      "hypothesis": "웹셸 업로드 뒤 명령 실행이 있었을 것이다",
+      "hypothesis": "[dev-seed-ui] 웹셸 업로드 뒤 명령 실행이 있었을 것이다",
       "attack_techniques": [
         "T1190",
         "T1059"
@@ -761,7 +761,7 @@
       "id": "hnt_01a19f93-1266-7000-8000-000000000003",
       "hunt_run_id": "hrn_01a19f93-1266-7000-8000-000000000001",
       "status": "rejected",
-      "hypothesis": "웹셸 업로드 뒤 명령 실행이 있었을 것이다",
+      "hypothesis": "[dev-seed-ui] 웹셸 업로드 뒤 명령 실행이 있었을 것이다",
       "attack_techniques": [
         "T1505.003"
       ],
@@ -783,7 +783,7 @@
       "id": "hnt_01a19f93-1266-7000-8000-000000000004",
       "hunt_run_id": "hrn_01a19f93-1266-7000-8000-000000000001",
       "status": "inconclusive",
-      "hypothesis": "웹셸 업로드 뒤 명령 실행이 있었을 것이다",
+      "hypothesis": "[dev-seed-ui] 웹셸 업로드 뒤 명령 실행이 있었을 것이다",
       "attack_techniques": [
         "T1190"
       ],
@@ -803,7 +803,7 @@
       "id": "hnt_01a19f93-1266-7000-8000-000000000005",
       "hunt_run_id": "hrn_01a19f93-1266-7000-8000-000000000001",
       "status": "failed",
-      "hypothesis": "웹셸 업로드 뒤 명령 실행이 있었을 것이다",
+      "hypothesis": "[dev-seed-ui] 웹셸 업로드 뒤 명령 실행이 있었을 것이다",
       "attack_techniques": [
         "T1505.003"
       ],

@@ -99,6 +99,9 @@ def test_explicit_command_and_seed_label_on_api(temp_database, monkeypatch):
         r = c.get("/api/" + table)
         assert r.status_code == 200
         assert all(x["seed_source"] == "dev-seed-ui" for x in r.json()["items"])
+    # 기존 Hunt 목록 계약을 바꾸지 않고도 시드임을 목록에서 식별한다.
+    hunts = c.get("/api/hunts").json()["items"]
+    assert all(x["hypothesis"].startswith("[dev-seed-ui] ") for x in hunts)
 
 
 def test_seed_fixture_uses_separate_marker():
@@ -106,6 +109,8 @@ def test_seed_fixture_uses_separate_marker():
         for row in rows:
             if table == "raw_records":
                 assert row["siem_profile"] == "dev-seed-ui"
+            if table == "hunts":
+                assert row["hypothesis"].startswith("[dev-seed-ui] ")
             if "details" in row:
                 assert row["details"]["seed_source"] == "dev-seed-ui"
                 assert "dev_seed" not in row["details"]
