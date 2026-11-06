@@ -21,6 +21,7 @@ supersedes: []
 - **검증 `cancelled`.** 종료로 끊긴 검증 run은 Hunt에 아무것도 쓰지 않는다. Hunt는 `pending`으로 남고 `attempts`도 그대로다. 다른 실패는 지금처럼 센다.
 - **수동 명령 `soc.l3 hunt`는 그대로다.** 수집 → 가설 생성 부분을 생성 워커와 같은 함수(`collect_and_hypothesize`)로 바꿨을 뿐이고, 출력 줄과 종료 코드는 같다.
 - **L3 실행 방식(D-030)을 확정으로 옮겼다**(계획 커밋).
+- **맥에서 Foundry로 손 확인을 마쳤다**(아래 "실측 결과"). 생성은 간격마다 한 번만 돌았고, 생성 → 검증이 같은 라운드에서 이어졌다. 수집이 실패해도 계속했다. Ctrl+C로 끊긴 검증 run은 `cancelled`로 남고 Hunt는 `failed`가 되지 않았다.
 
 ## 계획과 달라진 점
 
@@ -31,6 +32,7 @@ supersedes: []
 - **생성 워커의 `poll`도 `int | None`을 받는다.** `HuntVerifier`와 모양을 맞췄다. 값은 결과에 영향이 없다.
 - **프로세스 안 기록이 간격 안이면 `poll`이 DB를 읽지 않는다.**
 - **테스트 파일을 둘로 나눴다.** DB 없이 보는 등록·설정(`tests/test_l3_hunt_worker.py`)과 DB로 보는 동작(`tests/test_l3_hunt_worker_db.py`)이다.
+- **main 동기화(`18e0673`) 뒤 `tests/test_l3_hunt_worker.py`의 테스트 3건에서 L1·L2 단계를 끈다**(`l3_only`). main 기본 설정에 L1·L2 워커가 등록돼, 실제 등록 경로로 `Executor`를 만들면 L1·L2 워커(필요한 설정·Qdrant)까지 만들다 실패했다. "`DATABASE_URL`이 없으면 시작하지 않는다" 테스트는 L1 워커가 먼저 실패해 틀린 이유로 통과하고 있어서, 메시지가 `soc.l3.hunt.generate`를 가리키는지도 보게 했다.
 
 ## 다음 사람이 알아야 할 것
 
@@ -48,17 +50,40 @@ supersedes: []
 - **생성 워커는 `handle` 동안 DB 연결 하나를 수집과 모델 run 내내 잡고 있다.** 수동 명령과 같다.
 - **`collect_before = false`면 `[l3.intel]` 설정을 읽지 않는다.** 출처 설정이 틀려도 생성 워커는 만들어진다.
 - **`generate_interval_seconds`는 `HuntSettings`에 없다.** 생성 워커의 `build_worker`만 읽는다. 수동 명령과 그 테스트는 이 키가 없어도 동작한다.
+- **`uv run python -m soc.agent`는 이제 L1·L2도 함께 돈다.** main 기본 설정에 L1·L2 워커가 등록돼 있다(`18e0673`). L3만 볼 때는 `config/local.toml`에서 `[executor.l1]`·`[executor.l2]`의 `interval_seconds = 0`으로 끈다. L3 등록만 보는 테스트도 같은 이유로 L1·L2를 끈다(위 "계획과 달라진 점").
+- **#215 기본값 테스트(`test_default_config_executor_values`)의 `workers` 단언을 고쳤다.** l3 기대값만 우리 워커 둘로 바꿨고, main 동기화 때 main이 더한 L1·L2 단언과의 충돌을 같이 풀었다. 띄우는 단계는 `l1`·`l2`뿐이다(L3는 `interval_seconds = 0`).
+
+### 후속 후보 (손 확인에서 나옴)
+
+- **일시적인 오류도 2번이면 Hunt가 영구히 `failed`가 된다.** 1차 손 확인에서 `failed` 2건은 모두 `attempts` 2, `verify_failures` 2건이 다 `provider_error`였다. 맥의 네트워크가 불안정해서 난 오류였다. `max_attempts`(2)는 실패 종류를 가리지 않고, `failed`를 다시 `pending`으로 돌리는 코드는 없다. 일시 오류를 따로 셀지, 다시 시도할 길을 둘지 정해야 한다.
+- **실행기가 `build_worker`의 `ConfigError` 메시지를 숨긴다.** 새 터미널에서 `DATABASE_URL`이 없어 생성 워커가 `ConfigError`를 냈는데, 실행기는 "워커를 만들지 못했다(ConfigError)"만 보여 줘 이유가 안 보였다. 실행기(#215)는 예외 메시지가 밖에서 온 문자열일 수 있어 종류만 남긴다. 그런데 이 메시지는 코드가 쓴 문장이고 환경변수 이름만 들어가 보여 줘도 안전하다. 고치려면 실행기(`src/soc/agent/executor.py`)를 바꿔야 하므로 #215 담당과 정한다.
 
 ### 손으로 확인하는 법 (사람, 맥, Foundry)
 
 `config/local.toml`(커밋 안 함). `[llm]`·`[tools.allowed] l3`는 `docs/notes/224-l3-real-model.md` "다시 재는 법"과 같다.
 
+이번 손 확인에 쓴 값이다. 확인 뒤에 지웠다.
+
 ```toml
 [executor.l3]
-interval_seconds = 60   # 확인용. 운영 권장은 600
+interval_seconds = 30   # 확인용. 운영 권장은 600
+poll_limit = 10
+
+[l3.hunt]
+generate_interval_seconds = 120   # 확인용. 기본은 86400(하루)
 ```
 
-환경변수: `DATABASE_URL`, `AGENT_DATABASE_URL`, `LLM_API_KEY`.
+main 동기화(`18e0673`) 뒤에는 L1·L2 워커도 기본으로 돈다. L3만 볼 때는 같은 `local.toml`에 아래를 더해 끈다.
+
+```toml
+[executor.l1]
+interval_seconds = 0
+
+[executor.l2]
+interval_seconds = 0
+```
+
+환경변수: `DATABASE_URL`, `AGENT_DATABASE_URL`, `LLM_API_KEY`. 새 터미널에서 `DATABASE_URL`을 빠뜨리면 실행기가 "워커를 만들지 못했다(ConfigError)"로 끝난다(이유는 안 보인다. 위 "후속 후보").
 
 ```bash
 uv run python -m soc.db.migrate
@@ -69,7 +94,7 @@ psql "$DATABASE_URL" -f hunts.sql      # #224 기록의 SQL. cancelled 뒤에도
 psql "$DATABASE_URL" -f runs.sql       # #224 기록의 SQL. run별 숫자
 ```
 
-Ctrl+C를 검증 run 도중에 누르려면 `dev-seed`를 한 번 더 해 pending Hunt를 만든 뒤 다시 띄우고, "실행 중" 출력 뒤 몇 초 안에 누른다. 생성은 하루 1회라 두 번째 실행에서는 돌지 않는다.
+Ctrl+C는 검증 run 도중에 누른다. 생성이 Hunt를 저장한 직후 검증 호출이 흐르는 동안 누르면 된다. `generate_interval_seconds`가 기본값(하루)이면 다시 띄워도 생성은 돌지 않으므로, `dev-seed`를 한 번 더 해 pending Hunt를 만든 뒤 띄운다.
 
 `cancelled` 확인(본문 없이 숫자만):
 
@@ -83,16 +108,51 @@ GROUP BY 1;
 
 ### 실측 결과
 
-(사람이 붙임: 라운드 수, 생성·검증 run 수, 비용, 소요 시간, `cancelled` run 수와 그 Hunt의 상태·`attempts`)
+사람이 맥에서 Foundry로 확인했다. 설정은 위 "이번 손 확인에 쓴 값"(`interval_seconds = 30`, `poll_limit = 10`, `generate_interval_seconds = 120`)이다. 가설·이유 원문은 적지 않는다.
+
+- **코드 기준:** 동기화 전 코드(`631d7ea` 위, L1·L2 워커가 아직 없던 때)에서 했다. L3 코드(`src/soc/l3/`)와 실행기(`src/soc/agent/executor.py`, `types.py`)는 main에서 바뀌지 않아(`git diff 631d7ea 18e0673 -- <세 경로>`가 빈 결과) 동기화 뒤에 다시 하지 않았다.
+
+#### 1차: 주기 실행 (11-05 17:36~19:10)
+
+약 95분 돌렸고, 중간에 약 15분 공백이 있었다.
+
+| 항목 | 값 |
+|---|---|
+| 생성 모델 호출 | 25회(성공 12, `provider_error` 13) |
+| 검증 모델 호출 | 62회(성공 56, `provider_error` 6) |
+| Hunt(시작 전) | 6개: `confirmed` 1, `inconclusive` 5 |
+| Hunt(끝) | 17개: `confirmed` 2, `inconclusive` 11, `rejected` 1, `failed` 2, `pending` 1 |
+| 토큰 입력 / 출력 | 243,459 / 20,290 |
+| 비용 | 약 $0.049(생성 $0.011, 검증 $0.038). 단가는 이전 L1 실측에서 역산한 입력 $0.15 · 출력 $0.60 / 100만 토큰 |
+
+- **차례 판단:** 생성은 약 2분 12초 간격으로 한 번씩만 돌았다. 120초가 지난 뒤 다음 라운드(30초 간격)에서 차례를 보기 때문으로 보인다. 생성 → 검증이 같은 라운드에서 이어졌다.
+- **수집 실패 허용:** 맥의 네트워크가 불안정해 수집이 `network`·`timeout`으로 자주 실패했고, 가설 생성도 `provider_error`로 실패했다. 그래도 프로세스는 멈추지 않았고, 다음 라운드에서 저장된 뉴스로 계속했다.
+- **`failed` 2건:** 둘 다 `attempts` 2이고, `verify_failures` 2건이 모두 `provider_error`였다. 일시 오류로 영구 `failed`가 된 사례다(위 "후속 후보").
+- **오래 걸린 검증 호출:** 하나가 약 42초 매달린 뒤 `provider_error`로 끝났다.
+
+#### 2차: 종료 시험 (11-06 12:09)
+
+- 생성이 Hunt 1건을 저장한 직후, 검증 호출이 흐르는 중에 Ctrl+C를 눌렀다.
+- `agent_logs`: `l3_verify` 모델 호출 줄이 `outcome = error`, `failure = cancelled`로 남았다(12:09:22).
+- **끊긴 Hunt:** `pending`, `attempts` 1, `verify_failures` 1건으로 끊기기 전 그대로였다. `cancelled`가 시도로 세지지 않았다.
+- `failed`는 2건 그대로였다. 종료 대기 시간 초과 경고는 없었다.
+- 이 사이에 만든 새 Hunt는 `pending`, `attempts` 0이다.
+- 종료 코드는 확인하지 못했다(출력을 `tee` 파이프로 받아서).
 
 ## 확인 방법
 
 - `uv run ruff format --check .`, `uv run ruff check .`: 통과
-- `uv run pytest`: 978건 통과(전 964건)
-- `uv run pytest -m db`: 262건 통과(전 243건). Docker가 없어 임시 PostgreSQL 16(trust 인증)으로 돌렸다. `tests/test_l3_hunt_worker_db.py` 5번 반복: 매번 19건 통과
+- 아래 건수는 main 동기화(`18e0673`) 뒤의 숫자다.
+- `uv run pytest`: 1256건 통과
+- `uv run pytest -m "db or qdrant"`(CI와 같은 명령): 399건 통과, 그중 Qdrant 22건, 건너뜀 0
+  - PostgreSQL은 임시 PostgreSQL 16(trust 인증)으로 돌렸다.
+  - Qdrant는 Docker로 띄운 `qdrant/qdrant:v1.19.2`(CI와 같은 이미지)로 돌렸다.
+  - 경고 1건은 main의 `tests/test_store_qdrant.py`에서 나온 qdrant-client 서버 버전 확인 경고다.
+- 동기화 전(`631d7ea` 위)에는 `uv run pytest` 978건, `uv run pytest -m db` 262건이 통과했다. `tests/test_l3_hunt_worker_db.py` 5번 반복: 매번 19건 통과
 - 테스트를 먼저 쓰고, `soc.l3.hunt.generate`가 없어 두 새 테스트 파일이 수집 단계에서 실패하고 기본값 테스트 2건(`test_default_config_executor_values`, `test_default_config_has_hunt_settings`)이 실패하는 것을 봤다
-- 손으로 확인(임시 DB, 세션, LLM 설정 없음)
-  - 기본 설정 `uv run python -m soc.agent`: "등록된 워커가 없다", 종료 코드 0
+- 손으로 확인(사람, 맥, Foundry): 위 "실측 결과"
+- 손으로 확인(임시 DB, 세션, LLM 설정 없음, 동기화 전)
+  - 기본 설정 `uv run python -m soc.agent`: "등록된 워커가 없다", 종료 코드 0(동기화 뒤에는 L1·L2가 돈다)
   - L3를 켠 설정(`interval_seconds = 2`, `collect_before = false`)으로 7초(약 4라운드)
     - ATT&CK 없음: "건너뜀" 로그 1번
     - ATT&CK 1건을 넣고 재시작: 가설 생성 `provider_error` 1번(모델 호출 전 실패), Agent Log 0, Hunt 0
@@ -101,7 +161,8 @@ GROUP BY 1;
   - `tests/test_l3_hunt_worker.py`(DB 없음)
     - 기본 설정에 두 워커가 순서대로 있고, L3는 꺼져 있어 `DATABASE_URL` 없이도 L3를 띄우지 않는다
     - 켜면 실제 등록 경로로 생성 → 검증 워커가 만들어지고 등록 검사를 통과한다
-    - 켰는데 `DATABASE_URL`이 없으면 시작하지 않는다
+    - 켰는데 `DATABASE_URL`이 없으면 생성 워커에서 시작하지 않는다
+    - 위 세 건은 L1·L2 단계를 끄고 본다(`l3_only`, "계획과 달라진 점")
     - `build_worker`: `DATABASE_URL` 없음, 틀린 헌팅 설정, 틀린 `generate_interval_seconds`(0, -1, 문자열, bool, 없음)
     - 수집을 끄면 `[l3.intel]`을 읽지 않는다
     - 수동 명령 설정은 새 키가 없어도 된다
@@ -113,4 +174,6 @@ GROUP BY 1;
     - 수집 실패에도 생성, 로그에 본문 없음, 실패 종류 로그
     - 검증 `cancelled`: Hunt 그대로(3번), 다른 실패는 `cancelled` 사이에도 한도에서 `failed`(`log_error` 포함)
     - 실행기 한 라운드에서 생성 → 새 Hunt 검증
-- 기존 테스트에서 바꾼 단언: `tests/test_agent_executor.py::test_default_config_executor_values`(l3 `workers`), `tests/test_l3_hunt.py::test_default_config_has_hunt_settings`(`generate_interval_seconds`)
+- 기존 테스트에서 바꾼 단언
+  - `tests/test_agent_executor.py::test_default_config_executor_values`(#215): l3 `workers`. main 동기화 때 main이 더한 L1·L2 단언과 합쳤다
+  - `tests/test_l3_hunt.py::test_default_config_has_hunt_settings`: `generate_interval_seconds`
