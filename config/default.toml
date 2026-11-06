@@ -129,6 +129,10 @@ read_timeout_seconds = 10
 deadline_seconds = 15
 # 응답 크기 상한(압축을 푼 바이트). 넘으면 끊고 TOOL_ERROR code=failed
 max_bytes = 5_242_880  # 5MB
+# 자체 서명 HTTPS ELK의 CA 인증서 파일(PEM) 경로(#264). 비밀이 아니라 설정 값이다.
+# 빈 값이면 httpx 기본 신뢰 저장소를 쓴다. 파일을 읽지 못하면 TOOL_ERROR code=failed(reason config).
+# 실제 경로는 config/local.toml에 적는다(절대 경로 권장). http 주소에는 쓰이지 않는다
+ca_cert_path = ""
 
 # 조회 대상. name은 코드에 정해진 alerts | web_access | cloudtrail 중 하나다(다른 이름은 provider_error).
 # 대상별 필터·반환 필드는 코드(soc.tools.siem)에 있다. 여기서는 index·time_field만 붙인다.

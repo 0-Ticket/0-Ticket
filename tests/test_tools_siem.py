@@ -634,6 +634,64 @@ def test_bad_settings_fail_with_config_reason(elk: FakeElk, change: dict[str, An
     assert elk.requests == []
 
 
+# CA 인증서 경로 [tools.siem] ca_cert_path(#264). 샘플은 tests/fixtures/tls/의 테스트용 공개 CA다
+
+
+TLS = Path(__file__).parent / "fixtures" / "tls"
+
+
+def spy_verify(monkeypatch: pytest.MonkeyPatch) -> list[Any]:
+    """도구가 httpx.Client에 넘긴 verify 값을 모은다. 요청은 transport(FakeElk)로 그대로 간다."""
+    seen: list[Any] = []
+    real = httpx.Client
+
+    def spy(*args: Any, **kwargs: Any) -> httpx.Client:
+        seen.append(kwargs.get("verify"))
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr("soc.tools.siem.httpx.Client", spy)
+    return seen
+
+
+def test_ca_cert_path_becomes_ssl_context(elk: FakeElk, monkeypatch: pytest.MonkeyPatch) -> None:
+    import ssl
+
+    seen = spy_verify(monkeypatch)
+    elk.add(ok("search_web_access.json"), ok("search_web_access.json"))
+    call(
+        caller(elk, config(siem={**SIEM, "ca_cert_path": str(TLS / "ca.pem")})),
+        "query_siem",
+        query(),
+    )
+    call(caller(elk, config(siem={**SIEM, "ca_cert_path": ""})), "query_siem", query())
+    assert isinstance(seen[0], ssl.SSLContext)
+    subjects = [dict(item[0] for item in c["subject"]) for c in seen[0].get_ca_certs()]
+    assert {"commonName": "0-Ticket test CA"} in subjects
+    assert seen[1] is True
+    assert len(elk.requests) == 2
+
+
+def test_missing_ca_cert_path_key_keeps_default_verification(
+    elk: FakeElk, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    seen = spy_verify(monkeypatch)
+    elk.add(ok("search_web_access.json"))
+    call(caller(elk), "query_siem", query())
+    assert seen == [True]
+
+
+@pytest.mark.parametrize(
+    "value", [str(TLS / "missing.pem"), str(TLS / "not_a_cert.pem"), str(TLS), 1, None]
+)
+def test_bad_ca_cert_path_fails_with_config_reason(elk: FakeElk, value: Any) -> None:
+    c = caller(elk, config(siem={**SIEM, "ca_cert_path": value}))
+    out = call(c, "query_siem", query())
+    assert out == tool_error_text("query_siem", "failed")
+    assert failure(c.rows[0]) == {"failure": "failed", "reason": "config"}
+    assert elk.requests == []
+    assert str(TLS) not in json.dumps(c.rows) + out
+
+
 def test_two_failures_block_the_tool(elk: FakeElk) -> None:
     elk.add(status(500, "error_500.json"), status(500, "error_500.json"))
     c = caller(elk)
@@ -761,6 +819,7 @@ def test_default_config_has_siem_settings_without_secrets(default_config_dir: Pa
     assert siem["read_timeout_seconds"] == 10
     assert siem["deadline_seconds"] == 15
     assert siem["max_bytes"] == 5_242_880
+    assert siem["ca_cert_path"] == ""
     assert [t["name"] for t in siem["targets"]] == list(TARGET_NAMES)
     by_name = {t["name"]: t for t in siem["targets"]}
     assert by_name["alerts"]["index"] == ".alerts-security.alerts-default"
