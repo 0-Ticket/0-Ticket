@@ -13,7 +13,7 @@ from soc.api import __main__ as api_main
 from soc.api import db
 from soc.api.app import create_app
 from soc.api.config import ConfigError, load_settings
-from soc.api.routes import hunts, threat_news, ticketing_policy
+from soc.api.routes import dashboard, hunts, records, threat_news, ticketing_policy, workflow
 from soc.ids import new_id
 
 # 닫힌 포트의 가짜 주소. 비밀번호와 호스트가 응답·로그에 나오지 않는지 본다
@@ -34,12 +34,18 @@ def write_config(directory: Path, text: str) -> Path:
 # 라우트
 
 
-API_PATHS = [
-    "/api/hunts",
-    "/api/hunts/{hunt_id}",
-    "/api/threat-news",
-    "/api/ticketing-policy",
-]
+UI_ROUTERS = (dashboard.router, records.router, workflow.router)
+UI_PATHS = ["/api" + r.path for router in UI_ROUTERS for r in router.routes]
+
+API_PATHS = sorted(
+    [
+        "/api/hunts",
+        "/api/hunts/{hunt_id}",
+        "/api/threat-news",
+        "/api/ticketing-policy",
+    ]
+    + UI_PATHS
+)
 
 
 def test_api_routes_are_connected_and_openapi_is_the_only_other_route() -> None:
@@ -51,6 +57,7 @@ def test_api_routes_are_connected_and_openapi_is_the_only_other_route() -> None:
         ("/openapi.json", ["GET", "HEAD"])
     ]
     included = [*hunts.router.routes, *threat_news.router.routes, *ticketing_policy.router.routes]
+    included += [r for router in UI_ROUTERS for r in router.routes]
     assert all(isinstance(r, APIRoute) for r in included)
     assert sorted({"/api" + r.path for r in included}) == API_PATHS
     methods_by_path: dict[str, set[str]] = {}
@@ -58,6 +65,7 @@ def test_api_routes_are_connected_and_openapi_is_the_only_other_route() -> None:
         methods_by_path.setdefault(route.path, set()).update(route.methods or ())
         assert route.include_in_schema
     assert methods_by_path == {
+        **{path.removeprefix("/api"): {"GET"} for path in UI_PATHS},
         "/hunts": {"GET"},
         "/hunts/{hunt_id}": {"GET"},
         "/threat-news": {"GET"},
