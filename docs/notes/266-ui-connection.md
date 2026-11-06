@@ -10,7 +10,7 @@ supersedes: []
 
 ## 한 일
 
-조회 API 11개와 서버 집계를 추가했다. RawRecord 기준 성공·실패·대기 목록과 계약 상세를 제공한다.
+목록·상세 API 10개와 대시보드 집계 API 1개를 추가했다. RawRecord 기준 성공·실패·대기와 계약 상세를 제공한다.
 Ticket 위험도는 연결 Alert의 최댓값으로 계산하고 Case 대기는 Incident 상태로 조회한다.
 API → 시드 → 화면 순서로 구현하고 각 단계에 커밋을 남겼다.
 대시보드·Alert/Event·Ticket·Incident·Case·Hunting을 실제 조회 API에 연결했다.
@@ -38,6 +38,8 @@ typescript-eslint의 지원 범위와 맞췄다. 새 환경변수는 없다.
 개발 명령과 프록시 설명은 CONTRIBUTING.md, CI의 frontend job은 타입 생성 차이·lint·test·build를 검사한다.
 빌드는 통과하지만 Recharts를 포함한 단일 JS 청크가 약 719 kB(gzip 215 kB)라 Vite 크기 경고가 있다.
 현재 정적 조회 화면이며 자동 주기 갱신·승인 동작·인증·배포는 범위 밖이다.
+DB 검증은 임시 로컬 PostgreSQL 14.20에서 실행했다. CI의 PostgreSQL 17.6 환경과 원격 CI 결과는
+push 뒤 사람이 확인한다. 실제 SIEM·모델 호출은 이 이슈의 완료 범위에 포함하지 않는다.
 
 ## 확인 방법
 
@@ -67,3 +69,13 @@ typescript-eslint의 지원 범위와 맞췄다. 새 환경변수는 없다.
   원본 Ticket→Alert 이동, Event 성공·실패·대기 혼합 목록을 확인했다.
 - Hunt 제목의 시드 표시도 실패 테스트로 먼저 확인하고 보완했다. 변경 뒤 API·시드 테스트
   17건(DB 포함)과 화면 테스트 5건을 다시 확인했다.
+
+### soc-done 최종 점검 (2026-11-06)
+
+- uv run ruff format .: 291개 파일 변경 없음. ruff check·format --check도 통과했다.
+- uv run pytest: 1,287건 통과(17.01초). 기존 FakeSshServer 종료 경고 3건, 종료 코드 0.
+- pnpm lint·test·build: 모두 통과, 화면 테스트 5건. 번들 크기 경고는 위에 기록했다.
+- Python 계약 생성 --check와 pnpm contracts:check 통과, TypeScript 28개 파일 일치.
+- DB 재검사 첫 실행은 임시 PostgreSQL 재시작 때 포트 지정을 빠뜨려 연결 단계에서 실패했다.
+  테스트 전용 포트를 명시해 바로잡았으며 애플리케이션·테스트 코드 변경은 없었다.
+- uv run pytest -m db: 387건 통과(임시 PostgreSQL 14.20, 테스트 전용 포트 명시).
