@@ -1,10 +1,12 @@
 """검증 run 워커: pending Hunt마다 가설을 우리 Alert·Event로 검증한다.
 
-워커 모양은 #215 설계(stage, name, poll(limit), handle(subject_id))를 따른다. 실행기 등록은 후속
-이슈에서 한다. handle은 멱등이다: pending이 아닌 Hunt는 건드리지 않고, 갱신은 읽은 상태가 그대로일
-때만 한다.
+워커 모양은 #215 설계(stage, name, poll(limit), handle(subject_id))를 따른다. 실행기에는
+[executor.l3] workers의 "soc.l3.hunt.verify:build_worker"로 등록한다(#245). handle은 멱등이다:
+pending이 아닌 Hunt는 건드리지 않고, 갱신은 읽은 상태가 그대로일 때만 한다. 종료로 끊긴 run
+(failure = "cancelled")은 시도로 세지 않는다.
 """
 
+import os
 from collections.abc import Callable, Sequence
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -16,7 +18,7 @@ from soc.contracts import to_epoch_ms, validate_contract
 from soc.ids import new_id
 from soc.l3.hunt import store
 from soc.l3.hunt.prompts import load_prompt
-from soc.l3.hunt.settings import HuntSettings
+from soc.l3.hunt.settings import ConfigError, HuntSettings, read_hunt_settings
 
 Run = Callable[[AgentTask], AgentResult]
 RECORD_PREFIXES = ("alt_", "evt_")
@@ -116,6 +118,10 @@ class HuntVerifier:
                     attempt=read_attempts + 1,
                 )
             )
+            if result.failure == "cancelled":
+                # 종료로 끊긴 run은 시도로 세지 않는다. Hunt는 그대로 pending이고 다음 실행에서 다시
+                # 한다. 그 run은 Agent Log에만 남는다(#215 약속, #245)
+                return
             now_ms = to_epoch_ms(self._clock())
             hunt = {**hunt, "attempts": read_attempts + 1, "updated_at": now_ms}
             if result.ok:
@@ -167,6 +173,19 @@ class HuntVerifier:
             "status": "failed" if exhausted else "pending",
             "details": {**hunt["details"], "verify_failures": failures},
         }
+
+
+def database_url_from_env() -> str:
+    """실행기 워커가 쓰는 DATABASE_URL. 없으면 ConfigError(주소는 메시지에 넣지 않는다)."""
+    url = os.environ.get("DATABASE_URL")
+    if not url:
+        raise ConfigError("환경변수 DATABASE_URL이 없다")
+    return url
+
+
+def build_worker(config: dict[str, Any]) -> HuntVerifier:
+    """실행기 등록 함수(#215). config는 설정 전체이고 [l3]만 읽는다."""
+    return HuntVerifier(database_url_from_env(), read_hunt_settings(config.get("l3", {})))
 
 
 def _ticket(hunt: dict[str, Any], now_ms: int) -> dict[str, Any]:

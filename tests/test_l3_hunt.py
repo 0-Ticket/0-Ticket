@@ -42,6 +42,8 @@ def test_default_config_has_hunt_settings(default_config_dir: Path) -> None:
     assert settings.confirm_threshold == 0.7
     assert settings.max_attempts == 2
     assert settings.attack_version == defaults["intel"]["attack"]["version"]
+    # 생성 워커만 읽는 값(#245). HuntSettings에는 없다
+    assert defaults["hunt"]["generate_interval_seconds"] == 86_400
 
 
 @pytest.mark.parametrize(

@@ -1,0 +1,83 @@
+{
+  "_comment": "생성 워커의 '마지막 시도' 판단용 Agent Log 줄(#245). id·run_id·subject_id·started_at은 테스트가 채운다. 손으로 만든 값이다.",
+  "runs": {
+    "hypothesize_ok": [
+      {
+        "stage": "l3",
+        "subject_type": "hunt",
+        "seq": 1,
+        "kind": "model",
+        "name": "fake-model",
+        "input": {"system": "가설 생성", "input": []},
+        "output": [{"type": "message"}],
+        "outcome": "ok",
+        "tokens_in": 2900,
+        "tokens_out": 400,
+        "duration_ms": 3300,
+        "details": {"task": "l3_hypothesize", "attempt": 1, "validation": "ok"}
+      }
+    ],
+    "hypothesize_failed": [
+      {
+        "stage": "l3",
+        "subject_type": "hunt",
+        "seq": 1,
+        "kind": "model",
+        "name": "fake-model",
+        "input": {"system": "가설 생성", "input": []},
+        "output": null,
+        "outcome": "error",
+        "tokens_in": null,
+        "tokens_out": null,
+        "duration_ms": 1200,
+        "details": {"task": "l3_hypothesize", "attempt": 1, "failure": "rate_limited"}
+      }
+    ],
+    "hypothesize_cancelled": [
+      {
+        "stage": "l3",
+        "subject_type": "hunt",
+        "seq": 1,
+        "kind": "model",
+        "name": "fake-model",
+        "input": {"system": "가설 생성", "input": []},
+        "output": [{"type": "function_call"}],
+        "outcome": "ok",
+        "tokens_in": 2900,
+        "tokens_out": 100,
+        "duration_ms": 2000,
+        "details": {"task": "l3_hypothesize", "attempt": 1}
+      },
+      {
+        "stage": "l3",
+        "subject_type": "hunt",
+        "seq": 2,
+        "kind": "model",
+        "name": "fake-model",
+        "input": {"system": "가설 생성", "input": []},
+        "output": null,
+        "outcome": "error",
+        "tokens_in": null,
+        "tokens_out": null,
+        "duration_ms": 500,
+        "details": {"task": "l3_hypothesize", "attempt": 1, "failure": "cancelled"}
+      }
+    ],
+    "verify_ok": [
+      {
+        "stage": "l3",
+        "subject_type": "hunt",
+        "seq": 1,
+        "kind": "model",
+        "name": "fake-model",
+        "input": {"system": "검증", "input": []},
+        "output": [{"type": "message"}],
+        "outcome": "ok",
+        "tokens_in": 12000,
+        "tokens_out": 1400,
+        "duration_ms": 9000,
+        "details": {"task": "l3_verify", "attempt": 1, "validation": "ok"}
+      }
+    ]
+  }
+}

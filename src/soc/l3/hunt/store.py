@@ -188,6 +188,22 @@ def insert_ticket(conn: psycopg.Connection, ticket: dict[str, Any]) -> bool:
     return True
 
 
+def last_attempt_started_at(conn: psycopg.Connection, task: str) -> datetime | None:
+    """L3 작업(task)의 마지막 시도 시각: 그 작업 Agent Log 줄의 가장 늦은 started_at.
+
+    같은 run에 failure = cancelled인 줄이 있는 run은 뺀다(종료로 끊긴 run은 시도로 세지 않는다,
+    #245). task는 칼럼이 아니라 details에 있고 인덱스가 없어 표 전체를 읽는다.
+    """
+    row = conn.execute(
+        "SELECT max(l.started_at) FROM agent_logs l"
+        " WHERE l.stage = 'l3' AND l.details->>'task' = %s"
+        " AND NOT EXISTS (SELECT 1 FROM agent_logs c"
+        " WHERE c.run_id = l.run_id AND c.details->>'failure' = 'cancelled')",
+        (task,),
+    ).fetchone()
+    return None if row is None else row[0]
+
+
 def status_counts(conn: psycopg.Connection, hunt_ids: Sequence[str]) -> dict[str, int]:
     rows = conn.execute(
         "SELECT status, count(*) FROM hunts WHERE id = ANY(%s) GROUP BY status", (list(hunt_ids),)
