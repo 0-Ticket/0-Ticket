@@ -1,0 +1,98 @@
+{
+  "pit_id": "pit-.alerts-security.alerts-default",
+  "took": 2,
+  "timed_out": false,
+  "hits": {
+    "hits": [
+      {
+        "_index": ".internal.alerts-security.alerts-default-000001",
+        "_id": "lab-alert-query-0001",
+        "_score": null,
+        "_source": {
+          "@timestamp": "2026-11-05T02:02:00.000Z",
+          "kibana.alert.original_time": "2026-11-05T02:00:00.000Z",
+          "kibana.alert.rule.name": "Lab web SQL injection attempt",
+          "kibana.alert.rule.rule_id": "lab-rule-web-sqli",
+          "kibana.alert.rule.type": "query",
+          "kibana.alert.rule.tags": ["attack.T1190"],
+          "kibana.alert.rule.threat": [],
+          "kibana.alert.severity": "high",
+          "kibana.alert.workflow_status": "open",
+          "event": {"dataset": "nginx.access", "module": "nginx"},
+          "source": {"ip": "203.0.113.10"},
+          "http": {"request": {"method": "GET"}, "response": {"status_code": 403}},
+          "url": {"original": "/board/view.php?id=1%27%20OR%20%271%27%3D%271"}
+        },
+        "sort": [1793844120000, 1]
+      },
+      {
+        "_index": ".internal.alerts-security.alerts-default-000001",
+        "_id": "lab-alert-threshold-login-0001",
+        "_score": null,
+        "_source": {
+          "@timestamp": "2026-11-05T02:03:00.000Z",
+          "kibana.alert.rule.name": "Lab login brute force",
+          "kibana.alert.rule.rule_id": "lab-rule-login-bruteforce",
+          "kibana.alert.rule.type": "threshold",
+          "kibana.alert.rule.tags": ["attack.T1110"],
+          "kibana.alert.rule.threat": [],
+          "kibana.alert.severity": "medium",
+          "kibana.alert.workflow_status": "open",
+          "kibana.alert.threshold_result": {
+            "terms": [{"field": "source.ip", "value": "203.0.113.20"}],
+            "count": 12,
+            "from": "2026-11-05T01:58:00.000Z"
+          },
+          "source": {"ip": "203.0.113.20"}
+        },
+        "sort": [1793844180000, 2]
+      },
+      {
+        "_index": ".internal.alerts-security.alerts-default-000001",
+        "_id": "lab-alert-threshold-waf-0001",
+        "_score": null,
+        "_source": {
+          "@timestamp": "2026-11-05T02:04:00.000Z",
+          "kibana.alert.original_time": "2026-11-05T02:00:10.000Z",
+          "kibana.alert.rule.name": "Lab WAF repeated block",
+          "kibana.alert.rule.rule_id": "lab-rule-waf-repeat",
+          "kibana.alert.rule.type": "threshold",
+          "kibana.alert.rule.tags": ["attack.T1190"],
+          "kibana.alert.rule.threat": [],
+          "kibana.alert.severity": "medium",
+          "kibana.alert.workflow_status": "open",
+          "kibana.alert.threshold_result": {
+            "terms": [{"field": "transaction.client_ip", "value": "203.0.113.30"}],
+            "count": 9,
+            "from": "2026-11-05T01:59:00.000Z"
+          },
+          "transaction": {"client_ip": "203.0.113.30"}
+        },
+        "sort": [1793844240000, 3]
+      },
+      {
+        "_index": ".internal.alerts-security.alerts-default-000001",
+        "_id": "lab-alert-threshold-ids-0001",
+        "_score": null,
+        "_source": {
+          "@timestamp": "2026-11-05T02:05:00.000Z",
+          "kibana.alert.original_time": "2026-11-05T02:01:30.000Z",
+          "kibana.alert.rule.name": "Lab IDS repeated high severity",
+          "kibana.alert.rule.rule_id": "lab-rule-ids-repeat",
+          "kibana.alert.rule.type": "threshold",
+          "kibana.alert.rule.tags": [],
+          "kibana.alert.rule.threat": [],
+          "kibana.alert.severity": "high",
+          "kibana.alert.workflow_status": "open",
+          "kibana.alert.threshold_result": {
+            "terms": [{"field": "source.ip", "value": "203.0.113.40"}],
+            "count": 6,
+            "from": "2026-11-05T02:00:00.000Z"
+          },
+          "source": {"ip": "203.0.113.40"}
+        },
+        "sort": [1793844300000, 4]
+      }
+    ]
+  }
+}

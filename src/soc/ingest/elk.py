@@ -13,29 +13,54 @@ PIT 닫기(DELETE /_pit) 셋이다.
 """
 
 import json
+import ssl
 import time
 from collections.abc import Callable, Iterator
 from typing import Any
 
 import httpx
 
-from soc.ingest.config import Settings, Source
+from soc.ingest.config import ConfigError, Settings, Source
 from soc.ingest.errors import IngestError
 
 # PIT와 검색 요청의 생존 시간. 페이지 사이 간격보다 길어야 PIT가 살아 있다.
 KEEP_ALIVE = "1m"
 
 
+def tls_verify(settings: Settings) -> ssl.SSLContext | bool:
+    """httpx.Client의 verify 값을 만든다(#264).
+
+    인자:
+        settings: ca_cert_path를 쓴다.
+
+    반환:
+        ca_cert_path가 비었으면 True(httpx 기본 신뢰 저장소), 있으면 그 CA 파일만 믿는 SSLContext.
+        httpx 0.28은 verify에 경로 문자열을 넘기는 것을 폐기 예정으로 두어 SSLContext를 만든다.
+
+    발생:
+        ConfigError: 파일이 없거나 PEM 인증서로 읽을 수 없다. 메시지에 경로를 넣지 않는다.
+    """
+    if not settings.ca_cert_path:
+        return True
+    try:
+        return ssl.create_default_context(cafile=settings.ca_cert_path)
+    except OSError:  # FileNotFoundError, IsADirectoryError, ssl.SSLError(PEM 아님)
+        raise ConfigError("ingest.ca_cert_path의 CA 인증서 파일을 읽지 못했다") from None
+
+
 def make_client(settings: Settings, base_url: str, api_key: str) -> httpx.Client:
     """읽기 전용 ELK 호출에 쓸 HTTP 클라이언트를 만든다.
 
     인자:
-        settings: connect·read 제한 시간을 얻는 데 쓴다.
+        settings: connect·read 제한 시간과 CA 인증서 경로(tls_verify)를 얻는 데 쓴다.
         base_url: ELK 주소(http 또는 https, 계정 정보 없음).
         api_key: ELK API 키. Authorization: ApiKey 헤더로 보낸다.
 
     반환:
         리다이렉트를 따라가지 않는 httpx.Client. 호출한 쪽이 닫는다.
+
+    발생:
+        ConfigError: CA 인증서 파일을 읽지 못했다(tls_verify).
     """
     timeout = httpx.Timeout(settings.read_timeout_seconds, connect=settings.connect_timeout_seconds)
     return httpx.Client(
@@ -43,6 +68,7 @@ def make_client(settings: Settings, base_url: str, api_key: str) -> httpx.Client
         headers={"Authorization": f"ApiKey {api_key}"},
         timeout=timeout,
         follow_redirects=False,
+        verify=tls_verify(settings),
     )
 
 

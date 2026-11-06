@@ -1,0 +1,75 @@
+{
+  "pit_id": "pit-filebeat-*",
+  "took": 3,
+  "timed_out": false,
+  "hits": {
+    "hits": [
+      {
+        "_index": ".ds-filebeat-9.5.0-2026.11.05-000001",
+        "_id": "lab-nginx-0001",
+        "_score": null,
+        "_source": {
+          "@timestamp": "2026-11-05T02:00:00.000Z",
+          "event": {"dataset": "nginx.access", "module": "nginx"},
+          "source": {"ip": "203.0.113.10"},
+          "http": {"request": {"method": "GET"}, "response": {"status_code": 403}},
+          "url": {"original": "/board/view.php?id=1%27%20OR%20%271%27%3D%271"}
+        },
+        "sort": [1793844000000, 1]
+      },
+      {
+        "_index": ".ds-filebeat-9.5.0-2026.11.05-000001",
+        "_id": "lab-nginx-0002",
+        "_score": null,
+        "_source": {
+          "@timestamp": "2026-11-05T02:00:05.000Z",
+          "event": {"dataset": "nginx.access", "module": "nginx"},
+          "source": {"ip": "203.0.113.20"},
+          "http": {"request": {"method": "POST"}, "response": {"status_code": 401}},
+          "url": {"original": "/board/login.php"}
+        },
+        "sort": [1793844005000, 2]
+      },
+      {
+        "_index": ".ds-filebeat-9.5.0-2026.11.05-000001",
+        "_id": "lab-modsec-0001",
+        "_score": null,
+        "_source": {
+          "@timestamp": "2026-11-05T02:00:10.000Z",
+          "source": {"ip": "203.0.113.30"},
+          "transaction": {
+            "client_ip": "203.0.113.30",
+            "unique_id": "lab-tx-0001",
+            "request": {"method": "GET", "uri": "/board/view.php?file=../../etc/passwd"}
+          }
+        },
+        "sort": [1793844010000, 3]
+      },
+      {
+        "_index": ".ds-filebeat-9.5.0-2026.11.05-000001",
+        "_id": "lab-nginx-0003",
+        "_score": null,
+        "_source": {
+          "@timestamp": "2026-11-05T02:01:00.000Z",
+          "event": {"dataset": "nginx.access", "module": "nginx"},
+          "source": {"ip": "198.51.100.7"},
+          "http": {"request": {"method": "GET"}, "response": {"status_code": 200}},
+          "url": {"original": "/board/list.php"}
+        },
+        "sort": [1793844060000, 4]
+      },
+      {
+        "_index": ".ds-filebeat-9.5.0-2026.11.05-000001",
+        "_id": "lab-suricata-0001",
+        "_score": null,
+        "_source": {
+          "@timestamp": "2026-11-05T02:01:30.000Z",
+          "event": {"dataset": "suricata.eve", "module": "suricata"},
+          "source": {"ip": "203.0.113.40"},
+          "destination": {"ip": "192.0.2.80"}
+        },
+        "sort": [1793844090000, 5]
+      }
+    ]
+  }
+}

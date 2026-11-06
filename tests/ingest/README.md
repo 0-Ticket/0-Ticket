@@ -53,6 +53,15 @@ fixture 파일은 저장소 관례대로 `tests/fixtures/ingest/`에 있다.
   - `test_main_runs_sources_and_never_prints_secrets`: 전체 실행이 끝나도 비밀 값이 출력에 없다.
   - `test_db_connect_failure_is_exit_1`: DB 연결 실패는 종료 코드 1.
 
+### `test_tls.py`: CA 인증서 경로 `[ingest] ca_cert_path` (#264)
+- 샘플은 `tests/fixtures/tls/`의 테스트용 공개 CA(`ca.pem`, 개인 키 없음)와 인증서가 아닌 파일(`not_a_cert.pem`)이다.
+- `test_default_config_has_empty_ca_cert_path`, `test_missing_key_is_empty`: 기본은 빈 값이고, 키가 없어도 빈 값이다.
+- `test_non_string_is_config_error`: 문자열이 아니면 ConfigError.
+- `test_empty_path_keeps_default_verification`, `test_ca_file_becomes_ssl_context`: 빈 값이면 `verify=True`, 경로가 있으면 그 CA를 믿는 SSLContext.
+- `test_unreadable_ca_file_is_config_error_without_path`: 없는 파일·PEM 아님·폴더는 ConfigError이고 메시지에 경로가 없다.
+- `test_make_client_passes_the_ca_context`: `make_client`가 그 값을 `httpx.Client(verify=...)`에 넘긴다.
+- `test_main_exits_2_before_connecting_when_ca_is_unreadable`: 명령은 연결 전에 종료 코드 2로 끝난다.
+
 ## DB 테스트 (`db/`, 마커 `db`)
 
 ### `test_store_db.py`: 저장 계층 (`soc.ingest.store`)

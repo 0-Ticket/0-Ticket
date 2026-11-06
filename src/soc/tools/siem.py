@@ -20,6 +20,7 @@ import ipaddress
 import json
 import os
 import re
+import ssl
 import time
 from collections.abc import Callable, Mapping
 from typing import Any
@@ -256,6 +257,23 @@ def _connection(siem: Mapping[str, Any]) -> tuple[str, str]:
     return url, key
 
 
+def _verify(siem: Mapping[str, Any]) -> ssl.SSLContext | bool:
+    """httpx.Client의 verify 값(#264). ca_cert_path가 비었거나 없으면 True(기본 신뢰 저장소).
+
+    값이 있으면 그 CA 파일만 믿는 SSLContext다. 문자열이 아니거나 파일을 PEM 인증서로 읽지 못하면
+    failed(config)이고 요청은 나가지 않는다. 경로는 details에 넣지 않는다.
+    """
+    path = siem.get("ca_cert_path", "")
+    if not isinstance(path, str):
+        raise ToolError("failed", reason="config")
+    if not path:
+        return True
+    try:
+        return ssl.create_default_context(cafile=path)
+    except OSError:  # FileNotFoundError, IsADirectoryError, ssl.SSLError(PEM 아님)
+        raise ToolError("failed", reason="config") from None
+
+
 # 인자 검사
 
 
@@ -312,6 +330,7 @@ def _search(
     connect, read, deadline = (_positive(siem, key) for key in _TIMEOUT_KEYS)
     max_bytes = _positive(siem, "max_bytes")
     url, key = _connection(siem)
+    verify = _verify(siem)
     timeout = httpx.Timeout(read, connect=connect)
     data = bytearray()
     started = clock()
@@ -321,6 +340,7 @@ def _search(
             headers={"Authorization": f"ApiKey {key}"},
             timeout=timeout,
             follow_redirects=False,
+            verify=verify,
             transport=transport,
         ) as client:
             with client.stream(
