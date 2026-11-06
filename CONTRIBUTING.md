@@ -147,3 +147,26 @@ src/soc/           백엔드 코드
 tests/             테스트와 샘플 데이터 (fixtures/)
 .github/           이슈·PR 템플릿, CI
 ```
+
+## UI 조회 API와 개발용 시드 (#266)
+
+화면용 API는 `uv run python -m soc.api`로 실행합니다(기본 `127.0.0.1:8000`).
+`/api/dashboard`는 전체 집계, `/api/alerts`, `/api/events`, `/api/tickets`, `/api/incidents`,
+`/api/cases`는 목록과 `/{id}` 상세입니다. 기존 `/api/hunts`도 그대로 사용합니다.
+목록은 `limit`(기본 50, 최대 200)과 응답의 `next_cursor`를 다음 요청의 `cursor`로 넘깁니다.
+Alert/Event는 `status=pending|succeeded|failed`, Ticket은 `origin`, `status`, `severity=0..6`,
+Incident/Case는 각각 계약의 `status`로 필터합니다. 실패 자료의 상세 ID는 `raw_id`입니다.
+
+개발용 DB를 준비하고 마이그레이션을 적용한 뒤 합성 시드를 추가할 수 있습니다.
+실행기와 분리된 개발 DB를 `DATABASE_URL`로 지정하세요.
+
+```bash
+uv run python -m soc.db.migrate
+uv run python -m soc.api.dev_seed --yes
+uv run python -m soc.api
+```
+
+`--yes`는 연결 대상이 개발 DB임을 확인했다는 뜻입니다. 생략하면 DB 연결 전에 종료합니다.
+시드는 `dev-seed-ui`로 표시하며 실제 사이클 결과나 기존 `dev-seed`·`dev-seed-l1`과 구분됩니다.
+삭제·덮어쓰기는 하지 않습니다. 같은 시드는 다시 넣지 않고, 같은 ID의 내용이 달라졌으면 전체
+삽입을 되돌립니다. Case는 합성된 승인 결과이며 실제 승인 API는 아직 없습니다.
