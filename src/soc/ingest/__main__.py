@@ -59,6 +59,8 @@ def main() -> int:
         settings = read_settings(load_config()["ingest"])
         base_url, api_key = _elk_env(settings)
         database_url = _env("DATABASE_URL")
+        # CA 파일을 연결 전에 한 번 읽어 본다. 못 읽으면 원본·체크포인트·이력을 쓰지 않고 끝낸다.
+        elk.tls_verify(settings)
     except ConfigError as exc:
         print(f"설정 오류: {exc}", file=sys.stderr)
         return 2

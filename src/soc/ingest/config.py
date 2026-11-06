@@ -59,6 +59,8 @@ class Settings:
         max_bytes: 응답 하나의 최대 크기(압축을 푼 바이트).
         deadline_seconds: 응답 하나의 전체 마감 시간(초).
         sources: 조회 대상 목록. 설정 파일에 적은 순서대로 처리한다.
+        ca_cert_path: 자체 서명 HTTPS ELK의 CA 인증서 파일(PEM) 경로. 빈 값이면 httpx 기본 신뢰
+            저장소를 쓴다(#264). 비밀이 아니라 설정 값이다.
     """
 
     siem_profile: str
@@ -71,6 +73,7 @@ class Settings:
     max_bytes: int
     deadline_seconds: float
     sources: tuple[Source, ...]
+    ca_cert_path: str = ""
 
 
 def load_config(directory: Path | None = None) -> dict[str, Any]:
@@ -185,6 +188,11 @@ def read_settings(ingest: dict[str, Any]) -> Settings:
     if len({s.name for s in sources}) != len(sources):
         raise ConfigError(f"{where}.sources에 같은 kind·key가 두 번 있다")
 
+    # 없으면 빈 값(기본 신뢰 저장소). 파일은 여기서 읽지 않고 elk.tls_verify가 읽는다.
+    ca_cert_path = ingest.get("ca_cert_path", "")
+    if not isinstance(ca_cert_path, str):
+        raise ConfigError(f"{where}.ca_cert_path는 문자열이어야 한다")
+
     return Settings(
         siem_profile=_text(ingest, "siem_profile", where),
         url_env=_text(ingest, "url_env", where),
@@ -195,4 +203,5 @@ def read_settings(ingest: dict[str, Any]) -> Settings:
         max_bytes=int(_positive(ingest, "max_bytes", where)),
         deadline_seconds=float(_positive(ingest, "deadline_seconds", where)),
         sources=tuple(sources),
+        ca_cert_path=ca_cert_path,
     )

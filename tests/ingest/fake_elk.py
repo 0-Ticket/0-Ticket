@@ -31,11 +31,14 @@ def fixture(name: str) -> dict[str, Any]:
     return json.loads((FIXTURES / name).read_text(encoding="utf-8"))
 
 
-def make_settings(*sources: Source, page_size: int = 2, max_bytes: int = 1_000_000) -> Settings:
+def make_settings(
+    *sources: Source, page_size: int = 2, max_bytes: int = 1_000_000, ca_cert_path: str = ""
+) -> Settings:
     """테스트용 Settings. 인자:
     sources: 조회 대상. 없으면 EVENTS 하나.
     page_size: 한 번에 받는 문서 수. 기본 2라 적은 문서로도 여러 페이지가 된다.
     max_bytes: 응답 하나의 크기 상한.
+    ca_cert_path: CA 인증서 파일 경로. 빈 값이면 기본 신뢰 저장소(#264).
     """
     return Settings(
         siem_profile="elk-test",
@@ -47,6 +50,7 @@ def make_settings(*sources: Source, page_size: int = 2, max_bytes: int = 1_000_0
         max_bytes=max_bytes,
         deadline_seconds=30,
         sources=sources or (EVENTS,),
+        ca_cert_path=ca_cert_path,
     )
 
 
