@@ -147,3 +147,50 @@ src/soc/           백엔드 코드
 tests/             테스트와 샘플 데이터 (fixtures/)
 .github/           이슈·PR 템플릿, CI
 ```
+
+## UI 조회 API와 개발용 시드 (#266)
+
+화면용 API는 `uv run python -m soc.api`로 실행합니다(기본 `127.0.0.1:8000`).
+`/api/dashboard`는 전체 집계, `/api/alerts`, `/api/events`, `/api/tickets`, `/api/incidents`,
+`/api/cases`는 목록과 `/{id}` 상세입니다. 기존 `/api/hunts`도 그대로 사용합니다.
+목록은 `limit`(기본 50, 최대 200)과 응답의 `next_cursor`를 다음 요청의 `cursor`로 넘깁니다.
+Alert/Event는 `status=pending|succeeded|failed`, Ticket은 `origin`, `status`, `severity=0..6`,
+Incident/Case는 각각 계약의 `status`로 필터합니다. 실패 자료의 상세 ID는 `raw_id`입니다.
+
+개발용 DB를 준비하고 마이그레이션을 적용한 뒤 합성 시드를 추가할 수 있습니다.
+실행기와 분리된 개발 DB를 `DATABASE_URL`로 지정하세요.
+
+```bash
+uv run python -m soc.db.migrate
+uv run python -m soc.api.dev_seed --yes
+uv run python -m soc.api
+```
+
+`--yes`는 연결 대상이 개발 DB임을 확인했다는 뜻입니다. 생략하면 DB 연결 전에 종료합니다.
+시드는 `dev-seed-ui`로 표시하며 실제 사이클 결과나 기존 `dev-seed`·`dev-seed-l1`과 구분됩니다.
+삭제·덮어쓰기는 하지 않습니다. 같은 시드는 다시 넣지 않고, 같은 ID의 내용이 달라졌으면 전체
+삽입을 되돌립니다. Case는 합성된 승인 결과이며 실제 승인 API는 아직 없습니다.
+
+화면은 Node 22.22.3(LTS)와 pnpm 11.9.0을 사용합니다. API를 먼저 실행한 뒤:
+
+```bash
+pnpm --dir frontend install --frozen-lockfile
+pnpm --dir frontend dev
+```
+
+화면 주소는 개발 서버가 출력합니다(기본 `http://127.0.0.1:5173`). Vite가 `/api`를 로컬
+`http://127.0.0.1:8000`으로 전달합니다. DB 주소·키는 브라우저로 전달하지 않습니다.
+Case의 '승인 대기 Incident' 탭은 아직 Case가 아닌 `awaiting_review` Incident입니다.
+승인·반려·로그인·설정은 자리만 있으며 비활성입니다.
+
+```bash
+pnpm --dir frontend lint             # ESLint + Prettier 검사
+pnpm --dir frontend test             # Vitest run (MSW는 여기서만 사용)
+pnpm --dir frontend build            # TypeScript 검사 + Vite 빌드
+pnpm --dir frontend contracts        # JSON Schema → TypeScript 재생성
+pnpm --dir frontend contracts:check  # 커밋된 생성 타입과 차이 검사
+```
+
+도메인 타입 원본은 `contracts/`, API 전용 응답 타입 원본은 `soc.api.models`와
+`soc.api.ui_models`입니다. `scripts/export_api_schemas.py`는 DB 연결 없이 응답 스키마를 내보냅니다.
+생성 파일은 직접 고치지 않습니다. 의존성 버전은 `frontend/pnpm-lock.yaml`로 고정합니다.

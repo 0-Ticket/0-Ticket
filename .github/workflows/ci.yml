@@ -83,3 +83,31 @@ jobs:
 
       - name: DB · Qdrant 테스트
         run: uv run pytest -m "db or qdrant"
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22.22.3'
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '11.9.0'
+      - uses: astral-sh/setup-uv@v9.0.0
+      - name: Python 의존성 설치 (API 스키마 생성)
+        run: uv sync --locked
+        working-directory: .
+      - name: 화면 의존성 설치
+        run: pnpm install --frozen-lockfile
+      - name: 생성 타입 차이 검사
+        run: pnpm contracts:check
+      - name: 화면 린트·포맷
+        run: pnpm lint
+      - name: 화면 테스트
+        run: pnpm test
+      - name: 타입 검사·빌드
+        run: pnpm build

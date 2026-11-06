@@ -1,0 +1,1384 @@
+{
+  "raw_records": [
+    {
+      "id": "raw_01a19f93-1266-7000-8000-000000000001",
+      "kind": "alert",
+      "siem_profile": "dev-seed-ui",
+      "siem_ref": "alert/0",
+      "fetched_at": 1793678580000,
+      "original": {
+        "@timestamp": "2026-11-03T04:02:58.000Z",
+        "kibana.alert.rule.name": "SQL Injection Attempt",
+        "kibana.alert.rule.uuid": "9f1e2d3c-4b5a-6789-0abc-def012345678",
+        "kibana.alert.severity": "high",
+        "source": {
+          "ip": "203.0.113.10"
+        },
+        "destination": {
+          "ip": "198.51.100.5"
+        },
+        "host": {
+          "name": "web-01"
+        }
+      }
+    },
+    {
+      "id": "raw_01a19f93-1266-7000-8000-000000000002",
+      "kind": "alert",
+      "siem_profile": "dev-seed-ui",
+      "siem_ref": "alert/1",
+      "fetched_at": 1793678580000,
+      "original": {
+        "@timestamp": "2026-11-03T04:02:58.000Z",
+        "kibana.alert.rule.name": "SQL Injection Attempt",
+        "kibana.alert.rule.uuid": "9f1e2d3c-4b5a-6789-0abc-def012345678",
+        "kibana.alert.severity": "high",
+        "source": {
+          "ip": "203.0.113.10"
+        },
+        "destination": {
+          "ip": "198.51.100.5"
+        },
+        "host": {
+          "name": "web-01"
+        }
+      }
+    },
+    {
+      "id": "raw_01a19f93-1266-7000-8000-000000000003",
+      "kind": "alert",
+      "siem_profile": "dev-seed-ui",
+      "siem_ref": "alert/2",
+      "fetched_at": 1793678580000,
+      "original": {
+        "@timestamp": "2026-11-03T04:02:58.000Z",
+        "kibana.alert.rule.name": "SQL Injection Attempt",
+        "kibana.alert.rule.uuid": "9f1e2d3c-4b5a-6789-0abc-def012345678",
+        "kibana.alert.severity": "high",
+        "source": {
+          "ip": "203.0.113.10"
+        },
+        "destination": {
+          "ip": "198.51.100.5"
+        },
+        "host": {
+          "name": "web-01"
+        }
+      }
+    },
+    {
+      "id": "raw_01a19f93-1266-7000-8000-000000000004",
+      "kind": "alert",
+      "siem_profile": "dev-seed-ui",
+      "siem_ref": "alert/3",
+      "fetched_at": 1793678580000,
+      "original": {
+        "@timestamp": "2026-11-03T04:02:58.000Z",
+        "kibana.alert.rule.name": "SQL Injection Attempt",
+        "kibana.alert.rule.uuid": "9f1e2d3c-4b5a-6789-0abc-def012345678",
+        "kibana.alert.severity": "high",
+        "source": {
+          "ip": "203.0.113.10"
+        },
+        "destination": {
+          "ip": "198.51.100.5"
+        },
+        "host": {
+          "name": "web-01"
+        }
+      }
+    },
+    {
+      "id": "raw_01a19f93-1266-7000-8000-000000000005",
+      "kind": "alert",
+      "siem_profile": "dev-seed-ui",
+      "siem_ref": "alert/4",
+      "fetched_at": 1793678580000,
+      "original": {
+        "@timestamp": "2026-11-03T04:02:58.000Z",
+        "kibana.alert.rule.name": "SQL Injection Attempt",
+        "kibana.alert.rule.uuid": "9f1e2d3c-4b5a-6789-0abc-def012345678",
+        "kibana.alert.severity": "high",
+        "source": {
+          "ip": "203.0.113.10"
+        },
+        "destination": {
+          "ip": "198.51.100.5"
+        },
+        "host": {
+          "name": "web-01"
+        }
+      }
+    },
+    {
+      "id": "raw_01a19f93-1266-7000-8000-000000000006",
+      "kind": "alert",
+      "siem_profile": "dev-seed-ui",
+      "siem_ref": "alert/5",
+      "fetched_at": 1793678580000,
+      "original": {
+        "@timestamp": "2026-11-03T04:02:58.000Z",
+        "kibana.alert.rule.name": "SQL Injection Attempt",
+        "kibana.alert.rule.uuid": "9f1e2d3c-4b5a-6789-0abc-def012345678",
+        "kibana.alert.severity": "high",
+        "source": {
+          "ip": "203.0.113.10"
+        },
+        "destination": {
+          "ip": "198.51.100.5"
+        },
+        "host": {
+          "name": "web-01"
+        }
+      }
+    },
+    {
+      "id": "raw_01a19f93-1266-7000-8000-000000000007",
+      "kind": "alert",
+      "siem_profile": "dev-seed-ui",
+      "siem_ref": "alert/6",
+      "fetched_at": 1793678580000,
+      "original": {
+        "@timestamp": "2026-11-03T04:02:58.000Z",
+        "kibana.alert.rule.name": "SQL Injection Attempt",
+        "kibana.alert.rule.uuid": "9f1e2d3c-4b5a-6789-0abc-def012345678",
+        "kibana.alert.severity": "high",
+        "source": {
+          "ip": "203.0.113.10"
+        },
+        "destination": {
+          "ip": "198.51.100.5"
+        },
+        "host": {
+          "name": "web-01"
+        }
+      }
+    },
+    {
+      "id": "raw_01a19f93-1266-7000-8000-000000000027",
+      "kind": "alert",
+      "siem_profile": "dev-seed-ui",
+      "siem_ref": "alert/failed",
+      "fetched_at": 1793678580000,
+      "original": {
+        "message": "<script>alert(1)</script> **text** https://example.com"
+      }
+    },
+    {
+      "id": "raw_01a19f93-1266-7000-8000-000000000028",
+      "kind": "alert",
+      "siem_profile": "dev-seed-ui",
+      "siem_ref": "alert/pending",
+      "fetched_at": 1793678580000,
+      "original": {
+        "message": "<script>alert(1)</script> **text** https://example.com"
+      }
+    },
+    {
+      "id": "raw_01a19f93-1266-7000-8000-000000000029",
+      "kind": "event",
+      "siem_profile": "dev-seed-ui",
+      "siem_ref": "event/failed",
+      "fetched_at": 1793678580000,
+      "original": {
+        "message": "<script>alert(1)</script> **text** https://example.com"
+      }
+    },
+    {
+      "id": "raw_01a19f93-1266-7000-8000-000000000030",
+      "kind": "event",
+      "siem_profile": "dev-seed-ui",
+      "siem_ref": "event/pending",
+      "fetched_at": 1793678580000,
+      "original": {
+        "message": "<script>alert(1)</script> **text** https://example.com"
+      }
+    },
+    {
+      "id": "raw_01a19f93-1266-7000-8000-000000000100",
+      "kind": "event",
+      "siem_profile": "dev-seed-ui",
+      "siem_ref": "event/success",
+      "fetched_at": 1793678580000,
+      "original": {
+        "@timestamp": "2026-11-03T04:02:57.500Z",
+        "url": {
+          "original": "/login.php?id=1' OR '1'='1"
+        },
+        "source": {
+          "ip": "203.0.113.10"
+        },
+        "http": {
+          "response": {
+            "status_code": 500
+          }
+        }
+      }
+    }
+  ],
+  "normalize_status": [
+    {
+      "raw_id": "raw_01a19f93-1266-7000-8000-000000000001",
+      "status": "succeeded",
+      "result_kind": "alert",
+      "result_id": "alt_01a19f93-1266-7000-8000-000000000001"
+    },
+    {
+      "raw_id": "raw_01a19f93-1266-7000-8000-000000000002",
+      "status": "succeeded",
+      "result_kind": "alert",
+      "result_id": "alt_01a19f93-1266-7000-8000-000000000002"
+    },
+    {
+      "raw_id": "raw_01a19f93-1266-7000-8000-000000000003",
+      "status": "succeeded",
+      "result_kind": "alert",
+      "result_id": "alt_01a19f93-1266-7000-8000-000000000003"
+    },
+    {
+      "raw_id": "raw_01a19f93-1266-7000-8000-000000000004",
+      "status": "succeeded",
+      "result_kind": "alert",
+      "result_id": "alt_01a19f93-1266-7000-8000-000000000004"
+    },
+    {
+      "raw_id": "raw_01a19f93-1266-7000-8000-000000000005",
+      "status": "succeeded",
+      "result_kind": "alert",
+      "result_id": "alt_01a19f93-1266-7000-8000-000000000005"
+    },
+    {
+      "raw_id": "raw_01a19f93-1266-7000-8000-000000000006",
+      "status": "succeeded",
+      "result_kind": "alert",
+      "result_id": "alt_01a19f93-1266-7000-8000-000000000006"
+    },
+    {
+      "raw_id": "raw_01a19f93-1266-7000-8000-000000000007",
+      "status": "succeeded",
+      "result_kind": "alert",
+      "result_id": "alt_01a19f93-1266-7000-8000-000000000007"
+    },
+    {
+      "raw_id": "raw_01a19f93-1266-7000-8000-000000000027",
+      "status": "failed",
+      "error_code": "schema_failed",
+      "attempts": 1
+    },
+    {
+      "raw_id": "raw_01a19f93-1266-7000-8000-000000000029",
+      "status": "failed",
+      "error_code": "schema_failed",
+      "attempts": 1
+    }
+  ],
+  "alerts": [
+    {
+      "id": "alt_01a19f93-1266-7000-8000-000000000001",
+      "raw_id": "raw_01a19f93-1266-7000-8000-000000000001",
+      "time": 1793678578000,
+      "severity": 0,
+      "title": "샘플 Alert 0",
+      "rule_id": "9f1e2d3c-4b5a-6789-0abc-def012345678",
+      "entities": [
+        {
+          "type": "ip",
+          "value": "203.0.113.10",
+          "role": "src"
+        },
+        {
+          "type": "ip",
+          "value": "198.51.100.5",
+          "role": "dst"
+        },
+        {
+          "type": "host",
+          "value": "web-01",
+          "role": "dst"
+        }
+      ],
+      "assets": [
+        {
+          "entity": {
+            "type": "host",
+            "value": "web-01"
+          },
+          "name": "웹서버",
+          "criticality": 5,
+          "owner": null
+        }
+      ],
+      "triage": {
+        "status": "pending",
+        "verdict": null
+      },
+      "ocsf": {
+        "class_uid": 2004,
+        "severity_id": 0,
+        "time": 1793678578000,
+        "finding_info": {
+          "title": "SQL Injection Attempt",
+          "uid": "9f1e2d3c-4b5a-6789-0abc-def012345678"
+        },
+        "src_endpoint": {
+          "ip": "203.0.113.10"
+        },
+        "dst_endpoint": {
+          "ip": "198.51.100.5",
+          "hostname": "web-01"
+        }
+      },
+      "details": {
+        "seed_source": "dev-seed-ui"
+      }
+    },
+    {
+      "id": "alt_01a19f93-1266-7000-8000-000000000002",
+      "raw_id": "raw_01a19f93-1266-7000-8000-000000000002",
+      "time": 1793678578000,
+      "severity": 1,
+      "title": "샘플 Alert 1",
+      "rule_id": "9f1e2d3c-4b5a-6789-0abc-def012345678",
+      "entities": [
+        {
+          "type": "ip",
+          "value": "203.0.113.10",
+          "role": "src"
+        },
+        {
+          "type": "ip",
+          "value": "198.51.100.5",
+          "role": "dst"
+        },
+        {
+          "type": "host",
+          "value": "web-01",
+          "role": "dst"
+        }
+      ],
+      "assets": [
+        {
+          "entity": {
+            "type": "host",
+            "value": "web-01"
+          },
+          "name": "웹서버",
+          "criticality": 5,
+          "owner": null
+        }
+      ],
+      "triage": null,
+      "ocsf": {
+        "class_uid": 2004,
+        "severity_id": 1,
+        "time": 1793678578000,
+        "finding_info": {
+          "title": "SQL Injection Attempt",
+          "uid": "9f1e2d3c-4b5a-6789-0abc-def012345678"
+        },
+        "src_endpoint": {
+          "ip": "203.0.113.10"
+        },
+        "dst_endpoint": {
+          "ip": "198.51.100.5",
+          "hostname": "web-01"
+        }
+      },
+      "details": {
+        "seed_source": "dev-seed-ui"
+      }
+    },
+    {
+      "id": "alt_01a19f93-1266-7000-8000-000000000003",
+      "raw_id": "raw_01a19f93-1266-7000-8000-000000000003",
+      "time": 1793678578000,
+      "severity": 2,
+      "title": "샘플 Alert 2",
+      "rule_id": "9f1e2d3c-4b5a-6789-0abc-def012345678",
+      "entities": [
+        {
+          "type": "ip",
+          "value": "203.0.113.10",
+          "role": "src"
+        },
+        {
+          "type": "ip",
+          "value": "198.51.100.5",
+          "role": "dst"
+        },
+        {
+          "type": "host",
+          "value": "web-01",
+          "role": "dst"
+        }
+      ],
+      "assets": [
+        {
+          "entity": {
+            "type": "host",
+            "value": "web-01"
+          },
+          "name": "웹서버",
+          "criticality": 5,
+          "owner": null
+        }
+      ],
+      "triage": null,
+      "ocsf": {
+        "class_uid": 2004,
+        "severity_id": 2,
+        "time": 1793678578000,
+        "finding_info": {
+          "title": "SQL Injection Attempt",
+          "uid": "9f1e2d3c-4b5a-6789-0abc-def012345678"
+        },
+        "src_endpoint": {
+          "ip": "203.0.113.10"
+        },
+        "dst_endpoint": {
+          "ip": "198.51.100.5",
+          "hostname": "web-01"
+        }
+      },
+      "details": {
+        "seed_source": "dev-seed-ui"
+      }
+    },
+    {
+      "id": "alt_01a19f93-1266-7000-8000-000000000004",
+      "raw_id": "raw_01a19f93-1266-7000-8000-000000000004",
+      "time": 1793678578000,
+      "severity": 3,
+      "title": "샘플 Alert 3",
+      "rule_id": "9f1e2d3c-4b5a-6789-0abc-def012345678",
+      "entities": [
+        {
+          "type": "ip",
+          "value": "203.0.113.10",
+          "role": "src"
+        },
+        {
+          "type": "ip",
+          "value": "198.51.100.5",
+          "role": "dst"
+        },
+        {
+          "type": "host",
+          "value": "web-01",
+          "role": "dst"
+        }
+      ],
+      "assets": [
+        {
+          "entity": {
+            "type": "host",
+            "value": "web-01"
+          },
+          "name": "웹서버",
+          "criticality": 5,
+          "owner": null
+        }
+      ],
+      "triage": null,
+      "ocsf": {
+        "class_uid": 2004,
+        "severity_id": 3,
+        "time": 1793678578000,
+        "finding_info": {
+          "title": "SQL Injection Attempt",
+          "uid": "9f1e2d3c-4b5a-6789-0abc-def012345678"
+        },
+        "src_endpoint": {
+          "ip": "203.0.113.10"
+        },
+        "dst_endpoint": {
+          "ip": "198.51.100.5",
+          "hostname": "web-01"
+        }
+      },
+      "details": {
+        "seed_source": "dev-seed-ui"
+      }
+    },
+    {
+      "id": "alt_01a19f93-1266-7000-8000-000000000005",
+      "raw_id": "raw_01a19f93-1266-7000-8000-000000000005",
+      "time": 1793678578000,
+      "severity": 4,
+      "title": "샘플 Alert 4",
+      "rule_id": "9f1e2d3c-4b5a-6789-0abc-def012345678",
+      "entities": [
+        {
+          "type": "ip",
+          "value": "203.0.113.10",
+          "role": "src"
+        },
+        {
+          "type": "ip",
+          "value": "198.51.100.5",
+          "role": "dst"
+        },
+        {
+          "type": "host",
+          "value": "web-01",
+          "role": "dst"
+        }
+      ],
+      "assets": [
+        {
+          "entity": {
+            "type": "host",
+            "value": "web-01"
+          },
+          "name": "웹서버",
+          "criticality": 5,
+          "owner": null
+        }
+      ],
+      "triage": null,
+      "ocsf": {
+        "class_uid": 2004,
+        "severity_id": 4,
+        "time": 1793678578000,
+        "finding_info": {
+          "title": "SQL Injection Attempt",
+          "uid": "9f1e2d3c-4b5a-6789-0abc-def012345678"
+        },
+        "src_endpoint": {
+          "ip": "203.0.113.10"
+        },
+        "dst_endpoint": {
+          "ip": "198.51.100.5",
+          "hostname": "web-01"
+        }
+      },
+      "details": {
+        "seed_source": "dev-seed-ui"
+      }
+    },
+    {
+      "id": "alt_01a19f93-1266-7000-8000-000000000006",
+      "raw_id": "raw_01a19f93-1266-7000-8000-000000000006",
+      "time": 1793678578000,
+      "severity": 5,
+      "title": "샘플 Alert 5",
+      "rule_id": "9f1e2d3c-4b5a-6789-0abc-def012345678",
+      "entities": [
+        {
+          "type": "ip",
+          "value": "203.0.113.10",
+          "role": "src"
+        },
+        {
+          "type": "ip",
+          "value": "198.51.100.5",
+          "role": "dst"
+        },
+        {
+          "type": "host",
+          "value": "web-01",
+          "role": "dst"
+        }
+      ],
+      "assets": [
+        {
+          "entity": {
+            "type": "host",
+            "value": "web-01"
+          },
+          "name": "웹서버",
+          "criticality": 5,
+          "owner": null
+        }
+      ],
+      "triage": null,
+      "ocsf": {
+        "class_uid": 2004,
+        "severity_id": 5,
+        "time": 1793678578000,
+        "finding_info": {
+          "title": "SQL Injection Attempt",
+          "uid": "9f1e2d3c-4b5a-6789-0abc-def012345678"
+        },
+        "src_endpoint": {
+          "ip": "203.0.113.10"
+        },
+        "dst_endpoint": {
+          "ip": "198.51.100.5",
+          "hostname": "web-01"
+        }
+      },
+      "details": {
+        "seed_source": "dev-seed-ui"
+      }
+    },
+    {
+      "id": "alt_01a19f93-1266-7000-8000-000000000007",
+      "raw_id": "raw_01a19f93-1266-7000-8000-000000000007",
+      "time": 1793678578000,
+      "severity": 6,
+      "title": "샘플 Alert 6",
+      "rule_id": "9f1e2d3c-4b5a-6789-0abc-def012345678",
+      "entities": [
+        {
+          "type": "ip",
+          "value": "203.0.113.10",
+          "role": "src"
+        },
+        {
+          "type": "ip",
+          "value": "198.51.100.5",
+          "role": "dst"
+        },
+        {
+          "type": "host",
+          "value": "web-01",
+          "role": "dst"
+        }
+      ],
+      "assets": [
+        {
+          "entity": {
+            "type": "host",
+            "value": "web-01"
+          },
+          "name": "웹서버",
+          "criticality": 5,
+          "owner": null
+        }
+      ],
+      "triage": null,
+      "ocsf": {
+        "class_uid": 2004,
+        "severity_id": 6,
+        "time": 1793678578000,
+        "finding_info": {
+          "title": "SQL Injection Attempt",
+          "uid": "9f1e2d3c-4b5a-6789-0abc-def012345678"
+        },
+        "src_endpoint": {
+          "ip": "203.0.113.10"
+        },
+        "dst_endpoint": {
+          "ip": "198.51.100.5",
+          "hostname": "web-01"
+        }
+      },
+      "details": {
+        "seed_source": "dev-seed-ui"
+      }
+    }
+  ],
+  "events": [
+    {
+      "id": "evt_01a19f93-1266-7000-8000-000000000001",
+      "raw_id": "raw_01a19f93-1266-7000-8000-000000000100",
+      "time": 1793678577500,
+      "ocsf_class": 4002,
+      "summary": "GET /login.php 500",
+      "entities": [
+        {
+          "type": "ip",
+          "value": "203.0.113.10",
+          "role": "src"
+        },
+        {
+          "type": "url",
+          "value": "https://shop.example.com/login.php",
+          "role": "target"
+        }
+      ],
+      "assets": [],
+      "ocsf": {
+        "class_uid": 4002,
+        "time": 1793678577500,
+        "http_request": {
+          "http_method": "GET",
+          "url": {
+            "path": "/login.php"
+          }
+        },
+        "http_response": {
+          "code": 500
+        }
+      },
+      "details": {
+        "seed_source": "dev-seed-ui"
+      }
+    }
+  ],
+  "hunts": [
+    {
+      "id": "hnt_01a19f93-1266-7000-8000-000000000001",
+      "hunt_run_id": "hrn_01a19f93-1266-7000-8000-000000000001",
+      "status": "pending",
+      "hypothesis": "[dev-seed-ui] 웹셸 업로드 뒤 명령 실행이 있었을 것이다",
+      "attack_techniques": [
+        "T1190"
+      ],
+      "confidence": null,
+      "reason": null,
+      "evidence_ids": [],
+      "entities": [],
+      "attempts": 0,
+      "verified_at": null,
+      "created_at": 1793700000000,
+      "updated_at": 1793700000000,
+      "details": {
+        "seed_source": "dev-seed-ui"
+      }
+    },
+    {
+      "id": "hnt_01a19f93-1266-7000-8000-000000000002",
+      "hunt_run_id": "hrn_01a19f93-1266-7000-8000-000000000001",
+      "status": "confirmed",
+      "hypothesis": "[dev-seed-ui] 웹셸 업로드 뒤 명령 실행이 있었을 것이다",
+      "attack_techniques": [
+        "T1190",
+        "T1059"
+      ],
+      "confidence": 0.9,
+      "reason": "업로드 뒤 셸 실행 이벤트가 있다",
+      "evidence_ids": [
+        "evt_01a19f93-1266-7000-8000-000000000001"
+      ],
+      "entities": [
+        {
+          "type": "ip",
+          "value": "203.0.113.10",
+          "role": "src"
+        }
+      ],
+      "attempts": 2,
+      "verified_at": 1793707200000,
+      "created_at": 1793700000000,
+      "updated_at": 1793707200000,
+      "details": {
+        "seed_source": "dev-seed-ui"
+      }
+    },
+    {
+      "id": "hnt_01a19f93-1266-7000-8000-000000000003",
+      "hunt_run_id": "hrn_01a19f93-1266-7000-8000-000000000001",
+      "status": "rejected",
+      "hypothesis": "[dev-seed-ui] 웹셸 업로드 뒤 명령 실행이 있었을 것이다",
+      "attack_techniques": [
+        "T1505.003"
+      ],
+      "confidence": 0.8,
+      "reason": "<script>alert(1)</script> 업로드 흔적 없음",
+      "evidence_ids": [
+        "evt_01a1a92e-9102-7714-9bfc-8d48f2015447"
+      ],
+      "entities": [],
+      "attempts": 1,
+      "verified_at": 1793703600000,
+      "created_at": 1793700000000,
+      "updated_at": 1793703600000,
+      "details": {
+        "seed_source": "dev-seed-ui"
+      }
+    },
+    {
+      "id": "hnt_01a19f93-1266-7000-8000-000000000004",
+      "hunt_run_id": "hrn_01a19f93-1266-7000-8000-000000000001",
+      "status": "inconclusive",
+      "hypothesis": "[dev-seed-ui] 웹셸 업로드 뒤 명령 실행이 있었을 것이다",
+      "attack_techniques": [
+        "T1190"
+      ],
+      "confidence": 0.4,
+      "reason": "근거 부족",
+      "evidence_ids": [],
+      "entities": [],
+      "attempts": 1,
+      "verified_at": 1793790000000,
+      "created_at": 1793786400000,
+      "updated_at": 1793790000000,
+      "details": {
+        "seed_source": "dev-seed-ui"
+      }
+    },
+    {
+      "id": "hnt_01a19f93-1266-7000-8000-000000000005",
+      "hunt_run_id": "hrn_01a19f93-1266-7000-8000-000000000001",
+      "status": "failed",
+      "hypothesis": "[dev-seed-ui] 웹셸 업로드 뒤 명령 실행이 있었을 것이다",
+      "attack_techniques": [
+        "T1505.003"
+      ],
+      "confidence": null,
+      "reason": null,
+      "evidence_ids": [],
+      "entities": [],
+      "attempts": 2,
+      "verified_at": null,
+      "created_at": 1793786400000,
+      "updated_at": 1793793600000,
+      "details": {
+        "seed_source": "dev-seed-ui"
+      }
+    }
+  ],
+  "tickets": [
+    {
+      "id": "tkt_01a19f93-1266-7000-8000-000000000001",
+      "origin": "auto",
+      "status": "new",
+      "alert_ids": [
+        "alt_01a19f93-1266-7000-8000-000000000001"
+      ],
+      "hunt_id": null,
+      "entities": [
+        {
+          "type": "ip",
+          "value": "203.0.113.10",
+          "role": "src"
+        },
+        {
+          "type": "host",
+          "value": "web-01",
+          "role": "dst"
+        }
+      ],
+      "verdict": null,
+      "created_at": 1793678581000,
+      "updated_at": 1793678581000,
+      "details": {
+        "seed_source": "dev-seed-ui"
+      }
+    },
+    {
+      "id": "tkt_01a19f93-1266-7000-8000-000000000002",
+      "origin": "scenario",
+      "status": "held",
+      "alert_ids": [
+        "alt_01a19f93-1266-7000-8000-000000000002"
+      ],
+      "hunt_id": null,
+      "entities": [
+        {
+          "type": "ip",
+          "value": "203.0.113.10",
+          "role": "src"
+        },
+        {
+          "type": "host",
+          "value": "web-01",
+          "role": "dst"
+        }
+      ],
+      "verdict": null,
+      "created_at": 1793678581000,
+      "updated_at": 1793678581000,
+      "details": {
+        "seed_source": "dev-seed-ui"
+      }
+    },
+    {
+      "id": "tkt_01a19f93-1266-7000-8000-000000000003",
+      "origin": "l1",
+      "status": "closed",
+      "alert_ids": [
+        "alt_01a19f93-1266-7000-8000-000000000003"
+      ],
+      "hunt_id": null,
+      "entities": [
+        {
+          "type": "ip",
+          "value": "203.0.113.10",
+          "role": "src"
+        },
+        {
+          "type": "host",
+          "value": "web-01",
+          "role": "dst"
+        }
+      ],
+      "verdict": null,
+      "created_at": 1793678581000,
+      "updated_at": 1793678581000,
+      "details": {
+        "seed_source": "dev-seed-ui"
+      }
+    },
+    {
+      "id": "tkt_01a19f93-1266-7000-8000-000000000004",
+      "origin": "auto",
+      "status": "escalated",
+      "alert_ids": [
+        "alt_01a19f93-1266-7000-8000-000000000004"
+      ],
+      "hunt_id": null,
+      "entities": [
+        {
+          "type": "ip",
+          "value": "203.0.113.10",
+          "role": "src"
+        },
+        {
+          "type": "host",
+          "value": "web-01",
+          "role": "dst"
+        }
+      ],
+      "verdict": null,
+      "created_at": 1793678581000,
+      "updated_at": 1793678581000,
+      "details": {
+        "seed_source": "dev-seed-ui"
+      }
+    },
+    {
+      "id": "tkt_01a19f93-1266-7000-8000-000000000005",
+      "origin": "scenario",
+      "status": "linked",
+      "alert_ids": [
+        "alt_01a19f93-1266-7000-8000-000000000005"
+      ],
+      "hunt_id": null,
+      "entities": [
+        {
+          "type": "ip",
+          "value": "203.0.113.10",
+          "role": "src"
+        },
+        {
+          "type": "host",
+          "value": "web-01",
+          "role": "dst"
+        }
+      ],
+      "verdict": null,
+      "created_at": 1793678581000,
+      "updated_at": 1793678581000,
+      "details": {
+        "seed_source": "dev-seed-ui"
+      }
+    },
+    {
+      "id": "tkt_01a19f93-1266-7000-8000-000000000006",
+      "origin": "l1",
+      "status": "linked",
+      "alert_ids": [
+        "alt_01a19f93-1266-7000-8000-000000000006"
+      ],
+      "hunt_id": null,
+      "entities": [
+        {
+          "type": "ip",
+          "value": "203.0.113.10",
+          "role": "src"
+        },
+        {
+          "type": "host",
+          "value": "web-01",
+          "role": "dst"
+        }
+      ],
+      "verdict": null,
+      "created_at": 1793678581000,
+      "updated_at": 1793678581000,
+      "details": {
+        "seed_source": "dev-seed-ui"
+      }
+    },
+    {
+      "id": "tkt_01a19f93-1266-7000-8000-000000000007",
+      "origin": "auto",
+      "status": "linked",
+      "alert_ids": [
+        "alt_01a19f93-1266-7000-8000-000000000007"
+      ],
+      "hunt_id": null,
+      "entities": [
+        {
+          "type": "ip",
+          "value": "203.0.113.10",
+          "role": "src"
+        },
+        {
+          "type": "host",
+          "value": "web-01",
+          "role": "dst"
+        }
+      ],
+      "verdict": null,
+      "created_at": 1793678581000,
+      "updated_at": 1793678581000,
+      "details": {
+        "seed_source": "dev-seed-ui"
+      }
+    },
+    {
+      "id": "tkt_01a19f93-1266-7000-8000-000000000008",
+      "origin": "l3",
+      "status": "escalated",
+      "alert_ids": [],
+      "hunt_id": "hnt_01a19f93-1266-7000-8000-000000000002",
+      "entities": [
+        {
+          "type": "domain",
+          "value": "update-check.example.com",
+          "role": "dst"
+        }
+      ],
+      "verdict": null,
+      "created_at": 1793679000000,
+      "updated_at": 1793679000000,
+      "details": {
+        "seed_source": "dev-seed-ui"
+      }
+    }
+  ],
+  "incidents": [
+    {
+      "id": "inc_01a19f93-1266-7000-8000-000000000001",
+      "title": "웹서버 SQL 인젝션 시도",
+      "summary": null,
+      "status": "analyzing",
+      "ticket_ids": [
+        "tkt_01a19f93-1266-7000-8000-000000000005"
+      ],
+      "entities": [
+        {
+          "type": "ip",
+          "value": "203.0.113.10",
+          "role": "src"
+        }
+      ],
+      "severity": 4,
+      "assessed_severity": null,
+      "analysis_round": 0,
+      "review_round": 0,
+      "created_at": 1793678800000,
+      "updated_at": 1793678800000,
+      "details": {
+        "seed_source": "dev-seed-ui"
+      }
+    },
+    {
+      "id": "inc_01a19f93-1266-7000-8000-000000000002",
+      "title": "웹서버 SQL 인젝션 시도",
+      "summary": "샘플 분석 결과",
+      "status": "awaiting_review",
+      "ticket_ids": [
+        "tkt_01a19f93-1266-7000-8000-000000000006"
+      ],
+      "entities": [
+        {
+          "type": "ip",
+          "value": "203.0.113.10",
+          "role": "src"
+        }
+      ],
+      "severity": 5,
+      "assessed_severity": 5,
+      "analysis_round": 1,
+      "review_round": 0,
+      "created_at": 1793678800000,
+      "updated_at": 1793678800000,
+      "details": {
+        "seed_source": "dev-seed-ui"
+      }
+    },
+    {
+      "id": "inc_01a19f93-1266-7000-8000-000000000003",
+      "title": "웹서버 SQL 인젝션 시도",
+      "summary": "샘플 분석 결과",
+      "status": "confirmed",
+      "ticket_ids": [
+        "tkt_01a19f93-1266-7000-8000-000000000007"
+      ],
+      "entities": [
+        {
+          "type": "ip",
+          "value": "203.0.113.10",
+          "role": "src"
+        }
+      ],
+      "severity": 6,
+      "assessed_severity": 5,
+      "analysis_round": 1,
+      "review_round": 0,
+      "created_at": 1793678800000,
+      "updated_at": 1793678800000,
+      "details": {
+        "seed_source": "dev-seed-ui"
+      }
+    },
+    {
+      "id": "inc_01a19f93-1266-7000-8000-000000000004",
+      "title": "웹서버 SQL 인젝션 시도",
+      "summary": "샘플 분석 결과",
+      "status": "human_handling",
+      "ticket_ids": [
+        "tkt_01a19f93-1266-7000-8000-000000000005"
+      ],
+      "entities": [
+        {
+          "type": "ip",
+          "value": "203.0.113.10",
+          "role": "src"
+        }
+      ],
+      "severity": 4,
+      "assessed_severity": 0,
+      "analysis_round": 1,
+      "review_round": 0,
+      "created_at": 1793678800000,
+      "updated_at": 1793678800000,
+      "details": {
+        "seed_source": "dev-seed-ui"
+      }
+    },
+    {
+      "id": "inc_01a19f93-1266-7000-8000-000000000005",
+      "title": "웹서버 SQL 인젝션 시도",
+      "summary": "샘플 분석 결과",
+      "status": "dismissed",
+      "ticket_ids": [
+        "tkt_01a19f93-1266-7000-8000-000000000006"
+      ],
+      "entities": [
+        {
+          "type": "ip",
+          "value": "203.0.113.10",
+          "role": "src"
+        }
+      ],
+      "severity": 5,
+      "assessed_severity": 5,
+      "analysis_round": 1,
+      "review_round": 0,
+      "created_at": 1793678800000,
+      "updated_at": 1793678800000,
+      "details": {
+        "seed_source": "dev-seed-ui"
+      }
+    }
+  ],
+  "incident_artifacts": [
+    {
+      "id": "art_01a19f93-1266-7000-8000-000000000001",
+      "incident_id": "inc_01a19f93-1266-7000-8000-000000000002",
+      "analysis_round": 1,
+      "verdict": "succeeded",
+      "summary": "침해가 확인됐다",
+      "assessed_severity": 5,
+      "timeline": [
+        {
+          "time": 1793678400000,
+          "summary": "의심 요청 뒤 프로세스가 실행됐다",
+          "evidence_ids": [
+            "evt_01a19f93-1266-7000-8000-000000000001"
+          ]
+        }
+      ],
+      "techniques": [
+        {
+          "id": "T1059.001",
+          "name": "PowerShell",
+          "evidence_ids": [
+            "evt_01a19f93-1266-7000-8000-000000000001"
+          ]
+        }
+      ],
+      "impact": "웹 서버 프로세스가 실행됐다",
+      "cause": "취약한 요청 처리가 악용됐다",
+      "further_risk": "같은 경로의 재실행 가능성이 있다",
+      "evidence_ids": [
+        "evt_01a19f93-1266-7000-8000-000000000001"
+      ],
+      "created_at": 1793678580000
+    },
+    {
+      "id": "art_01a19f93-1266-7000-8000-000000000002",
+      "incident_id": "inc_01a19f93-1266-7000-8000-000000000003",
+      "analysis_round": 1,
+      "verdict": "succeeded",
+      "summary": "침해가 확인됐다",
+      "assessed_severity": 5,
+      "timeline": [
+        {
+          "time": 1793678400000,
+          "summary": "의심 요청 뒤 프로세스가 실행됐다",
+          "evidence_ids": [
+            "evt_01a19f93-1266-7000-8000-000000000001"
+          ]
+        }
+      ],
+      "techniques": [
+        {
+          "id": "T1059.001",
+          "name": "PowerShell",
+          "evidence_ids": [
+            "evt_01a19f93-1266-7000-8000-000000000001"
+          ]
+        }
+      ],
+      "impact": "웹 서버 프로세스가 실행됐다",
+      "cause": "취약한 요청 처리가 악용됐다",
+      "further_risk": "같은 경로의 재실행 가능성이 있다",
+      "evidence_ids": [
+        "evt_01a19f93-1266-7000-8000-000000000001"
+      ],
+      "created_at": 1793678580000
+    },
+    {
+      "id": "art_01a19f93-1266-7000-8000-000000000003",
+      "incident_id": "inc_01a19f93-1266-7000-8000-000000000004",
+      "analysis_round": 1,
+      "verdict": "succeeded",
+      "summary": "침해가 확인됐다",
+      "assessed_severity": 0,
+      "timeline": [
+        {
+          "time": 1793678400000,
+          "summary": "의심 요청 뒤 프로세스가 실행됐다",
+          "evidence_ids": [
+            "evt_01a19f93-1266-7000-8000-000000000001"
+          ]
+        }
+      ],
+      "techniques": [
+        {
+          "id": "T1059.001",
+          "name": "PowerShell",
+          "evidence_ids": [
+            "evt_01a19f93-1266-7000-8000-000000000001"
+          ]
+        }
+      ],
+      "impact": "웹 서버 프로세스가 실행됐다",
+      "cause": "취약한 요청 처리가 악용됐다",
+      "further_risk": "같은 경로의 재실행 가능성이 있다",
+      "evidence_ids": [
+        "evt_01a19f93-1266-7000-8000-000000000001"
+      ],
+      "created_at": 1793678580000
+    },
+    {
+      "id": "art_01a19f93-1266-7000-8000-000000000004",
+      "incident_id": "inc_01a19f93-1266-7000-8000-000000000005",
+      "analysis_round": 1,
+      "verdict": "succeeded",
+      "summary": "침해가 확인됐다",
+      "assessed_severity": 5,
+      "timeline": [
+        {
+          "time": 1793678400000,
+          "summary": "의심 요청 뒤 프로세스가 실행됐다",
+          "evidence_ids": [
+            "evt_01a19f93-1266-7000-8000-000000000001"
+          ]
+        }
+      ],
+      "techniques": [
+        {
+          "id": "T1059.001",
+          "name": "PowerShell",
+          "evidence_ids": [
+            "evt_01a19f93-1266-7000-8000-000000000001"
+          ]
+        }
+      ],
+      "impact": "웹 서버 프로세스가 실행됐다",
+      "cause": "취약한 요청 처리가 악용됐다",
+      "further_risk": "같은 경로의 재실행 가능성이 있다",
+      "evidence_ids": [
+        "evt_01a19f93-1266-7000-8000-000000000001"
+      ],
+      "created_at": 1793678580000
+    }
+  ],
+  "incident_proposals": [
+    {
+      "id": "prp_01a19f93-1266-7000-8000-000000000001",
+      "artifact_id": "art_01a19f93-1266-7000-8000-000000000001",
+      "kind": "detection_rule",
+      "seq": 1,
+      "body": "의심 요청 뒤 자식 프로세스 실행을 탐지한다",
+      "created_at": 1793678580000
+    },
+    {
+      "id": "prp_01a19f93-1266-7000-8000-000000000002",
+      "artifact_id": "art_01a19f93-1266-7000-8000-000000000002",
+      "kind": "detection_rule",
+      "seq": 1,
+      "body": "의심 요청 뒤 자식 프로세스 실행을 탐지한다",
+      "created_at": 1793678580000
+    },
+    {
+      "id": "prp_01a19f93-1266-7000-8000-000000000003",
+      "artifact_id": "art_01a19f93-1266-7000-8000-000000000003",
+      "kind": "detection_rule",
+      "seq": 1,
+      "body": "의심 요청 뒤 자식 프로세스 실행을 탐지한다",
+      "created_at": 1793678580000
+    },
+    {
+      "id": "prp_01a19f93-1266-7000-8000-000000000004",
+      "artifact_id": "art_01a19f93-1266-7000-8000-000000000004",
+      "kind": "detection_rule",
+      "seq": 1,
+      "body": "의심 요청 뒤 자식 프로세스 실행을 탐지한다",
+      "created_at": 1793678580000
+    }
+  ],
+  "cases": [
+    {
+      "id": "cas_01a19f93-1266-7000-8000-000000000001",
+      "incident_id": "inc_01a19f93-1266-7000-8000-000000000003",
+      "title": "의심 도메인 통신",
+      "summary": null,
+      "severity": 5,
+      "entities": [
+        {
+          "type": "domain",
+          "value": "update-check.example.com",
+          "role": "dst"
+        }
+      ],
+      "confirmed_by": "park.analyst",
+      "confirmed_at": 1793679100000,
+      "status": "open",
+      "assignee": null,
+      "resolved_at": null,
+      "details": {
+        "seed_source": "dev-seed-ui"
+      }
+    }
+  ],
+  "agent_logs": [
+    {
+      "id": "agl_01a19f93-1266-7000-8000-000000000001",
+      "run_id": "run_01a19f93-1266-7000-8000-000000000001",
+      "stage": "l3",
+      "subject_type": "hunt",
+      "subject_id": "hnt_01a19f93-1266-7000-8000-000000000002",
+      "seq": 1,
+      "kind": "model",
+      "name": "openai/gpt-oss-120b",
+      "input": [
+        {
+          "role": "user",
+          "content": "가설을 검증한다"
+        }
+      ],
+      "output": {
+        "status": "confirmed"
+      },
+      "outcome": "ok",
+      "tokens_in": 900,
+      "tokens_out": 120,
+      "started_at": 1793678880000,
+      "duration_ms": 2100,
+      "details": {
+        "seed_source": "dev-seed-ui",
+        "task": "l3_verify",
+        "attempt": 1
+      }
+    }
+  ]
+}

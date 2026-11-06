@@ -10,13 +10,16 @@ from fastapi import APIRouter, FastAPI
 
 from soc.api import errors
 from soc.api.config import ApiSettings
-from soc.api.routes import hunts, threat_news, ticketing_policy
+from soc.api.routes import dashboard, hunts, records, threat_news, ticketing_policy, workflow
 
 
 def create_app(settings: ApiSettings) -> FastAPI:
     app = FastAPI(title="0-Ticket SOC API", docs_url=None, redoc_url=None)
     app.state.settings = settings
     api = APIRouter(prefix="/api")
+    api.include_router(dashboard.router)
+    api.include_router(records.router)
+    api.include_router(workflow.router)
     api.include_router(hunts.router)
     api.include_router(threat_news.router)
     api.include_router(ticketing_policy.router)
