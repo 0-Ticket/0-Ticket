@@ -14,9 +14,8 @@ from soc.normalize.errors import NormalizeError
 from soc.normalize.mapping import RawRow, Result, normalize
 from soc.normalize.ocsf_schema import validate_ocsf
 
-CASES = json.loads(
-    (Path(__file__).parent / "fixtures" / "normalize" / "raw.json").read_text(encoding="utf-8")
-)
+_FIXTURE = Path(__file__).parent.parent / "fixtures" / "normalize" / "raw.json"
+CASES = json.loads(_FIXTURE.read_text(encoding="utf-8"))
 SUCCESS = [case for case in CASES if "error" not in case["expect"]]
 FAILURE = [case for case in CASES if "error" in case["expect"]]
 NOV_4_0100 = int(datetime(2026, 11, 4, 1, 0, tzinfo=UTC).timestamp() * 1000)

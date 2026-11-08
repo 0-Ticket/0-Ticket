@@ -51,7 +51,7 @@ select = ["E", "F", "I", "B", "UP"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 # tests/ingest/ 아래 계층 폴더가 fake_elk를 같은 이름으로 import한다
-pythonpath = ["tests/ingest"]
+pythonpath = ["tests", "tests/ingest"]
 markers = [
     "llm: 실제 LLM을 호출하는 테스트. uv run pytest -m llm 으로 실행",
     "db: PostgreSQL이 필요한 테스트. uv run pytest -m db 으로 실행",
