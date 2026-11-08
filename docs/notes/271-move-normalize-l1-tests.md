@@ -37,4 +37,9 @@ supersedes: []
 
 ## 확인 방법
 
-`uv run pytest` (db·llm·qdrant·embedder·elk·ssh 마커 제외) 통과 확인.
+- `uv run ruff format .` → 293 files left unchanged
+- `uv run ruff check .` → All checks passed!
+- `uv run pytest tests/normalize/ tests/l1/` → 53 passed (db·llm 마커 제외)
+- `uv run pytest` 전체 실행 시 `test_api_seed.py`, `test_api_ui.py`에서 Windows cp949
+  인코딩 오류 발생. `encoding="utf-8"` 누락이 원인이며 이 브랜치 이전부터 존재하는 문제다.
+  해당 파일은 이번 범위 밖이다.
