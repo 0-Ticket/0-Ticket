@@ -3,7 +3,7 @@
 DB도 쓰지만 db 마커는 붙이지 않는다. CI의 db job(uv run pytest -m db)이 이 테스트를
 고르지 않게 하기 위해서다.
 
-실행: DATABASE_URL=… LLM_API_KEY=… uv run pytest -m llm tests/test_l1_e2e_llm.py
+실행: DATABASE_URL=… LLM_API_KEY=… uv run pytest -m llm tests/l1/test_l1_e2e_llm.py
 - 모델 연결은 config/local.toml의 [llm](키는 환경변수 LLM_API_KEY), 도구 허용 목록도 그 설정을 쓴다.
   ELK가 없으면 [tools.allowed] l1에서 query_siem을 뺀다(docs/notes/215-executor-l1-e2e.md)
 - 임시 DB에 L1 시드를 넣고 위협 Alert 하나를 L1 워커 없이 run_agent로 판정한다

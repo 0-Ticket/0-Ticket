@@ -7,9 +7,8 @@ import pytest
 
 from soc.l1.judge import decide
 
-CASES = json.loads(
-    (Path(__file__).parent / "fixtures" / "l1_judge" / "decisions.json").read_text(encoding="utf-8")
-)
+_FIXTURE = Path(__file__).parent.parent / "fixtures" / "l1_judge" / "decisions.json"
+CASES = json.loads(_FIXTURE.read_text(encoding="utf-8"))
 
 
 @pytest.mark.parametrize(

@@ -29,9 +29,8 @@ from soc.normalize.store import claim_failed_batch, claim_pending_batch, save_fa
 
 pytestmark = pytest.mark.db
 
-CASES = json.loads(
-    (Path(__file__).parent / "fixtures" / "normalize" / "raw.json").read_text(encoding="utf-8")
-)
+_FIXTURE = Path(__file__).parent.parent / "fixtures" / "normalize" / "raw.json"
+CASES = json.loads(_FIXTURE.read_text(encoding="utf-8"))
 FAILURES = [case["expect"]["error"] for case in CASES if "error" in case["expect"]]
 SETTINGS = Settings(
     batch_size=200,
