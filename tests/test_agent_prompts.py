@@ -1,16 +1,21 @@
 """프롬프트 5층 합성과 보호(#210)."""
 
 import hashlib
+import json
 from itertools import combinations
 from pathlib import Path
 from typing import Any
 
 import pytest
+from contract_samples import load
+from jsonschema import Draft7Validator
 from test_agent_core import ALERT_ID, make_task, run
 
+import soc.agent.compose as compose_module
 from soc.agent import TaskPrompt
-from soc.agent.compose import PROMPT_DIR, compose_instructions
+from soc.agent.compose import PROMPT_DIR, _resolve, compose_instructions
 from soc.agent.types import DOMAINS, FORBIDDEN_PHRASES, STAGES, contains_forbidden
+from soc.contracts import CONTRACT_NAMES
 
 BASE = (PROMPT_DIR / "base.md").read_text(encoding="utf-8").strip()
 DOMAIN_SETS = [c for n in range(len(DOMAINS) + 1) for c in combinations(DOMAINS, n)]
@@ -26,6 +31,7 @@ BASE_RULES = [
     "확신도",
     "JSON 하나",
 ]
+SCHEMA_HEADER = "출력 계약 JSON Schema:"
 
 
 def layer_files() -> list[Path]:
@@ -164,6 +170,66 @@ def test_auto_layer_without_decided_at_has_no_decided_at_note() -> None:
     task = make_task(output_contract="entity", cited_ids=lambda output: [])
     text = compose_instructions(task, max_turns=6)
     assert "decided_at" not in text
+
+
+def composed_schema(contract: str) -> tuple[str, dict[str, Any]]:
+    text = compose_instructions(make_task(output_contract=contract), max_turns=6)
+    schema_line = text.split(f"{SCHEMA_HEADER}\n", 1)[1].splitlines()[0]
+    return schema_line, json.loads(schema_line)
+
+
+def has_ref(value: Any) -> bool:
+    if isinstance(value, dict):
+        return "$ref" in value or any(has_ref(item) for item in value.values())
+    if isinstance(value, list):
+        return any(has_ref(item) for item in value)
+    return False
+
+
+@pytest.mark.parametrize("contract", CONTRACT_NAMES)
+def test_auto_layer_has_resolved_schema_for_every_contract(contract: str) -> None:
+    schema_line, schema = composed_schema(contract)
+
+    assert not has_ref(schema)
+    assert schema_line == json.dumps(schema, ensure_ascii=False, sort_keys=True)
+    for sample in load("valid", contract):
+        Draft7Validator(schema).validate(sample["data"])
+
+
+def test_auto_layer_has_nested_incident_findings_shape() -> None:
+    _, schema = composed_schema("incident_findings")
+
+    timeline = schema["properties"]["timeline"]["items"]
+    entity = schema["properties"]["entities"]["items"]
+    assert set(timeline["required"]) == {"time", "summary", "evidence_ids"}
+    assert set(entity["required"]) == {"entity", "evidence_ids"}
+    assert set(entity["properties"]["entity"]["required"]) == {"type", "value", "role"}
+    assert "description" in schema
+
+
+def ref_chain(hops: int) -> dict[str, Any]:
+    definitions = {str(index): {"$ref": f"#/definitions/{index + 1}"} for index in range(hops - 1)}
+    definitions[str(hops - 1)] = {"type": "string"}
+    return {"definitions": definitions}
+
+
+def test_resolve_allows_one_hundred_ref_hops(monkeypatch: pytest.MonkeyPatch) -> None:
+    document = ref_chain(100)
+    monkeypatch.setattr(compose_module, "_load_json", lambda _: document)
+
+    assert _resolve({"$ref": "#/definitions/0"}, Path("synthetic.schema.json")) == {
+        "type": "string"
+    }
+
+
+def test_resolve_rejects_more_than_one_hundred_ref_hops(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    document = ref_chain(101)
+    monkeypatch.setattr(compose_module, "_load_json", lambda _: document)
+
+    with pytest.raises(ValueError, match="100"):
+        _resolve({"$ref": "#/definitions/0"}, Path("synthetic.schema.json"))
 
 
 # prompt_version
