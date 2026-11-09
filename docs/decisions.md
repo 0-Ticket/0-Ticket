@@ -101,6 +101,7 @@
 | D-017 | 화면 세부 도구: Tailwind CSS + shadcn/ui, TanStack Query, React Router, MSW(mock API), Vitest + Testing Library, Node LTS + pnpm, ESLint + Prettier | frontend/에서 pnpm lint(ESLint + Prettier 검사), pnpm test(Vitest run), pnpm build(TypeScript 검사 + Vite 빌드). CI도 같은 명령(#266) |
 | D-018 | 차트는 Recharts | |
 | D-019 | 로그 원문과 LLM 출력은 화면과 알림에서 텍스트로만 표시한다 | `docs/security.md` "화면" |
+| D-046 | 화면 폰트는 @fontsource 패키지(`@fontsource/inter`·`roboto-mono`·`michroma`·`jura` 5.3.0, OFL-1.1)로 번들하고 외부 폰트 CDN을 부르지 않는다 | 한글은 시스템 폰트로 대체한다(#274) |
 
 ### 계정 · 설정 (개발 필요)
 
@@ -136,6 +137,8 @@
 ## 기록
 
 새 기록을 맨 위에 쓴다.
+
+- #274 · 화면 폰트 번들 방식(D-046)을 확정했다. 사용자가 UI 개선 계획을 확정함.
 
 - #266 · 화면 검사 명령(D-017)과 API 응답 TypeScript 생성 방식(D-003)을 확정했다. 사용자가 UI 연결 계획과 추가 시드 안전 조건을 확정함.
 
