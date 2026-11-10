@@ -1,8 +1,10 @@
 """run_agent: 파이프가 부르는 단 하나의 접점(에이전트 구조, D-024).
 
 처리 순서: 작업 검사(AgentTask를 만들 때) → 프롬프트 5층 합성 → Runner.run_sync → JSON 파싱 →
-decided_at 덮어쓰기 → validate_contract → 실패하면 1회 재요청 → 근거 장부 검사 → Agent Log 쓰기.
-모델 호출마다 입력 예산(call_model_input_filter)을 검사하고, 429는 RetryingModel이 다시 부른다.
+decided_at 덮어쓰기 → validate_contract → 실패하면 1회 재요청 → 근거 장부 검사.
+Agent Log는 호출이 끝날 때마다 쓰고, 끝나면 안 쓴 줄을 마저 쓴다(#278). 실행 시작 전에 실패해도
+sent=false 줄을 남긴다. 모델 호출마다 입력 예산(call_model_input_filter)을 검사하고,
+429는 RetryingModel이 다시 부른다.
 도구는 레지스트리(soc.tools)가 stage의 허용 목록에 있는 것만 붙인다(#211).
 어떤 실패에도 예외를 밖으로 내지 않고 AgentResult를 돌려준다.
 """
@@ -10,6 +12,7 @@ decided_at 덮어쓰기 → validate_contract → 실패하면 1회 재요청 �
 import asyncio
 import hashlib
 import json
+import logging
 import os
 import time
 from typing import Any
@@ -28,7 +31,13 @@ from agents.models.interface import Model
 from agents.run_config import CallModelData, ModelInputData
 from openai.types.shared import Reasoning
 
-from soc.agent.agent_log import LogRecorder, LogSink, PostgresLogSink
+from soc.agent.agent_log import (
+    LogRecorder,
+    LogSink,
+    PostgresLogSink,
+    RowWriter,
+    log_timeouts,
+)
 from soc.agent.compose import compose_instructions, has_top_level_field
 from soc.agent.config import load_config
 from soc.agent.llm import LLMConfigError, RetryingModel, Sleep, build_model, input_chars
@@ -37,6 +46,8 @@ from soc.agent.types import AgentResult, AgentTask
 from soc.contracts import ContractError, validate_contract
 from soc.ids import new_id
 from soc.tools import ToolConfigError, ToolRegistry, ToolSession, default_registry
+
+logger = logging.getLogger(__name__)
 
 
 class _Stop(Exception):
@@ -52,25 +63,34 @@ class _Stop(Exception):
 def run_agent(task: AgentTask) -> AgentResult:
     """설정의 모델과 DB 기록기로 작업 하나를 실행한다. 동기 함수다."""
     set_tracing_disabled(True)
+    run_id = new_id("run")  # 시작 전에 실패해도 이 run_id의 줄을 남긴다
+    database_url = os.environ.get("DATABASE_URL")
+    if not database_url:
+        # 줄을 쓸 곳이 없다. 실행기 로그로만 남긴다.
+        logger.warning("환경변수 DATABASE_URL이 없어 Agent Log를 쓰지 못한다(run=%s)", run_id)
+        return _failed("log_error", "환경변수 DATABASE_URL이 없다", run_id)
     try:
         config = load_config()
     except Exception:
-        return _failed("provider_error", "에이전트 설정을 읽지 못했다")
+        sink = PostgresLogSink(database_url)
+        return _before_start(
+            task, run_id, sink, {}, "provider_error", "에이전트 설정을 읽지 못했다"
+        )
+    sink = _postgres_sink(database_url, config)
     try:
         model, model_name = build_model(config)
     except LLMConfigError as exc:
-        return _failed("provider_error", str(exc))  # 주소·키는 담지 않는다
+        return _before_start(task, run_id, sink, config, "provider_error", str(exc))  # 주소·키 없음
     except Exception as exc:
-        return _failed("provider_error", f"LLM 연결을 만들지 못했다({type(exc).__name__})")
-    database_url = os.environ.get("DATABASE_URL")
-    if not database_url:
-        return _failed("log_error", "환경변수 DATABASE_URL이 없다")
+        detail = f"LLM 연결을 만들지 못했다({type(exc).__name__})"
+        return _before_start(task, run_id, sink, config, "provider_error", detail)
     return run_task(
         task,
         model=model,
         model_name=model_name,
-        log_sink=PostgresLogSink(database_url),
+        log_sink=sink,
         config=config,
+        run_id=run_id,
     )
 
 
@@ -83,20 +103,28 @@ def run_task(
     config: dict[str, Any],
     registry: ToolRegistry | None = None,
     sleep: Sleep = asyncio.sleep,
+    run_id: str | None = None,
 ) -> AgentResult:
     """run_agent의 본체. 테스트는 가짜 모델과 메모리 기록기, 기다리지 않는 sleep을 넣는다.
 
     도구는 registry(기본: 운영 레지스트리)에서 stage의 허용 목록([tools.allowed])에 있는 것만
     붙는다. 테스트의 가짜 도구도 ToolSpec으로 만들어 ToolRegistry에 넣고 여기로 넘긴다.
+    run_id를 받으면 그 값을 쓴다(run_agent가 시작 전 실패의 줄과 같은 값을 쓰려고 넘긴다).
     """
     set_tracing_disabled(True)  # 환경변수에 맡기지 않는다(docs/security.md)
-    run_id = new_id("run")
+    run_id = run_id or new_id("run")
     started = time.perf_counter()
+    try:
+        writer = _writer(log_sink, config)
+    except Exception:  # [agent]의 Agent Log 시간 제한이 틀렸다
+        detail = "Agent Log 설정이 잘못됐다"
+        return _before_start(task, run_id, log_sink, {}, "provider_error", detail, model_name)
     try:
         max_turns = int(config["agent"][task.stage]["max_turns"])
         instructions = compose_instructions(task, max_turns=max_turns)
     except Exception as exc:  # 설정·프롬프트 파일 문제. 예외는 밖으로 내지 않는다
-        return _failed("provider_error", f"프롬프트를 만들지 못했다({type(exc).__name__})")
+        detail = f"프롬프트를 만들지 못했다({type(exc).__name__})"
+        return _before_start(task, run_id, log_sink, config, "provider_error", detail, model_name)
     recorder = LogRecorder(
         run_id=run_id,
         stage=task.stage,
@@ -106,13 +134,15 @@ def run_task(
         task=task.task,
         attempt=task.attempt,
         prompt_version=hashlib.sha256(instructions.encode("utf-8")).hexdigest(),
+        writer=writer,
     )
     try:
         tools = (registry or default_registry()).session(
             stage=task.stage, config=config, recorder=recorder
         )
     except ToolConfigError:
-        return _failed("provider_error", "도구 설정 오류(허용 목록이나 도구 결과 한도)")
+        detail = "도구 설정 오류(허용 목록이나 도구 결과 한도)"
+        return _stop_before_start(recorder, run_id, "provider_error", detail)
 
     output: Any = None
     cited: list[str] = []
@@ -129,17 +159,7 @@ def run_task(
     except Exception as exc:  # 어떤 실패도 밖으로 내지 않는다. 메시지는 감춘다
         failure, detail = "provider_error", f"예상하지 못한 오류({type(exc).__name__})"
 
-    rows = recorder.finalize(failure, validation)
-    try:
-        redact = build_redactor(config)
-        rows = [_redacted(row, redact) for row in rows]
-        for row in rows:
-            validate_contract("agent_log", row)
-        log_sink.write(rows)
-    except Exception as exc:
-        # 앞의 실패를 덮을 때는 그 종류만 남긴다. DB 주소·비밀 값·예외 메시지는 넣지 않는다.
-        prior = f"; prior={failure}" if failure is not None else ""
-        failure, detail = "log_error", f"Agent Log를 쓰지 못했다({type(exc).__name__}){prior}"
+    failure, detail = _seal(recorder, run_id, failure, detail, validation)
 
     ok = failure is None
     return AgentResult(
@@ -150,6 +170,90 @@ def run_task(
         run_id=run_id,
         usage=_usage(recorder.rows, started),
         cited_evidence_ids=cited if ok else [],
+    )
+
+
+def _postgres_sink(database_url: str, config: dict[str, Any]) -> PostgresLogSink:
+    try:
+        connect, statement = log_timeouts(config)
+    except ValueError:  # run_task가 같은 설정 오류를 실패로 알린다
+        return PostgresLogSink(database_url)
+    return PostgresLogSink(
+        database_url, connect_timeout_seconds=connect, statement_timeout_ms=statement
+    )
+
+
+def _writer(sink: LogSink, config: dict[str, Any]) -> RowWriter:
+    """줄을 쓰기 직전에 가리고 계약을 검사하는 쓰기 도구. 마감은 연결 + 문장 시간 제한이다."""
+    connect, statement = log_timeouts(config)
+    redact = build_redactor(config)
+
+    def prepare(row: dict[str, Any]) -> dict[str, Any]:
+        out = _redacted(row, redact)
+        validate_contract("agent_log", out)
+        return out
+
+    return RowWriter(sink, prepare, connect + statement / 1000)
+
+
+def _seal(
+    recorder: LogRecorder,
+    run_id: str,
+    failure: str | None,
+    detail: str | None,
+    validation: str | None,
+) -> tuple[str | None, str | None]:
+    """실행을 닫고 안 쓴 줄을 마저 쓴다. 쓰지 못하면 log_error로 바꾼다."""
+    recorder.finalize(failure, validation)
+    try:
+        recorder.flush()
+    except Exception as exc:
+        # 앞의 실패를 덮을 때는 그 종류만 남긴다. DB 주소·비밀 값·예외 메시지는 넣지 않는다.
+        logger.warning("Agent Log를 쓰지 못했다(run=%s, %s)", run_id, type(exc).__name__)
+        prior = f"; prior={failure}" if failure is not None else ""
+        return "log_error", f"Agent Log를 쓰지 못했다({type(exc).__name__}){prior}"
+    return failure, detail
+
+
+def _before_start(
+    task: AgentTask,
+    run_id: str,
+    sink: LogSink,
+    config: dict[str, Any],
+    failure: str,
+    detail: str,
+    model_name: str | None = None,
+) -> AgentResult:
+    """프롬프트를 만들기 전에 끝난 실행의 sent=false 줄을 남기고 결과를 돌려준다."""
+    try:
+        writer = _writer(sink, config)
+    except Exception:
+        writer = _writer(sink, {})  # 시간 제한 설정이 틀렸으면 코드 기본값으로 쓴다
+    recorder = LogRecorder(
+        run_id=run_id,
+        stage=task.stage,
+        subject_type=task.subject_type,
+        subject_id=task.subject_id,
+        model_name=model_name or "unknown",
+        task=task.task,
+        attempt=task.attempt,
+        prompt_version=None,
+        writer=writer,
+    )
+    return _stop_before_start(recorder, run_id, failure, detail)
+
+
+def _stop_before_start(
+    recorder: LogRecorder, run_id: str, failure: str, detail: str
+) -> AgentResult:
+    recorder.add_unsent(failure)
+    sealed_failure, sealed_detail = _seal(recorder, run_id, failure, detail, None)
+    return AgentResult(
+        ok=False,
+        output=None,
+        failure=sealed_failure,  # type: ignore[arg-type]
+        detail=sealed_detail,
+        run_id=run_id,  # type: ignore[arg-type]
     )
 
 
@@ -264,7 +368,8 @@ def _redacted(row: dict[str, Any], redact: Any) -> dict[str, Any]:
 
 
 def _usage(rows: list[dict[str, Any]], started: float) -> dict[str, int]:
-    models = [r for r in rows if r["kind"] == "model"]
+    # sent=false 줄(예산 초과, 시작 전 실패, 종료 줄)은 모델에 보낸 호출이 아니다
+    models = [r for r in rows if r["kind"] == "model" and r["details"].get("sent") is not False]
     return {
         "turns": len(models),
         "tool_calls": sum(1 for r in rows if r["kind"] == "tool"),
@@ -275,11 +380,11 @@ def _usage(rows: list[dict[str, Any]], started: float) -> dict[str, int]:
     }
 
 
-def _failed(failure: str, detail: str) -> AgentResult:
+def _failed(failure: str, detail: str, run_id: str) -> AgentResult:
     return AgentResult(
         ok=False,
         output=None,
         failure=failure,
         detail=detail,
-        run_id=new_id("run"),  # type: ignore[arg-type]
+        run_id=run_id,  # type: ignore[arg-type]
     )

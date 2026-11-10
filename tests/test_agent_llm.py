@@ -110,6 +110,9 @@ def test_missing_key_env_is_rejected_without_secrets() -> None:
 
 def test_run_agent_missing_key_is_provider_error(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("LLM_API_KEY", raising=False)
+    # run_agent는 DATABASE_URL을 먼저 읽는다(#278). 기록기는 메모리로 바꾼다
+    monkeypatch.setenv("DATABASE_URL", "postgresql://soc@127.0.0.1:1/soc")
+    monkeypatch.setattr("soc.agent.runner.PostgresLogSink", lambda *a, **k: MemoryLogSink())
     monkeypatch.setattr("soc.agent.runner.load_config", lambda: llm_config(**PROVIDERS["foundry"]))
     result = run_agent(make_task())
     assert result.ok is False

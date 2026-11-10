@@ -1,11 +1,20 @@
 """Agent Log: 모델 호출·도구 호출 한 번이 한 줄이다(Agent Log 계약, #193).
 
-LogRecorder가 SDK 훅으로 줄을 모으고, run_agent가 끝나기 전에 LogSink가 한 번에 쓴다.
-DB 기록기는 한 트랜잭션으로 써서, 실패하면 그 실행의 줄이 하나도 남지 않는다.
+LogRecorder가 SDK 훅으로 줄을 모으고, 호출이 끝날 때마다 RowWriter가 그 줄을 바로 쓴다(#278).
+도구 호출이 없는 최종 답 model 줄만 다음 호출이 시작되거나 finalize가 돌 때까지 보류한다.
+그 줄에 validation·failure를 붙여야 하기 때문이다.
+
+줄은 훅이 전달한 순간부터 내용을 고정한다. 이미 전달한 줄에는 validation·failure를 붙이지 않고,
+붙일 수 없으면 sent=false 종료 줄을 덧붙인다. 읽는 규칙(D-036): 끝난 run에는 details.validation
+또는 details.failure가 있는 model 줄이 있고, details.sent=false 줄은 모델에 보내지 않은 호출이다.
 """
 
+import asyncio
 import json
+import threading
 import time
+from collections.abc import Callable
+from concurrent.futures import Future
 from typing import Any, Protocol
 
 import psycopg
@@ -33,10 +42,25 @@ _COLUMNS = (
     "duration_ms",
     "details",
 )
+# 먼저 쓴 줄이 남는다. 응답을 못 받은 줄을 finalize가 다시 써도 중복되지 않는다(#278)
 _INSERT = (
     f"INSERT INTO agent_logs ({', '.join(_COLUMNS)}) "  # 컬럼 이름은 상수다
-    f"VALUES ({', '.join(['%s'] * len(_COLUMNS))})"
+    f"VALUES ({', '.join(['%s'] * len(_COLUMNS))}) ON CONFLICT DO NOTHING"
 )
+
+# 설정의 [agent] log_connect_timeout_seconds·log_statement_timeout_ms 기본값.
+# 설정을 읽지 못할 때도 쓴다.
+LOG_CONNECT_TIMEOUT_SECONDS = 5
+LOG_STATEMENT_TIMEOUT_MS = 5000
+# 마감 뒤에도 남는 쓰기 스레드의 연결을 닫기 위한 접속 인자(코드 고정값, 계획 278 "접속 인자").
+# 상대 호스트가 사라진 경우에만 닫는다. tcp_user_timeout은 Linux에서만 적용된다.
+_CONNECTION_GUARD: dict[str, int] = {
+    "keepalives": 1,
+    "keepalives_idle": 10,
+    "keepalives_interval": 5,
+    "keepalives_count": 2,
+    "tcp_user_timeout": 10_000,
+}
 
 
 class LogWriteError(Exception):
@@ -57,15 +81,45 @@ class MemoryLogSink:
         self.rows.extend(rows)
 
 
-class PostgresLogSink:
-    """agent_logs 테이블에 한 트랜잭션으로 쓴다. 반환하면 커밋이 끝난 것이다."""
+def log_timeouts(config: dict[str, Any]) -> tuple[int, int]:
+    """설정 [agent]의 (연결 시간 제한 초, 문장 시간 제한 ms). 없으면 기본값, 틀리면 ValueError."""
+    agent = config.get("agent", {})
+    connect = agent.get("log_connect_timeout_seconds", LOG_CONNECT_TIMEOUT_SECONDS)
+    statement = agent.get("log_statement_timeout_ms", LOG_STATEMENT_TIMEOUT_MS)
+    for value in (connect, statement):
+        if type(value) is not int or value < 1:
+            raise ValueError("Agent Log 시간 제한은 1 이상의 정수다")
+    return connect, statement
 
-    def __init__(self, database_url: str) -> None:
+
+class PostgresLogSink:
+    """agent_logs 테이블에 한 트랜잭션으로 쓴다. 반환하면 커밋이 끝난 것이다.
+
+    쓸 때마다 짧은 연결을 연다. 같은 (run_id, seq)나 id가 있으면 먼저 쓴 줄을 남기고 건너뛴다.
+    """
+
+    def __init__(
+        self,
+        database_url: str,
+        *,
+        connect_timeout_seconds: int = LOG_CONNECT_TIMEOUT_SECONDS,
+        statement_timeout_ms: int = LOG_STATEMENT_TIMEOUT_MS,
+    ) -> None:
         self._database_url = database_url
+        self._connect_timeout = connect_timeout_seconds
+        self._statement_timeout = statement_timeout_ms
 
     def write(self, rows: list[dict[str, Any]]) -> None:
         try:
-            with psycopg.connect(self._database_url) as conn, conn.transaction():
+            with (
+                psycopg.connect(
+                    self._database_url,
+                    connect_timeout=self._connect_timeout,
+                    options=f"-c statement_timeout={self._statement_timeout}",
+                    **_CONNECTION_GUARD,
+                ) as conn,
+                conn.transaction(),
+            ):
                 for row in rows:
                     conn.execute(_INSERT, [_db_value(c, row[c]) for c in _COLUMNS])
         except psycopg.Error as exc:
@@ -83,6 +137,67 @@ def _db_value(column: str, value: Any) -> Any:
     return value
 
 
+class RowWriter:
+    """줄을 데몬 스레드로 쓰고, 마감 안에 못 쓰면 실패로 본다(#278).
+
+    쓸 때마다 새 스레드를 만든다. 한 스레드가 얼어 있는 쓰기에 걸려도 다음 쓰기와 다음 run이
+    그 뒤에 줄을 서지 않는다. 데몬이라 멈춘 쓰기가 프로세스 종료를 막지 않는다.
+    첫 실패에서 훅의 쓰기를 멈추고(stopped), finalize가 안 쓴 줄을 한 번 더 시도한다(flush).
+    prepare는 줄을 가리고 계약을 검사해 쓸 사본을 만든다.
+    """
+
+    def __init__(
+        self,
+        sink: LogSink,
+        prepare: Callable[[dict[str, Any]], dict[str, Any]],
+        deadline_seconds: float,
+    ) -> None:
+        self._sink = sink
+        self._prepare = prepare
+        self._deadline = deadline_seconds
+        self.dispatched: set[str] = set()  # 전달한 줄의 id. 쓰였을 수 있어 내용을 바꾸지 않는다
+        self._confirmed: set[str] = set()
+        self.stopped = False
+
+    async def write(self, row: dict[str, Any]) -> None:
+        """훅에서 줄 하나를 쓴다. 실패하면 예외를 내지 않고 쓰기를 멈춘다."""
+        if self.stopped:
+            return
+        self.dispatched.add(row["id"])
+        try:
+            future = self._spawn([self._prepare(row)])
+            await asyncio.wait_for(asyncio.wrap_future(future), self._deadline)
+        except Exception:  # 마감 초과(TimeoutError)·쓰기 실패·계약 검사 실패. 취소는 그대로 보낸다
+            self.stopped = True
+        else:
+            self._confirmed.add(row["id"])
+
+    def flush(self, rows: list[dict[str, Any]]) -> None:
+        """아직 확인되지 않은 줄을 한 번에 쓴다. 실패하거나 마감을 넘기면 예외를 낸다."""
+        pending = [row for row in rows if row["id"] not in self._confirmed]
+        if not pending:
+            return
+        self.dispatched.update(row["id"] for row in pending)
+        self._spawn([self._prepare(row) for row in pending]).result(timeout=self._deadline)
+        self._confirmed.update(row["id"] for row in pending)
+
+    def _spawn(self, rows: list[dict[str, Any]]) -> "Future[None]":
+        future: Future[None] = Future()
+
+        def work() -> None:
+            if not future.set_running_or_notify_cancel():
+                return
+            try:
+                self._sink.write(rows)
+            except BaseException as exc:  # 스레드 밖에서 다시 낸다
+                future.set_exception(exc)
+            else:
+                future.set_result(None)
+
+        threading.Thread(target=work, name="agent-log-write", daemon=True).start()
+        return future
+
+
 class LogRecorder(RunHooks[Any]):
     """SDK 훅으로 모델·도구 호출을 한 줄씩 모은다. 병렬 도구 호출은 끄므로 순서대로 온다."""
 
@@ -96,7 +211,8 @@ class LogRecorder(RunHooks[Any]):
         model_name: str,
         task: str,
         attempt: int,
-        prompt_version: str,
+        prompt_version: str | None,
+        writer: RowWriter | None = None,
     ) -> None:
         self.rows: list[dict[str, Any]] = []
         self.tool_log_ids: list[str] = []
@@ -109,7 +225,10 @@ class LogRecorder(RunHooks[Any]):
         self._model_name = model_name
         self._task = task
         self._attempt = attempt
-        self._prompt_version = prompt_version
+        self._prompt_version = prompt_version  # 프롬프트를 만들기 전에 실패하면 None
+        self._writer = writer
+        self._held: dict[str, Any] | None = None
+        self._prev_input: list[Any] | None = None  # 앞 model 호출의 입력(새로 더해진 항목만 저장)
         self._open: dict[str, tuple[dict[str, Any], float]] = {}
         # 열린 tool 줄. SDK의 tool_call_id별로 둔다(#211). 한 응답에 도구 호출이 여럿이어도
         # 줄이 섞이지 않는다. 빈·중복 tool_call_id의 줄은 _unmatched에 두고 ID를 주지 않는다.
@@ -121,17 +240,33 @@ class LogRecorder(RunHooks[Any]):
     # 훅
 
     async def on_llm_start(self, context: Any, agent: Any, system_prompt: Any, input_items: Any):
-        row = self._start(
-            "model", self._model_name, {"system": system_prompt, "input": input_items}
-        )
-        row["details"]["prompt_version"] = self._prompt_version
+        await self._write_held()
+        items = jsonable(input_items)
+        previous = self._prev_input
+        reset = False
+        if not isinstance(items, list) or previous is None:
+            value = {"system": system_prompt, "input": items}  # 첫 줄: system 지시와 입력 전체
+        elif items[: len(previous)] == previous:
+            value = {"input_from": len(previous), "input": items[len(previous) :]}
+        else:  # 앞 입력의 접두가 아니면 전체를 저장한다
+            value, reset = {"input_from": 0, "input": items}, True
+        self._prev_input = items if isinstance(items, list) else None
+        row = self._start("model", self._model_name, value)
+        self._set_prompt_version(row)
+        if reset:
+            row["details"]["input_reset"] = True
         row["details"]["retries"] = 0  # 429 재시도 횟수. RetryingModel이 note_retry로 센다
 
     async def on_llm_end(self, context: Any, agent: Any, response: Any) -> None:
         row = self._finish("model", [jsonable(item) for item in response.output])
-        if row is not None:
-            row["tokens_in"] = int(response.usage.input_tokens)
-            row["tokens_out"] = int(response.usage.output_tokens)
+        if row is None:
+            return
+        row["tokens_in"] = int(response.usage.input_tokens)
+        row["tokens_out"] = int(response.usage.output_tokens)
+        if _calls_a_tool(row["output"]):
+            await self._write(row)
+        else:
+            self._held = row  # 최종 답이다. 검증 결과를 붙인 뒤에 쓴다
 
     async def on_tool_start(self, context: Any, agent: Any, tool: Any) -> None:
         arguments = getattr(context, "tool_arguments", None)
@@ -160,6 +295,7 @@ class LogRecorder(RunHooks[Any]):
         if row["id"] not in self._reported:
             row["output"] = jsonable(result)
         row["duration_ms"] = int((time.perf_counter() - started) * 1000)
+        await self._write(row)
 
     # 도구 레지스트리가 부름(#211)
 
@@ -178,9 +314,10 @@ class LogRecorder(RunHooks[Any]):
     ) -> None:
         """레지스트리가 알려 준 결과를 그 tool 줄에 남긴다.
 
-        output은 자르기 전 전체 결과(오류면 모델에게 보낸 TOOL_ERROR 문구)다.
-        on_tool_end가 받는 값은 모델에게 보낸 잘린 문자열이라 쓰지 않는다.
-        reason은 오류 코드보다 자세한 사유 이름(예: auth)이고 details.reason에 쓴다(#212).
+        output은 모델에게 보인 결과다. records 도구는 모델에게 보인 본문(뺀 건수 포함, #278),
+        오류면 모델에게 보낸 TOOL_ERROR 문구다. on_tool_end가 받는 값은 감싸서 자른 문자열이라
+        쓰지 않는다. reason은 오류 코드보다 자세한 사유 이름(예: auth)이고 details.reason에
+        쓴다(#212).
         """
         opened = self._open_tools.get(tool_call_id)
         if opened is None:
@@ -210,17 +347,31 @@ class LogRecorder(RunHooks[Any]):
         SDK는 call_model_input_filter를 on_llm_start보다 먼저 부르므로 훅이 이 줄을 만들지 않는다.
         보내지 않은 내용은 넣지 않고 글자 수와 한도만 남긴다.
         """
-        value = {"chars": chars, "max_input_chars": max_input_chars}
-        row = self._start("model", self._model_name, value)
-        self._open.pop("model", None)  # 보내지 않았으므로 열린 줄로 두지 않는다
+        self.add_unsent("budget_exceeded", {"chars": chars, "max_input_chars": max_input_chars})
+
+    def add_unsent(
+        self, failure: str, value: Any = None, validation: str | None = None
+    ) -> dict[str, Any]:
+        """모델에 보내지 않은 호출·종료를 sent=false model 줄로 남긴다(#278).
+
+        예산 초과, 시작 전 실패, 이미 쓴 줄에 failure를 붙일 수 없을 때의 종료 줄이 같은 모양이다.
+        """
+        row = self._new_row("model", self._model_name, {} if value is None else value)
         row["outcome"] = "error"
-        row["details"]["prompt_version"] = self._prompt_version
-        row["details"]["failure"] = "budget_exceeded"
+        self._set_prompt_version(row)
+        row["details"]["sent"] = False
+        row["details"]["failure"] = failure
+        if validation is not None:
+            row["details"]["validation"] = validation
+        return row
 
     # 정리
 
     def finalize(self, failure: str | None, validation: str | None) -> list[dict[str, Any]]:
-        """끝나지 않은 줄을 error로 닫고, 마지막 model 줄에 검증 결과와 실패를 남긴다."""
+        """끝나지 않은 줄을 error로 닫고, 마지막 model 줄에 검증 결과와 실패를 남긴다.
+
+        마지막 model 줄을 이미 전달했으면 그 줄은 바꾸지 않고 sent=false 종료 줄을 덧붙인다.
+        """
         still_open = [*self._open.values(), *self._open_tools.values(), *self._unmatched]
         for row, _ in still_open:
             row["outcome"] = "error"
@@ -229,15 +380,43 @@ class LogRecorder(RunHooks[Any]):
         self._open.clear()
         self._open_tools.clear()
         self._unmatched.clear()
-        models = [row for row in self.rows if row["kind"] == "model"]
-        if models:
-            last = models[-1]
-            if validation is not None:
-                last["details"]["validation"] = validation
-            if failure is not None:
-                last["outcome"] = "error"
-                last["details"]["failure"] = failure
+        self._held = None  # rows에 있다. flush가 쓴다
+        if failure is not None or validation is not None:
+            models = [row for row in self.rows if row["kind"] == "model"]
+            last = models[-1] if models else None
+            if last is None or self._is_sent_to_log(last):
+                if failure is not None:
+                    self.add_unsent(failure, validation=validation)
+            else:
+                if validation is not None:
+                    last["details"]["validation"] = validation
+                if failure is not None:
+                    last["outcome"] = "error"
+                    last["details"]["failure"] = failure
         return self.rows
+
+    def flush(self) -> None:
+        """아직 쓰이지 않은 줄을 쓴다. 쓰지 못하면 예외를 낸다(실행은 log_error로 끝난다)."""
+        if self._writer is not None:
+            self._writer.flush(self.rows)
+
+    # 안쪽
+
+    async def _write(self, row: dict[str, Any]) -> None:
+        if self._writer is not None:
+            await self._writer.write(row)
+
+    async def _write_held(self) -> None:
+        held, self._held = self._held, None
+        if held is not None:
+            await self._write(held)
+
+    def _is_sent_to_log(self, row: dict[str, Any]) -> bool:
+        return self._writer is not None and row["id"] in self._writer.dispatched
+
+    def _set_prompt_version(self, row: dict[str, Any]) -> None:
+        if self._prompt_version is not None:
+            row["details"]["prompt_version"] = self._prompt_version
 
     def _start(self, kind: str, name: str, value: Any) -> dict[str, Any]:
         row = self._new_row(kind, name, value)
@@ -271,6 +450,12 @@ class LogRecorder(RunHooks[Any]):
         row["output"] = None if output is None else output
         row["duration_ms"] = int((time.perf_counter() - started) * 1000)
         return row
+
+
+def _calls_a_tool(output: Any) -> bool:
+    return isinstance(output, list) and any(
+        isinstance(item, dict) and item.get("type") == "function_call" for item in output
+    )
 
 
 def jsonable(value: Any) -> Any:

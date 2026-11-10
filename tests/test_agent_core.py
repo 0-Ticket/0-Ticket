@@ -273,6 +273,9 @@ def test_tracing_disabled_without_env(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_run_agent_without_llm_settings_is_provider_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    # run_agent는 DATABASE_URL을 먼저 읽는다(#278). 기록기는 메모리로 바꾼다
+    monkeypatch.setenv("DATABASE_URL", "postgresql://soc@127.0.0.1:1/soc")
+    monkeypatch.setattr("soc.agent.runner.PostgresLogSink", lambda *a, **k: MemoryLogSink())
     monkeypatch.setattr("soc.agent.runner.load_config", lambda: CONFIG)
     result = run_agent(make_task())
     assert result.ok is False
@@ -297,8 +300,13 @@ def test_log_rows_for_ok_run() -> None:
     assert tool["name"] == "lookup_alert"
     assert tool["tokens_in"] is None and tool["tokens_out"] is None
     assert tool["input"] == {"alert_id": ALERT_ID}
-    # Agent Log output은 자르기 전 전체 결과다(#211). records 도구는 레코드 목록이다.
-    assert tool["output"] == [{"id": ALERT_ID, "title": "Suspicious PowerShell Execution"}]
+    # Agent Log output은 모델에게 보인 결과다(#278). records 도구는 본문(레코드, 뺀 건수)이다.
+    assert tool["output"] == {
+        "call_id": tool["id"],
+        "records": [{"id": ALERT_ID, "title": "Suspicious PowerShell Execution"}],
+        "truncated": False,
+        "omitted": 0,
+    }
     model_rows = [r for r in rows if r["kind"] == "model"]
     assert all(r["name"] == "fake-model" for r in model_rows)
     assert all(isinstance(r["details"]["prompt_version"], str) for r in model_rows)

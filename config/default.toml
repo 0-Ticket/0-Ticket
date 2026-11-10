@@ -30,6 +30,13 @@ rate_limit_retries = 3
 #   model = "gpt-oss:120b"   # 또는 "gpt-oss:20b"
 #   api_key_env = ""
 
+# Agent Log 쓰기(#278). 줄을 쓸 때마다 짧은 연결을 열고, 쓰기 마감은 두 값의 합(기본 약 10초)이다.
+# log_connect_timeout_seconds: DB 연결 시간 제한(초).
+# log_statement_timeout_ms: 쓰기 문장 시간 제한(밀리초).
+[agent]
+log_connect_timeout_seconds = 5
+log_statement_timeout_ms = 5000
+
 # 단계별 설정.
 # max_turns: 모델 호출 상한. 넘으면 budget_exceeded.
 # max_input_chars: 한 호출에 보내는 system 지시 + 입력 항목(JSON) 글자 수 상한. 넘으면 보내지 않고 budget_exceeded.
