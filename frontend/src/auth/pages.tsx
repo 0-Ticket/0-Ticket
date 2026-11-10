@@ -59,6 +59,7 @@ function Field({
   hint,
   disabled,
   autoComplete,
+  placeholder,
 }: {
   label: string;
   name: string;
@@ -67,6 +68,7 @@ function Field({
   hint?: string;
   disabled?: boolean;
   autoComplete?: string;
+  placeholder?: string;
 }) {
   const id = useId();
   return (
@@ -79,6 +81,7 @@ function Field({
         // readOnly, not disabled: FormData skips disabled inputs when the mutation reads the form.
         readOnly={disabled}
         autoComplete={autoComplete}
+        placeholder={placeholder}
         aria-invalid={!!error}
       />
       {error ? (
@@ -89,6 +92,7 @@ function Field({
     </div>
   );
 }
+// One layout for login, sign-up and forced password change: brand panel plus a white form card.
 function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <div className="auth-page">
@@ -104,19 +108,23 @@ function AuthLayout({ children }: { children: ReactNode }) {
             </small>
           </span>
         </span>
-        <h2>
-          침해 대응을
-          <br />
-          AI Agent가 자동으로
-          <br />
-          분류하고 제안합니다
-        </h2>
-        <p>
-          Alert 수집부터 Incident 분석, Case 승인까지 한 화면에서 관리하세요.
-        </p>
+        <div className="auth-tagline">
+          <h2>
+            침해 대응을
+            <br />
+            AI Agent가 자동으로
+            <br />
+            분류하고 제안합니다
+          </h2>
+          <p>
+            Alert 수집부터 Incident 분석, Case 승인까지 한 화면에서 관리하세요.
+          </p>
+        </div>
         <small>© 2026 Ø-Ticket</small>
       </section>
-      <section className="auth-form">{children}</section>
+      <section className="auth-form">
+        <div className="auth-card">{children}</div>
+      </section>
     </div>
   );
 }
@@ -184,20 +192,28 @@ export function LoginPage() {
             </Banner>
           )
         )}
-        <Field
-          label="아이디"
-          name="username"
+        <div className="auth-fields">
+          <Field
+            label="아이디"
+            name="username"
+            disabled={login.isPending}
+            autoComplete="username"
+            placeholder="아이디 입력"
+          />
+          <Field
+            label="비밀번호"
+            name="password"
+            type="password"
+            disabled={login.isPending}
+            autoComplete="current-password"
+            placeholder="비밀번호 입력"
+          />
+        </div>
+        <Button
+          className="auth-submit"
+          type="submit"
           disabled={login.isPending}
-          autoComplete="username"
-        />
-        <Field
-          label="비밀번호"
-          name="password"
-          type="password"
-          disabled={login.isPending}
-          autoComplete="current-password"
-        />
-        <Button type="submit" disabled={login.isPending}>
+        >
           {login.isPending ? "로그인 중…" : "로그인"}
         </Button>
         <p className="auth-hint">
@@ -269,41 +285,51 @@ export function SignupPage() {
               서버에서 요청을 처리하지 못했어요. 잠시 후 다시 시도해 주세요.
             </Banner>
           )}
-        <Field
-          label="아이디"
-          name="username"
+        <div className="auth-fields">
+          <Field
+            label="아이디"
+            name="username"
+            disabled={signup.isPending}
+            autoComplete="username"
+            error={
+              taken
+                ? "이미 사용 중인 아이디예요. 다른 아이디를 입력해 주세요."
+                : errors.username
+            }
+            placeholder="영문 소문자·숫자 3~64자"
+          />
+          <Field
+            label="표시 이름"
+            name="display_name"
+            disabled={signup.isPending}
+            error={errors.display_name}
+            placeholder="화면에 표시될 이름"
+          />
+          <Field
+            label="비밀번호"
+            name="password"
+            type="password"
+            disabled={signup.isPending}
+            autoComplete="new-password"
+            error={errors.password}
+            hint="12~128자"
+            placeholder="비밀번호 입력"
+          />
+          <Field
+            label="비밀번호 확인"
+            name="confirm"
+            type="password"
+            disabled={signup.isPending}
+            autoComplete="new-password"
+            error={errors.confirm}
+            placeholder="비밀번호 다시 입력"
+          />
+        </div>
+        <Button
+          className="auth-submit"
+          type="submit"
           disabled={signup.isPending}
-          autoComplete="username"
-          error={
-            taken
-              ? "이미 사용 중인 아이디예요. 다른 아이디를 입력해 주세요."
-              : errors.username
-          }
-        />
-        <Field
-          label="표시 이름"
-          name="display_name"
-          disabled={signup.isPending}
-          error={errors.display_name}
-        />
-        <Field
-          label="비밀번호"
-          name="password"
-          type="password"
-          disabled={signup.isPending}
-          autoComplete="new-password"
-          error={errors.password}
-          hint="12~128자"
-        />
-        <Field
-          label="비밀번호 확인"
-          name="confirm"
-          type="password"
-          disabled={signup.isPending}
-          autoComplete="new-password"
-          error={errors.confirm}
-        />
-        <Button type="submit" disabled={signup.isPending}>
+        >
           회원가입
         </Button>
         <p className="auth-switch">
@@ -371,32 +397,39 @@ export function PasswordForm({ forced = false }: { forced?: boolean }) {
           서버에서 요청을 처리하지 못했어요. 잠시 후 다시 시도해 주세요.
         </Banner>
       )}
-      <Field
-        label="현재 비밀번호"
-        name="current_password"
-        type="password"
-        disabled={change.isPending}
-        autoComplete="current-password"
-        error={errors.current_password}
-      />
-      <Field
-        label="새 비밀번호"
-        name="new_password"
-        type="password"
-        disabled={change.isPending}
-        autoComplete="new-password"
-        error={errors.new_password}
-        hint="12~128자 · 현재 비밀번호와 달라야 해요."
-      />
-      <Field
-        label="새 비밀번호 확인"
-        name="confirm"
-        type="password"
-        disabled={change.isPending}
-        autoComplete="new-password"
-        error={errors.confirm}
-      />
-      <Button type="submit" disabled={change.isPending}>
+      <div className="auth-fields">
+        <Field
+          label="현재 비밀번호"
+          name="current_password"
+          type="password"
+          disabled={change.isPending}
+          autoComplete="current-password"
+          error={errors.current_password}
+          placeholder={
+            forced ? "현재(임시) 비밀번호 입력" : "현재 비밀번호 입력"
+          }
+        />
+        <Field
+          label="새 비밀번호"
+          name="new_password"
+          type="password"
+          disabled={change.isPending}
+          autoComplete="new-password"
+          error={errors.new_password}
+          hint="12~128자 · 현재 비밀번호와 달라야 해요."
+          placeholder="새 비밀번호 입력"
+        />
+        <Field
+          label="새 비밀번호 확인"
+          name="confirm"
+          type="password"
+          disabled={change.isPending}
+          autoComplete="new-password"
+          error={errors.confirm}
+          placeholder="새 비밀번호 다시 입력"
+        />
+      </div>
+      <Button className="auth-submit" type="submit" disabled={change.isPending}>
         비밀번호 변경
       </Button>
     </form>

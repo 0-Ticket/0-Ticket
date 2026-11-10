@@ -321,3 +321,19 @@ test("403 password_change_required sends a stale session to the change screen", 
   ).toBeInTheDocument();
   expect(screen.getByTestId("where")).toHaveTextContent(/^\/password$/);
 });
+
+test("login, sign-up and forced change share the card layout and design placeholders", async () => {
+  server.use(unauthenticated());
+  const first = show("/login");
+  expect(await screen.findByPlaceholderText("아이디 입력")).toBeInTheDocument();
+  expect(screen.getByPlaceholderText("비밀번호 입력")).toBeInTheDocument();
+  expect(document.querySelector(".auth-card .auth-fields")).not.toBeNull();
+  first.unmount();
+  show("/signup");
+  expect(
+    await screen.findByPlaceholderText("영문 소문자·숫자 3~64자"),
+  ).toBeInTheDocument();
+  expect(
+    document.querySelector(".auth-brand + .auth-form .auth-card"),
+  ).not.toBeNull();
+});

@@ -26,6 +26,7 @@ supersedes: []
 - 기존 테스트 둘을 고쳤다(지우거나 건너뛰지 않았다): `error retries and empty data are distinct`는 503 `db_unavailable`에 디자인의 새 문구("서버에 일시적으로 연결할 수 없어요")를 기대한다. "profile text and settings button…"는 계획대로 새 사용자 영역 테스트로 바꿨다. `ticket origin and case status…`가 `staleTime` 때문에 깨져서 테스트용 `show()`는 운영 값(30초) 대신 기본 `staleTime`(0)을 쓴다.
 - 파일 위치: 로그인·가입·비밀번호·설정은 `auth/pages.tsx`, 세션 훅은 `auth/session.ts`, `ErrorState`는 `App.tsx`에서 `error-state.tsx`로 옮겼고, `ListView`의 cursor 이력 로직은 `pager.ts`의 `usePager`로 뺐다. 테스트용 `Where`는 lint(react-refresh) 때문에 `where.tsx`로 분리했다.
 - 사용자 관리와 정책 화면은 컴포넌트를 먼저 쓰고 테스트를 이어서 썼다(순서 위반). 테스트는 구현 뒤에 처음 돌렸을 때 통과했으므로 "먼저 실패" 확인은 하지 못했다. 로그인 흐름(1~2번)은 테스트를 먼저 썼고 실패를 확인했다.
+- 로그인·가입·강제 변경의 왼쪽 패널 배경을 `.pen` 15 - Login의 fill(검정 + 오른쪽 위 steel 광택 + 왼쪽 아래 accent 광택, 색은 `style.css` 변수)대로 고쳤다. 처음에는 디자인을 읽지 않고 단색 남색을 넣었다. 폼 카드·플레이스홀더도 디자인대로 맞췄다. 가입 화면(16)은 광택 두 겹의 쌓는 순서만 로그인과 다르고 하나의 공통 스타일을 쓴다.
 - 정책 화면의 시나리오 규칙 목록: 디자인은 규칙 6개 체크 목록을 보이지만 API에는 규칙 목록 조회가 없고 선택된 ID만 돌려준다. 저장된 ID를 체크 목록으로 보이고, 규칙 ID를 직접 입력해 더하게 했다.
 
 ## 다음 사람이 알아야 할 것
