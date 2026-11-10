@@ -41,6 +41,9 @@ supersedes: []
 - 새 환경변수는 없다. 설정은 `config/default.toml`의 `[auth]`이다(`idle_timeout_seconds`, `absolute_timeout_seconds`, `cookie_name`, `cookie_secure`, `allowed_origins`).
 - `argon2-cffi` 25.1.0과 `argon2-cffi-bindings` 26.1.0의 라이선스는 설치된 패키지의 LICENSE 파일 기준 MIT다(Apache-2.0 레포와 호환). PyPI 메타데이터의 license 필드는 비어 있다.
 
+- **알려진 구멍: `reset-password`로 권한 있는 non-admin 계정을 탈취할 수 있다.** `user.approve`만 가진 사람이 권한이 더 많은 non-admin(예: `policy.update`, `user.permission` 보유)의 임시 비밀번호를 정해 그 계정으로 로그인하면 그 권한을 얻는다. 규칙 ①은 admin 대상만 막고, 규칙 ③(가진 권한만 부여)은 `PUT /api/users/{id}/permissions`에만 적용돼 우회된다. 고치려면 `store.reset_password`에서 대상의 권한이 행위자 권한의 부분집합이 아니면 403 `forbidden`으로 거절하고 `test_escalation_rules`에 케이스를 더한다. 이번 범위에서는 고치지 않았다(코드 리뷰에서 발견, 사용자 결정으로 보류).
+- **확인하지 못한 것:** 로그인 실패 응답 시간이 아이디 없음과 비밀번호 틀림에서 실제로 같은지는 재지 않았다(더미 해시 검증으로 줄였을 뿐이다). `frontend/`의 401 처리(비밀번호 변경 때 현재 비밀번호가 틀려도 401 `invalid_credentials`라 화면이 세션 만료로 오해할 수 있다)와 `Cache-Control: no-store`가 없다는 점도 화면 이슈에서 확인한다. `frontend/` 코드는 바꾸지 않아 화면 검사(lint·test·build)는 돌리지 않았다.
+
 ### 배포 전에 정해야 할 것
 
 - **로그인 시도 제한**(무차별 대입 방어)을 만들지 않았다. 아이디·IP별 제한이나 지연이 필요하다.
