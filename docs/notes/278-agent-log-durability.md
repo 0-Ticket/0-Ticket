@@ -72,11 +72,15 @@ supersedes: ["211-tool-registry.md"]  # "Agent Log tool 줄 output은 자르기 
 - `PYTHONUTF8=1 uv run ruff format --check .`: 통과
 - `PYTHONUTF8=1 uv run ruff check .`: 통과
 - `PYTHONUTF8=1 uv run python scripts/generate_contracts.py --check`: 통과
-- `PYTHONUTF8=1 uv run pytest`: 1,403건 통과, 1건 실패(위 `test_migrate` Windows 줄바꿈 파일명, 변경과 무관)
+- `PYTHONUTF8=1 uv run pytest`: 1,404건 통과, 1건 실패(위 `test_migrate` Windows 줄바꿈 파일명, 변경과 무관)
 - 테스트를 먼저 썼다. 구현 전 새 테스트 29개 중 25개가 실패했다(통과한 4개는 동작이 같은 회귀 테스트).
 - 주요 테스트
   - `tests/test_agent_log_durability.py`: 호출마다 쓰기, 최종 답 줄 보류, 첫 실패에서 중단·재시도, 재시도 실패 시 `log_error`와 남은 줄, 다시 쓰는 줄이 같은 내용, 종료 줄 3가지(`MaxTurnsExceeded`·도구 실행 중 취소·없는 도구 호출)와 `summarize_runs`의 `error`, 강제 종료 run의 `incomplete`, 멈춘 DB(마감 안에 풀림·데몬 스레드·다음 run은 정상), 접속 인자, 시작 전 실패 5가지, `usage.turns`, 입력 복원(재요청 입력은 접두, 접두가 아닌 입력은 `input_reset`으로 직접 확인), `records` 줄이 모델이 본 결과, L2 최대 시나리오 160,000자 이하
   - `tests/test_api_run_summary.py`: `summarize_runs`의 `ok`/`error`/`incomplete`
   - `tests/test_agent_log_durability_db.py`, `tests/test_l3_attempts_db.py`(db 마커, 이 PC에서는 돌리지 못함)
   - 고친 기존 테스트: `test_agent_core`·`test_agent_llm`(`run_agent`가 `DATABASE_URL`을 먼저 읽음), `test_tools_registry`·`test_tools_db`(`records` 줄 `output`), `test_agent_log_db`(묶음 롤백)
+- **사람이 확인(CI)**: 이 PC에 PostgreSQL·Docker·pnpm이 없어 로컬에서 돌리지 못했다. CI는 PR에서만 돈다.
+  - `uv run pytest -m "db or qdrant"`(CI의 `db` job): `test_agent_log_durability_db.py`·`test_l3_attempts_db.py`(새 파일), 고친 `test_agent_log_db.py`·`test_tools_db.py`, 샘플을 바꾼 `test_api_db.py`, Agent Log를 읽고 쓰는 기존 db 테스트 전부
+  - `pnpm contracts:check`·`pnpm lint`·`pnpm test`·`pnpm build`(CI의 `frontend` job)
+  - `HuntDetail.ts`의 `Outcome` 한 줄은 직접 고쳤다. 생성기 출력과 같은지는 `pnpm contracts:check`가 확인한다. 다르면 생성 결과를 커밋한다.
 - 손으로 잰 값(가짜 모델, 실제 `l2_investigate` system 3,585자·UUID ID·레코드 100건 × 약 2,000자): 변경 전 합계 2,353,208자(model `input` 328,122 + 도구 `output` 2,024,000) → 변경 후 123,667자(model `input` 61,927 + 도구 `output` 61,740, 도구 줄 하나 최대 6,174). 10턴에서 `budget_exceeded`로 끝난다.
