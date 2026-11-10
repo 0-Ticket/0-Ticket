@@ -39,6 +39,8 @@ import {
 import { useLoginTarget, useLogout, useMe } from "./auth/session";
 import { UsersPage } from "./users/users-page";
 import { PolicyPage } from "./policy-page";
+import { FlowChart } from "./flow-chart";
+import type { TicketingPolicyResponse } from "./api/generated/TicketingPolicyResponse";
 
 const menu: [string, string, IconName, string[]][] = [
   ["/", "DashBoard", "dashboard", ["dashboard.read"]],
@@ -309,28 +311,16 @@ function RiskBars({ counts }: { counts: Record<string, number> }) {
     </div>
   );
 }
-function DashboardView({ data }: { data: Dashboard }) {
-  const steps: [string, number][] = [
-    ["정규화 대기 중인\nAlert/Event", data.flow.normalization_pending],
-    ["Ticket 승격을 위해\n대기 중인 Alert", data.flow.l1_alerts_pending],
-    ["L2 승격을 위해\n대기 중인 Ticket", data.flow.l1_tickets_pending],
-    [
-      "Incident으로 묶이기\n위해 대기 중인 Ticket",
-      data.ticket_status.escalated,
-    ],
-    ["생성된\nIncident", data.flow.incidents],
-    ["승인된\nCase", data.flow.cases],
-  ];
+function DashboardView({
+  data,
+  mode,
+}: {
+  data: Dashboard;
+  mode: "auto" | "scenario";
+}) {
   return (
     <>
-      <ol className="flow-grid" aria-label="처리 흐름">
-        {steps.map(([label, count]) => (
-          <li className="kpi" key={label}>
-            <span>{label}</span>
-            <strong>{(count ?? 0).toLocaleString()}</strong>
-          </li>
-        ))}
-      </ol>
+      <FlowChart data={data} mode={mode} />
       <div className="dashboard-grid">
         <div className="dashboard-stack">
           <article className="card">
@@ -851,6 +841,14 @@ function Workspace({ me }: { me: Me }) {
   });
   const can = (names: string[]) =>
     names.some((n) => me.permissions.includes(n));
+  // The flow has one more stage in scenario mode. Without policy.read the mode is unknown, so auto is shown.
+  const policyNeeded = isHome && can(["policy.read"]);
+  const policy = useQuery({
+    queryKey: ["policy"],
+    queryFn: ({ signal }) =>
+      get<TicketingPolicyResponse>("ticketing-policy", signal),
+    enabled: policyNeeded,
+  });
   const page =
     location.pathname === "/settings"
       ? "settings"
@@ -967,7 +965,8 @@ function Workspace({ me }: { me: Me }) {
             <UsersPage />
           ) : page === "policy" ? (
             <PolicyPage />
-          ) : !isHome && !resource ? null : dashboard.isPending ? (
+          ) : !isHome && !resource ? null : dashboard.isPending ||
+            (policyNeeded && policy.isPending) ? (
             <p role="status">집계 불러오는 중…</p>
           ) : dashboard.error ? (
             <ErrorState
@@ -976,7 +975,10 @@ function Workspace({ me }: { me: Me }) {
               retry={() => void dashboard.refetch()}
             />
           ) : isHome ? (
-            <DashboardView data={dashboard.data} />
+            <DashboardView
+              data={dashboard.data}
+              mode={policy.data?.mode ?? "auto"}
+            />
           ) : (
             resource && <Overview resource={resource} data={dashboard.data} />
           )}

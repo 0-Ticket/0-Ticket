@@ -15,6 +15,10 @@ export const adminMe = auth.admin;
 // The default handler survives resetHandlers; tests override it with server.use.
 export const server = setupServer(
   http.get("*/api/auth/me", () => HttpResponse.json(adminMe)),
+  // The dashboard reads the policy mode to pick the 6- or 7-stage flow; auto unless a test says otherwise.
+  http.get("*/api/ticketing-policy", () =>
+    HttpResponse.json({ mode: "auto", scenario_rule_ids: [] }),
+  ),
 );
 export const requests: URL[] = [];
 beforeAll(() => {

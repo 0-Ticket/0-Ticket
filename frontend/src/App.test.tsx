@@ -185,9 +185,12 @@ test("dashboard shows the design flow and keeps ticket total without removed tex
   dashboard();
   show("/");
   const flow = await screen.findByRole("list", { name: "처리 흐름" });
-  const stage4 = within(flow).getAllByRole("listitem")[3];
-  expect(stage4).toHaveTextContent("Incident으로 묶이기");
-  expect(stage4).toHaveTextContent("3");
+  // 21b (auto mode): six stages, no "Ticket 전환 판단 대기".
+  const stages = within(flow).getAllByRole("listitem");
+  expect(stages).toHaveLength(6);
+  expect(stages[2]).toHaveTextContent("L2 분석 대기");
+  expect(stages[2]).toHaveTextContent("3");
+  expect(within(flow).queryByText("Ticket 전환 판단 대기")).toBeNull();
   expect(screen.getByText("전체 8건")).toBeInTheDocument();
   expect(
     screen.queryByRole("heading", { name: "분석 결과가 있는 Incident" }),
@@ -662,4 +665,21 @@ test("page indicator shows the maximum from dashboard counts, or - when filtered
     ),
   );
   expect(await screen.findByText("1/-")).toBeInTheDocument();
+});
+
+test("dashboard flow has seven stages in scenario mode (design 21a)", async () => {
+  dashboard();
+  server.use(
+    http.get("*/api/ticketing-policy", () =>
+      HttpResponse.json({ mode: "scenario", scenario_rule_ids: [] }),
+    ),
+  );
+  show("/");
+  const flow = await screen.findByRole("list", { name: "처리 흐름" });
+  const stages = within(flow).getAllByRole("listitem");
+  expect(stages).toHaveLength(7);
+  expect(stages[1]).toHaveTextContent("Ticket 전환 판단 대기");
+  expect(stages[1]).toHaveTextContent("1");
+  expect(stages[5]).toHaveTextContent("내 승인 대기");
+  expect(stages[5]).toHaveTextContent("1");
 });
