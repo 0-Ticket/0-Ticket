@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 import { screen, fireEvent, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
-import { auth, server, show } from "./test-utils";
+import { auth, requests, server, show } from "./test-utils";
 
 const policy = () =>
   http.get("*/api/ticketing-policy", () => HttpResponse.json(auth.policy));
@@ -96,4 +96,15 @@ test("without policy.update the policy is read-only", async () => {
   expect(await screen.findByText("읽기 전용이에요")).toBeInTheDocument();
   expect(screen.getByRole("radio", { name: /자동 \(auto\)/ })).toBeDisabled();
   expect(screen.queryByRole("button", { name: "저장" })).toBeNull();
+});
+
+test("the CSV register button is there but does nothing yet", async () => {
+  server.use(policy());
+  show("/policy");
+  const button = await screen.findByRole("button", { name: "CSV로 등록하기" });
+  const before = requests.length;
+  fireEvent.click(button);
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  expect(requests.length).toBe(before);
+  expect(screen.getByTestId("where")).toHaveTextContent(/^\/policy$/);
 });

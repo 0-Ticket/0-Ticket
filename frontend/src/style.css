@@ -46,6 +46,9 @@
 body {
   margin: 0;
   font-size: 14px;
+  /* Keep Korean words whole, but break long names and ids rather than overflow. */
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 button,
 a {
@@ -1683,17 +1686,16 @@ td {
   }
   .sidebar nav {
     flex-direction: row;
+    flex-wrap: wrap;
     gap: 6px;
-    overflow-x: auto;
-    padding-bottom: 4px;
   }
+  /* Menu entries wrap into two or three rows instead of scrolling. */
   .sidebar nav a,
   .nav-disabled {
-    flex-shrink: 0;
+    flex: 1 1 140px;
     min-height: 40px;
     padding: 8px 12px;
     font-size: 15px;
-    white-space: nowrap;
   }
   .menu-group {
     display: none;
@@ -1758,4 +1760,8 @@ td {
   .user-panel > header {
     padding: 16px;
   }
+}
+.policy-toolbar {
+  display: flex;
+  margin-bottom: 16px;
 }

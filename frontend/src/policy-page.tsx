@@ -154,5 +154,18 @@ export function PolicyPage() {
         retry={() => void query.refetch()}
       />
     );
-  return <PolicyForm stored={query.data} canEdit={can("policy.update")} />;
+  const canEdit = can("policy.update");
+  return (
+    <>
+      {canEdit && (
+        <div className="policy-toolbar">
+          {/* No backend yet (CSV upload): the button is shown but does nothing. */}
+          <Button type="button" variant="outline" className="btn btn-secondary">
+            CSV로 등록하기
+          </Button>
+        </div>
+      )}
+      <PolicyForm stored={query.data} canEdit={canEdit} />
+    </>
+  );
 }
