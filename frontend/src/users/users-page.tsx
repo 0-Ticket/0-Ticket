@@ -6,6 +6,8 @@ import type { PermissionList } from "../api/generated/PermissionList";
 import type { UserItem } from "../api/generated/UserItem";
 import type { UserList } from "../api/generated/UserList";
 import { Icon } from "../components/icons";
+import { Banner } from "../components/banner";
+import { LineIcon } from "../components/line-icon";
 import { Button } from "../components/ui/button";
 import { usePager } from "../pager";
 import { useMe } from "../auth/session";
@@ -68,6 +70,16 @@ const groups: [string, (name: string) => boolean][] = [
   ["사용자 관리", (n) => n.startsWith("user.")],
   ["Incident 처리", (n) => NOT_READY.has(n)],
 ];
+const emptyTitle: Record<string, string> = {
+  pending: "승인 대기 사용자가 없어요",
+  active: "활성 사용자가 없어요",
+  rejected: "거절된 사용자가 없어요",
+  disabled: "중지된 사용자가 없어요",
+};
+const statusPill: Record<string, string> = {
+  pending: "pill pill-warn",
+  active: "pill pill-ok",
+};
 const date = (ms: number | null) =>
   ms === null ? "—" : new Date(ms).toLocaleDateString("sv-SE");
 
@@ -87,10 +99,9 @@ function Failure({ error }: { error: Error }) {
     "서버에서 요청을 처리하지 못했어요. 잠시 후 다시 시도해 주세요.",
   ];
   return (
-    <div role="alert" className="banner banner-error">
-      <strong>{title}</strong>
-      <p>{body}</p>
-    </div>
+    <Banner tone="error" title={title}>
+      {body}
+    </Banner>
   );
 }
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -122,7 +133,11 @@ function PermissionEditor({
   if (catalog.isPending) return <p role="status">권한 불러오는 중…</p>;
   if (catalog.error)
     return (
-      <ErrorState error={catalog.error} retry={() => void catalog.refetch()} />
+      <ErrorState
+        inline
+        error={catalog.error}
+        retry={() => void catalog.refetch()}
+      />
     );
   const names = catalog.data.permissions;
   return (
@@ -164,6 +179,7 @@ function PermissionEditor({
         );
       })}
       <Button
+        className="btn btn-primary btn-block"
         disabled={!!locked}
         onClick={() =>
           run({
@@ -235,7 +251,7 @@ function UserPanel({
   return (
     <dialog
       ref={dialog}
-      className="detail-panel"
+      className="detail-panel user-panel"
       aria-labelledby="user-title"
       onCancel={onClose}
     >
@@ -247,26 +263,35 @@ function UserPanel({
           </h2>
         </div>
         <Button variant="ghost" onClick={onClose} aria-label="작업 닫기">
-          ✕
+          <LineIcon name="x" />
         </Button>
       </header>
       <div className="detail-content">
-        <p>
-          <strong>{user.display_name}</strong> <code>{user.username}</code>{" "}
-          <span className="badge">{statusName[user.status]}</span>{" "}
-          {user.role && <span className="badge">{user.role}</span>}
-        </p>
+        <div className="user-summary">
+          <span className="avatar-light">{[...user.display_name][0]}</span>
+          <span className="user-names">
+            <strong>{user.display_name}</strong>
+            <small>{user.username}</small>
+          </span>
+          <span className="user-badges">
+            <span className={statusPill[user.status] ?? "pill"}>
+              {statusName[user.status]}
+            </span>
+            {user.role && (
+              <span
+                className={user.role === "admin" ? "pill pill-accent" : "pill"}
+              >
+                {user.role}
+              </span>
+            )}
+          </span>
+        </div>
         {mutation.error && <Failure error={mutation.error} />}
-        {saved && (
-          <div role="status" className="banner banner-success">
-            <strong>저장했어요</strong>
-          </div>
-        )}
+        {saved && <Banner tone="success" title="저장했어요" />}
         {lastAdmin && (
-          <div role="status" className="banner banner-info">
-            <strong>{failures.last_admin[0]}</strong>
-            <p>{failures.last_admin[1]}</p>
-          </div>
+          <Banner tone="info" title={failures.last_admin[0]}>
+            {failures.last_admin[1]}
+          </Banner>
         )}
         {blocked && (
           <p className="auth-hint">
@@ -274,39 +299,48 @@ function UserPanel({
           </p>
         )}
         {user.status === "pending" && canApprove && (
-          <Section title="승인">
-            <div className="field">
-              <label htmlFor="approve-role">부여할 역할</label>
-              <select id="approve-role" ref={role} defaultValue="analyst">
-                <option value="analyst">analyst</option>
-                {isAdmin && <option value="admin">admin</option>}
-              </select>
-              <small>
-                승인하면 analyst 기본 조회 권한 9개가 지급돼요. admin 역할은
-                admin만 부여할 수 있어요.
-              </small>
-            </div>
-            <Button
-              onClick={() =>
-                run({
-                  method: "POST",
-                  path: "/approve",
-                  body: { role: role.current?.value ?? "analyst" },
-                  leaves: true,
-                })
-              }
-            >
-              승인하기
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() =>
-                run({ method: "POST", path: "/reject", leaves: true })
-              }
-            >
-              가입 거절
-            </Button>
-          </Section>
+          <>
+            <Section title="승인">
+              <div className="field">
+                <label htmlFor="approve-role">부여할 역할</label>
+                <select id="approve-role" ref={role} defaultValue="analyst">
+                  <option value="analyst">analyst</option>
+                  {isAdmin && <option value="admin">admin</option>}
+                </select>
+                <small>
+                  승인하면 analyst 기본 조회 권한 9개가 지급돼요. admin 역할은
+                  admin만 부여할 수 있어요.
+                </small>
+              </div>
+              <Button
+                className="btn btn-primary btn-block"
+                onClick={() =>
+                  run({
+                    method: "POST",
+                    path: "/approve",
+                    body: { role: role.current?.value ?? "analyst" },
+                    leaves: true,
+                  })
+                }
+              >
+                승인하기
+              </Button>
+            </Section>
+            <Section title="거절">
+              <p className="auth-hint">
+                거절하면 이 계정으로 로그인할 수 없어요.
+              </p>
+              <Button
+                variant="outline"
+                className="btn btn-danger btn-block"
+                onClick={() =>
+                  run({ method: "POST", path: "/reject", leaves: true })
+                }
+              >
+                가입 거절
+              </Button>
+            </Section>
+          </>
         )}
         {user.status === "active" && (
           <>
@@ -326,6 +360,7 @@ function UserPanel({
                   <small>역할 변경은 admin만 할 수 있어요.</small>
                 </div>
                 <Button
+                  className="btn btn-primary btn-block"
                   disabled={self || lastAdmin}
                   onClick={() =>
                     run({
@@ -356,6 +391,7 @@ function UserPanel({
                     </small>
                   </div>
                   <Button
+                    className="btn btn-primary btn-block"
                     onClick={() =>
                       run({
                         method: "POST",
@@ -371,6 +407,7 @@ function UserPanel({
                   <p className="auth-hint">중지하면 즉시 로그인할 수 없어요.</p>
                   <Button
                     variant="outline"
+                    className="btn btn-danger btn-block"
                     disabled={self || lastAdmin}
                     onClick={() =>
                       run({ method: "POST", path: "/disable", leaves: true })
@@ -419,33 +456,46 @@ export function UsersPage() {
     next.delete("selected");
     setSearch(next);
   }
+  if (query.error)
+    return (
+      <ErrorState
+        needs="user.read"
+        error={query.error}
+        retry={() => void query.refetch()}
+      />
+    );
   return (
-    <section className="card list-card">
-      <div className="list-toolbar">
-        <h3>사용자 목록</h3>
-        <div className="filter-chips" role="group" aria-label="상태">
-          <span className="filter-label">상태</span>
-          {statuses.map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              aria-pressed={status === value}
-              onClick={() => change(value)}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+    <section className="card user-list">
+      <h3>사용자 목록</h3>
+      <div className="status-tabs" role="group" aria-label="상태">
+        <span>상태</span>
+        {statuses.map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            aria-pressed={status === value}
+            onClick={() => change(value)}
+          >
+            {label}
+          </button>
+        ))}
       </div>
       {query.isPending ? (
         <p role="status" className="empty">
           불러오는 중…
         </p>
-      ) : query.error ? (
-        <ErrorState error={query.error} retry={() => void query.refetch()} />
       ) : query.data.items.length ? (
-        <div className="table-scroll">
+        <div className="user-table">
           <table>
+            <colgroup>
+              <col style={{ width: 174 }} />
+              <col style={{ width: 102 }} />
+              <col style={{ width: 76 }} />
+              <col style={{ width: 86 }} />
+              <col style={{ width: 86 }} />
+              <col style={{ width: 86 }} />
+              <col style={{ width: 30 }} />
+            </colgroup>
             <thead>
               <tr>
                 <th>아이디</th>
@@ -454,6 +504,7 @@ export function UsersPage() {
                 <th>상태</th>
                 <th>가입일</th>
                 <th>승인일</th>
+                <th aria-hidden="true" />
               </tr>
             </thead>
             <tbody>
@@ -467,45 +518,69 @@ export function UsersPage() {
                   }}
                 >
                   <td>
-                    <button className="record-link">{u.username}</button>
+                    <button className="user-link">{u.username}</button>
                   </td>
-                  <td>{u.display_name}</td>
-                  <td>{u.role ?? "—"}</td>
-                  <td>{statusName[u.status]}</td>
+                  <td className="user-name">{u.display_name}</td>
+                  <td>
+                    {u.role ? (
+                      <span
+                        className={
+                          u.role === "admin" ? "pill pill-accent" : "pill"
+                        }
+                      >
+                        {u.role}
+                      </span>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td>
+                    <span className={statusPill[u.status] ?? "pill"}>
+                      {statusName[u.status]}
+                    </span>
+                  </td>
                   <td className="date">{date(u.created_at)}</td>
                   <td className="date">{date(u.approved_at)}</td>
+                  <td className="row-open">
+                    <LineIcon name="chevron-right" size={14} />
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       ) : (
-        <div className="empty">
-          <h3>{statusName[status]} 사용자가 없어요</h3>
+        <div className="users-empty">
+          <span className="empty-circle">
+            <LineIcon name="users" size={22} />
+          </span>
+          <h3>{emptyTitle[status]}</h3>
           <p>다른 상태 탭에서 사용자를 확인해 보세요.</p>
         </div>
       )}
-      <footer className="pagination">
-        <div className="pagination-controls">
-          <button
-            aria-label="이전 페이지"
-            disabled={!search.has("cursor") || query.isFetching}
-            onClick={() => page("previous")}
-          >
-            <Icon name="left" />
-          </button>
-          <span aria-live="polite">{current}/-</span>
-          <button
-            aria-label="다음 페이지"
-            disabled={
-              !query.data?.next_cursor || query.isFetching || !!query.error
-            }
-            onClick={() => page("next")}
-          >
-            <Icon name="right" />
-          </button>
-        </div>
-      </footer>
+      {(query.data?.items.length || search.has("cursor")) && (
+        <footer className="pagination">
+          <div className="pagination-controls">
+            <button
+              aria-label="이전 페이지"
+              disabled={!search.has("cursor") || query.isFetching}
+              onClick={() => page("previous")}
+            >
+              <Icon name="left" />
+            </button>
+            <span aria-live="polite">{current}/-</span>
+            <button
+              aria-label="다음 페이지"
+              disabled={
+                !query.data?.next_cursor || query.isFetching || !!query.error
+              }
+              onClick={() => page("next")}
+            >
+              <Icon name="right" />
+            </button>
+          </div>
+        </footer>
+      )}
       {user && (
         <UserPanel
           key={user.id}

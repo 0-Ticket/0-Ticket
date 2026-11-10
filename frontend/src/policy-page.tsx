@@ -148,7 +148,11 @@ export function PolicyPage() {
   if (query.isPending) return <p role="status">불러오는 중…</p>;
   if (query.error)
     return (
-      <ErrorState error={query.error} retry={() => void query.refetch()} />
+      <ErrorState
+        needs="policy.read"
+        error={query.error}
+        retry={() => void query.refetch()}
+      />
     );
   return <PolicyForm stored={query.data} canEdit={can("policy.update")} />;
 }

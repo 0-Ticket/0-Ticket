@@ -33,7 +33,7 @@ test("status tabs reload the list and an empty tab says so", async () => {
   show("/users");
   await screen.findByText("승인 대기 사용자가 없어요");
   fireEvent.click(screen.getByRole("button", { name: "거절" }));
-  expect(await screen.findByText("거절 사용자가 없어요")).toBeInTheDocument();
+  expect(await screen.findByText("거절된 사용자가 없어요")).toBeInTheDocument();
   await waitFor(() =>
     expect(usersAsked().at(-1)?.searchParams.get("status")).toBe("rejected"),
   );

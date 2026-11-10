@@ -19,6 +19,7 @@ import {
   Cell,
 } from "recharts";
 import { Icon, type IconName } from "./components/icons";
+import { LineIcon, type LineIconName } from "./components/line-icon";
 import { JsonViewer } from "./components/json-viewer";
 import { FilterChips } from "./components/filter-chips";
 import logo from "./assets/o-ticket-mark.png";
@@ -47,9 +48,9 @@ const menu: [string, string, IconName, string[]][] = [
   ["/cases", "Case", "cases", ["case.read"]],
   ["/hunts", "Hunting", "hunts", ["hunt.read"]],
 ];
-const adminMenu: [string, string, string][] = [
-  ["/policy", "Ticket 정책", "policy.read"],
-  ["/users", "사용자 관리", "user.read"],
+const adminMenu: [string, string, string, LineIconName][] = [
+  ["/policy", "Ticket 정책", "policy.read", "sliders"],
+  ["/users", "사용자 관리", "user.read", "users"],
 ];
 const titles: Record<Resource, string> = {
   alerts: "Alert / Event",
@@ -590,7 +591,11 @@ function DetailPanel({
         {query.isPending ? (
           <p role="status">불러오는 중…</p>
         ) : query.error ? (
-          <ErrorState error={query.error} retry={() => void query.refetch()} />
+          <ErrorState
+            inline
+            error={query.error}
+            retry={() => void query.refetch()}
+          />
         ) : (
           <DetailBody data={query.data} />
         )}
@@ -732,7 +737,11 @@ function ListView({
           불러오는 중…
         </p>
       ) : query.error ? (
-        <ErrorState error={query.error} retry={() => void query.refetch()} />
+        <ErrorState
+          inline
+          error={query.error}
+          retry={() => void query.refetch()}
+        />
       ) : query.data.items.length ? (
         <>
           <div className="table-scroll">
@@ -878,44 +887,51 @@ function Workspace({ me }: { me: Me }) {
             ))}
           {adminMenu.some(([, , needs]) => can([needs])) && (
             <>
-              <hr />
               <span className="menu-group">관리</span>
               {adminMenu
                 .filter(([, , needs]) => can([needs]))
-                .map(([path, label]) => (
+                .map(([path, label, , icon]) => (
                   <NavLink key={path} to={path}>
+                    <span className="menu-icon">
+                      <LineIcon name={icon} size={20} />
+                    </span>
                     {label}
                   </NavLink>
                 ))}
             </>
           )}
         </nav>
-        <div className="sidebar-bottom">
-          <span className="profile">
-            <span className="profile-icon">
-              <Icon name="profile" />
-            </span>
-            <span className="profile-text">
+        <div className="user-area">
+          <div className="user-row">
+            <span className="avatar">{[...me.display_name][0]}</span>
+            <span className="user-info">
               <strong>{me.display_name}</strong>
-              <span className="role-badge">{me.role}</span>
+              <span className={`role-badge role-${me.role}`}>{me.role}</span>
             </span>
-          </span>
-          <Link className="settings" to="/settings">
-            <Icon name="settings" />
-            설정
-          </Link>
+            <Link className="settings" to="/settings">
+              <Icon name="settings" />
+              설정
+            </Link>
+          </div>
           <button
             type="button"
-            className="settings"
+            className="logout-button"
             onClick={() => logout.mutate()}
           >
+            <LineIcon name="log-out" size={14} />
             로그아웃
           </button>
         </div>
       </aside>
       <div className="workspace">
         <main>
-          <header className="page-heading">
+          <header
+            className={
+              page === "users" || page === "policy"
+                ? "page-heading compact"
+                : "page-heading"
+            }
+          >
             <div>
               <h1>
                 {isHome
@@ -942,6 +958,7 @@ function Workspace({ me }: { me: Me }) {
             <p role="status">집계 불러오는 중…</p>
           ) : dashboard.error ? (
             <ErrorState
+              needs="dashboard.read"
               error={dashboard.error}
               retry={() => void dashboard.refetch()}
             />
