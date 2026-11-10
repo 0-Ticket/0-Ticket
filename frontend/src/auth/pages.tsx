@@ -4,6 +4,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ApiError, send } from "../api/client";
 import type { Me } from "../api/generated/Me";
 import type { SignupResult } from "../api/generated/SignupResult";
+import { Banner } from "../components/banner";
+import { LineIcon } from "../components/line-icon";
 import { Button } from "../components/ui/button";
 import logo from "../assets/o-ticket-mark.png";
 import { useLogout, useSessionReset } from "./session";
@@ -30,25 +32,6 @@ function serverFields(error: unknown): Errors {
       f,
       messages[f as keyof typeof messages] ?? formError,
     ]),
-  );
-}
-function Banner({
-  tone,
-  title,
-  children,
-}: {
-  tone: "error" | "success" | "info";
-  title: string;
-  children?: ReactNode;
-}) {
-  return (
-    <div
-      role={tone === "error" ? "alert" : "status"}
-      className={`banner banner-${tone}`}
-    >
-      <strong>{title}</strong>
-      {children && <p>{children}</p>}
-    </div>
   );
 }
 function Field({
@@ -129,20 +112,24 @@ function AuthLayout({ children }: { children: ReactNode }) {
   );
 }
 
-const loginErrors: Record<string, [string, string]> = {
+const loginErrors: Record<string, ["error" | "warn", string, string]> = {
   invalid_credentials: [
+    "error",
     "아이디 또는 비밀번호가 올바르지 않아요",
     "입력한 내용을 확인한 뒤 다시 시도해 주세요.",
   ],
   account_pending: [
+    "warn",
     "승인 대기 중인 계정이에요",
     "관리자가 가입을 승인하면 로그인할 수 있어요.",
   ],
   account_rejected: [
+    "error",
     "가입이 거절된 계정이에요",
     "자세한 내용은 관리자에게 문의해 주세요.",
   ],
   account_disabled: [
+    "error",
     "사용이 중지된 계정이에요",
     "계정 사용 재개는 관리자에게 요청해 주세요.",
   ],
@@ -165,11 +152,12 @@ export function LoginPage() {
   const failure = login.error
     ? (loginErrors[login.error.code] ??
       (login.error.status === 422
-        ? ["입력을 확인해 주세요", formError]
-        : [
+        ? (["error", "입력을 확인해 주세요", formError] as const)
+        : ([
+            "error",
             "로그인하지 못했어요",
             "서버에서 요청을 처리하지 못했어요. 잠시 후 다시 시도해 주세요.",
-          ]))
+          ] as const)))
     : null;
   return (
     <AuthLayout>
@@ -182,8 +170,8 @@ export function LoginPage() {
       >
         <h1>로그인</h1>
         {failure ? (
-          <Banner tone="error" title={failure[0]}>
-            {failure[1]}
+          <Banner tone={failure[0]} title={failure[1]}>
+            {failure[2]}
           </Banner>
         ) : (
           expired && (
@@ -214,11 +202,14 @@ export function LoginPage() {
           type="submit"
           disabled={login.isPending}
         >
+          {login.isPending && <LineIcon name="spinner" />}
           {login.isPending ? "로그인 중…" : "로그인"}
         </Button>
-        <p className="auth-hint">
-          비밀번호를 잊으셨다면 관리자에게 재설정을 요청하세요.
-        </p>
+        {!login.isPending && (
+          <p className="auth-hint">
+            비밀번호를 잊으셨다면 관리자에게 재설정을 요청하세요.
+          </p>
+        )}
         <p className="auth-switch">
           계정이 없으신가요? <Link to="/signup">회원가입</Link>
         </p>
@@ -230,9 +221,11 @@ export function LoginPage() {
 export function SignupPage() {
   const form = useRef<HTMLFormElement>(null);
   const [errors, setErrors] = useState<Errors>({});
+  const displayName = useRef("");
   const signup = useMutation<SignupResult, ApiError>({
     mutationFn: () => {
       const value = read(form.current!);
+      displayName.current = value("display_name").trim();
       return send<SignupResult>("POST", "auth/signup", {
         username: value("username").trim().toLowerCase(),
         display_name: value("display_name").trim(),
@@ -259,15 +252,27 @@ export function SignupPage() {
     return (
       <AuthLayout>
         <div>
+          <span className="success-mark">
+            <LineIcon name="check" size={24} />
+          </span>
           <h1>가입 신청이 완료됐어요</h1>
-          <Banner tone="success" title="관리자 승인 후 로그인할 수 있어요" />
-          <dl className="summary">
-            <dt>아이디</dt>
-            <dd>{signup.data.username}</dd>
-            <dt>상태</dt>
-            <dd>승인 대기</dd>
+          <dl className="summary-card">
+            <div>
+              <dt>아이디</dt>
+              <dd>{signup.data.username}</dd>
+            </div>
+            <div>
+              <dt>표시 이름</dt>
+              <dd>{displayName.current}</dd>
+            </div>
+            <div>
+              <dt>상태</dt>
+              <dd>
+                <span className="pill pill-warn">승인 대기</span>
+              </dd>
+            </div>
           </dl>
-          <Button asChild>
+          <Button asChild className="btn btn-secondary btn-block">
             <Link to="/login">로그인 화면으로</Link>
           </Button>
         </div>
@@ -291,6 +296,7 @@ export function SignupPage() {
             name="username"
             disabled={signup.isPending}
             autoComplete="username"
+            hint="사용할 수 있는 문자: a-z 0-9 . _ -"
             error={
               taken
                 ? "이미 사용 중인 아이디예요. 다른 아이디를 입력해 주세요."
@@ -312,7 +318,7 @@ export function SignupPage() {
             disabled={signup.isPending}
             autoComplete="new-password"
             error={errors.password}
-            hint="12~128자"
+            hint="12~128자로 입력해 주세요."
             placeholder="비밀번호 입력"
           />
           <Field
@@ -386,7 +392,12 @@ export function PasswordForm({ forced = false }: { forced?: boolean }) {
   }
   const generic = change.error && !Object.keys(errors).length;
   return (
-    <form ref={form} onSubmit={submit} noValidate>
+    <form
+      ref={form}
+      onSubmit={submit}
+      noValidate
+      className={forced ? "auth-stack" : undefined}
+    >
       {done && !forced && (
         <Banner tone="success" title="비밀번호를 변경했어요">
           다음 로그인부터 새 비밀번호를 사용해 주세요.
@@ -429,7 +440,11 @@ export function PasswordForm({ forced = false }: { forced?: boolean }) {
           placeholder="새 비밀번호 다시 입력"
         />
       </div>
-      <Button className="auth-submit" type="submit" disabled={change.isPending}>
+      <Button
+        className={forced ? "btn btn-primary btn-block" : "auth-submit"}
+        type="submit"
+        disabled={change.isPending}
+      >
         비밀번호 변경
       </Button>
     </form>
@@ -442,14 +457,21 @@ export function ForcedPasswordPage() {
     <AuthLayout>
       <div>
         <h1>비밀번호를 변경해 주세요</h1>
-        <p className="auth-hint">
-          최초 로그인이거나 관리자가 재설정한 비밀번호예요. 변경을 마칠 때까지
-          다른 메뉴는 사용할 수 없어요.
-        </p>
+        <Banner
+          tone="info"
+          title="최초 로그인이거나 관리자가 재설정한 비밀번호예요"
+        >
+          변경을 마칠 때까지 다른 메뉴는 사용할 수 없어요.
+        </Banner>
         <PasswordForm forced />
-        <Button variant="outline" onClick={() => logout.mutate()}>
+        <button
+          type="button"
+          className="auth-logout"
+          onClick={() => logout.mutate()}
+        >
+          <LineIcon name="log-out" size={14} />
           로그아웃
-        </Button>
+        </button>
       </div>
     </AuthLayout>
   );

@@ -111,7 +111,9 @@ test("signup validates locally, then shows pending notice and taken username", a
   await type("아이디", "new.user");
   fireEvent.click(screen.getByRole("button", { name: "회원가입" }));
   expect(await screen.findByText("가입 신청이 완료됐어요")).toBeInTheDocument();
-  expect(screen.getByText(/관리자 승인 후 로그인/)).toBeInTheDocument();
+  // The design shows the pending state as a badge, not a sentence.
+  expect(screen.getByText("승인 대기")).toBeInTheDocument();
+  expect(screen.getByText("민수")).toBeInTheDocument();
 });
 
 test("must_change_password locks every other route and hides the menu", async () => {
