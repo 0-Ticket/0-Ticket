@@ -183,6 +183,22 @@ pnpm --dir frontend dev
 Case의 '승인 대기 Incident' 탭은 아직 Case가 아닌 `awaiting_review` Incident입니다.
 승인·반려·로그인·설정은 자리만 있으며 비활성입니다.
 
+### 로그인과 권한 (#284)
+
+화면용 API는 `/api` 전체가 로그인을 요구합니다. 로그인 화면은 아직 없으므로 지금은 화면 대신
+API로 확인합니다(로그인 화면 이슈가 먼저 머지돼야 위 화면을 쓸 수 있습니다).
+
+- 마이그레이션을 적용한 DB에서 `uv run python -m soc.api`를 처음 실행하면 사용자가 0명일 때
+  `admin`을 만들고 임시 비밀번호를 터미널에 한 번만 출력합니다. 놓쳤으면 개발 DB의 `users`를
+  비우고(`DELETE FROM users`) 다시 실행합니다.
+- 임시 비밀번호로 `POST /api/auth/login` 뒤 `POST /api/auth/password`로 바꾸기 전에는 다른 API가
+  403입니다. 변경 요청은 `Origin` 헤더가 `config/default.toml` `[auth] allowed_origins`에 있어야 합니다.
+- 가입(`POST /api/auth/signup`) → admin이 `POST /api/users/{id}/approve`로 승인(역할 지정)합니다.
+  권한은 `PUT /api/users/{id}/permissions`로 사용자별로 바꿉니다(목록은 `GET /api/permissions`).
+- 새 라우트는 `require_permission("<자원>.<동작>")`을 붙여야 합니다. 권한 이름은
+  `src/soc/auth/permissions.py`에 있고, 붙이지 않으면 구조 테스트가 실패합니다.
+
+
 ```bash
 pnpm --dir frontend lint             # ESLint + Prettier 검사
 pnpm --dir frontend test             # Vitest run (MSW는 여기서만 사용)
