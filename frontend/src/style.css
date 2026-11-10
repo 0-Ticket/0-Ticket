@@ -1713,10 +1713,6 @@ td {
   color: var(--ink);
   font-size: 14px;
 }
-.page-heading.compact {
-  min-height: 38px;
-  margin-bottom: 18px;
-}
 .nav-disabled {
   display: flex;
   align-items: center;

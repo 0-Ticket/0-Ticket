@@ -345,3 +345,70 @@ test("login, sign-up and forced change share the card layout and design placehol
     document.querySelector(".auth-brand + .auth-form .auth-card"),
   ).not.toBeNull();
 });
+
+const asAnalyst = (permissions: string[]) =>
+  http.get("*/api/auth/me", () =>
+    HttpResponse.json({ ...auth.analyst, permissions }),
+  );
+
+test("a screen without its permission shows no-permission and sends no data request", async () => {
+  dashboard();
+  server.use(asAnalyst(["dashboard.read"]));
+  show("/tickets");
+  expect(
+    await screen.findByText("이 화면을 볼 권한이 없어요"),
+  ).toBeInTheDocument();
+  expect(screen.getByText(/ticket\.read/)).toBeInTheDocument();
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  expect(
+    requests.filter((r) => /tickets|dashboard/.test(r.pathname)),
+  ).toHaveLength(0);
+});
+
+test.each([
+  ["/users", "user.read", "/api/users"],
+  ["/policy", "policy.read", "/api/ticketing-policy"],
+  ["/", "dashboard.read", "/api/dashboard"],
+])(
+  "typing %s in the address bar without %s is refused before any request",
+  async (path, _needed, api) => {
+    dashboard();
+    server.use(asAnalyst(["alert.read"]));
+    show(path);
+    expect(
+      await screen.findByText("이 화면을 볼 권한이 없어요"),
+    ).toBeInTheDocument();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(requests.some((r) => r.pathname === api)).toBe(false);
+  },
+);
+
+test("a list opens without dashboard.read, just without the summary", async () => {
+  server.use(
+    asAnalyst(["ticket.read"]),
+    http.get("*/api/tickets", () =>
+      HttpResponse.json({ items: [], next_cursor: null }),
+    ),
+  );
+  show("/tickets");
+  expect(
+    await screen.findByText("조건에 맞는 데이터가 없습니다."),
+  ).toBeInTheDocument();
+  expect(requests.some((r) => r.pathname === "/api/dashboard")).toBe(false);
+});
+
+test("Alert/Event opens Event when only event.read is held", async () => {
+  server.use(
+    asAnalyst(["event.read"]),
+    http.get("*/api/events", () =>
+      HttpResponse.json({ items: [], next_cursor: null }),
+    ),
+  );
+  show("/events");
+  const nav = within(await screen.findByRole("navigation"));
+  expect(nav.getByRole("link", { name: "Alert/Event" })).toHaveAttribute(
+    "href",
+    "/events",
+  );
+  expect(screen.queryByRole("link", { name: "Alert" })).toBeNull();
+});

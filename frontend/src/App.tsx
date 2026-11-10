@@ -24,7 +24,14 @@ import { JsonViewer } from "./components/json-viewer";
 import { FilterChips } from "./components/filter-chips";
 import logo from "./assets/o-ticket-mark.png";
 import { Button } from "./components/ui/button";
-import { get, itemId, itemTitle, itemStatus, itemSeverity } from "./api/client";
+import {
+  ApiError,
+  get,
+  itemId,
+  itemTitle,
+  itemStatus,
+  itemSeverity,
+} from "./api/client";
 import type { Resource, Page, Item, Detail } from "./api/client";
 import { usePager } from "./pager";
 import { ErrorState } from "./error-state";
@@ -36,7 +43,7 @@ import {
   SettingsPage,
   SignupPage,
 } from "./auth/pages";
-import { useLoginTarget, useLogout, useMe } from "./auth/session";
+import { useCan, useLoginTarget, useLogout, useMe } from "./auth/session";
 import { UsersPage } from "./users/users-page";
 import { PolicyPage } from "./policy-page";
 import { FlowChart } from "./flow-chart";
@@ -54,6 +61,14 @@ const adminMenu: [string, string, string, LineIconName][] = [
   ["/policy", "Ticket 정책", "policy.read", "sliders"],
   ["/users", "사용자 관리", "user.read", "users"],
 ];
+const resourcePermission: Record<Resource, string> = {
+  alerts: "alert.read",
+  events: "event.read",
+  tickets: "ticket.read",
+  incidents: "incident.read",
+  cases: "case.read",
+  hunts: "hunt.read",
+};
 const titles: Record<Resource, string> = {
   alerts: "Alert / Event",
   events: "Alert / Event",
@@ -430,6 +445,12 @@ function internalLink(id: string, resource: Resource, label: string) {
   );
 }
 function DetailBody({ data }: { data: Detail }) {
+  const can = useCan();
+  // A link to a screen the account cannot open is not offered.
+  const link = (id: string, resource: Resource, label: string) =>
+    can(resourcePermission[resource])
+      ? internalLink(id, resource, label)
+      : null;
   return (
     <>
       {"ticket" in data && (
@@ -437,10 +458,10 @@ function DetailBody({ data }: { data: Detail }) {
           <Severity value={data.severity} />
           <div className="links">
             {data.ticket.alert_ids.map((id, i) =>
-              internalLink(id, "alerts", `원본 Alert ${i + 1}`),
+              link(id, "alerts", `원본 Alert ${i + 1}`),
             )}
             {data.ticket.hunt_id &&
-              internalLink(data.ticket.hunt_id, "hunts", "원본 Hunt")}
+              link(data.ticket.hunt_id, "hunts", "원본 Hunt")}
           </div>
           <h3>Ticket 판정과 근거</h3>
           <JsonViewer value={data.ticket} />
@@ -450,7 +471,7 @@ function DetailBody({ data }: { data: Detail }) {
         <>
           <div className="links">
             {data.incident.ticket_ids.map((id, i) =>
-              internalLink(id, "tickets", `원본 Ticket ${i + 1}`),
+              link(id, "tickets", `원본 Ticket ${i + 1}`),
             )}
           </div>
           <h3>Incident</h3>
@@ -490,7 +511,7 @@ function DetailBody({ data }: { data: Detail }) {
       {"case" in data && (
         <>
           <div className="links">
-            {internalLink(data.case.incident_id, "incidents", "원본 Incident")}
+            {link(data.case.incident_id, "incidents", "원본 Incident")}
           </div>
           <h3>승인된 Case</h3>
           <JsonViewer value={data.case} />
@@ -509,8 +530,7 @@ function DetailBody({ data }: { data: Detail }) {
       {"hunt" in data && (
         <>
           <div className="links">
-            {data.ticket_id &&
-              internalLink(data.ticket_id, "tickets", "승격 Ticket")}
+            {data.ticket_id && link(data.ticket_id, "tickets", "승격 Ticket")}
           </div>
           <h3>가설과 검증 결과</h3>
           <JsonViewer value={data.hunt} />
@@ -834,21 +854,8 @@ function Workspace({ me }: { me: Me }) {
     Object.hasOwn(titles, slug) ? slug : null
   ) as Resource | null;
   const isHome = location.pathname === "/";
-  const dashboard = useQuery({
-    queryKey: ["dashboard"],
-    queryFn: ({ signal }) => get<Dashboard>("dashboard", signal),
-    enabled: isHome || resource !== null,
-  });
   const can = (names: string[]) =>
     names.some((n) => me.permissions.includes(n));
-  // The flow has one more stage in scenario mode. Without policy.read the mode is unknown, so auto is shown.
-  const policyNeeded = isHome && can(["policy.read"]);
-  const policy = useQuery({
-    queryKey: ["policy"],
-    queryFn: ({ signal }) =>
-      get<TicketingPolicyResponse>("ticketing-policy", signal),
-    enabled: policyNeeded,
-  });
   const page =
     location.pathname === "/settings"
       ? "settings"
@@ -858,6 +865,33 @@ function Workspace({ me }: { me: Me }) {
           ? "policy"
           : null;
   const waiting = resource === "cases" && search.get("tab") === "waiting";
+  // Permission needed to open this screen. Without it no request is sent; the screen says so.
+  const needed: string | null = isHome
+    ? "dashboard.read"
+    : page === "users"
+      ? "user.read"
+      : page === "policy"
+        ? "policy.read"
+        : resource
+          ? waiting
+            ? "incident.read"
+            : resourcePermission[resource]
+          : null;
+  const denied = needed !== null && !can([needed]);
+  const mayDashboard = can(["dashboard.read"]);
+  const dashboard = useQuery({
+    queryKey: ["dashboard"],
+    queryFn: ({ signal }) => get<Dashboard>("dashboard", signal),
+    enabled: !denied && mayDashboard && (isHome || resource !== null),
+  });
+  // The flow has one more stage in scenario mode. Without policy.read the mode is unknown, so auto is shown.
+  const policyNeeded = isHome && !denied && can(["policy.read"]);
+  const policy = useQuery({
+    queryKey: ["policy"],
+    queryFn: ({ signal }) =>
+      get<TicketingPolicyResponse>("ticketing-policy", signal),
+    enabled: policyNeeded,
+  });
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -877,7 +911,10 @@ function Workspace({ me }: { me: Me }) {
             can(needs) ? (
               <NavLink
                 key={path}
-                to={path}
+                // Alert/Event opens Event when only event.read is held.
+                to={
+                  path === "/alerts" && !can(["alert.read"]) ? "/events" : path
+                }
                 end={path === "/"}
                 className={({ isActive }) =>
                   isActive || (path === "/alerts" && resource === "events")
@@ -936,13 +973,7 @@ function Workspace({ me }: { me: Me }) {
       </aside>
       <div className="workspace">
         <main>
-          <header
-            className={
-              page === "users" || page === "policy"
-                ? "page-heading compact"
-                : "page-heading"
-            }
-          >
+          <header className="page-heading">
             <div>
               <h1>
                 {isHome
@@ -959,13 +990,21 @@ function Workspace({ me }: { me: Me }) {
               </h1>
             </div>
           </header>
-          {page === "settings" ? (
+          {denied ? (
+            <ErrorState
+              needs={needed}
+              noHome={isHome}
+              error={new ApiError(403, "permission_denied")}
+              retry={() => undefined}
+            />
+          ) : page === "settings" ? (
             <SettingsPage me={me} />
           ) : page === "users" ? (
             <UsersPage />
           ) : page === "policy" ? (
             <PolicyPage />
-          ) : !isHome && !resource ? null : dashboard.isPending ||
+          ) : !isHome &&
+            !resource ? null : !mayDashboard ? null : dashboard.isPending ||
             (policyNeeded && policy.isPending) ? (
             <p role="status">집계 불러오는 중…</p>
           ) : dashboard.error ? (
@@ -982,21 +1021,23 @@ function Workspace({ me }: { me: Me }) {
           ) : (
             resource && <Overview resource={resource} data={dashboard.data} />
           )}
-          {(resource === "alerts" || resource === "events") && (
+          {!denied && (resource === "alerts" || resource === "events") && (
             <div className="tabs">
-              <NavLink to="/alerts">Alert</NavLink>
-              <NavLink to="/events">Event</NavLink>
+              {can(["alert.read"]) && <NavLink to="/alerts">Alert</NavLink>}
+              {can(["event.read"]) && <NavLink to="/events">Event</NavLink>}
             </div>
           )}
-          {resource === "cases" && (
+          {!denied && resource === "cases" && (
             <>
               <div className="tabs">
-                <Link
-                  className={waiting ? "active" : ""}
-                  to="/cases?tab=waiting"
-                >
-                  승인 대기 Incident
-                </Link>
+                {can(["incident.read"]) && (
+                  <Link
+                    className={waiting ? "active" : ""}
+                    to="/cases?tab=waiting"
+                  >
+                    승인 대기 Incident
+                  </Link>
+                )}
                 <Link className={!waiting ? "active" : ""} to="/cases">
                   승인된 Case
                 </Link>
@@ -1008,7 +1049,7 @@ function Workspace({ me }: { me: Me }) {
               </p>
             </>
           )}
-          {resource && (
+          {!denied && resource && (
             <ListView
               key={`${resource}/${waiting}`}
               resource={waiting ? "incidents" : resource}

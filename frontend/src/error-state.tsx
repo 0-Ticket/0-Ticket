@@ -11,7 +11,7 @@ type Known = {
   tone: "warn" | "danger";
 };
 // Texts, icons and tones are from the design (25 permission_denied, 26 db_unavailable, 27 origin_not_allowed).
-const known = (needs?: string): Record<string, Known> => ({
+const known = (needs?: string | null): Record<string, Known> => ({
   permission_denied: {
     title: "이 화면을 볼 권한이 없어요",
     body: `계정에 필요한 권한${needs ? `(${needs})` : ""}이 없어요. 권한이 필요하면 관리자에게 요청해 주세요.`,
@@ -40,11 +40,13 @@ export function ErrorState({
   retry,
   inline = false,
   needs,
+  noHome = false,
 }: {
   error: Error;
   retry: () => void;
   inline?: boolean;
-  needs?: string;
+  needs?: string | null;
+  noHome?: boolean;
 }) {
   const code = error instanceof ApiError ? error.code : "";
   const info = known(needs)[code];
@@ -75,7 +77,7 @@ export function ErrorState({
         ) : (
           <p>{error.message}</p>
         )}
-        {denied ? home : again(false)}
+        {denied ? (noHome ? null : home) : again(false)}
       </div>
     );
   return (
@@ -87,7 +89,7 @@ export function ErrorState({
       <p>{info.body}</p>
       <code className="code-chip">{info.chip}</code>
       <div className="error-actions">
-        {denied && home}
+        {denied && !noHome && home}
         {code === "db_unavailable" && (
           <>
             {again(true)}
