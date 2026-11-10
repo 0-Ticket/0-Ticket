@@ -192,13 +192,18 @@ def last_attempt_started_at(conn: psycopg.Connection, task: str) -> datetime | N
     """L3 작업(task)의 마지막 시도 시각: 그 작업 Agent Log 줄의 가장 늦은 started_at.
 
     같은 run에 failure = cancelled인 줄이 있는 run은 뺀다(종료로 끊긴 run은 시도로 세지 않는다,
-    #245). task는 칼럼이 아니라 details에 있고 인덱스가 없어 표 전체를 읽는다.
+    #245). 끝났다는 표시(details.validation 또는 details.failure가 있는 model 줄)가 없는 run도
+    뺀다. 강제 종료된 run이다(D-036, #278). 모델을 부르기 전에 실패한 run은 failure가 있어 센다.
+    task는 칼럼이 아니라 details에 있고 인덱스가 없어 표 전체를 읽는다.
     """
     row = conn.execute(
         "SELECT max(l.started_at) FROM agent_logs l"
         " WHERE l.stage = 'l3' AND l.details->>'task' = %s"
         " AND NOT EXISTS (SELECT 1 FROM agent_logs c"
-        " WHERE c.run_id = l.run_id AND c.details->>'failure' = 'cancelled')",
+        " WHERE c.run_id = l.run_id AND c.details->>'failure' = 'cancelled')"
+        " AND EXISTS (SELECT 1 FROM agent_logs m"
+        " WHERE m.run_id = l.run_id AND m.kind = 'model'"
+        " AND (m.details->>'failure' IS NOT NULL OR m.details->>'validation' IS NOT NULL))",
         (task,),
     ).fetchone()
     return None if row is None else row[0]
