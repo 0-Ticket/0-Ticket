@@ -1,0 +1,55 @@
+{
+  "description": "비밀 값 가림(#279) 샘플. 값은 모두 가짜이고 IP는 문서용 대역이다. kept는 가림이 바꾸면 안 되는 정상 문자열이고, masked는 secret 부분이 사라져야 하는 문자열이다",
+  "kept": [
+    {
+      "name": "sudo_auth_log_pwd_path",
+      "text": "Nov 10 09:12:01 web01 sudo:    alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/ls /var/log"
+    },
+    {
+      "name": "common_word_user_name",
+      "text": "{\"user.name\": \"admin\", \"message\": \"login-failed admin from 198.51.100.7\"}"
+    },
+    {
+      "name": "plain_words_near_secret_names",
+      "text": "tokenizer=whitespace secretary=Kim passwordless login for deploy"
+    }
+  ],
+  "masked": [
+    {
+      "name": "url_query_token",
+      "text": "GET /export?page=2&token=fake-token-abcdef123456&sort=asc HTTP/1.1",
+      "secret": "fake-token-abcdef123456",
+      "keep": ["page=2", "sort=asc"]
+    },
+    {
+      "name": "url_query_access_token_and_secret",
+      "text": "GET /cb?access_token=fake-access-0001&client_secret=fake-client-0002&state=ok",
+      "secret": ["fake-access-0001", "fake-client-0002"],
+      "keep": ["state=ok"]
+    },
+    {
+      "name": "authorization_basic_header",
+      "text": "GET /admin HTTP/1.1 Authorization: Basic ZmFrZXVzZXI6ZmFrZXBhc3M= User-Agent: curl/8.0",
+      "secret": "ZmFrZXVzZXI6ZmFrZXBhc3M=",
+      "keep": ["User-Agent: curl/8.0"]
+    },
+    {
+      "name": "authorization_apikey_header",
+      "text": "{\"headers\": \"Authorization: ApiKey ZmFrZS1hcGkta2V5LTAwMDE=\"}",
+      "secret": "ZmFrZS1hcGkta2V5LTAwMDE=",
+      "keep": []
+    },
+    {
+      "name": "authorization_json_key",
+      "text": "{\"authorization\": \"Digest username=fake, response=fake-digest-0003\", \"method\": \"GET\"}",
+      "secret": "fake-digest-0003",
+      "keep": ["\"method\": \"GET\""]
+    },
+    {
+      "name": "pwd_query_value",
+      "text": "POST /login?user=alice&pwd=fake-pwd-0004 HTTP/1.1",
+      "secret": "fake-pwd-0004",
+      "keep": ["user=alice"]
+    }
+  ]
+}

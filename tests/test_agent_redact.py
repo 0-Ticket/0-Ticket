@@ -1,5 +1,10 @@
 """Agent Log 비밀 값 가림 세 가지(#209). 값은 모두 가짜다."""
 
+import json
+from pathlib import Path
+
+import pytest
+
 from soc.agent.redact import REDACTED, build_redactor
 
 CONFIG = {
@@ -96,3 +101,75 @@ def test_multiline_secret_is_redacted_whole_escaped_and_partial() -> None:
         assert line not in escaped
     assert partial == f"head\n{REDACTED}\n" + lines[2][:40]
     assert redactor(lines[2]) == REDACTED
+
+
+# 모델 입력 가림(#279, D-048)
+SAMPLES = json.loads(
+    (Path(__file__).parent / "fixtures" / "agent" / "redact_samples.json").read_text(
+        encoding="utf-8"
+    )
+)
+ADMIN_ENV = {"LLM_API_KEY": "admin"}  # 흔한 낱말이지만 8자 미만이라 가리지 않는다
+
+
+def _names(items: list[dict]) -> list[str]:
+    return [i["name"] for i in items]
+
+
+@pytest.mark.parametrize("sample", SAMPLES["kept"], ids=_names(SAMPLES["kept"]))
+def test_normal_strings_are_not_changed(sample: dict) -> None:
+    redactor = build_redactor(CONFIG, ADMIN_ENV)
+    assert redactor(sample["text"]) == sample["text"]
+    assert redactor({"x": sample["text"]}) == {"x": sample["text"]}
+
+
+@pytest.mark.parametrize("sample", SAMPLES["masked"], ids=_names(SAMPLES["masked"]))
+def test_secret_shaped_samples_are_masked(sample: dict) -> None:
+    out = build_redactor(CONFIG, ADMIN_ENV)(sample["text"])
+    secrets = sample["secret"] if isinstance(sample["secret"], list) else [sample["secret"]]
+    for secret in secrets:
+        assert secret not in out
+    for keep in sample["keep"]:
+        assert keep in out
+    assert REDACTED in out
+
+
+def test_redaction_is_idempotent() -> None:
+    redactor = build_redactor(CONFIG, {**ENV, **ADMIN_ENV})
+    texts = [s["text"] for s in SAMPLES["kept"] + SAMPLES["masked"]]
+    texts += ["fake-llm-key-aaaa Bearer fake-ffff password=fake-eeee", ENV["DATABASE_URL"]]
+    for text in texts:
+        once = redactor(text)
+        assert redactor(once) == once
+
+
+def test_env_value_minimum_length_is_eight() -> None:
+    config = {"llm": {"api_key_env": "LLM_API_KEY"}}
+    assert build_redactor(config, {"LLM_API_KEY": "abc1234"})("key abc1234") == "key abc1234"
+    assert build_redactor(config, {"LLM_API_KEY": "abc12345"})("key abc12345") == f"key {REDACTED}"
+
+
+def test_pwd_value_starting_with_slash_is_skipped_but_other_pwd_values_are_masked() -> None:
+    redactor = build_redactor({}, {})
+    assert redactor("PWD=/home/alice") == "PWD=/home/alice"
+    assert redactor("Pwd=fake-odbc-0005;") == f"Pwd={REDACTED};"
+    assert redactor("pwd: fake-pwd-0006") == f"pwd: {REDACTED}"
+
+
+def test_id_shaped_values_are_never_changed() -> None:
+    long_id = "alt_01a19f93-1150-7000-8000-000000000004"
+    env = {"LLM_API_KEY": "7000-8000"}  # ID 한가운데 조각과 같은 값
+    redactor = build_redactor(CONFIG, env)
+    assert redactor(long_id) == long_id
+    assert redactor(f'{{"id": "{long_id}", "k": "7000-8000"}}') == (
+        f'{{"id": "{long_id}", "k": "{REDACTED}"}}'
+    )
+
+
+def test_secret_keys_in_json_text_match_the_object_key_rule() -> None:
+    redactor = build_redactor({}, {})
+    value = {"token": "fake-t-0007", "client_secret": "fake-s-0008", "authorization": "Digest x"}
+    as_text = json.dumps(value)
+    assert redactor(value) == dict.fromkeys(value, REDACTED)
+    out = redactor(as_text)
+    assert all(v not in out for v in ("fake-t-0007", "fake-s-0008", "Digest x"))
