@@ -25,7 +25,8 @@ def test_default_config_reads_into_analyze_settings() -> None:
     settings = read_analyze_settings(load_config(REPO_CONFIG)["l2"])
 
     assert settings.lookback_ms == 86_400_000
-    assert settings.max_analysis_rounds == 5
+    assert settings.max_failures == 3
+    assert settings.failure_retry_cooldown_ms == 3_600_000
     assert settings.max_seed_entities == 10
     assert settings.max_related_per_entity == 20
 
@@ -35,7 +36,8 @@ def test_default_config_reads_into_analyze_settings() -> None:
     [
         lambda c: c.pop("analyze"),
         lambda c: c["analyze"].update(lookback_ms=0),
-        lambda c: c["analyze"].update(max_analysis_rounds=True),
+        lambda c: c["analyze"].update(max_failures=True),
+        lambda c: c["analyze"].update(failure_retry_cooldown_ms=0),
         lambda c: c["analyze"].update(max_seed_entities="10"),
         lambda c: c["analyze"].update(max_related_per_entity=0),
         lambda c: c["analyze"].update(extra=1),

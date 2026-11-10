@@ -106,5 +106,23 @@
       "updated_at": 1793679010000,
       "details": {}
     }
+  },
+  {
+    "case": "held_after_three_failures",
+    "data": {
+      "id": "inc_01a19f93-1150-7000-8000-000000000008",
+      "title": "검토할 웹 요청",
+      "summary": null,
+      "status": "held",
+      "ticket_ids": ["tkt_01a19f93-1150-7000-8000-000000000008"],
+      "entities": [{"type": "ip", "value": "203.0.113.8", "role": "src"}],
+      "severity": 3,
+      "assessed_severity": null,
+      "analysis_round": 3,
+      "review_round": 0,
+      "created_at": 1793679000000,
+      "updated_at": 1793679060000,
+      "details": {"l2_analyze": {"failure_streak": 3, "held_at": 1793679060000}}
+    }
   }
 ]

@@ -14,14 +14,15 @@ export interface Incident {
    */
   summary: string | null;
   /**
-   * analyzing: L2 분석 필요·중, awaiting_review: 사람 검토 대기, confirmed: 사람 승인(Case 생성), human_handling: 사람이 직접 처리, dismissed: 위협 아님으로 종결(L2가 분석 후, 또는 사람이 검토 중이나 직접 처리를 끝낼 때)
+   * analyzing: L2 분석 필요·중, held: L2 연속 실패 소진 후 쿨다운 대기, awaiting_review: 사람 검토 대기, confirmed: 사람 승인(Case 생성), human_handling: 사람이 직접 처리, dismissed: 위협 아님으로 종결(L2가 분석 후, 또는 사람이 검토 중이나 직접 처리를 끝낼 때)
    */
   status:
     | "analyzing"
     | "awaiting_review"
     | "confirmed"
     | "human_handling"
-    | "dismissed";
+    | "dismissed"
+    | "held";
   /**
    * 1개 이상. 중복 없음
    *
@@ -41,7 +42,7 @@ export interface Incident {
    */
   assessed_severity: number | null;
   /**
-   * L2 분석 횟수
+   * L2 분석 시도 순번. 성공·실패마다 증가하고 취소에는 증가하지 않는다
    */
   analysis_round: number;
   /**

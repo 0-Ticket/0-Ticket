@@ -80,6 +80,7 @@ def save_success(
     incident_id: str,
     *,
     expected_round: int,
+    expected_ticket_ids: list[str],
     findings: dict[str, Any],
     analysis: dict[str, Any],
     attack_names: dict[str, str],
@@ -112,7 +113,13 @@ def save_success(
         updated = {
             **incident,
             "summary": analysis["summary"],
-            "status": "dismissed" if analysis["verdict"] == "not_threat" else "awaiting_review",
+            "status": (
+                "analyzing"
+                if incident["ticket_ids"] != expected_ticket_ids
+                else "dismissed"
+                if analysis["verdict"] == "not_threat"
+                else "awaiting_review"
+            ),
             "entities": _merge_entities(
                 incident["entities"], [item["entity"] for item in findings["entities"]]
             ),
@@ -137,6 +144,7 @@ def save_failure(
     failure: str,
     run_id: str,
     asset_lookup_failed: bool,
+    max_failures: int,
     now_ms: int,
 ) -> bool:
     with conn.transaction():
@@ -149,6 +157,7 @@ def save_failure(
             return False
         next_round = expected_round + 1
         l2 = dict(incident["details"].get("l2_analyze", {}))
+        l2["failure_streak"] = l2.get("failure_streak", 0) + 1
         l2["asset_lookup_failed"] = asset_lookup_failed
         l2["failures"] = [
             *l2.get("failures", []),
@@ -156,36 +165,13 @@ def save_failure(
         ]
         updated = {
             **incident,
+            "status": "held" if l2["failure_streak"] >= max_failures else "analyzing",
             "analysis_round": next_round,
             "updated_at": now_ms,
             "details": {**incident["details"], "l2_analyze": l2},
         }
-        validate_contract("incident", updated)
-        _update_incident(conn, updated)
-        return True
-
-
-def mark_stopped(
-    conn: psycopg.Connection,
-    incident_id: str,
-    *,
-    expected_round: int,
-    now_ms: int,
-) -> bool:
-    with conn.transaction():
-        incident = _locked_incident(conn, incident_id)
-        if (
-            incident is None
-            or incident["status"] != "analyzing"
-            or incident["analysis_round"] != expected_round
-        ):
-            return False
-        l2 = {**incident["details"].get("l2_analyze", {}), "stopped": "round_limit"}
-        updated = {
-            **incident,
-            "updated_at": now_ms,
-            "details": {**incident["details"], "l2_analyze": l2},
-        }
+        if updated["status"] == "held":
+            l2["held_at"] = now_ms
         validate_contract("incident", updated)
         _update_incident(conn, updated)
         return True
@@ -196,9 +182,11 @@ def _diagnostics(
 ) -> dict[str, Any]:
     l2 = dict(details.get("l2_analyze", {}))
     l2.pop("stopped", None)
+    l2.pop("held_at", None)
     l2.update(
         asset_lookup_failed=asset_lookup_failed,
         dropped_techniques=dropped_techniques,
+        failure_streak=0,
     )
     return {**details, "l2_analyze": l2}
 

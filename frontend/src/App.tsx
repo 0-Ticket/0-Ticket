@@ -63,6 +63,7 @@ const states: Record<Resource, string[]> = {
   tickets: ["new", "held", "closed", "escalated", "linked"],
   incidents: [
     "analyzing",
+    "held",
     "awaiting_review",
     "confirmed",
     "human_handling",

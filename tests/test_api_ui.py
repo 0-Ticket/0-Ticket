@@ -163,6 +163,20 @@ def test_review_is_incident_and_artifacts_are_preserved(ui_client):
 
 
 @pytest.mark.db
+def test_held_incident_is_filterable_and_visible_on_dashboard(ui_client, ui_db):
+    incident_id = SEED["incidents"][0]["id"]
+    with psycopg.connect(ui_db) as conn:
+        conn.execute("UPDATE incidents SET status = 'held' WHERE id = %s", (incident_id,))
+
+    items = ui_client.get("/api/incidents", params={"status": "held"}).json()["items"]
+    dashboard = ui_client.get("/api/dashboard").json()
+
+    assert [item["id"] for item in items] == [incident_id]
+    assert dashboard["incident_status"]["held"] == 1
+    assert incident_id in {item["id"] for item in dashboard["top_incidents"]}
+
+
+@pytest.mark.db
 def test_dashboard_uses_whole_dataset_and_zero_is_not_fallback(ui_client):
     r = ui_client.get("/api/dashboard")
     assert r.status_code == 200, r.text

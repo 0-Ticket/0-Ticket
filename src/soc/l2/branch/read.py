@@ -9,7 +9,7 @@ from psycopg.rows import dict_row
 
 from soc.contracts import to_epoch_ms, validate_contract
 
-_OPEN_STATUSES = ("analyzing", "awaiting_review", "human_handling")
+_OPEN_STATUSES = ("analyzing", "awaiting_review", "human_handling", "held")
 _CLOSED_STATUSES = ("confirmed", "dismissed")
 _RECENT_INCIDENTS_QUERY = """
 SELECT * FROM incidents
