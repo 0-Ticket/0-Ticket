@@ -221,11 +221,11 @@ export function LoginPage() {
 export function SignupPage() {
   const form = useRef<HTMLFormElement>(null);
   const [errors, setErrors] = useState<Errors>({});
-  const displayName = useRef("");
+  const [displayName, setDisplayName] = useState("");
   const signup = useMutation<SignupResult, ApiError>({
     mutationFn: () => {
       const value = read(form.current!);
-      displayName.current = value("display_name").trim();
+      setDisplayName(value("display_name").trim());
       return send<SignupResult>("POST", "auth/signup", {
         username: value("username").trim().toLowerCase(),
         display_name: value("display_name").trim(),
@@ -263,7 +263,7 @@ export function SignupPage() {
             </div>
             <div>
               <dt>표시 이름</dt>
-              <dd>{displayName.current}</dd>
+              <dd>{displayName}</dd>
             </div>
             <div>
               <dt>상태</dt>
