@@ -12,25 +12,22 @@ import {
   Pie,
   Cell,
 } from "recharts";
+import { Icon, type IconName } from "./components/icons";
+import { JsonViewer } from "./components/json-viewer";
+import { FilterChips } from "./components/filter-chips";
+import logo from "./assets/o-ticket-mark.png";
 import { Button } from "./components/ui/button";
-import {
-  get,
-  itemId,
-  itemTitle,
-  itemStatus,
-  itemSeverity,
-  seedSource,
-} from "./api/client";
+import { get, itemId, itemTitle, itemStatus, itemSeverity } from "./api/client";
 import type { Resource, Page, Item, Detail } from "./api/client";
 import type { Dashboard } from "./api/generated/Dashboard";
 
-const menu = [
-  ["/", "대시보드", "◫"],
-  ["/alerts", "Alert/Event", "≋"],
-  ["/tickets", "Ticket", "▤"],
-  ["/incidents", "Incident", "◈"],
-  ["/cases", "Case", "▣"],
-  ["/hunts", "Hunting", "◎"],
+const menu: [string, string, IconName][] = [
+  ["/", "DashBoard", "dashboard"],
+  ["/alerts", "Alert/Event", "alerts"],
+  ["/tickets", "Ticket", "tickets"],
+  ["/incidents", "Incident", "incidents"],
+  ["/cases", "Case", "cases"],
+  ["/hunts", "Hunting", "hunts"],
 ];
 const titles: Record<Resource, string> = {
   alerts: "Alert / Event",
@@ -75,22 +72,29 @@ const states: Record<Resource, string[]> = {
   hunts: ["pending", "confirmed", "rejected", "inconclusive", "failed"],
 };
 const colors = [
-  "#94a3b8",
-  "#94a3b8",
-  "#38bdf8",
-  "#eab308",
-  "#f97316",
-  "#ef4444",
-  "#a855f7",
+  "#cccccc",
+  "#447ee3",
+  "#447ee3",
+  "#ffbf00",
+  "#ffbf00",
+  "#cf0000",
+  "#cf0000",
 ];
-const severityNames = ["미상", "정보", "낮음", "보통", "높음", "심각", "치명"];
+const chartColors = ["#447ee3", "#44aff2", "#2ba68f", "#56b364", "#d9d9d9"];
+const severityNames = [
+  "미상",
+  "1 Level",
+  "2 Level",
+  "3 Level",
+  "4 Level",
+  "5 Level",
+  "6 Level",
+];
 function Severity({ value }: { value: number | null }) {
   return value === null ? (
     <span>—</span>
   ) : (
-    <span className={`badge severity s${value}`}>
-      {value === 0 ? "미상" : `${value} · ${severityNames[value]}`}
-    </span>
+    <span className={`badge severity s${value}`}>{severityNames[value]}</span>
   );
 }
 function Status({ value }: { value: string }) {
@@ -122,21 +126,13 @@ function Bars({
   const data = Object.entries(counts)
     .filter(([key]) => !risk || key !== "0")
     .map(([key, value]) => ({
-      name: risk
-        ? `${key} ${severityNames[Number(key)]}`
-        : (statusNames[key] ?? key),
+      name: risk ? severityNames[Number(key)] : (statusNames[key] ?? key),
       value,
       key,
     }));
   if (risk) data.reverse();
   if (data.every((d) => d.value === 0))
-    return (
-      <p className="empty">
-        {risk && counts["0"]
-          ? `알려진 위험도 없음 · 미상 ${counts["0"]}건`
-          : "데이터 없음"}
-      </p>
-    );
+    return <p className="empty">데이터 없음</p>;
   return (
     <>
       <div aria-hidden="true">
@@ -174,25 +170,26 @@ function Bars({
             />
             <Tooltip />
             <Bar
+              isAnimationActive={false}
               dataKey="value"
               name="건수"
               radius={horizontal ? [0, 5, 5, 0] : [5, 5, 0, 0]}
               maxBarSize={40}
             >
-              {data.map((d) => (
+              {data.map((d, index) => (
                 <Cell
                   key={d.key}
-                  fill={risk ? colors[Number(d.key)] : "#3b82f6"}
+                  fill={
+                    risk
+                      ? colors[Number(d.key)]
+                      : chartColors[index % chartColors.length]
+                  }
                 />
               ))}
             </Bar>
           </BarChart>
         </ResponsiveContainer>
       </div>
-      <p className="chart-caption">
-        {data.map((d) => `${d.name} ${d.value}건`).join(" · ")}
-        {risk ? ` · 미상 ${counts["0"] ?? 0}건` : ""}
-      </p>
     </>
   );
 }
@@ -204,42 +201,59 @@ function Normalization({
   counts: Dashboard["normalization"][string];
 }) {
   const data = [
-    { name: "성공", value: counts.succeeded },
-    { name: "실패", value: counts.failed },
+    { name: "성공", value: counts.succeeded, color: "#447ee3" },
+    { name: "실패", value: counts.failed, color: "#cf0000" },
+    { name: "대기", value: counts.pending, color: "#cccccc" },
   ];
+  const total = counts.succeeded + counts.failed + counts.pending;
   return (
-    <article className="card">
-      <h3>{name} 정규화</h3>
+    <article className="card normalization-card">
+      <h3>{name} 정규화 현황</h3>
       <div className="donut">
-        <ResponsiveContainer
-          width="100%"
-          height={140}
-          initialDimension={{ width: 250, height: 140 }}
-        >
-          <PieChart>
-            <Pie
-              data={data}
-              dataKey="value"
-              innerRadius={45}
-              outerRadius={62}
-              stroke="none"
-            >
-              {data.map((d, i) => (
-                <Cell key={d.name} fill={i ? "#f97316" : "#3b82f6"} />
-              ))}
-            </Pie>
-            <Tooltip />
-          </PieChart>
-        </ResponsiveContainer>
-        <strong>
-          {counts.success_ratio === null
-            ? "데이터 없음"
-            : `${Math.round(counts.success_ratio * 100)}%`}
-        </strong>
+        <div aria-hidden="true">
+          <ResponsiveContainer
+            width="100%"
+            height={140}
+            initialDimension={{ width: 250, height: 140 }}
+          >
+            <PieChart>
+              <Pie
+                isAnimationActive={false}
+                data={
+                  total
+                    ? data
+                    : [{ name: "데이터 없음", value: 1, color: "#edf1f6" }]
+                }
+                dataKey="value"
+                innerRadius={45}
+                outerRadius={62}
+                startAngle={90}
+                endAngle={450}
+                stroke="none"
+              >
+                {(total
+                  ? data
+                  : [{ name: "데이터 없음", color: "#edf1f6" }]
+                ).map((d) => (
+                  <Cell key={d.name} fill={d.color} />
+                ))}
+              </Pie>
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="donut-total">
+          <span>전체</span>
+          <strong>{total}건</strong>
+        </div>
       </div>
-      <p className="chart-caption">
-        성공 {counts.succeeded} · 실패 {counts.failed} · 대기 {counts.pending}
-      </p>
+      <div className="normalization-counts">
+        {data.map((d) => (
+          <div key={d.name}>
+            <span>{d.name}</span>
+            <strong style={{ color: d.color }}>{d.value}건</strong>
+          </div>
+        ))}
+      </div>
     </article>
   );
 }
@@ -260,68 +274,104 @@ function SmallList({ items }: { items: Dashboard["top_incidents"] }) {
     <p className="empty">데이터 없음</p>
   );
 }
+function RiskBars({ counts }: { counts: Record<string, number> }) {
+  const max = Math.max(1, ...Object.values(counts));
+  return (
+    <div className="risk-bars" aria-label="Ticket 위험도 분포">
+      {[6, 5, 4, 3, 2, 1, 0].map((level) => (
+        <div className="risk-row" key={level}>
+          <span>{severityNames[level]}</span>
+          <div className="risk-track">
+            <span
+              style={{
+                width: `${((counts[level] ?? 0) / max) * 100}%`,
+                background: colors[level],
+              }}
+            />
+          </div>
+          <span>{counts[level] ?? 0}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
 function DashboardView({ data }: { data: Dashboard }) {
-  const steps = [
-    ["normalization_pending", "정규화 대기"],
-    ["l1_alerts_pending", "L1 대기 Alert"],
-    ["l1_tickets_pending", "L1 대기 Ticket"],
-    ["tickets", "Ticket 생성"],
-    ["incidents", "Incident 생성"],
-    ["cases", "Case 이관"],
+  const steps: [string, number][] = [
+    ["정규화 대기 중인\nAlert/Event", data.flow.normalization_pending],
+    ["Ticket 승격을 위해\n대기 중인 Alert", data.flow.l1_alerts_pending],
+    ["L2 승격을 위해\n대기 중인 Ticket", data.flow.l1_tickets_pending],
+    [
+      "Incident으로 묶이기\n위해 대기 중인 Ticket",
+      data.ticket_status.escalated,
+    ],
+    ["생성된\nIncident", data.flow.incidents],
+    ["승인된\nCase", data.flow.cases],
   ];
   return (
     <>
-      <section className="flow-grid">
-        {steps.map(([key, label], i) => (
-          <article className="kpi" key={key}>
-            <span>
-              {String(i + 1).padStart(2, "0")} / {label}
-            </span>
-            <strong>
-              {(data.flow[key] ?? 0).toLocaleString()}
-              <small>건</small>
-            </strong>
-            <p>{i < 3 ? "현재 대기" : "보관된 전체 건수"}</p>
-          </article>
+      <ol className="flow-grid" aria-label="처리 흐름">
+        {steps.map(([label, count]) => (
+          <li className="kpi" key={label}>
+            <span>{label}</span>
+            <strong>{(count ?? 0).toLocaleString()}</strong>
+          </li>
         ))}
-      </section>
+      </ol>
       <div className="dashboard-grid">
-        <article className="card span-2">
+        <div className="dashboard-stack">
+          <article className="card">
+            <div className="card-heading">
+              <h3>Tickets by Risk Level</h3>
+              <Link to="/tickets">전체 보기 →</Link>
+            </div>
+            <p className="chart-caption">전체 {data.flow.tickets}건</p>
+            <RiskBars counts={data.ticket_severity} />
+          </article>
+          <article className="card hunting-card">
+            <div className="card-heading">
+              <h3>Threat Hunting</h3>
+              <Link to="/hunts">헌팅 결과 보기 →</Link>
+            </div>
+            <div className="hunting-metrics">
+              <div>
+                <span>가설 검증</span>
+                <strong>
+                  {data.hunting.total}
+                  <small>건</small>
+                </strong>
+              </div>
+              <div>
+                <span>Ticket 승격</span>
+                <strong>
+                  {data.hunting.promoted}
+                  <small>건</small>
+                </strong>
+              </div>
+            </div>
+            <p className="chart-caption">
+              전체 가설 대비 승격{" "}
+              {data.hunting.promotion_ratio === null
+                ? "데이터 없음"
+                : `${Math.round(data.hunting.promotion_ratio * 100)}%`}
+            </p>
+            <div className="progress">
+              <span
+                style={{
+                  width: `${(data.hunting.promotion_ratio ?? 0) * 100}%`,
+                }}
+              />
+            </div>
+          </article>
+        </div>
+        <article className="card top-incidents">
           <div className="card-heading">
-            <h3>Ticket 위험도 분포</h3>
-            <Link to="/tickets">전체 보기 →</Link>
-          </div>
-          <Bars counts={data.ticket_severity} risk />
-        </article>
-        <article className="card hunting-card">
-          <h3>위협 헌팅</h3>
-          <strong>
-            {data.hunting.total}
-            <small> 가설</small>
-          </strong>
-          <p>Ticket 승격 {data.hunting.promoted}건</p>
-          <div className="progress">
-            <span
-              style={{ width: `${(data.hunting.promotion_ratio ?? 0) * 100}%` }}
-            />
-          </div>
-          <p className="chart-caption">
-            전체 가설 대비 승격{" "}
-            {data.hunting.promotion_ratio === null
-              ? "데이터 없음"
-              : `${Math.round(data.hunting.promotion_ratio * 100)}%`}
-          </p>
-          <Link to="/hunts">헌팅 결과 보기 →</Link>
-        </article>
-        <article className="card span-2">
-          <div className="card-heading">
-            <h3>분석 결과가 있는 Incident</h3>
+            <h3>Incident Risk Top 10</h3>
             <Link to="/incidents">전체 보기 →</Link>
           </div>
-          <SmallList items={data.analyzed_incidents} />
-        </article>
-        <article className="card">
-          <h3>위험 높은 Incident · Top 10</h3>
+          <div className="small-list-heading">
+            <span>Incident 정보</span>
+            <span>위험도</span>
+          </div>
           <SmallList items={data.top_incidents} />
         </article>
       </div>
@@ -347,29 +397,20 @@ function Overview({ resource, data }: { resource: Resource; data: Dashboard }) {
     return (
       <article className="card">
         <h3>Incident 상태 · 전체 {data.flow.incidents}건</h3>
-        <Bars counts={data.incident_status} horizontal />
+        <Bars counts={data.incident_status} />
       </article>
     );
   if (resource === "hunts")
     return (
       <article className="card">
         <h3>
-          전체 가설 {data.hunting.total}건 · Ticket 승격 {data.hunting.promoted}
+          전체 가설 {data.hunting.total}건 / Ticket 승격 {data.hunting.promoted}
           건
         </h3>
-        <p>
-          전체 가설 대비 승격 비율:{" "}
-          {data.hunting.promotion_ratio === null
-            ? "데이터 없음"
-            : `${Math.round(data.hunting.promotion_ratio * 100)}%`}
-        </p>
         <Bars counts={data.hunting.statuses} />
       </article>
     );
   return null;
-}
-function SafeJson({ value }: { value: unknown }) {
-  return <pre className="json">{JSON.stringify(value, null, 2)}</pre>;
 }
 function internalLink(id: string, resource: Resource, label: string) {
   if (
@@ -385,17 +426,8 @@ function internalLink(id: string, resource: Resource, label: string) {
   );
 }
 function DetailBody({ data }: { data: Detail }) {
-  const seed =
-    "seed_source" in data
-      ? data.seed_source
-      : "hunt" in data
-        ? data.hunt.details.seed_source
-        : null;
   return (
     <>
-      {typeof seed === "string" && (
-        <p className="seed-note">개발 시드 · {seed}</p>
-      )}
       {"ticket" in data && (
         <>
           <Severity value={data.severity} />
@@ -407,7 +439,7 @@ function DetailBody({ data }: { data: Detail }) {
               internalLink(data.ticket.hunt_id, "hunts", "원본 Hunt")}
           </div>
           <h3>Ticket 판정과 근거</h3>
-          <SafeJson value={data.ticket} />
+          <JsonViewer value={data.ticket} />
         </>
       )}
       {"incident" in data && (
@@ -418,13 +450,13 @@ function DetailBody({ data }: { data: Detail }) {
             )}
           </div>
           <h3>Incident</h3>
-          <SafeJson value={data.incident} />
+          <JsonViewer value={data.incident} />
           <h3>라운드별 분석 보고서</h3>
           {data.artifacts.length ? (
             data.artifacts.map((a) => (
               <section key={a.id}>
                 <h4>분석 라운드 {a.analysis_round}</h4>
-                <SafeJson value={a} />
+                <JsonViewer value={a} />
                 {data.proposals
                   .filter((p) => p.artifact_id === a.id)
                   .map((p) => (
@@ -457,7 +489,7 @@ function DetailBody({ data }: { data: Detail }) {
             {internalLink(data.case.incident_id, "incidents", "원본 Incident")}
           </div>
           <h3>승인된 Case</h3>
-          <SafeJson value={data.case} />
+          <JsonViewer value={data.case} />
         </>
       )}
       {"raw_record" in data && (
@@ -465,9 +497,9 @@ function DetailBody({ data }: { data: Detail }) {
           <Status value={data.normalize_status} />
           {data.error_code && <p>실패 코드: {data.error_code}</p>}
           <h3>{data.record ? "정규화 결과 · OCSF" : "정규화 결과 없음"}</h3>
-          {data.record && <SafeJson value={data.record} />}
+          {data.record && <JsonViewer value={data.record} />}
           <h3>수집 원본</h3>
-          <SafeJson value={data.raw_record} />
+          <JsonViewer value={data.raw_record} />
         </>
       )}
       {"hunt" in data && (
@@ -477,7 +509,7 @@ function DetailBody({ data }: { data: Detail }) {
               internalLink(data.ticket_id, "tickets", "승격 Ticket")}
           </div>
           <h3>가설과 검증 결과</h3>
-          <SafeJson value={data.hunt} />
+          <JsonViewer value={data.hunt} />
           <h3>검증 과정 · 실행 요약</h3>
           {data.runs.length ? (
             data.runs.map((r) => (
@@ -485,14 +517,14 @@ function DetailBody({ data }: { data: Detail }) {
                 <strong>
                   {r.task ?? "실행"} · {r.outcome}
                 </strong>
-                <SafeJson value={r} />
+                <JsonViewer value={r} />
               </div>
             ))
           ) : (
             <p>실행 기록이 없습니다.</p>
           )}
           <h3>ATT&amp;CK 기법</h3>
-          <SafeJson value={data.techniques} />
+          <JsonViewer value={data.techniques} />
         </>
       )}
     </>
@@ -528,7 +560,14 @@ function DetailPanel({
       <header>
         <div>
           <span className="eyebrow">RECORD DETAIL</span>
-          <h2 id="detail-title">{titles[resource]} 상세</h2>
+          <h2 id="detail-title">
+            {resource === "alerts"
+              ? "Alert"
+              : resource === "events"
+                ? "Event"
+                : titles[resource]}{" "}
+            상세
+          </h2>
         </div>
         <Button variant="ghost" onClick={onClose} aria-label="상세 닫기">
           ✕
@@ -546,16 +585,48 @@ function DetailPanel({
     </dialog>
   );
 }
+const PAGE_SIZE = 25;
+// The list API has no total; derive it from dashboard counts. Origin/severity filters have no count.
+function totalCount(
+  resource: Resource,
+  status: string,
+  filtered: boolean,
+  d?: Dashboard,
+) {
+  if (!d || filtered) return undefined;
+  const raw = (n: Dashboard["normalization"][string]) => ({
+    pending: n.pending,
+    succeeded: n.succeeded,
+    failed: n.failed,
+  });
+  const by: Record<string, number> =
+    resource === "alerts"
+      ? raw(d.normalization.alert)
+      : resource === "events"
+        ? raw(d.normalization.event)
+        : resource === "tickets"
+          ? d.ticket_status
+          : resource === "incidents"
+            ? d.incident_status
+            : resource === "cases"
+              ? d.case_status
+              : d.hunting.statuses;
+  return status
+    ? (by[status] ?? 0)
+    : Object.values(by).reduce((a, b) => a + b, 0);
+}
 function ListView({
   resource,
   waiting = false,
+  summary,
 }: {
   resource: Resource;
   waiting?: boolean;
+  summary?: Dashboard;
 }) {
   const [search, setSearch] = useSearchParams();
   const status = waiting ? "awaiting_review" : (search.get("status") ?? "");
-  const params = new URLSearchParams({ limit: "25" });
+  const params = new URLSearchParams({ limit: String(PAGE_SIZE) });
   for (const key of ["cursor", "origin", "severity"])
     if (search.get(key) && (resource === "tickets" || key === "cursor"))
       params.set(key, search.get(key)!);
@@ -568,6 +639,7 @@ function ListView({
   function change(key: string, value: string) {
     const next = new URLSearchParams(search);
     next.delete("cursor");
+    next.delete("trail");
     next.delete("selected");
     if (value) next.set(key, value);
     else next.delete(key);
@@ -578,61 +650,89 @@ function ListView({
     next.set("selected", itemId(item));
     setSearch(next);
   }
+  // Repeated query parameters preserve opaque cursors across refresh/back/forward.
+  const trail = search.has("cursor")
+    ? search.has("trail")
+      ? search.getAll("trail")
+      : [""]
+    : [];
+  function page(direction: "previous" | "next") {
+    const next = new URLSearchParams(search);
+    next.delete("selected");
+    next.delete("trail");
+    const history = [...trail];
+    if (direction === "next") {
+      if (!query.data?.next_cursor) return;
+      history.push(search.get("cursor") ?? "");
+      next.set("cursor", query.data.next_cursor);
+    } else {
+      const previous = history.pop();
+      if (previous) next.set("cursor", previous);
+      else next.delete("cursor");
+    }
+    history.forEach((cursor) => next.append("trail", cursor));
+    setSearch(next);
+  }
   const selected = search.get("selected");
+  const current = trail.length + 1;
+  const total = totalCount(
+    resource,
+    status,
+    resource === "tickets" &&
+      !!(search.get("severity") || search.get("origin")),
+    summary,
+  );
+  // An old cursor link can start past the last page; never show N greater than the maximum.
+  const last =
+    total === undefined
+      ? "-"
+      : Math.max(Math.ceil(total / PAGE_SIZE), 1, current);
   return (
     <section className="card list-card">
       <div className="list-toolbar">
-        <h3>{waiting ? "승인 대기 Incident" : titles[resource]} 목록</h3>
+        <h3>
+          {waiting
+            ? "승인 대기 Incident"
+            : resource === "alerts"
+              ? "Alert"
+              : resource === "events"
+                ? "Event"
+                : titles[resource]}{" "}
+          목록
+        </h3>
         <div className="filters">
           {!waiting && (
-            <label>
-              상태
-              <select
-                aria-label="상태 필터"
-                value={status}
-                onChange={(e) => change("status", e.target.value)}
-              >
-                <option value="">전체 상태</option>
-                {states[resource].map((s) => (
-                  <option value={s} key={s}>
-                    {statusNames[s]}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <FilterChips
+              label={
+                resource === "alerts" || resource === "events"
+                  ? "정규화 상태"
+                  : "처리 상태"
+              }
+              name="상태 필터"
+              value={status}
+              options={states[resource].map((s) => [s, statusNames[s]])}
+              onChange={(v) => change("status", v)}
+            />
           )}
           {resource === "tickets" && (
             <>
-              <label>
-                출처
-                <select
-                  aria-label="출처 필터"
-                  value={search.get("origin") ?? ""}
-                  onChange={(e) => change("origin", e.target.value)}
-                >
-                  <option value="">전체 출처</option>
-                  {["auto", "scenario", "l1", "l3"].map((o) => (
-                    <option key={o} value={o}>
-                      {o}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                위험도
-                <select
-                  aria-label="위험도 필터"
-                  value={search.get("severity") ?? ""}
-                  onChange={(e) => change("severity", e.target.value)}
-                >
-                  <option value="">전체 위험도</option>
-                  {severityNames.map((s, i) => (
-                    <option key={i} value={i}>
-                      {i === 0 ? "미상" : `${i} ${s}`}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <FilterChips
+                label="위험도"
+                name="위험도 필터"
+                value={search.get("severity") ?? ""}
+                options={[6, 5, 4, 3, 2, 1, 0].map((i) => [
+                  String(i),
+                  severityNames[i],
+                ])}
+                onChange={(v) => change("severity", v)}
+              />
+              <FilterChips
+                label="출처"
+                name="출처 필터"
+                value={search.get("origin") ?? ""}
+                options={["auto", "scenario", "l1", "l3"].map((v) => [v, v])}
+                onChange={(v) => change("origin", v)}
+              />
             </>
           )}
         </div>
@@ -652,7 +752,6 @@ function ListView({
                   <th>제목 / ID</th>
                   <th>상태</th>
                   <th>위험도</th>
-                  <th>구분</th>
                   <th>시각</th>
                 </tr>
               </thead>
@@ -661,6 +760,9 @@ function ListView({
                   <tr key={itemId(item)} onClick={() => select(item)}>
                     <td>
                       <button className="record-link">{itemTitle(item)}</button>
+                      {"origin" in item && (
+                        <span className="origin-label">{item.origin}</span>
+                      )}
                       <small className="record-id">{itemId(item)}</small>
                     </td>
                     <td>
@@ -668,15 +770,6 @@ function ListView({
                     </td>
                     <td>
                       <Severity value={itemSeverity(item)} />
-                    </td>
-                    <td>
-                      {seedSource(item) ? (
-                        <span className="badge seed">개발 시드</span>
-                      ) : "origin" in item ? (
-                        item.origin
-                      ) : (
-                        "—"
-                      )}
                     </td>
                     <td className="date">
                       {new Date(
@@ -697,24 +790,26 @@ function ListView({
         <p className="empty">조건에 맞는 데이터가 없습니다.</p>
       )}
       <footer className="pagination">
-        <span>최신순 · 페이지당 25건</span>
-        <div>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!search.has("cursor")}
-            onClick={() => change("cursor", "")}
+        <div className="pagination-controls">
+          <button
+            aria-label="이전 페이지"
+            disabled={!search.has("cursor") || query.isFetching}
+            onClick={() => page("previous")}
           >
-            처음
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!query.data?.next_cursor || query.isFetching}
-            onClick={() => change("cursor", query.data?.next_cursor ?? "")}
+            <Icon name="left" />
+          </button>
+          <span aria-live="polite">
+            {current}/{last}
+          </span>
+          <button
+            aria-label="다음 페이지"
+            disabled={
+              !query.data?.next_cursor || query.isFetching || !!query.error
+            }
+            onClick={() => page("next")}
           >
-            다음 페이지
-          </Button>
+            <Icon name="right" />
+          </button>
         </div>
       </footer>
       {selected && (
@@ -749,12 +844,16 @@ export default function App() {
     <div className="app-shell">
       <aside className="sidebar">
         <Link className="brand" to="/">
-          <span className="brand-mark">0</span>
+          <img className="brand-mark" src={logo} alt="" />
           <span>
-            0-Ticket<small>SECURITY OPERATIONS</small>
+            Ø-Ticket
+            <small>
+              AI Agent-based
+              <br />
+              SOC Automation
+            </small>
           </span>
         </Link>
-        <span className="nav-label">WORKSPACE</span>
         <nav>
           {menu.map(([path, label, icon]) => (
             <NavLink
@@ -767,53 +866,39 @@ export default function App() {
                   : ""
               }
             >
-              <span aria-hidden="true">{icon}</span>
+              <span className="menu-icon">
+                <Icon name={icon} />
+              </span>
               {label}
             </NavLink>
           ))}
         </nav>
         <div className="sidebar-bottom">
-          <div className="workspace-status">
-            <span />
-            읽기 전용 워크스페이스
-          </div>
-          <button disabled>로그인 · 준비 중</button>
-          <button disabled>설정 · 준비 중</button>
-          <small>0-Ticket SOC</small>
+          <span className="profile">
+            <span className="profile-icon">
+              <Icon name="profile" />
+            </span>
+            관리자
+          </span>
+          <button type="button" className="settings">
+            <Icon name="settings" />
+            설정
+          </button>
         </div>
       </aside>
       <div className="workspace">
-        <header className="topbar">
-          <span>
-            Workspace <b>/</b> {resource ? titles[resource] : "Overview"}
-          </span>
-          <span className="readonly">조회 전용</span>
-        </header>
         <main>
           <header className="page-heading">
             <div>
-              <span className="eyebrow">SECURITY OPERATIONS CENTER</span>
               <h1>
                 {isHome
-                  ? "대시보드"
+                  ? "DashBoard"
                   : resource
                     ? titles[resource]
                     : "페이지를 찾을 수 없습니다"}
               </h1>
-              <p>
-                {isHome
-                  ? "알럿부터 사고 분석까지, 보관된 전체 자료의 현재 상태를 확인하세요."
-                  : "분석 결과를 조회하고 연결된 원본과 근거를 확인하세요."}
-              </p>
             </div>
-            <Button variant="outline" onClick={() => void dashboard.refetch()}>
-              집계 새로고침 ↻
-            </Button>
           </header>
-          <p className="scope-note">
-            전체 보관 자료 기준 · 개발 시드 포함 · 시간대{" "}
-            {Intl.DateTimeFormat().resolvedOptions().timeZone}
-          </p>
           {dashboard.isPending ? (
             <p role="status">집계 불러오는 중…</p>
           ) : dashboard.error ? (
@@ -857,11 +942,13 @@ export default function App() {
               key={`${resource}/${waiting}`}
               resource={waiting ? "incidents" : resource}
               waiting={waiting}
+              summary={dashboard.data}
             />
           )}
         </main>
         <footer className="workspace-footer">
-          0-Ticket SOC <span>판정은 에이전트, 확정은 사람.</span>
+          0-Ticket SOC{" "}
+          <a href="https://github.com/0-Ticket">https://github.com/0-Ticket</a>
         </footer>
       </div>
     </div>

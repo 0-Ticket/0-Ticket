@@ -1,0 +1,17 @@
+{
+  "id": "raw_01a19f93-1266-7000-8000-000000000901",
+  "title": "샘플 제목",
+  "fetched_at": 1793678580000,
+  "verdict": null,
+  "tags": ["T1190", "T1059"],
+  "empty_list": [],
+  "empty_object": {},
+  "entities": [
+    { "type": "ip", "value": "203.0.113.10", "role": "src" },
+    { "type": "url", "value": "https://example.com/login", "role": "target" }
+  ],
+  "original": {
+    "message": "<img src=x onerror=alert(1)> **bold** [link](https://example.com)",
+    "<b>key</b>": "값"
+  }
+}
