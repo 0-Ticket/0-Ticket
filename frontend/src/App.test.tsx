@@ -1,98 +1,10 @@
-import { afterAll, afterEach, beforeAll, expect, test } from "vitest";
-import {
-  render,
-  screen,
-  fireEvent,
-  waitFor,
-  within,
-} from "@testing-library/react";
-import { MemoryRouter, useLocation } from "react-router";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { expect, test } from "vitest";
+import { screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
-import { setupServer } from "msw/node";
 import seed from "../../tests/fixtures/api/ui_seed.json";
 import sample from "../../tests/fixtures/frontend/json_viewer.json";
-import App from "./App";
+import { adminMe, server, requests, show, dashboard } from "./test-utils";
 
-const server = setupServer();
-const requests: URL[] = [];
-beforeAll(() => {
-  server.listen({ onUnhandledFrame: "error" });
-  server.events.on("request:start", ({ request }) =>
-    requests.push(new URL(request.url)),
-  );
-});
-afterEach(() => {
-  server.resetHandlers();
-  requests.length = 0;
-});
-afterAll(() => server.close());
-function Where() {
-  const location = useLocation();
-  return (
-    <output data-testid="where">{location.pathname + location.search}</output>
-  );
-}
-function show(path: string) {
-  return render(
-    <QueryClientProvider
-      client={
-        new QueryClient({ defaultOptions: { queries: { retry: false } } })
-      }
-    >
-      <MemoryRouter initialEntries={[path]}>
-        <App />
-        <Where />
-      </MemoryRouter>
-    </QueryClientProvider>,
-  );
-}
-function dashboard(
-  ticketSeverity = { 0: 2, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1 },
-) {
-  server.use(
-    http.get("*/api/dashboard", () =>
-      HttpResponse.json({
-        flow: {
-          normalization_pending: 2,
-          l1_alerts_pending: 1,
-          l1_tickets_pending: 1,
-          tickets: 8,
-          incidents: 5,
-          cases: 1,
-        },
-        ticket_severity: ticketSeverity,
-        ticket_status: {
-          new: 1,
-          held: 0,
-          closed: 0,
-          escalated: 3,
-          linked: 4,
-        },
-        incident_status: { awaiting_review: 1 },
-        case_status: { open: 1 },
-        normalization: {
-          alert: { succeeded: 7, failed: 1, pending: 1, success_ratio: 0.875 },
-          event: { succeeded: 1, failed: 1, pending: 1, success_ratio: 0.5 },
-        },
-        hunting: {
-          statuses: { pending: 1, confirmed: 1 },
-          total: 5,
-          promoted: 1,
-          promotion_ratio: 0.2,
-        },
-        analyzed_incidents: [
-          {
-            ...seed.incidents[1],
-            display_severity: 5,
-            seed_source: "dev-seed-ui",
-          },
-        ],
-        top_incidents: [],
-      }),
-    ),
-  );
-}
 test("unknown-only ticket risk shows no count text", async () => {
   dashboard({ 0: 2, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 });
   server.use(
@@ -262,7 +174,7 @@ test("error retries and empty data are distinct", async () => {
   );
   show("/hunts");
   expect(await screen.findByRole("alert")).toHaveTextContent(
-    "불러오지 못했습니다",
+    "서버에 일시적으로 연결할 수 없어요",
   );
   fireEvent.click(screen.getByRole("button", { name: "다시 시도" }));
   expect(
@@ -429,16 +341,19 @@ test("ticket origin and case status filters are kept as chips", async () => {
     await screen.findByRole("group", { name: "상태 필터" }),
   ).toHaveTextContent("해결됨");
 });
-test("profile text and settings button make no request or navigation", async () => {
+test("user area shows the account and opens settings without extra requests", async () => {
   dashboard();
   show("/");
   await screen.findByRole("list", { name: "처리 흐름" });
-  expect(screen.getByText("관리자")).toBeInTheDocument();
+  expect(screen.getByText(adminMe.display_name)).toBeInTheDocument();
+  expect(screen.getByText("admin")).toBeInTheDocument();
   const before = requests.length;
-  fireEvent.click(screen.getByRole("button", { name: "설정" }));
-  await new Promise((resolve) => setTimeout(resolve, 20));
+  fireEvent.click(screen.getByRole("link", { name: "설정" }));
+  expect(
+    await screen.findByRole("heading", { name: "내 계정" }),
+  ).toBeInTheDocument();
+  expect(screen.getByTestId("where")).toHaveTextContent(/^\/settings$/);
   expect(requests.length).toBe(before);
-  expect(screen.getByTestId("where")).toHaveTextContent(/^\/$/);
 });
 
 test("normalization includes pending in total and shows no success rate", async () => {

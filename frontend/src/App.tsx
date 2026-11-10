@@ -1,5 +1,11 @@
 import { useEffect, useRef } from "react";
-import { Link, NavLink, useLocation, useSearchParams } from "react-router";
+import {
+  Link,
+  Navigate,
+  NavLink,
+  useLocation,
+  useSearchParams,
+} from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
   BarChart,
@@ -17,17 +23,36 @@ import { JsonViewer } from "./components/json-viewer";
 import { FilterChips } from "./components/filter-chips";
 import logo from "./assets/o-ticket-mark.png";
 import { Button } from "./components/ui/button";
-import { get, itemId, itemTitle, itemStatus, itemSeverity } from "./api/client";
+import {
+  ApiError,
+  get,
+  itemId,
+  itemTitle,
+  itemStatus,
+  itemSeverity,
+} from "./api/client";
 import type { Resource, Page, Item, Detail } from "./api/client";
 import type { Dashboard } from "./api/generated/Dashboard";
+import type { Me } from "./api/generated/Me";
+import {
+  ForcedPasswordPage,
+  LoginPage,
+  SettingsPage,
+  SignupPage,
+} from "./auth/pages";
+import { useLoginTarget, useLogout, useMe } from "./auth/session";
 
-const menu: [string, string, IconName][] = [
-  ["/", "DashBoard", "dashboard"],
-  ["/alerts", "Alert/Event", "alerts"],
-  ["/tickets", "Ticket", "tickets"],
-  ["/incidents", "Incident", "incidents"],
-  ["/cases", "Case", "cases"],
-  ["/hunts", "Hunting", "hunts"],
+const menu: [string, string, IconName, string[]][] = [
+  ["/", "DashBoard", "dashboard", ["dashboard.read"]],
+  ["/alerts", "Alert/Event", "alerts", ["alert.read", "event.read"]],
+  ["/tickets", "Ticket", "tickets", ["ticket.read"]],
+  ["/incidents", "Incident", "incidents", ["incident.read"]],
+  ["/cases", "Case", "cases", ["case.read"]],
+  ["/hunts", "Hunting", "hunts", ["hunt.read"]],
+];
+const adminMenu: [string, string, string][] = [
+  ["/policy", "Ticket 정책", "policy.read"],
+  ["/users", "사용자 관리", "user.read"],
 ];
 const titles: Record<Resource, string> = {
   alerts: "Alert / Event",
@@ -106,12 +131,45 @@ function Status({ value }: { value: string }) {
   );
 }
 function ErrorState({ error, retry }: { error: Error; retry: () => void }) {
+  const code = error instanceof ApiError ? error.code : "";
+  const known: Record<string, [string, string, string]> = {
+    permission_denied: [
+      "이 화면을 볼 권한이 없어요",
+      "계정에 필요한 권한이 없어요. 권한이 필요하면 관리자에게 요청해 주세요.",
+      "403 · permission_denied",
+    ],
+    db_unavailable: [
+      "서버에 일시적으로 연결할 수 없어요",
+      "데이터베이스에 연결하지 못했어요. 입력한 내용은 그대로 유지돼요. 잠시 후 다시 시도해 주세요.",
+      "503 · db_unavailable",
+    ],
+    origin_not_allowed: [
+      "허용되지 않은 접속 주소예요",
+      "현재 접속한 주소는 변경 요청이 허용된 목록에 없어요. 계정 권한과는 관계없어요. 관리자에게 접속 주소 등록을 요청해 주세요.",
+      "403 · origin_not_allowed",
+    ],
+  };
+  const info = known[code];
   return (
     <div role="alert" className="empty">
-      <p>{error.message}</p>
-      <Button variant="outline" onClick={retry}>
-        다시 시도
-      </Button>
+      {info ? (
+        <>
+          <h3>{info[0]}</h3>
+          <p>{info[1]}</p>
+          <small>{info[2]}</small>
+        </>
+      ) : (
+        <p>{error.message}</p>
+      )}
+      {code === "permission_denied" ? (
+        <Button variant="outline" asChild>
+          <Link to="/">대시보드로 이동</Link>
+        </Button>
+      ) : (
+        <Button variant="outline" onClick={retry}>
+          다시 시도
+        </Button>
+      )}
     </div>
   );
 }
@@ -828,18 +886,23 @@ function ListView({
     </section>
   );
 }
-export default function App() {
+function Workspace({ me }: { me: Me }) {
   const location = useLocation();
+  const logout = useLogout();
   const [search] = useSearchParams();
   const slug = location.pathname.slice(1);
   const resource = (
     Object.hasOwn(titles, slug) ? slug : null
   ) as Resource | null;
+  const isHome = location.pathname === "/";
   const dashboard = useQuery({
     queryKey: ["dashboard"],
     queryFn: ({ signal }) => get<Dashboard>("dashboard", signal),
+    enabled: isHome || resource !== null,
   });
-  const isHome = location.pathname === "/";
+  const can = (names: string[]) =>
+    names.some((n) => me.permissions.includes(n));
+  const page = location.pathname === "/settings" ? "settings" : null;
   const waiting = resource === "cases" && search.get("tab") === "waiting";
   return (
     <div className="app-shell">
@@ -856,34 +919,59 @@ export default function App() {
           </span>
         </Link>
         <nav>
-          {menu.map(([path, label, icon]) => (
-            <NavLink
-              key={path}
-              to={path}
-              end={path === "/"}
-              className={({ isActive }) =>
-                isActive || (path === "/alerts" && resource === "events")
-                  ? "active"
-                  : ""
-              }
-            >
-              <span className="menu-icon">
-                <Icon name={icon} />
-              </span>
-              {label}
-            </NavLink>
-          ))}
+          {menu
+            .filter(([, , , needs]) => can(needs))
+            .map(([path, label, icon]) => (
+              <NavLink
+                key={path}
+                to={path}
+                end={path === "/"}
+                className={({ isActive }) =>
+                  isActive || (path === "/alerts" && resource === "events")
+                    ? "active"
+                    : ""
+                }
+              >
+                <span className="menu-icon">
+                  <Icon name={icon} />
+                </span>
+                {label}
+              </NavLink>
+            ))}
+          {adminMenu.some(([, , needs]) => can([needs])) && (
+            <>
+              <hr />
+              <span className="menu-group">관리</span>
+              {adminMenu
+                .filter(([, , needs]) => can([needs]))
+                .map(([path, label]) => (
+                  <NavLink key={path} to={path}>
+                    {label}
+                  </NavLink>
+                ))}
+            </>
+          )}
         </nav>
         <div className="sidebar-bottom">
           <span className="profile">
             <span className="profile-icon">
               <Icon name="profile" />
             </span>
-            관리자
+            <span className="profile-text">
+              <strong>{me.display_name}</strong>
+              <span className="role-badge">{me.role}</span>
+            </span>
           </span>
-          <button type="button" className="settings">
+          <Link className="settings" to="/settings">
             <Icon name="settings" />
             설정
+          </Link>
+          <button
+            type="button"
+            className="settings"
+            onClick={() => logout.mutate()}
+          >
+            로그아웃
           </button>
         </div>
       </aside>
@@ -894,13 +982,17 @@ export default function App() {
               <h1>
                 {isHome
                   ? "DashBoard"
-                  : resource
-                    ? titles[resource]
-                    : "페이지를 찾을 수 없습니다"}
+                  : page
+                    ? "설정"
+                    : resource
+                      ? titles[resource]
+                      : "페이지를 찾을 수 없습니다"}
               </h1>
             </div>
           </header>
-          {dashboard.isPending ? (
+          {page === "settings" ? (
+            <SettingsPage me={me} />
+          ) : !isHome && !resource ? null : dashboard.isPending ? (
             <p role="status">집계 불러오는 중…</p>
           ) : dashboard.error ? (
             <ErrorState
@@ -954,4 +1046,37 @@ export default function App() {
       </div>
     </div>
   );
+}
+export default function App() {
+  const location = useLocation();
+  const me = useMe();
+  const target = useLoginTarget();
+  const path = location.pathname;
+  if (me.isPending) return <p role="status">불러오는 중…</p>;
+  if (me.error)
+    return <ErrorState error={me.error} retry={() => void me.refetch()} />;
+  const user = me.data;
+  if (!user) {
+    if (path === "/login") return <LoginPage />;
+    if (path === "/signup") return <SignupPage />;
+    return (
+      <Navigate
+        to="/login"
+        replace
+        state={{ from: location.pathname + location.search }}
+      />
+    );
+  }
+  if (path === "/login" || path === "/signup")
+    return (
+      <Navigate to={user.must_change_password ? "/password" : target} replace />
+    );
+  if (user.must_change_password)
+    return path === "/password" ? (
+      <ForcedPasswordPage />
+    ) : (
+      <Navigate to="/password" replace />
+    );
+  if (path === "/password") return <Navigate to="/" replace />;
+  return <Workspace me={user} />;
 }
