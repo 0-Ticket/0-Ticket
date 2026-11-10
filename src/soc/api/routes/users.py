@@ -6,7 +6,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, Request
 
 from soc.api import db
-from soc.api.auth import require_permission
+from soc.api.auth import require_permission, require_role
 from soc.api.auth_models import (
     ANALYST_DEFAULTS,
     ApproveBody,
@@ -19,7 +19,7 @@ from soc.api.auth_models import (
     UserList,
     UserStatus,
 )
-from soc.api.errors import NotFound
+from soc.api.errors import InvalidQuery, NotFound
 from soc.auth import store
 from soc.auth.permissions import PERMISSIONS
 from soc.auth.store import User
@@ -28,7 +28,7 @@ router = APIRouter()
 
 Reader = Annotated[User, Depends(require_permission("user.read"))]
 Approver = Annotated[User, Depends(require_permission("user.approve"))]
-RoleSetter = Annotated[User, Depends(require_permission("user.role"))]
+AdminOnly = Annotated[User, Depends(require_role("admin"))]
 PermissionSetter = Annotated[User, Depends(require_permission("user.permission"))]
 
 
@@ -49,9 +49,16 @@ def list_users(
     request: Request,
     actor: Reader,
     status: Annotated[UserStatus | None, Query()] = None,
+    cursor: Annotated[str | None, Query(min_length=1, max_length=64)] = None,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
 ) -> dict:
+    try:
+        after = store.decode_cursor(cursor) if cursor else None
+    except ValueError:
+        raise InvalidQuery("cursor") from None
     with db.connect(request.app.state.settings) as conn:
-        return {"items": store.list_records(conn, status)}
+        items, next_cursor = store.list_records(conn, status, after, limit)
+    return {"items": items, "next_cursor": next_cursor}
 
 
 @router.get("/permissions", response_model=PermissionList)
@@ -99,7 +106,7 @@ def change_role(
     request: Request,
     user_id: str,
     body: RoleBody,
-    actor: RoleSetter,
+    actor: AdminOnly,
 ) -> dict:
     return _write(request, store.set_role, actor, user_id, body.role)
 

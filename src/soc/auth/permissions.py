@@ -27,7 +27,6 @@ PERMISSIONS = (
     "policy.update",
     "user.read",
     "user.approve",
-    "user.role",
     "user.permission",
     *sorted(UNUSED),
 )

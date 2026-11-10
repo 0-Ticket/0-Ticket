@@ -18,9 +18,9 @@ UID = str(uuid.UUID(int=7))
 # 권한
 
 
-def test_permission_catalog_has_17_names_and_9_analyst_defaults() -> None:
-    assert len(PERMISSIONS) == 17
-    assert len(set(PERMISSIONS)) == 17
+def test_permission_catalog_has_16_names_and_9_analyst_defaults() -> None:
+    assert len(PERMISSIONS) == 16
+    assert len(set(PERMISSIONS)) == 16
     assert all(name.count(".") == 1 for name in PERMISSIONS)
     assert set(ANALYST_DEFAULT) <= set(PERMISSIONS)
     assert len(ANALYST_DEFAULT) == 9
@@ -189,7 +189,6 @@ PERMISSION_TABLE = [
         "user.approve",
         {"temporary_password": "test-only-password-0003"},
     ),
-    ("PATCH", f"/api/users/{UID}", "user.role", BODY_ROLE),
     ("PUT", f"/api/users/{UID}/permissions", "user.permission", {"permissions": []}),
 ]
 
@@ -197,6 +196,7 @@ PERMISSION_TABLE = [
 def test_permission_table_covers_every_protected_route() -> None:
     covered = {(m, p) for m, p, _, _ in PERMISSION_TABLE}
     login_only = {
+        ("PATCH", f"/api/users/{UID}"),  # 역할 변경은 권한이 아니라 admin 역할이 필요하다
         ("GET", "/api/auth/me"),
         ("POST", "/api/auth/logout"),
         ("POST", "/api/auth/password"),
@@ -204,7 +204,7 @@ def test_permission_table_covers_every_protected_route() -> None:
     }
     expected = set()
     for method, path in all_operations():
-        if (method, path) not in PUBLIC | login_only:
+        if (method, fill(path)) not in PUBLIC | login_only:
             expected.add((method, fill(path)))
     assert covered == expected
 
@@ -225,6 +225,17 @@ def test_route_needs_exactly_its_permission(
     assert admin.request(method, path, json=body).status_code not in (401, 403)
 
 
+def test_role_change_is_admin_only_whatever_permissions_an_analyst_holds(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    path = f"/api/users/{UID}"
+    analyst = make_client(make_user("analyst", frozenset(PERMISSIONS)))
+    denied = analyst.patch(path, json=BODY_ROLE)
+    assert (denied.status_code, denied.json()) == (403, {"error": "forbidden"})
+    assert admin_client().patch(path, json=BODY_ROLE).status_code not in (401, 403)
+
+
 def test_password_change_required_blocks_everything_but_three_routes() -> None:
     client = make_client(make_user("admin", must_change_password=True))
     for method, path, _, body in PERMISSION_TABLE:
@@ -232,6 +243,7 @@ def test_password_change_required_blocks_everything_but_three_routes() -> None:
         assert response.status_code == 403, path
         assert response.json() == {"error": "password_change_required"}
     assert client.get("/api/openapi.json").status_code == 403
+    assert client.patch(f"/api/users/{UID}", json=BODY_ROLE).status_code == 403
     me = client.get("/api/auth/me")
     assert me.status_code == 200
     assert me.json()["must_change_password"] is True
@@ -291,6 +303,26 @@ def test_changing_requests_need_an_allowed_origin(method: str) -> None:
 def test_reads_do_not_need_an_origin() -> None:
     client = TestClient(create_app(load_settings()))
     assert client.get("/api/auth/me").status_code == 401
+
+
+@pytest.mark.parametrize(
+    ("params", "fields"),
+    [
+        ({"cursor": "bad"}, ["cursor"]),
+        ({"cursor": "123_not-a-uuid"}, ["cursor"]),
+        ({"cursor": "1_AAAAAAAA-0000-0000-0000-000000000000"}, ["cursor"]),
+        ({"limit": "0"}, ["limit"]),
+        ({"limit": "201"}, ["limit"]),
+        ({"status": "deleted"}, ["status"]),
+    ],
+)
+def test_bad_users_query_is_422_with_field_names_only(
+    monkeypatch: pytest.MonkeyPatch, params: dict[str, str], fields: list[str]
+) -> None:
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    response = admin_client().get("/api/users", params=params)
+    assert response.status_code == 422
+    assert response.json() == {"error": "invalid_query", "fields": fields}
 
 
 # 요청 본문 검사

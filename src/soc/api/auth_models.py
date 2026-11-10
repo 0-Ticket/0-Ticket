@@ -106,6 +106,7 @@ class UserItem(_Model):
 
 class UserList(_Model):
     items: list[UserItem]
+    next_cursor: str | None
 
 
 class PermissionItem(_Model):

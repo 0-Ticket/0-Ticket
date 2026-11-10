@@ -10,9 +10,11 @@
 """
 
 import hashlib
+import re
 import secrets
 import uuid
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import psycopg
@@ -27,8 +29,6 @@ from soc.contracts import to_epoch_ms
 LOCK_KEY = 5389736483619737918
 
 FIRST_ADMIN = "admin"
-LIST_LIMIT = 500
-
 _COLUMNS = "id, username, display_name, role, status, must_change_password, created_at, approved_at"
 
 
@@ -153,13 +153,40 @@ def get_record(conn: psycopg.Connection, user_id: Any) -> dict[str, Any]:
     return _records(conn, [row])[0]
 
 
-def list_records(conn: psycopg.Connection, status: str | None) -> list[dict[str, Any]]:
+_EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
+_CURSOR = re.compile(
+    r"([0-9]{1,17})_([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})"
+)
+
+
+def decode_cursor(text: str) -> tuple[datetime, uuid.UUID]:
+    """`<만든 시각 마이크로초>_<ID>`. 모양이 틀리면 ValueError다."""
+    match = _CURSOR.fullmatch(text)
+    if match is None:
+        raise ValueError("cursor")
+    return _EPOCH + timedelta(microseconds=int(match[1])), uuid.UUID(match[2])
+
+
+def _encode_cursor(row: dict[str, Any]) -> str:
+    return f"{(row['created_at'] - _EPOCH) // timedelta(microseconds=1)}_{row['id']}"
+
+
+def list_records(
+    conn: psycopg.Connection,
+    status: str | None,
+    after: tuple[datetime, uuid.UUID] | None,
+    limit: int,
+) -> tuple[list[dict[str, Any]], str | None]:
+    """만든 순서로 limit건과 다음 cursor(없으면 None)를 돌려준다."""
     rows = conn.execute(
         f"SELECT {_COLUMNS} FROM users WHERE (%s::text IS NULL OR status = %s) "
+        "AND (%s::timestamptz IS NULL OR (created_at, id) > (%s, %s)) "
         "ORDER BY created_at, id LIMIT %s",
-        (status, status, LIST_LIMIT),
+        (status, status, after and after[0], after and after[0], after and after[1], limit + 1),
     ).fetchall()
-    return _records(conn, rows) if rows else []
+    page = rows[:limit]
+    next_cursor = _encode_cursor(page[-1]) if len(rows) > limit else None
+    return (_records(conn, page) if page else []), next_cursor
 
 
 # 가입·로그인·비밀번호
@@ -324,12 +351,12 @@ def reset_password(
 
 
 def set_role(conn: psycopg.Connection, actor: User, target: uuid.UUID, role: str) -> dict[str, Any]:
+    # 역할 변경은 admin 전용이다(권한으로 위임하지 않는다). 라우트도 require_role로 막는다
+    if actor.role != "admin":
+        raise AuthError(403, "forbidden")
     with conn.transaction():
         _lock(conn)
         row = _target(conn, target)
-        _admin_only_target(actor, row)
-        if role == "admin" and actor.role != "admin":  # 규칙 2
-            raise AuthError(403, "forbidden")
         if row["status"] != "active":
             raise AuthError(409, "invalid_state")
         if row["role"] == role:

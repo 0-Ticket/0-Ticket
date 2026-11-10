@@ -211,6 +211,28 @@ def test_reject_disable_and_duplicate_signup(admin) -> None:
     assert admin.post(f"/api/users/{carol}/approve", json={"role": "analyst"}).status_code == 409
 
 
+def test_users_list_pages_in_creation_order_without_gaps(admin) -> None:
+    for name in ("alice", "bob", "carol", "dave.ops"):
+        assert signup(name).status_code == 201
+
+    def pages(**params):
+        found, cursor = [], None
+        while True:
+            query = {"limit": 2, **params, **({"cursor": cursor} if cursor else {})}
+            body = admin.get("/api/users", params=query).json()
+            assert len(body["items"]) <= 2
+            found += [u["username"] for u in body["items"]]
+            cursor = body["next_cursor"]
+            if cursor is None:
+                return found
+
+    assert pages() == ["admin", "alice", "bob", "carol", "dave.ops"]
+    assert pages(status="pending") == ["alice", "bob", "carol", "dave.ops"]
+    last = admin.get("/api/users", params={"limit": 5}).json()
+    assert last["next_cursor"] is None
+    assert len(last["items"]) == 5
+
+
 def test_users_list_and_permission_catalog(admin) -> None:
     make_user(admin, "alice")
     items = admin.get("/api/users").json()["items"]
@@ -424,7 +446,7 @@ def test_escalation_rules(url, admin) -> None:
     admin_id = user_id(admin, "admin")
     alice, bob = make_user(admin, "alice"), make_user(admin, "bob")
     other_admin = make_user(admin, "carol", "admin")
-    helper = ["user.read", "user.approve", "user.role", "user.permission", "alert.read"]
+    helper = ["user.read", "user.approve", "user.permission", "alert.read"]
     assert (
         admin.put(f"/api/users/{bob}/permissions", json={"permissions": helper}).status_code == 200
     )
