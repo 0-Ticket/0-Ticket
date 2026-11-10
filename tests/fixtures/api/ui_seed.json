@@ -1377,7 +1377,8 @@
       "details": {
         "seed_source": "dev-seed-ui",
         "task": "l3_verify",
-        "attempt": 1
+        "attempt": 1,
+        "validation": "ok"
       }
     }
   ]

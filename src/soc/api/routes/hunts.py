@@ -95,7 +95,7 @@ def get_hunt(request: Request, hunt_id: str) -> dict[str, Any]:
         log_rows = conn.execute(
             "SELECT run_id, seq, kind, outcome, tokens_in, tokens_out, started_at, duration_ms,"
             " details -> 'task' AS task, details -> 'attempt' AS attempt,"
-            " details -> 'failure' AS failure"
+            " details -> 'failure' AS failure, details -> 'validation' AS validation"
             " FROM agent_logs"
             " WHERE subject_type = 'hunt' AND subject_id = ANY(%s)"
             " ORDER BY run_id, seq",
@@ -138,6 +138,8 @@ def summarize_runs(rows: list[dict[str, Any]]) -> list[RunSummary]:
     """줄을 run_id로 묶는다. 결과·실패는 마지막 model 줄(없으면 마지막 줄) 기준이다.
 
     tool 줄의 실패는 정상 흐름에서도 생기므로 run 결과로 보지 않는다.
+    끝난 run에는 details.validation 또는 details.failure가 있는 model 줄이 있다(D-036, #278).
+    그런 줄이 없는 run은 진행 중이거나 강제 종료된 것이라 incomplete다.
     """
     groups: dict[str, list[dict[str, Any]]] = {}
     for row in rows:
@@ -147,6 +149,7 @@ def summarize_runs(rows: list[dict[str, Any]]) -> list[RunSummary]:
         models = [line for line in lines if line["kind"] == "model"]
         last = (models or lines)[-1]
         first = lines[0]
+        finished = any(m["validation"] is not None or m["failure"] is not None for m in models)
         started = min(to_epoch_ms(line["started_at"]) for line in lines)
         ended = max(to_epoch_ms(line["started_at"]) + line["duration_ms"] for line in lines)
         runs.append(
@@ -154,8 +157,8 @@ def summarize_runs(rows: list[dict[str, Any]]) -> list[RunSummary]:
                 run_id=run_id,
                 task=_text(first["task"]),
                 attempt=first["attempt"] if type(first["attempt"]) is int else None,
-                outcome=last["outcome"],
-                failure=_text(last["failure"]),
+                outcome=last["outcome"] if finished else "incomplete",
+                failure=_text(last["failure"]) if finished else None,
                 tokens_in=_sum(lines, "tokens_in"),
                 tokens_out=_sum(lines, "tokens_out"),
                 started_at=started,
