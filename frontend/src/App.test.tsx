@@ -683,3 +683,18 @@ test("dashboard flow has seven stages in scenario mode (design 21a)", async () =
   expect(stages[5]).toHaveTextContent("내 승인 대기");
   expect(stages[5]).toHaveTextContent("1");
 });
+
+test("flow stages describe themselves on hover and focus (design B-2)", async () => {
+  dashboard();
+  show("/");
+  const flow = await screen.findByRole("list", { name: "처리 흐름" });
+  const stage = within(flow)
+    .getAllByRole("listitem")
+    .find((li) => li.textContent?.includes("내 승인 대기"))!;
+  const tip = within(stage).getByRole("tooltip", { hidden: true });
+  expect(tip).toHaveTextContent(
+    "분석이 끝나 사람이 승인·반려하기를 기다리는 Incident",
+  );
+  expect(stage).toHaveAttribute("aria-describedby", tip.id);
+  expect(stage).toHaveAttribute("tabindex", "0");
+});

@@ -345,6 +345,57 @@ h1 {
   font-size: 10px;
   color: #8a96a9;
 }
+.flow-stage {
+  position: relative;
+  outline-offset: 2px;
+}
+.flow-stage:hover .flow-bars strong,
+.flow-stage:hover .flow-label,
+.flow-stage:focus-visible .flow-bars strong,
+.flow-stage:focus-visible .flow-label {
+  color: var(--accent);
+}
+.flow-stage:hover .flow-bar,
+.flow-stage:focus-visible .flow-bar {
+  background: var(--accent);
+}
+.flow-stage:hover .flow-unit,
+.flow-stage:focus-visible .flow-unit {
+  color: #5b86d9;
+}
+/* Design B-2 "Hover Tooltip": dark box above the stage. */
+.flow-tip {
+  display: none;
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  z-index: 5;
+  width: 200px;
+  margin-bottom: 4px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #162841;
+  box-shadow: 0 6px 16px #12254033;
+  color: #fff;
+  font-size: 11px;
+  line-height: 1.5;
+  text-align: left;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.flow-stage:first-child .flow-tip {
+  left: 0;
+  transform: none;
+}
+.flow-stage:last-child .flow-tip {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+.flow-stage:hover .flow-tip,
+.flow-stage:focus-visible .flow-tip {
+  display: block;
+}
 .flow-stage.mine .flow-bars strong,
 .flow-stage.mine .flow-label {
   color: var(--accent);
