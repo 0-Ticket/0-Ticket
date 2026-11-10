@@ -14,7 +14,7 @@ from soc.l2.branch.context import BranchContext
 from soc.l2.branch.decide import Decision
 from soc.l2.branch.read import _contract_row
 
-_OPEN_STATUSES = ("analyzing", "awaiting_review", "human_handling")
+_OPEN_STATUSES = ("analyzing", "awaiting_review", "human_handling", "held")
 _INCIDENT_COLUMNS = (
     "id",
     "title",

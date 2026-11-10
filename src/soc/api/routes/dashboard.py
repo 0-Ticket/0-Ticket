@@ -61,7 +61,7 @@ def dashboard(request: Request):
         ).fetchone()["n"]
         top = conn.execute(
             f"SELECT {read.INCIDENT_COLUMNS} FROM incidents i "
-            "WHERE status IN ('analyzing','awaiting_review','human_handling') "
+            "WHERE status IN ('analyzing','awaiting_review','human_handling','held') "
             "ORDER BY display_severity DESC,i.id DESC LIMIT 10"
         ).fetchall()
         analyzed = conn.execute(

@@ -6,11 +6,12 @@ from datetime import UTC, datetime
 from typing import Any
 
 import psycopg
+from psycopg.types.json import Jsonb
 
 from soc.agent import AgentResult, AgentTask, run_agent
-from soc.contracts import to_epoch_ms
+from soc.contracts import to_datetime, to_epoch_ms
 from soc.l2.analyze.context import read_context
-from soc.l2.analyze.store import mark_stopped, save_failure, save_success
+from soc.l2.analyze.store import save_failure, save_success
 from soc.l2.analyze.tasks import make_investigate_task, make_report_task
 from soc.l2.config import AnalyzeSettings, read_analyze_settings
 from soc.l3.hunt.store import attack_names
@@ -49,32 +50,43 @@ class L2AnalyzeWorker:
     def poll(self, limit: int) -> list[str]:
         if type(limit) is not int or limit < 1:
             raise ValueError("limit은 양의 정수다")
+        cutoff = to_epoch_ms(self._clock()) - self._settings.failure_retry_cooldown_ms
         with psycopg.connect(self._database_url, autocommit=True) as conn:
             rows = conn.execute(
-                "SELECT id FROM incidents WHERE status = 'analyzing' AND "
-                "(analysis_round < %s OR (analysis_round >= %s AND NOT "
-                "(COALESCE(details->'l2_analyze', '{}'::jsonb) ? 'stopped'))) "
+                "SELECT id FROM incidents WHERE status = 'analyzing' OR "
+                "(status = 'held' AND (details->'l2_analyze'->>'held_at')::bigint <= %s) "
                 "ORDER BY updated_at, id LIMIT %s",
-                (
-                    self._settings.max_analysis_rounds,
-                    self._settings.max_analysis_rounds,
-                    limit,
-                ),
+                (cutoff, limit),
             ).fetchall()
         return [row[0] for row in rows]
 
     def handle(self, incident_id: str) -> None:
         now_ms = to_epoch_ms(self._clock())
         with psycopg.connect(self._database_url, autocommit=True) as conn:
-            row = conn.execute(
-                "SELECT status, analysis_round FROM incidents WHERE id = %s", (incident_id,)
-            ).fetchone()
-            if row is None or row[0] != "analyzing":
-                return
-            read_round = row[1]
-            if read_round >= self._settings.max_analysis_rounds:
-                mark_stopped(conn, incident_id, expected_round=read_round, now_ms=now_ms)
-                return
+            with conn.transaction():
+                row = conn.execute(
+                    "SELECT status, analysis_round, details FROM incidents "
+                    "WHERE id = %s FOR UPDATE",
+                    (incident_id,),
+                ).fetchone()
+                if row is None or row[0] not in ("analyzing", "held"):
+                    return
+                if row[0] == "held":
+                    details = row[2]
+                    l2 = dict(details.get("l2_analyze", {}))
+                    held_at = l2.get("held_at")
+                    if type(held_at) is not int or (
+                        now_ms - held_at < self._settings.failure_retry_cooldown_ms
+                    ):
+                        return
+                    l2["failure_streak"] = 0
+                    l2.pop("held_at", None)
+                    conn.execute(
+                        "UPDATE incidents SET status = 'analyzing', details = %s, updated_at = %s "
+                        "WHERE id = %s",
+                        (Jsonb({**details, "l2_analyze": l2}), to_datetime(now_ms), incident_id),
+                    )
+                read_round = row[1]
             context = read_context(
                 conn,
                 incident_id,
@@ -97,7 +109,7 @@ class L2AnalyzeWorker:
             if investigation.failure == "cancelled":
                 return
             if not investigation.ok:
-                self._save_failure(conn, incident_id, read_round, investigation, context, now_ms)
+                self._save_failure(conn, incident_id, read_round, investigation, context)
                 return
 
             report_task = make_report_task(
@@ -116,7 +128,7 @@ class L2AnalyzeWorker:
             if report.failure == "cancelled":
                 return
             if not report.ok:
-                self._save_failure(conn, incident_id, read_round, report, context, now_ms)
+                self._save_failure(conn, incident_id, read_round, report, context)
                 return
 
             names = attack_names(conn, self._attack_version)
@@ -124,6 +136,7 @@ class L2AnalyzeWorker:
                 conn,
                 incident_id,
                 expected_round=read_round,
+                expected_ticket_ids=context.incident["ticket_ids"],
                 findings=investigation.output,
                 analysis=report.output,
                 attack_names=names,
@@ -138,7 +151,6 @@ class L2AnalyzeWorker:
         read_round: int,
         result: AgentResult,
         context: Any,
-        now_ms: int,
     ) -> None:
         save_failure(
             conn,
@@ -147,7 +159,8 @@ class L2AnalyzeWorker:
             failure=result.failure or "provider_error",
             run_id=result.run_id,
             asset_lookup_failed=context.asset_lookup_failed,
-            now_ms=now_ms,
+            max_failures=self._settings.max_failures,
+            now_ms=to_epoch_ms(self._clock()),
         )
 
 

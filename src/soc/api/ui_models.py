@@ -17,7 +17,9 @@ from soc.contracts.generated.ticket_schema import Ticket
 NormalizeStatus = Literal["pending", "succeeded", "failed"]
 TicketStatus = Literal["new", "closed", "held", "escalated", "linked"]
 TicketOrigin = Literal["auto", "scenario", "l1", "l3"]
-IncidentStatus = Literal["analyzing", "awaiting_review", "confirmed", "human_handling", "dismissed"]
+IncidentStatus = Literal[
+    "analyzing", "awaiting_review", "confirmed", "human_handling", "dismissed", "held"
+]
 CaseStatus = Literal["open", "in_progress", "resolved"]
 
 

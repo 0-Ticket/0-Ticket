@@ -78,7 +78,8 @@ def test_build_analyze_worker_reads_shared_settings(monkeypatch: pytest.MonkeyPa
     full = config()
     full["l2"]["analyze"] = {
         "lookback_ms": 1000,
-        "max_analysis_rounds": 5,
+        "max_failures": 3,
+        "failure_retry_cooldown_ms": 3_600_000,
         "max_seed_entities": 10,
         "max_related_per_entity": 20,
     }

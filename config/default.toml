@@ -253,7 +253,8 @@ top_k = 50
 # L2 Incident 분석(#261). 성공·실패한 분석 라운드 수가 한도에 이르면 모델을 부르지 않는다.
 [l2.analyze]
 lookback_ms = 86_400_000
-max_analysis_rounds = 5
+max_failures = 3
+failure_retry_cooldown_ms = 3_600_000
 max_seed_entities = 10
 max_related_per_entity = 20
 

@@ -14,7 +14,8 @@ _BRANCH_KEYS = {
 }
 _ANALYZE_KEYS = (
     "lookback_ms",
-    "max_analysis_rounds",
+    "max_failures",
+    "failure_retry_cooldown_ms",
     "max_seed_entities",
     "max_related_per_entity",
 )
@@ -35,7 +36,8 @@ class BranchSettings:
 @dataclass(frozen=True)
 class AnalyzeSettings:
     lookback_ms: int
-    max_analysis_rounds: int
+    max_failures: int
+    failure_retry_cooldown_ms: int
     max_seed_entities: int
     max_related_per_entity: int
 

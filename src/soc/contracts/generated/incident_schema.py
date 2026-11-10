@@ -21,9 +21,9 @@ class Incident(BaseModel):
     title: Annotated[str, Field(description="L2가 정한 제목")]
     summary: Annotated[str | None, Field(description="분석 요약. L2가 채운다. 분석 전 null")]
     status: Annotated[
-        Literal["analyzing", "awaiting_review", "confirmed", "human_handling", "dismissed"],
+        Literal["analyzing", "awaiting_review", "confirmed", "human_handling", "dismissed", "held"],
         Field(
-            description="analyzing: L2 분석 필요·중, awaiting_review: 사람 검토 대기, confirmed: 사람 승인(Case 생성), human_handling: 사람이 직접 처리, dismissed: 위협 아님으로 종결(L2가 분석 후, 또는 사람이 검토 중이나 직접 처리를 끝낼 때)"
+            description="analyzing: L2 분석 필요·중, held: L2 연속 실패 소진 후 쿨다운 대기, awaiting_review: 사람 검토 대기, confirmed: 사람 승인(Case 생성), human_handling: 사람이 직접 처리, dismissed: 위협 아님으로 종결(L2가 분석 후, 또는 사람이 검토 중이나 직접 처리를 끝낼 때)"
         ),
     ]
     ticket_ids: Annotated[
@@ -39,7 +39,14 @@ class Incident(BaseModel):
     assessed_severity: Annotated[
         types_schema.Severity | None, Field(description="L2 분석이 판단한 심각도. 분석 전 null")
     ]
-    analysis_round: Annotated[int, Field(description="L2 분석 횟수", ge=0, le=2147483647)]
+    analysis_round: Annotated[
+        int,
+        Field(
+            description="L2 분석 시도 순번. 성공·실패마다 증가하고 취소에는 증가하지 않는다",
+            ge=0,
+            le=2147483647,
+        ),
+    ]
     review_round: Annotated[int, Field(description="사람 검토 횟수", ge=0, le=2147483647)]
     created_at: Annotated[
         int,

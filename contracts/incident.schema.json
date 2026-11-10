@@ -31,9 +31,9 @@
       "type": ["string", "null"]
     },
     "status": {
-      "description": "analyzing: L2 분석 필요·중, awaiting_review: 사람 검토 대기, confirmed: 사람 승인(Case 생성), human_handling: 사람이 직접 처리, dismissed: 위협 아님으로 종결(L2가 분석 후, 또는 사람이 검토 중이나 직접 처리를 끝낼 때)",
+      "description": "analyzing: L2 분석 필요·중, held: L2 연속 실패 소진 후 쿨다운 대기, awaiting_review: 사람 검토 대기, confirmed: 사람 승인(Case 생성), human_handling: 사람이 직접 처리, dismissed: 위협 아님으로 종결(L2가 분석 후, 또는 사람이 검토 중이나 직접 처리를 끝낼 때)",
       "type": "string",
-      "enum": ["analyzing", "awaiting_review", "confirmed", "human_handling", "dismissed"]
+      "enum": ["analyzing", "awaiting_review", "confirmed", "human_handling", "dismissed", "held"]
     },
     "ticket_ids": {
       "description": "1개 이상. 중복 없음",
@@ -59,7 +59,7 @@
       ]
     },
     "analysis_round": {
-      "description": "L2 분석 횟수",
+      "description": "L2 분석 시도 순번. 성공·실패마다 증가하고 취소에는 증가하지 않는다",
       "type": "integer",
       "minimum": 0,
       "maximum": 2147483647

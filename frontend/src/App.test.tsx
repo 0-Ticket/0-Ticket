@@ -104,6 +104,28 @@ test("unknown-only ticket risk shows no count text", async () => {
   expect(await screen.findByText("데이터 없음")).toBeInTheDocument();
   expect(screen.queryByText(/미상 \d+건/)).not.toBeInTheDocument();
 });
+
+test("held incidents can be selected in the status filter", async () => {
+  dashboard();
+  server.use(
+    http.get("*/api/incidents", () =>
+      HttpResponse.json({ items: [], next_cursor: null }),
+    ),
+  );
+  show("/incidents");
+
+  const filters = await screen.findByRole("group", { name: "상태 필터" });
+  fireEvent.click(within(filters).getByRole("button", { name: "보류" }));
+
+  await waitFor(() =>
+    expect(
+      requests
+        .filter((r) => r.pathname === "/api/incidents")
+        .at(-1)
+        ?.searchParams.get("status"),
+    ).toBe("held"),
+  );
+});
 test("Case waiting tab explicitly shows Incidents and disables decisions", async () => {
   dashboard();
   let requestStatus = "";

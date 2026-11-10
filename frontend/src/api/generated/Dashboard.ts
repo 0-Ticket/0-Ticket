@@ -14,7 +14,8 @@ export type Status =
   | "awaiting_review"
   | "confirmed"
   | "human_handling"
-  | "dismissed";
+  | "dismissed"
+  | "held";
 export type Severity = number;
 export type AssessedSeverity = number | null;
 export type DisplaySeverity = number;

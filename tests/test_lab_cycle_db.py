@@ -69,7 +69,11 @@ BRANCH = BranchSettings(
     candidate_window_ms=86_400_000, max_candidates=5, candidate_source="recent", top_k=50
 )
 ANALYZE = AnalyzeSettings(
-    lookback_ms=86_400_000, max_analysis_rounds=5, max_seed_entities=10, max_related_per_entity=20
+    lookback_ms=86_400_000,
+    max_failures=3,
+    failure_retry_cooldown_ms=3_600_000,
+    max_seed_entities=10,
+    max_related_per_entity=20,
 )
 L1_CONFIG = {**CONFIG, "tools": {**CONFIG["tools"], "allowed": {"l1": ["get_alert"]}}}
 READER = "soc_agent_reader"
