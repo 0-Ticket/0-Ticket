@@ -5,12 +5,10 @@ from pathlib import Path
 
 import psycopg
 import pytest
+from auth_support import admin_client
 from psycopg import sql
 from psycopg.types.json import Jsonb
-from starlette.testclient import TestClient
 
-from soc.api.app import create_app
-from soc.api.config import load_settings
 from soc.contracts import to_datetime, validate_contract
 from soc.db.migrate import migrate
 
@@ -92,7 +90,7 @@ def ui_db(temp_database, monkeypatch):
 
 @pytest.fixture
 def ui_client(ui_db):
-    return TestClient(create_app(load_settings()))
+    return admin_client()
 
 
 @pytest.mark.db
@@ -188,7 +186,7 @@ def test_dashboard_uses_whole_dataset_and_zero_is_not_fallback(ui_client):
 @pytest.mark.parametrize("path", ["alerts", "events", "tickets", "incidents", "cases"])
 def test_read_api_rejects_bad_parameters_without_db(path, monkeypatch):
     monkeypatch.delenv("DATABASE_URL", raising=False)
-    c = TestClient(create_app(load_settings()))
+    c = admin_client()
     for params in ({"limit": 0}, {"limit": 201}, {"cursor": "bad<script>"}, {"status": "bad"}):
         r = c.get("/api/" + path, params=params)
         assert r.status_code == 422, r.text
@@ -202,7 +200,7 @@ def test_read_api_rejects_bad_parameters_without_db(path, monkeypatch):
 def test_empty_dashboard_and_missing_details(temp_database, monkeypatch):
     migrate(temp_database)
     monkeypatch.setenv("DATABASE_URL", temp_database)
-    c = TestClient(create_app(load_settings()))
+    c = admin_client()
     d = c.get("/api/dashboard").json()
     assert d["hunting"]["promotion_ratio"] is None
     assert d["normalization"]["alert"]["success_ratio"] is None

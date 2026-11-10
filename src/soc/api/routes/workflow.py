@@ -2,10 +2,11 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, Depends, Query, Request
 
 from soc.api import db
 from soc.api import ui_read as read
+from soc.api.auth import require_permission
 from soc.api.routes.records import Cursor, Limit
 from soc.api.ui_models import (
     CaseDetail,
@@ -23,7 +24,9 @@ from soc.api.ui_models import (
 router = APIRouter()
 
 
-@router.get("/tickets", response_model=TicketPage)
+@router.get(
+    "/tickets", response_model=TicketPage, dependencies=[Depends(require_permission("ticket.read"))]
+)
 def tickets(
     request: Request,
     status: TicketStatus | None = None,
@@ -46,7 +49,11 @@ def tickets(
         )
 
 
-@router.get("/tickets/{ticket_id}", response_model=TicketDetail)
+@router.get(
+    "/tickets/{ticket_id}",
+    response_model=TicketDetail,
+    dependencies=[Depends(require_permission("ticket.read"))],
+)
 def ticket(request: Request, ticket_id: str):
     read.check_id(ticket_id, ("tkt",))
     with db.connect(request.app.state.settings) as conn:
@@ -58,7 +65,11 @@ def ticket(request: Request, ticket_id: str):
     return dict(ticket=row, severity=severity, seed_source=row["details"].get("seed_source"))
 
 
-@router.get("/incidents", response_model=IncidentPage)
+@router.get(
+    "/incidents",
+    response_model=IncidentPage,
+    dependencies=[Depends(require_permission("incident.read"))],
+)
 def incidents(
     request: Request, status: IncidentStatus | None = None, cursor: Cursor = None, limit: Limit = 50
 ):
@@ -70,7 +81,11 @@ def incidents(
         )
 
 
-@router.get("/incidents/{incident_id}", response_model=IncidentDetail)
+@router.get(
+    "/incidents/{incident_id}",
+    response_model=IncidentDetail,
+    dependencies=[Depends(require_permission("incident.read"))],
+)
 def incident(request: Request, incident_id: str):
     read.check_id(incident_id, ("inc",))
     with db.connect(request.app.state.settings) as conn:
@@ -93,7 +108,9 @@ def incident(request: Request, incident_id: str):
     )
 
 
-@router.get("/cases", response_model=CasePage)
+@router.get(
+    "/cases", response_model=CasePage, dependencies=[Depends(require_permission("case.read"))]
+)
 def cases(
     request: Request, status: CaseStatus | None = None, cursor: Cursor = None, limit: Limit = 50
 ):
@@ -105,7 +122,11 @@ def cases(
         )
 
 
-@router.get("/cases/{case_id}", response_model=CaseDetail)
+@router.get(
+    "/cases/{case_id}",
+    response_model=CaseDetail,
+    dependencies=[Depends(require_permission("case.read"))],
+)
 def case(request: Request, case_id: str):
     read.check_id(case_id, ("cas",))
     with db.connect(request.app.state.settings) as conn:

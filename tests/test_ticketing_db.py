@@ -10,12 +10,11 @@ from typing import Any
 
 import psycopg
 import pytest
+from auth_support import admin_client
 from conftest import HiddenUrl
 from psycopg.types.json import Jsonb
 from starlette.testclient import TestClient
 
-from soc.api.app import create_app
-from soc.api.config import load_settings
 from soc.contracts import to_datetime
 from soc.db.migrate import MIGRATIONS_DIR, MigrationError, migrate
 from soc.l1.ticketing import exit_code, main, run
@@ -47,7 +46,7 @@ def api_client(
     migrated_database: HiddenUrl, monkeypatch: pytest.MonkeyPatch
 ) -> Iterator[TestClient]:
     monkeypatch.setenv("DATABASE_URL", migrated_database)
-    with TestClient(create_app(load_settings())) as client:
+    with admin_client() as client:
         yield client
 
 

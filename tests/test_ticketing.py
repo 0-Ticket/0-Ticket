@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 import pytest
-from starlette.testclient import TestClient
+from auth_support import admin_client, make_client
 
 from soc.api.app import create_app
 from soc.api.config import load_settings
@@ -72,19 +72,22 @@ def test_l3_ticket_contract_still_allows_multiple_alerts() -> None:
     validate_contract("ticket", ticket)
 
 
-def test_ticketing_policy_api_is_connected_without_authentication() -> None:
+def test_ticketing_policy_api_is_connected_and_needs_a_session() -> None:
     app = create_app(load_settings())
     operations = app.openapi()["paths"]["/api/ticketing-policy"]
-
     assert set(operations) == {"get", "put"}
-    assert all("security" not in operation for operation in operations.values())
+
+    client = make_client()
+    assert client.get("/api/ticketing-policy").status_code == 401
+    body = {"mode": "auto", "scenario_rule_ids": []}
+    assert client.put("/api/ticketing-policy", json=body).status_code == 401
 
 
 def test_invalid_policy_body_does_not_echo_values_or_require_database(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     marker = "BODY-MUST-NOT-LEAK"
-    with TestClient(create_app(load_settings())) as client:
+    with admin_client() as client:
         response = client.put(
             "/api/ticketing-policy",
             json={"mode": marker, "scenario_rule_ids": []},

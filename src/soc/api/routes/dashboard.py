@@ -2,10 +2,11 @@
 
 from typing import get_args
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 
 from soc.api import db
 from soc.api import ui_read as read
+from soc.api.auth import require_permission
 from soc.api.models import HuntStatus
 from soc.api.ui_models import CaseStatus, Dashboard, IncidentStatus, TicketStatus
 
@@ -19,7 +20,11 @@ def _counts(conn, table, status_type):
     return counts
 
 
-@router.get("/dashboard", response_model=Dashboard)
+@router.get(
+    "/dashboard",
+    response_model=Dashboard,
+    dependencies=[Depends(require_permission("dashboard.read"))],
+)
 def dashboard(request: Request):
     with db.connect(request.app.state.settings) as conn:
         conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY")

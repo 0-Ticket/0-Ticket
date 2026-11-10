@@ -147,6 +147,7 @@ def test_migrate_creates_all_tables_on_empty_db(temp_database: str) -> None:
         "0002_hunts.sql",
         "0003_agent_reader.sql",
         "0004_asset_lookup.sql",
+        "0005_auth.sql",
         "0100_ingest_checkpoint.sql",
         "0101_ingest_runs.sql",
         "0102_raw_links.sql",
@@ -170,6 +171,9 @@ def test_migrate_creates_all_tables_on_empty_db(temp_database: str) -> None:
             "attack_techniques",
             "incident_artifacts",
             "incident_proposals",
+            "users",
+            "user_sessions",
+            "user_permissions",
         }
         assert table_names(conn) == {*TABLES.values(), *other_tables, "schema_migrations"}
 
@@ -181,7 +185,7 @@ def test_migrate_twice_does_not_reapply(temp_database: str) -> None:
 
     assert applied == []
     with psycopg.connect(temp_database) as conn:
-        assert conn.execute("SELECT count(*) FROM schema_migrations").fetchone() == (12,)
+        assert conn.execute("SELECT count(*) FROM schema_migrations").fetchone() == (13,)
 
 
 def test_failed_migration_rolls_back_only_that_file(temp_database: str, tmp_path: Path) -> None:

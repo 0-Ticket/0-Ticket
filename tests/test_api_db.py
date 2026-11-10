@@ -13,12 +13,12 @@ from typing import Any
 
 import psycopg
 import pytest
+from auth_support import admin_client
 from psycopg import sql
 from psycopg.types.json import Jsonb
 from starlette.testclient import TestClient
 
 from soc.api import db as api_db
-from soc.api.app import create_app
 from soc.api.config import load_settings
 from soc.contracts import to_datetime, validate_contract
 from soc.db.migrate import migrate
@@ -101,7 +101,7 @@ def database(temp_database: str, monkeypatch: pytest.MonkeyPatch) -> str:
 
 @pytest.fixture
 def client(database: str) -> Iterator[TestClient]:
-    with TestClient(create_app(load_settings())) as test_client:
+    with admin_client() as test_client:
         yield test_client
 
 

@@ -1,0 +1,11 @@
+{
+  "comment": "손으로 만든 가짜 계정. 비밀번호는 테스트 전용 값이며 어디에도 쓰이지 않는다.",
+  "password": "test-only-password-0001",
+  "new_password": "test-only-password-0002",
+  "accounts": [
+    {"username": "alice", "display_name": "Alice Example"},
+    {"username": "bob", "display_name": "Bob Example"},
+    {"username": "carol", "display_name": "Carol Example"},
+    {"username": "dave.ops", "display_name": "Dave Example"}
+  ]
+}

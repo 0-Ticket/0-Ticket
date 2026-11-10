@@ -8,10 +8,11 @@ import re
 from typing import Annotated, Any
 
 import psycopg
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, Depends, Query, Request
 from psycopg import sql
 
 from soc.api import db
+from soc.api.auth import require_permission
 from soc.api.errors import NotFound
 from soc.api.models import HuntDetail, HuntPage, HuntStatus, RunSummary, Technique
 from soc.contracts import to_epoch_ms
@@ -49,7 +50,9 @@ _DETAIL_COLUMNS = (
 _TIMES = ("verified_at", "created_at", "updated_at")
 
 
-@router.get("/hunts", response_model=HuntPage)
+@router.get(
+    "/hunts", response_model=HuntPage, dependencies=[Depends(require_permission("hunt.read"))]
+)
 def list_hunts(
     request: Request,
     status: Annotated[HuntStatus | None, Query()] = None,
@@ -64,7 +67,11 @@ def list_hunts(
     return {"items": items, "next_cursor": next_cursor}
 
 
-@router.get("/hunts/{hunt_id}", response_model=HuntDetail)
+@router.get(
+    "/hunts/{hunt_id}",
+    response_model=HuntDetail,
+    dependencies=[Depends(require_permission("hunt.read"))],
+)
 def get_hunt(request: Request, hunt_id: str) -> dict[str, Any]:
     if not HUNT_ID.match(hunt_id):
         raise NotFound
