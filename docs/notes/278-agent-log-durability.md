@@ -26,6 +26,7 @@ supersedes: ["211-tool-registry.md"]  # "Agent Log tool 줄 output은 자르기 
 
 ## 계획과 달라진 점
 
+- **형식 오류 재요청의 입력도 앞 입력의 접두다.** 계획은 접두가 아닌 예로 형식 오류 재요청을 들었지만, SDK의 재요청 입력(`to_input_list()` + 사용자 메시지)은 앞 호출의 입력을 그대로 잇는다(테스트로 확인). 그래서 `input_reset`은 지금 SDK 실행에서는 나오지 않고, 기록기에 접두가 아닌 입력을 직접 넣는 테스트로만 확인한다. SDK 버전이 바뀌어 항목 모양이 달라지면 나타날 수 있다.
 - **`tests/test_agent_log_db.py::test_partial_write_is_rolled_back`를 바꿨다.** 이 테스트는 같은 `(run_id, seq)`가 이미 있으면 유일 제약 오류로 묶음 전체가 롤백되는 것을 봤다. 계획대로 `ON CONFLICT DO NOTHING`을 쓰면 같은 `(run_id, seq)`는 오류가 아니라 건너뛰므로, 같은 뜻(한 번에 쓰는 묶음은 한 트랜잭션)을 `seq = 0` 검사 위반으로 확인하게 고쳤다. 같은 `(run_id, seq)`를 건너뛰는 것은 `test_agent_log_durability_db.py`가 따로 본다.
 - **API 샘플의 끝난 run에 `"validation": "ok"`를 더했다**(`tests/fixtures/api/seed.json` 4건, `ui_seed.json` 1건). 읽는 규칙이 생겨 표시가 없으면 `incomplete`로 보이기 때문이다. `ui_seed.json`은 개발 DB 시드(`python -m soc.api.dev_seed`)의 원본이다. 이미 시드한 개발 DB에서는 그 Agent Log 행이 샘플과 달라 시드가 전체를 되돌린다. 해당 행(`seed_source = dev-seed-ui`인 `agent_logs`)을 지우거나 개발 DB를 다시 만든 뒤 시드한다.
 - **테스트를 두 db 파일로 나눴다.** 호출마다 쓰기는 `tests/test_agent_log_durability_db.py`, L3 시도 계산은 `tests/test_l3_attempts_db.py`다.
@@ -67,7 +68,7 @@ supersedes: ["211-tool-registry.md"]  # "Agent Log tool 줄 output은 자르기 
 - `PYTHONUTF8=1 uv run pytest`: 1,403건 통과, 1건 실패(위 `test_migrate` Windows 줄바꿈 파일명, 변경과 무관)
 - 테스트를 먼저 썼다. 구현 전 새 테스트 29개 중 25개가 실패했다(통과한 4개는 동작이 같은 회귀 테스트).
 - 주요 테스트
-  - `tests/test_agent_log_durability.py`: 호출마다 쓰기, 최종 답 줄 보류, 첫 실패에서 중단·재시도, 재시도 실패 시 `log_error`와 남은 줄, 다시 쓰는 줄이 같은 내용, 종료 줄 3가지(`MaxTurnsExceeded`·도구 실행 중 취소·없는 도구 호출)와 `summarize_runs`의 `error`, 강제 종료 run의 `incomplete`, 멈춘 DB(마감 안에 풀림·데몬 스레드·다음 run은 정상), 접속 인자, 시작 전 실패 5가지, `usage.turns`, 입력 복원(`input_reset` 포함), `records` 줄이 모델이 본 결과, L2 최대 시나리오 160,000자 이하
+  - `tests/test_agent_log_durability.py`: 호출마다 쓰기, 최종 답 줄 보류, 첫 실패에서 중단·재시도, 재시도 실패 시 `log_error`와 남은 줄, 다시 쓰는 줄이 같은 내용, 종료 줄 3가지(`MaxTurnsExceeded`·도구 실행 중 취소·없는 도구 호출)와 `summarize_runs`의 `error`, 강제 종료 run의 `incomplete`, 멈춘 DB(마감 안에 풀림·데몬 스레드·다음 run은 정상), 접속 인자, 시작 전 실패 5가지, `usage.turns`, 입력 복원(재요청 입력은 접두, 접두가 아닌 입력은 `input_reset`으로 직접 확인), `records` 줄이 모델이 본 결과, L2 최대 시나리오 160,000자 이하
   - `tests/test_api_run_summary.py`: `summarize_runs`의 `ok`/`error`/`incomplete`
   - `tests/test_agent_log_durability_db.py`, `tests/test_l3_attempts_db.py`(db 마커, 이 PC에서는 돌리지 못함)
   - 고친 기존 테스트: `test_agent_core`·`test_agent_llm`(`run_agent`가 `DATABASE_URL`을 먼저 읽음), `test_tools_registry`·`test_tools_db`(`records` 줄 `output`), `test_agent_log_db`(묶음 롤백)
