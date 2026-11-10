@@ -72,7 +72,7 @@ supersedes: ["211-tool-registry.md"]  # "Agent Log tool 줄 output은 자르기 
 - `PYTHONUTF8=1 uv run ruff format --check .`: 통과
 - `PYTHONUTF8=1 uv run ruff check .`: 통과
 - `PYTHONUTF8=1 uv run python scripts/generate_contracts.py --check`: 통과
-- `PYTHONUTF8=1 uv run pytest`: 1,404건 통과, 1건 실패(위 `test_migrate` Windows 줄바꿈 파일명, 변경과 무관)
+- `PYTHONUTF8=1 uv run pytest`: 1,406건 통과, 1건 실패(위 `test_migrate` Windows 줄바꿈 파일명, 변경과 무관). #270(#289)까지 들어간 최신 main 위로 옮긴 뒤 다시 돌린 값이다
 - 테스트를 먼저 썼다. 구현 전 새 테스트 29개 중 25개가 실패했다(통과한 4개는 동작이 같은 회귀 테스트).
 - 주요 테스트
   - `tests/test_agent_log_durability.py`: 호출마다 쓰기, 최종 답 줄 보류, 첫 실패에서 중단·재시도, 재시도 실패 시 `log_error`와 남은 줄, 다시 쓰는 줄이 같은 내용, 종료 줄 3가지(`MaxTurnsExceeded`·도구 실행 중 취소·없는 도구 호출)와 `summarize_runs`의 `error`, 강제 종료 run의 `incomplete`, 멈춘 DB(마감 안에 풀림·데몬 스레드·다음 run은 정상), 접속 인자, 시작 전 실패 5가지, `usage.turns`, 입력 복원(재요청 입력은 접두, 접두가 아닌 입력은 `input_reset`으로 직접 확인), `records` 줄이 모델이 본 결과, L2 최대 시나리오 160,000자 이하
