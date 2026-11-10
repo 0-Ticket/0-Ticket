@@ -1,98 +1,10 @@
-import { afterAll, afterEach, beforeAll, expect, test } from "vitest";
-import {
-  render,
-  screen,
-  fireEvent,
-  waitFor,
-  within,
-} from "@testing-library/react";
-import { MemoryRouter, useLocation } from "react-router";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { expect, test } from "vitest";
+import { screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
-import { setupServer } from "msw/node";
 import seed from "../../tests/fixtures/api/ui_seed.json";
 import sample from "../../tests/fixtures/frontend/json_viewer.json";
-import App from "./App";
+import { adminMe, server, requests, show, dashboard } from "./test-utils";
 
-const server = setupServer();
-const requests: URL[] = [];
-beforeAll(() => {
-  server.listen({ onUnhandledFrame: "error" });
-  server.events.on("request:start", ({ request }) =>
-    requests.push(new URL(request.url)),
-  );
-});
-afterEach(() => {
-  server.resetHandlers();
-  requests.length = 0;
-});
-afterAll(() => server.close());
-function Where() {
-  const location = useLocation();
-  return (
-    <output data-testid="where">{location.pathname + location.search}</output>
-  );
-}
-function show(path: string) {
-  return render(
-    <QueryClientProvider
-      client={
-        new QueryClient({ defaultOptions: { queries: { retry: false } } })
-      }
-    >
-      <MemoryRouter initialEntries={[path]}>
-        <App />
-        <Where />
-      </MemoryRouter>
-    </QueryClientProvider>,
-  );
-}
-function dashboard(
-  ticketSeverity = { 0: 2, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1 },
-) {
-  server.use(
-    http.get("*/api/dashboard", () =>
-      HttpResponse.json({
-        flow: {
-          normalization_pending: 2,
-          l1_alerts_pending: 1,
-          l1_tickets_pending: 1,
-          tickets: 8,
-          incidents: 5,
-          cases: 1,
-        },
-        ticket_severity: ticketSeverity,
-        ticket_status: {
-          new: 1,
-          held: 0,
-          closed: 0,
-          escalated: 3,
-          linked: 4,
-        },
-        incident_status: { awaiting_review: 1 },
-        case_status: { open: 1 },
-        normalization: {
-          alert: { succeeded: 7, failed: 1, pending: 1, success_ratio: 0.875 },
-          event: { succeeded: 1, failed: 1, pending: 1, success_ratio: 0.5 },
-        },
-        hunting: {
-          statuses: { pending: 1, confirmed: 1 },
-          total: 5,
-          promoted: 1,
-          promotion_ratio: 0.2,
-        },
-        analyzed_incidents: [
-          {
-            ...seed.incidents[1],
-            display_severity: 5,
-            seed_source: "dev-seed-ui",
-          },
-        ],
-        top_incidents: [],
-      }),
-    ),
-  );
-}
 test("unknown-only ticket risk shows no count text", async () => {
   dashboard({ 0: 2, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 });
   server.use(
@@ -262,7 +174,7 @@ test("error retries and empty data are distinct", async () => {
   );
   show("/hunts");
   expect(await screen.findByRole("alert")).toHaveTextContent(
-    "불러오지 못했습니다",
+    "서버에 일시적으로 연결할 수 없어요",
   );
   fireEvent.click(screen.getByRole("button", { name: "다시 시도" }));
   expect(
@@ -273,9 +185,12 @@ test("dashboard shows the design flow and keeps ticket total without removed tex
   dashboard();
   show("/");
   const flow = await screen.findByRole("list", { name: "처리 흐름" });
-  const stage4 = within(flow).getAllByRole("listitem")[3];
-  expect(stage4).toHaveTextContent("Incident으로 묶이기");
-  expect(stage4).toHaveTextContent("3");
+  // 21b (auto mode): six stages, no "Ticket 전환 판단 대기".
+  const stages = within(flow).getAllByRole("listitem");
+  expect(stages).toHaveLength(6);
+  expect(stages[2]).toHaveTextContent("L2 분석 대기");
+  expect(stages[2]).toHaveTextContent("3");
+  expect(within(flow).queryByText("Ticket 전환 판단 대기")).toBeNull();
   expect(screen.getByText("전체 8건")).toBeInTheDocument();
   expect(
     screen.queryByRole("heading", { name: "분석 결과가 있는 Incident" }),
@@ -429,16 +344,19 @@ test("ticket origin and case status filters are kept as chips", async () => {
     await screen.findByRole("group", { name: "상태 필터" }),
   ).toHaveTextContent("해결됨");
 });
-test("profile text and settings button make no request or navigation", async () => {
+test("user area shows the account and opens settings without extra requests", async () => {
   dashboard();
   show("/");
   await screen.findByRole("list", { name: "처리 흐름" });
-  expect(screen.getByText("관리자")).toBeInTheDocument();
+  expect(screen.getByText(adminMe.display_name)).toBeInTheDocument();
+  expect(screen.getByText("admin")).toBeInTheDocument();
   const before = requests.length;
-  fireEvent.click(screen.getByRole("button", { name: "설정" }));
-  await new Promise((resolve) => setTimeout(resolve, 20));
+  fireEvent.click(screen.getByRole("link", { name: "설정" }));
+  expect(
+    await screen.findByRole("heading", { name: "내 계정" }),
+  ).toBeInTheDocument();
+  expect(screen.getByTestId("where")).toHaveTextContent(/^\/settings$/);
   expect(requests.length).toBe(before);
-  expect(screen.getByTestId("where")).toHaveTextContent(/^\/$/);
 });
 
 test("normalization includes pending in total and shows no success rate", async () => {
@@ -747,4 +665,36 @@ test("page indicator shows the maximum from dashboard counts, or - when filtered
     ),
   );
   expect(await screen.findByText("1/-")).toBeInTheDocument();
+});
+
+test("dashboard flow has seven stages in scenario mode (design 21a)", async () => {
+  dashboard();
+  server.use(
+    http.get("*/api/ticketing-policy", () =>
+      HttpResponse.json({ mode: "scenario", scenario_rule_ids: [] }),
+    ),
+  );
+  show("/");
+  const flow = await screen.findByRole("list", { name: "처리 흐름" });
+  const stages = within(flow).getAllByRole("listitem");
+  expect(stages).toHaveLength(7);
+  expect(stages[1]).toHaveTextContent("Ticket 전환 판단 대기");
+  expect(stages[1]).toHaveTextContent("1");
+  expect(stages[5]).toHaveTextContent("내 승인 대기");
+  expect(stages[5]).toHaveTextContent("1");
+});
+
+test("flow stages describe themselves on hover and focus (design B-2)", async () => {
+  dashboard();
+  show("/");
+  const flow = await screen.findByRole("list", { name: "처리 흐름" });
+  const stage = within(flow)
+    .getAllByRole("listitem")
+    .find((li) => li.textContent?.includes("내 승인 대기"))!;
+  const tip = within(stage).getByRole("tooltip", { hidden: true });
+  expect(tip).toHaveTextContent(
+    "분석이 끝나 사람이 승인·반려하기를 기다리는 Incident",
+  );
+  expect(stage).toHaveAttribute("aria-describedby", tip.id);
+  expect(stage).toHaveAttribute("tabindex", "0");
 });

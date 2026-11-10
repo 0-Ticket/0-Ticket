@@ -1,5 +1,13 @@
-import { useEffect, useRef } from "react";
-import { Link, NavLink, useLocation, useSearchParams } from "react-router";
+import { useEffect, useRef, type CSSProperties, type ReactNode } from "react";
+import { PanelResizer } from "./components/panel-resizer";
+import { usePanelWidth } from "./components/use-panel-width";
+import {
+  Link,
+  Navigate,
+  NavLink,
+  useLocation,
+  useSearchParams,
+} from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
   BarChart,
@@ -13,22 +21,56 @@ import {
   Cell,
 } from "recharts";
 import { Icon, type IconName } from "./components/icons";
+import { LineIcon, type LineIconName } from "./components/line-icon";
 import { JsonViewer } from "./components/json-viewer";
 import { FilterChips } from "./components/filter-chips";
 import logo from "./assets/o-ticket-mark.png";
 import { Button } from "./components/ui/button";
-import { get, itemId, itemTitle, itemStatus, itemSeverity } from "./api/client";
+import {
+  ApiError,
+  get,
+  itemId,
+  itemTitle,
+  itemStatus,
+  itemSeverity,
+} from "./api/client";
 import type { Resource, Page, Item, Detail } from "./api/client";
+import { usePager } from "./pager";
+import { ErrorState } from "./error-state";
 import type { Dashboard } from "./api/generated/Dashboard";
+import type { Me } from "./api/generated/Me";
+import {
+  ForcedPasswordPage,
+  LoginPage,
+  SettingsPage,
+  SignupPage,
+} from "./auth/pages";
+import { useCan, useLoginTarget, useLogout, useMe } from "./auth/session";
+import { UsersPage } from "./users/users-page";
+import { PolicyPage } from "./policy-page";
+import { FlowChart } from "./flow-chart";
+import type { TicketingPolicyResponse } from "./api/generated/TicketingPolicyResponse";
 
-const menu: [string, string, IconName][] = [
-  ["/", "DashBoard", "dashboard"],
-  ["/alerts", "Alert/Event", "alerts"],
-  ["/tickets", "Ticket", "tickets"],
-  ["/incidents", "Incident", "incidents"],
-  ["/cases", "Case", "cases"],
-  ["/hunts", "Hunting", "hunts"],
+const menu: [string, string, IconName, string[]][] = [
+  ["/", "DashBoard", "dashboard", ["dashboard.read"]],
+  ["/alerts", "Alert/Event", "alerts", ["alert.read", "event.read"]],
+  ["/tickets", "Ticket", "tickets", ["ticket.read"]],
+  ["/incidents", "Incident", "incidents", ["incident.read"]],
+  ["/cases", "Case", "cases", ["case.read"]],
+  ["/hunts", "Hunting", "hunts", ["hunt.read"]],
 ];
+const adminMenu: [string, string, string, LineIconName][] = [
+  ["/policy", "Ticket 정책", "policy.read", "sliders"],
+  ["/users", "사용자 관리", "user.read", "users"],
+];
+const resourcePermission: Record<Resource, string> = {
+  alerts: "alert.read",
+  events: "event.read",
+  tickets: "ticket.read",
+  incidents: "incident.read",
+  cases: "case.read",
+  hunts: "hunt.read",
+};
 const titles: Record<Resource, string> = {
   alerts: "Alert / Event",
   events: "Alert / Event",
@@ -103,16 +145,6 @@ function Status({ value }: { value: string }) {
     <span className={`badge status-${value}`}>
       {statusNames[value] ?? value}
     </span>
-  );
-}
-function ErrorState({ error, retry }: { error: Error; retry: () => void }) {
-  return (
-    <div role="alert" className="empty">
-      <p>{error.message}</p>
-      <Button variant="outline" onClick={retry}>
-        다시 시도
-      </Button>
-    </div>
   );
 }
 function Bars({
@@ -296,85 +328,98 @@ function RiskBars({ counts }: { counts: Record<string, number> }) {
     </div>
   );
 }
-function DashboardView({ data }: { data: Dashboard }) {
-  const steps: [string, number][] = [
-    ["정규화 대기 중인\nAlert/Event", data.flow.normalization_pending],
-    ["Ticket 승격을 위해\n대기 중인 Alert", data.flow.l1_alerts_pending],
-    ["L2 승격을 위해\n대기 중인 Ticket", data.flow.l1_tickets_pending],
-    [
-      "Incident으로 묶이기\n위해 대기 중인 Ticket",
-      data.ticket_status.escalated,
-    ],
-    ["생성된\nIncident", data.flow.incidents],
-    ["승인된\nCase", data.flow.cases],
-  ];
+function DashboardView({
+  data,
+  mode,
+}: {
+  data: Dashboard;
+  mode: "auto" | "scenario";
+}) {
+  // Everything on the dashboard is shown only if the account may read what it summarizes.
+  const can = useCan();
+  const nothing = !can(
+    "alert.read",
+    "event.read",
+    "ticket.read",
+    "incident.read",
+    "case.read",
+    "hunt.read",
+  );
+  if (nothing)
+    return (
+      <p className="empty">
+        이 계정이 읽을 수 있는 집계가 없어요. 필요한 권한은 관리자에게 요청해
+        주세요.
+      </p>
+    );
   return (
     <>
-      <ol className="flow-grid" aria-label="처리 흐름">
-        {steps.map(([label, count]) => (
-          <li className="kpi" key={label}>
-            <span>{label}</span>
-            <strong>{(count ?? 0).toLocaleString()}</strong>
-          </li>
-        ))}
-      </ol>
+      <FlowChart data={data} mode={mode} />
       <div className="dashboard-grid">
-        <div className="dashboard-stack">
-          <article className="card">
-            <div className="card-heading">
-              <h3>Tickets by Risk Level</h3>
-              <Link to="/tickets">전체 보기 →</Link>
-            </div>
-            <p className="chart-caption">전체 {data.flow.tickets}건</p>
-            <RiskBars counts={data.ticket_severity} />
-          </article>
-          <article className="card hunting-card">
-            <div className="card-heading">
-              <h3>Threat Hunting</h3>
-              <Link to="/hunts">헌팅 결과 보기 →</Link>
-            </div>
-            <div className="hunting-metrics">
-              <div>
-                <span>가설 검증</span>
-                <strong>
-                  {data.hunting.total}
-                  <small>건</small>
-                </strong>
-              </div>
-              <div>
-                <span>Ticket 승격</span>
-                <strong>
-                  {data.hunting.promoted}
-                  <small>건</small>
-                </strong>
-              </div>
-            </div>
-            <p className="chart-caption">
-              전체 가설 대비 승격{" "}
-              {data.hunting.promotion_ratio === null
-                ? "데이터 없음"
-                : `${Math.round(data.hunting.promotion_ratio * 100)}%`}
-            </p>
-            <div className="progress">
-              <span
-                style={{
-                  width: `${(data.hunting.promotion_ratio ?? 0) * 100}%`,
-                }}
-              />
-            </div>
-          </article>
-        </div>
-        <article className="card top-incidents">
-          <div className="card-heading">
-            <h3>Incident Risk Top 10</h3>
-            <Link to="/incidents">전체 보기 →</Link>
+        {(can("ticket.read") || can("hunt.read")) && (
+          <div className="dashboard-stack">
+            {can("ticket.read") && (
+              <article className="card">
+                <div className="card-heading">
+                  <h3>Tickets by Risk Level</h3>
+                  <Link to="/tickets">전체 보기 →</Link>
+                </div>
+                <p className="chart-caption">전체 {data.flow.tickets}건</p>
+                <RiskBars counts={data.ticket_severity} />
+              </article>
+            )}
+            {can("hunt.read") && (
+              <article className="card hunting-card">
+                <div className="card-heading">
+                  <h3>Threat Hunting</h3>
+                  <Link to="/hunts">헌팅 결과 보기 →</Link>
+                </div>
+                <div className="hunting-metrics">
+                  <div>
+                    <span>가설 검증</span>
+                    <strong>
+                      {data.hunting.total}
+                      <small>건</small>
+                    </strong>
+                  </div>
+                  <div>
+                    <span>Ticket 승격</span>
+                    <strong>
+                      {data.hunting.promoted}
+                      <small>건</small>
+                    </strong>
+                  </div>
+                </div>
+                <p className="chart-caption">
+                  전체 가설 대비 승격{" "}
+                  {data.hunting.promotion_ratio === null
+                    ? "데이터 없음"
+                    : `${Math.round(data.hunting.promotion_ratio * 100)}%`}
+                </p>
+                <div className="progress">
+                  <span
+                    style={{
+                      width: `${(data.hunting.promotion_ratio ?? 0) * 100}%`,
+                    }}
+                  />
+                </div>
+              </article>
+            )}
           </div>
-          <div className="small-list-heading">
-            <span>Incident 정보</span>
-            <span>위험도</span>
-          </div>
-          <SmallList items={data.top_incidents} />
-        </article>
+        )}
+        {can("incident.read") && (
+          <article className="card top-incidents">
+            <div className="card-heading">
+              <h3>Incident Risk Top 10</h3>
+              <Link to="/incidents">전체 보기 →</Link>
+            </div>
+            <div className="small-list-heading">
+              <span>Incident 정보</span>
+              <span>위험도</span>
+            </div>
+            <SmallList items={data.top_incidents} />
+          </article>
+        )}
       </div>
     </>
   );
@@ -427,6 +472,12 @@ function internalLink(id: string, resource: Resource, label: string) {
   );
 }
 function DetailBody({ data }: { data: Detail }) {
+  const can = useCan();
+  // A link to a screen the account cannot open is not offered.
+  const link = (id: string, resource: Resource, label: string) =>
+    can(resourcePermission[resource])
+      ? internalLink(id, resource, label)
+      : null;
   return (
     <>
       {"ticket" in data && (
@@ -434,10 +485,10 @@ function DetailBody({ data }: { data: Detail }) {
           <Severity value={data.severity} />
           <div className="links">
             {data.ticket.alert_ids.map((id, i) =>
-              internalLink(id, "alerts", `원본 Alert ${i + 1}`),
+              link(id, "alerts", `원본 Alert ${i + 1}`),
             )}
             {data.ticket.hunt_id &&
-              internalLink(data.ticket.hunt_id, "hunts", "원본 Hunt")}
+              link(data.ticket.hunt_id, "hunts", "원본 Hunt")}
           </div>
           <h3>Ticket 판정과 근거</h3>
           <JsonViewer value={data.ticket} />
@@ -447,7 +498,7 @@ function DetailBody({ data }: { data: Detail }) {
         <>
           <div className="links">
             {data.incident.ticket_ids.map((id, i) =>
-              internalLink(id, "tickets", `원본 Ticket ${i + 1}`),
+              link(id, "tickets", `원본 Ticket ${i + 1}`),
             )}
           </div>
           <h3>Incident</h3>
@@ -487,7 +538,7 @@ function DetailBody({ data }: { data: Detail }) {
       {"case" in data && (
         <>
           <div className="links">
-            {internalLink(data.case.incident_id, "incidents", "원본 Incident")}
+            {link(data.case.incident_id, "incidents", "원본 Incident")}
           </div>
           <h3>승인된 Case</h3>
           <JsonViewer value={data.case} />
@@ -506,8 +557,7 @@ function DetailBody({ data }: { data: Detail }) {
       {"hunt" in data && (
         <>
           <div className="links">
-            {data.ticket_id &&
-              internalLink(data.ticket_id, "tickets", "승격 Ticket")}
+            {data.ticket_id && link(data.ticket_id, "tickets", "승격 Ticket")}
           </div>
           <h3>가설과 검증 결과</h3>
           <JsonViewer value={data.hunt} />
@@ -541,6 +591,7 @@ function DetailPanel({
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const [width, setWidth] = usePanelWidth("panel-width:detail", 650);
   const query = useQuery({
     queryKey: ["detail", resource, id],
     queryFn: ({ signal }) =>
@@ -555,9 +606,11 @@ function DetailPanel({
     <dialog
       ref={ref}
       className="detail-panel"
+      style={{ "--panel-w": `${width}px` } as CSSProperties}
       aria-labelledby="detail-title"
       onCancel={onClose}
     >
+      <PanelResizer width={width} initial={650} onChange={setWidth} />
       <header>
         <div>
           <span className="eyebrow">RECORD DETAIL</span>
@@ -578,7 +631,11 @@ function DetailPanel({
         {query.isPending ? (
           <p role="status">불러오는 중…</p>
         ) : query.error ? (
-          <ErrorState error={query.error} retry={() => void query.refetch()} />
+          <ErrorState
+            inline
+            error={query.error}
+            retry={() => void query.refetch()}
+          />
         ) : (
           <DetailBody data={query.data} />
         )}
@@ -637,6 +694,7 @@ function ListView({
     queryKey: ["list", path],
     queryFn: ({ signal }) => get<Page>(path, signal),
   });
+  const { current, page } = usePager(query.data?.next_cursor);
   function change(key: string, value: string) {
     const next = new URLSearchParams(search);
     next.delete("cursor");
@@ -651,31 +709,7 @@ function ListView({
     next.set("selected", itemId(item));
     setSearch(next);
   }
-  // Repeated query parameters preserve opaque cursors across refresh/back/forward.
-  const trail = search.has("cursor")
-    ? search.has("trail")
-      ? search.getAll("trail")
-      : [""]
-    : [];
-  function page(direction: "previous" | "next") {
-    const next = new URLSearchParams(search);
-    next.delete("selected");
-    next.delete("trail");
-    const history = [...trail];
-    if (direction === "next") {
-      if (!query.data?.next_cursor) return;
-      history.push(search.get("cursor") ?? "");
-      next.set("cursor", query.data.next_cursor);
-    } else {
-      const previous = history.pop();
-      if (previous) next.set("cursor", previous);
-      else next.delete("cursor");
-    }
-    history.forEach((cursor) => next.append("trail", cursor));
-    setSearch(next);
-  }
   const selected = search.get("selected");
-  const current = trail.length + 1;
   const total = totalCount(
     resource,
     status,
@@ -743,7 +777,11 @@ function ListView({
           불러오는 중…
         </p>
       ) : query.error ? (
-        <ErrorState error={query.error} retry={() => void query.refetch()} />
+        <ErrorState
+          inline
+          error={query.error}
+          retry={() => void query.refetch()}
+        />
       ) : query.data.items.length ? (
         <>
           <div className="table-scroll">
@@ -828,19 +866,62 @@ function ListView({
     </section>
   );
 }
-export default function App() {
+// A menu entry the account has no permission for: dimmed and not clickable (not a link).
+function NoAccess({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <span className="nav-disabled" aria-disabled="true" title="권한이 없어요">
+      <span className="menu-icon">{children}</span>
+      {label}
+    </span>
+  );
+}
+function Workspace({ me }: { me: Me }) {
   const location = useLocation();
+  const logout = useLogout();
   const [search] = useSearchParams();
   const slug = location.pathname.slice(1);
   const resource = (
     Object.hasOwn(titles, slug) ? slug : null
   ) as Resource | null;
+  const isHome = location.pathname === "/";
+  const can = (names: string[]) =>
+    names.some((n) => me.permissions.includes(n));
+  const page =
+    location.pathname === "/settings"
+      ? "settings"
+      : location.pathname === "/users"
+        ? "users"
+        : location.pathname === "/policy"
+          ? "policy"
+          : null;
+  const waiting = resource === "cases" && search.get("tab") === "waiting";
+  // Permission needed to open this screen. Without it no request is sent; the screen says so.
+  const needed: string | null = isHome
+    ? "dashboard.read"
+    : page === "users"
+      ? "user.read"
+      : page === "policy"
+        ? "policy.read"
+        : resource
+          ? waiting
+            ? "incident.read"
+            : resourcePermission[resource]
+          : null;
+  const denied = needed !== null && !can([needed]);
+  const mayDashboard = can(["dashboard.read"]);
   const dashboard = useQuery({
     queryKey: ["dashboard"],
     queryFn: ({ signal }) => get<Dashboard>("dashboard", signal),
+    enabled: !denied && mayDashboard && (isHome || resource !== null),
   });
-  const isHome = location.pathname === "/";
-  const waiting = resource === "cases" && search.get("tab") === "waiting";
+  // The flow has one more stage in scenario mode. Without policy.read the mode is unknown, so auto is shown.
+  const policyNeeded = isHome && !denied && can(["policy.read"]);
+  const policy = useQuery({
+    queryKey: ["policy"],
+    queryFn: ({ signal }) =>
+      get<TicketingPolicyResponse>("ticketing-policy", signal),
+    enabled: policyNeeded,
+  });
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -856,34 +937,67 @@ export default function App() {
           </span>
         </Link>
         <nav>
-          {menu.map(([path, label, icon]) => (
-            <NavLink
-              key={path}
-              to={path}
-              end={path === "/"}
-              className={({ isActive }) =>
-                isActive || (path === "/alerts" && resource === "events")
-                  ? "active"
-                  : ""
-              }
-            >
-              <span className="menu-icon">
+          {menu.map(([path, label, icon, needs]) =>
+            can(needs) ? (
+              <NavLink
+                key={path}
+                // Alert/Event opens Event when only event.read is held.
+                to={
+                  path === "/alerts" && !can(["alert.read"]) ? "/events" : path
+                }
+                end={path === "/"}
+                className={({ isActive }) =>
+                  isActive || (path === "/alerts" && resource === "events")
+                    ? "active"
+                    : ""
+                }
+              >
+                <span className="menu-icon">
+                  <Icon name={icon} />
+                </span>
+                {label}
+              </NavLink>
+            ) : (
+              <NoAccess key={path} label={label}>
                 <Icon name={icon} />
-              </span>
-              {label}
-            </NavLink>
-          ))}
+              </NoAccess>
+            ),
+          )}
+          <span className="menu-group">관리</span>
+          {adminMenu.map(([path, label, needs, icon]) =>
+            can([needs]) ? (
+              <NavLink key={path} to={path}>
+                <span className="menu-icon">
+                  <LineIcon name={icon} size={20} />
+                </span>
+                {label}
+              </NavLink>
+            ) : (
+              <NoAccess key={path} label={label}>
+                <LineIcon name={icon} size={20} />
+              </NoAccess>
+            ),
+          )}
         </nav>
-        <div className="sidebar-bottom">
-          <span className="profile">
-            <span className="profile-icon">
-              <Icon name="profile" />
+        <div className="user-area">
+          <div className="user-row">
+            <span className="avatar">{[...me.display_name][0]}</span>
+            <span className="user-info">
+              <strong>{me.display_name}</strong>
+              <span className={`role-badge role-${me.role}`}>{me.role}</span>
             </span>
-            관리자
-          </span>
-          <button type="button" className="settings">
-            <Icon name="settings" />
-            설정
+            <Link className="settings" to="/settings">
+              <Icon name="settings" />
+              설정
+            </Link>
+          </div>
+          <button
+            type="button"
+            className="logout-button"
+            onClick={() => logout.mutate()}
+          >
+            <LineIcon name="log-out" size={14} />
+            로그아웃
           </button>
         </div>
       </aside>
@@ -894,39 +1008,66 @@ export default function App() {
               <h1>
                 {isHome
                   ? "DashBoard"
-                  : resource
-                    ? titles[resource]
-                    : "페이지를 찾을 수 없습니다"}
+                  : page
+                    ? page === "users"
+                      ? "사용자 관리"
+                      : page === "policy"
+                        ? "Ticket 정책"
+                        : "설정"
+                    : resource
+                      ? titles[resource]
+                      : "페이지를 찾을 수 없습니다"}
               </h1>
             </div>
           </header>
-          {dashboard.isPending ? (
+          {denied ? (
+            <ErrorState
+              needs={needed}
+              noHome={isHome}
+              error={new ApiError(403, "permission_denied")}
+              retry={() => undefined}
+            />
+          ) : page === "settings" ? (
+            <SettingsPage me={me} />
+          ) : page === "users" ? (
+            <UsersPage />
+          ) : page === "policy" ? (
+            <PolicyPage />
+          ) : !isHome &&
+            !resource ? null : !mayDashboard ? null : dashboard.isPending ||
+            (policyNeeded && policy.isPending) ? (
             <p role="status">집계 불러오는 중…</p>
           ) : dashboard.error ? (
             <ErrorState
+              needs="dashboard.read"
               error={dashboard.error}
               retry={() => void dashboard.refetch()}
             />
           ) : isHome ? (
-            <DashboardView data={dashboard.data} />
+            <DashboardView
+              data={dashboard.data}
+              mode={policy.data?.mode ?? "auto"}
+            />
           ) : (
             resource && <Overview resource={resource} data={dashboard.data} />
           )}
-          {(resource === "alerts" || resource === "events") && (
+          {!denied && (resource === "alerts" || resource === "events") && (
             <div className="tabs">
-              <NavLink to="/alerts">Alert</NavLink>
-              <NavLink to="/events">Event</NavLink>
+              {can(["alert.read"]) && <NavLink to="/alerts">Alert</NavLink>}
+              {can(["event.read"]) && <NavLink to="/events">Event</NavLink>}
             </div>
           )}
-          {resource === "cases" && (
+          {!denied && resource === "cases" && (
             <>
               <div className="tabs">
-                <Link
-                  className={waiting ? "active" : ""}
-                  to="/cases?tab=waiting"
-                >
-                  승인 대기 Incident
-                </Link>
+                {can(["incident.read"]) && (
+                  <Link
+                    className={waiting ? "active" : ""}
+                    to="/cases?tab=waiting"
+                  >
+                    승인 대기 Incident
+                  </Link>
+                )}
                 <Link className={!waiting ? "active" : ""} to="/cases">
                   승인된 Case
                 </Link>
@@ -938,7 +1079,7 @@ export default function App() {
               </p>
             </>
           )}
-          {resource && (
+          {!denied && resource && (
             <ListView
               key={`${resource}/${waiting}`}
               resource={waiting ? "incidents" : resource}
@@ -954,4 +1095,37 @@ export default function App() {
       </div>
     </div>
   );
+}
+export default function App() {
+  const location = useLocation();
+  const me = useMe();
+  const target = useLoginTarget();
+  const path = location.pathname;
+  if (me.isPending) return <p role="status">불러오는 중…</p>;
+  if (me.error)
+    return <ErrorState error={me.error} retry={() => void me.refetch()} />;
+  const user = me.data;
+  if (!user) {
+    if (path === "/login") return <LoginPage />;
+    if (path === "/signup") return <SignupPage />;
+    return (
+      <Navigate
+        to="/login"
+        replace
+        state={{ from: location.pathname + location.search }}
+      />
+    );
+  }
+  if (path === "/login" || path === "/signup")
+    return (
+      <Navigate to={user.must_change_password ? "/password" : target} replace />
+    );
+  if (user.must_change_password)
+    return path === "/password" ? (
+      <ForcedPasswordPage />
+    ) : (
+      <Navigate to="/password" replace />
+    );
+  if (path === "/password") return <Navigate to="/" replace />;
+  return <Workspace me={user} />;
 }

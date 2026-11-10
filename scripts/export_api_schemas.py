@@ -2,10 +2,11 @@
 
 import json
 
-from soc.api import models, ui_models
+from soc.api import auth_models, models, ui_models
 
 NAMES = {
-    models: ("HuntPage", "HuntDetail"),
+    models: ("HuntPage", "HuntDetail", "TicketingPolicyResponse"),
+    auth_models: ("Me", "UserItem", "UserList", "PermissionList", "SignupResult"),
     ui_models: (
         "RawPage",
         "RawDetail",

@@ -14,18 +14,59 @@ export type Page = RawPage | TicketPage | IncidentPage | CasePage | HuntPage;
 export type Item = Page["items"][number];
 export type Detail =
   RawDetail | TicketDetail | IncidentDetail | CaseDetail | HuntDetail;
-export async function get<T>(path: string, signal?: AbortSignal): Promise<T> {
-  const response = await fetch(
-    new URL(`/api/${path}`, window.location.origin),
-    { signal },
-  );
-  if (!response.ok)
-    throw new Error(
-      response.status === 404
+export class ApiError extends Error {
+  constructor(
+    public status: number,
+    public code: string,
+    public fields: string[] = [],
+  ) {
+    super(
+      status === 404
         ? "대상을 찾을 수 없습니다."
         : "데이터를 불러오지 못했습니다. 잠시 후 다시 시도하세요.",
     );
-  return response.json() as Promise<T>;
+  }
+}
+async function request<T>(
+  method: string,
+  path: string,
+  body?: unknown,
+  signal?: AbortSignal,
+): Promise<T> {
+  const response = await fetch(
+    new URL(`/api/${path}`, window.location.origin),
+    {
+      method,
+      signal,
+      headers:
+        body === undefined ? undefined : { "Content-Type": "application/json" },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    },
+  );
+  if (!response.ok) {
+    const error = await response
+      .json()
+      .then((v: { error?: unknown; fields?: unknown }) => v)
+      .catch(() => ({}) as { error?: unknown; fields?: unknown });
+    throw new ApiError(
+      response.status,
+      typeof error.error === "string" ? error.error : "unknown",
+      Array.isArray(error.fields) ? error.fields.map(String) : [],
+    );
+  }
+  return response.status === 204
+    ? (undefined as T)
+    : (response.json() as Promise<T>);
+}
+export function get<T>(path: string, signal?: AbortSignal): Promise<T> {
+  return request<T>("GET", path, undefined, signal);
+}
+export function send<T = void>(
+  method: "POST" | "PUT" | "PATCH",
+  path: string,
+  body?: unknown,
+): Promise<T> {
+  return request<T>(method, path, body);
 }
 export function itemId(item: Item) {
   return "raw_id" in item ? item.raw_id : item.id;

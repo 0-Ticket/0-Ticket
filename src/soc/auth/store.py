@@ -252,7 +252,7 @@ def ensure_first_admin(conn: psycopg.Connection) -> str | None:
         conn.execute(
             "INSERT INTO users (username, display_name, password_hash, role, status, "
             "must_change_password, approved_at) "
-            "VALUES (%s, 'Administrator', %s, 'admin', 'active', true, now())",
+            "VALUES (%s, 'admin', %s, 'admin', 'active', true, now())",
             (FIRST_ADMIN, passwords.hash_password(temporary)),
         )
         return temporary
