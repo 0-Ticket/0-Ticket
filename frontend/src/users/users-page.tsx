@@ -64,6 +64,9 @@ const NOT_READY = new Set([
   "incident.reject",
   "incident.close",
 ]);
+// Not shown in the editor: the news screen was removed (#286), so the permission does nothing.
+// It stays in `chosen`, so saving still sends the value the user already has.
+const HIDDEN = new Set(["news.read"]);
 const groups: [string, (name: string) => boolean][] = [
   ["조회", (n) => n.endsWith(".read")],
   ["정책 변경", (n) => n === "policy.update"],
@@ -139,7 +142,7 @@ function PermissionEditor({
         retry={() => void catalog.refetch()}
       />
     );
-  const names = catalog.data.permissions;
+  const names = catalog.data.permissions.filter((p) => !HIDDEN.has(p.name));
   return (
     <Section title="권한 편집">
       {locked && <p className="auth-hint">{locked}</p>}

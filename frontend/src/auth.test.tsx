@@ -225,7 +225,7 @@ test("db_unavailable shows the server error state", async () => {
   ).toBeInTheDocument();
 });
 
-test("menu items follow permissions", async () => {
+test("menu items without permission are dimmed and not clickable", async () => {
   dashboard();
   server.use(
     http.get("*/api/auth/me", () =>
@@ -240,14 +240,20 @@ test("menu items follow permissions", async () => {
   expect(nav.getByRole("link", { name: "DashBoard" })).toBeInTheDocument();
   expect(nav.getByRole("link", { name: "Ticket" })).toBeInTheDocument();
   expect(nav.getByRole("link", { name: "Ticket 정책" })).toBeInTheDocument();
-  for (const hidden of [
+  // No permission: still listed, but dimmed and not a link.
+  for (const dimmed of [
     "Alert/Event",
     "Incident",
     "Case",
     "Hunting",
     "사용자 관리",
-  ])
-    expect(nav.queryByRole("link", { name: hidden })).not.toBeInTheDocument();
+  ]) {
+    expect(nav.queryByRole("link", { name: dimmed })).not.toBeInTheDocument();
+    expect(nav.getByText(dimmed).closest("[aria-disabled]")).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+  }
 });
 
 test("admin sees every menu and the user area", async () => {

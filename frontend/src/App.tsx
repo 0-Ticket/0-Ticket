@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import {
   Link,
   Navigate,
@@ -826,6 +826,15 @@ function ListView({
     </section>
   );
 }
+// A menu entry the account has no permission for: dimmed and not clickable (not a link).
+function NoAccess({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <span className="nav-disabled" aria-disabled="true" title="권한이 없어요">
+      <span className="menu-icon">{children}</span>
+      {label}
+    </span>
+  );
+}
 function Workspace({ me }: { me: Me }) {
   const location = useLocation();
   const logout = useLogout();
@@ -866,9 +875,8 @@ function Workspace({ me }: { me: Me }) {
           </span>
         </Link>
         <nav>
-          {menu
-            .filter(([, , , needs]) => can(needs))
-            .map(([path, label, icon]) => (
+          {menu.map(([path, label, icon, needs]) =>
+            can(needs) ? (
               <NavLink
                 key={path}
                 to={path}
@@ -884,21 +892,26 @@ function Workspace({ me }: { me: Me }) {
                 </span>
                 {label}
               </NavLink>
-            ))}
-          {adminMenu.some(([, , needs]) => can([needs])) && (
-            <>
-              <span className="menu-group">관리</span>
-              {adminMenu
-                .filter(([, , needs]) => can([needs]))
-                .map(([path, label, , icon]) => (
-                  <NavLink key={path} to={path}>
-                    <span className="menu-icon">
-                      <LineIcon name={icon} size={20} />
-                    </span>
-                    {label}
-                  </NavLink>
-                ))}
-            </>
+            ) : (
+              <NoAccess key={path} label={label}>
+                <Icon name={icon} />
+              </NoAccess>
+            ),
+          )}
+          <span className="menu-group">관리</span>
+          {adminMenu.map(([path, label, needs, icon]) =>
+            can([needs]) ? (
+              <NavLink key={path} to={path}>
+                <span className="menu-icon">
+                  <LineIcon name={icon} size={20} />
+                </span>
+                {label}
+              </NavLink>
+            ) : (
+              <NoAccess key={path} label={label}>
+                <LineIcon name={icon} size={20} />
+              </NoAccess>
+            ),
           )}
         </nav>
         <div className="user-area">

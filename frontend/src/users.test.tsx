@@ -259,3 +259,24 @@ test("without user.read the users screen shows no permission", async () => {
     await screen.findByText("이 화면을 볼 권한이 없어요"),
   ).toBeInTheDocument();
 });
+
+test("news.read is not offered in the editor but is still sent on save", async () => {
+  let body: { permissions: string[] } | null = null;
+  server.use(
+    list([analyst]),
+    catalog(),
+    http.put(`*/api/users/${analyst.id}/permissions`, async ({ request }) => {
+      body = (await request.json()) as { permissions: string[] };
+      return HttpResponse.json(analyst);
+    }),
+  );
+  show("/users?status=active");
+  fireEvent.click(
+    await screen.findByRole("button", { name: analyst.username }),
+  );
+  await screen.findByRole("checkbox", { name: /alert\.read/ });
+  expect(screen.queryByRole("checkbox", { name: /news\.read/ })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "권한 저장" }));
+  await waitFor(() => expect(body).not.toBeNull());
+  expect(body!.permissions).toContain("news.read");
+});
