@@ -15,6 +15,7 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException
 
 from soc.api.db import DbUnavailable
+from soc.auth.store import AuthError
 
 logger = logging.getLogger("soc.api")
 
@@ -29,6 +30,21 @@ class InvalidQuery(Exception):
 
 class NotFound(Exception):
     """없는 ID 또는 모양이 틀린 ID."""
+
+
+# 요청 본문 검증 오류에서 이름을 그대로 알려도 되는 필드(입력값이 아니라 우리가 정한 이름)
+BODY_FIELDS = {
+    "mode",
+    "scenario_rule_ids",
+    "username",
+    "display_name",
+    "password",
+    "current_password",
+    "new_password",
+    "temporary_password",
+    "role",
+    "permissions",
+}
 
 
 def _error(status: int, code: str, **extra: object) -> JSONResponse:
@@ -47,7 +63,7 @@ async def _validation(request: Request, exc: RequestValidationError) -> JSONResp
         loc = error.get("loc", ())
         if loc and loc[0] == "body":
             field = loc[1] if len(loc) > 1 else None
-            body_fields.add(field if field in {"mode", "scenario_rule_ids"} else "body")
+            body_fields.add(field if field in BODY_FIELDS else "body")
             continue
         if len(loc) >= 2 and loc[0] == "query" and loc[1] not in names:
             names.append(str(loc[1]))
@@ -62,6 +78,10 @@ async def _invalid_query(request: Request, exc: InvalidQuery) -> JSONResponse:
 
 async def _not_found(request: Request, exc: NotFound) -> JSONResponse:
     return _error(404, "not_found")
+
+
+async def _auth(request: Request, exc: AuthError) -> JSONResponse:
+    return _error(exc.status, exc.code)
 
 
 async def _http(request: Request, exc: HTTPException) -> JSONResponse:
@@ -93,6 +113,7 @@ def install(app: FastAPI) -> None:
     app.add_exception_handler(RequestValidationError, _validation)
     app.add_exception_handler(InvalidQuery, _invalid_query)
     app.add_exception_handler(NotFound, _not_found)
+    app.add_exception_handler(AuthError, _auth)
     app.add_exception_handler(HTTPException, _http)
     app.add_exception_handler(DbUnavailable, _db)
     app.add_exception_handler(psycopg.Error, _db)

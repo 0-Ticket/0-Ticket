@@ -8,10 +8,11 @@
 import re
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, Depends, Query, Request
 from psycopg import sql
 
 from soc.api import db
+from soc.api.auth import require_permission
 from soc.api.errors import InvalidQuery
 from soc.api.models import NewsPage
 from soc.api.routes.hunts import DEFAULT_LIMIT, MAX_LIMIT
@@ -38,7 +39,9 @@ _COLUMNS = (
 _TIMES = ("published_at", "fetched_at", "updated_at")
 
 
-@router.get("/threat-news", response_model=NewsPage)
+@router.get(
+    "/threat-news", response_model=NewsPage, dependencies=[Depends(require_permission("news.read"))]
+)
 def list_news(
     request: Request,
     source: Annotated[str | None, Query(min_length=1, max_length=200)] = None,

@@ -85,16 +85,13 @@ def test_conflicting_row_rolls_back_all_new_rows(temp_database):
 
 @pytest.mark.db
 def test_explicit_command_and_seed_label_on_api(temp_database, monkeypatch):
-    from starlette.testclient import TestClient
-
-    from soc.api.app import create_app
-    from soc.api.config import load_settings
+    from auth_support import admin_client
 
     migrate(temp_database)
     monkeypatch.setenv("DATABASE_URL", temp_database)
     assert dev_seed.main(["--yes"]) == 0
     assert dev_seed.main(["--yes"]) == 0
-    c = TestClient(create_app(load_settings()))
+    c = admin_client()
     for table in ["alerts", "events", "tickets", "incidents", "cases"]:
         r = c.get("/api/" + table)
         assert r.status_code == 200

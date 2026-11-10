@@ -2,10 +2,11 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, Depends, Query, Request
 
 from soc.api import db
 from soc.api import ui_read as read
+from soc.api.auth import require_permission
 from soc.api.ui_models import NormalizeStatus, RawDetail, RawPage
 
 router = APIRouter()
@@ -26,7 +27,9 @@ def _detail(request, kind, record_id):
         return read.raw_detail(conn, kind, record_id)
 
 
-@router.get("/alerts", response_model=RawPage)
+@router.get(
+    "/alerts", response_model=RawPage, dependencies=[Depends(require_permission("alert.read"))]
+)
 def alerts(
     request: Request,
     status: NormalizeStatus | None = None,
@@ -36,7 +39,9 @@ def alerts(
     return _page(request, "alert", status, cursor, limit)
 
 
-@router.get("/events", response_model=RawPage)
+@router.get(
+    "/events", response_model=RawPage, dependencies=[Depends(require_permission("event.read"))]
+)
 def events(
     request: Request,
     status: NormalizeStatus | None = None,
@@ -46,11 +51,19 @@ def events(
     return _page(request, "event", status, cursor, limit)
 
 
-@router.get("/alerts/{record_id}", response_model=RawDetail)
+@router.get(
+    "/alerts/{record_id}",
+    response_model=RawDetail,
+    dependencies=[Depends(require_permission("alert.read"))],
+)
 def alert(request: Request, record_id: str):
     return _detail(request, "alert", record_id)
 
 
-@router.get("/events/{record_id}", response_model=RawDetail)
+@router.get(
+    "/events/{record_id}",
+    response_model=RawDetail,
+    dependencies=[Depends(require_permission("event.read"))],
+)
 def event(request: Request, record_id: str):
     return _detail(request, "event", record_id)

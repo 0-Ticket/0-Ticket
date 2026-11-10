@@ -82,7 +82,7 @@ class NewsPage(_Model):
 
 
 class TicketingPolicyBody(_Model):
-    """Ticket 정책 API 요청·응답 모양. W04 엔드포인트는 현재 인증되지 않는다."""
+    """Ticket 정책 API 요청·응답 모양(#246)."""
 
     model_config = ConfigDict(extra="forbid", strict=True)
 
