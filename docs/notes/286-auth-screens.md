@@ -15,6 +15,7 @@ supersedes: []
 - 사이드바에 표시 이름·역할·설정·로그아웃이 생겼고 메뉴는 `permissions`로 보인다. 6개 메뉴 아래 "관리" 묶음에 Ticket 정책(`/policy`)과 사용자 관리(`/users`)가 있다. 403 `permission_denied`, 503 `db_unavailable`, 403 `origin_not_allowed`는 `error-state.tsx`가 각자 문구로 보인다.
 - `/users`(`users/users-page.tsx`): 상태 탭, 25건 페이지(N/-), 작업 패널에서 승인·거절·중지·임시 비밀번호 재설정·역할 변경·권한 편집. 권한 편집은 전체 교체이므로 편집할 수 없는 항목의 현재 값도 그대로 보낸다.
 - `/policy`(`policy-page.tsx`): 정책을 읽고 `policy.update`가 있으면 저장한다. 없으면 읽기 전용이다.
+- 화면은 `.pen` 디자인(프레임 15~30, 21a·21b, B-2)대로 맞췄다(속성 기록은 `286-auth-screens-design-values.md`). 대시보드 맨 위는 정책 모드에 따라 6·7단계 막대 흐름이고 마우스를 올리면 설명이 뜬다. 권한이 없는 메뉴는 흐리게 보이고, 권한이 없는 화면은 요청 없이 막으며, 대시보드도 읽을 수 있는 것만 보인다. 상세·작업 패널은 너비를 끌어서 바꿀 수 있다. 900px 아래에서는 사이드바가 위쪽 막대로 바뀐다.
 - 새 응답 모델 6개를 `scripts/export_api_schemas.py`에 더하고 `pnpm contracts`로 TypeScript 타입을 만들었다. `pnpm dev`는 5173 포트로 고정했다.
 
 ## 계획과 달라진 점
@@ -42,13 +43,16 @@ supersedes: []
 - **실제 백엔드·브라우저로 손으로 확인하지 못했다.** 확인한 것은 MSW 가짜 응답 테스트뿐이다. 스크린샷은 사람이 첨부한다. 쿠키·`Origin` 허용(5173 포트)·`Cache-Control: no-store` 여부는 화면에서 확인한 결과가 없다.
 - 정책 화면: API에 규칙 목록 조회가 없어 저장된 규칙 ID만 체크 목록으로 보이고 새 ID는 직접 입력해 더한다. 규칙 목록 API가 생기면 목록을 거기서 읽게 바꾼다.
 - 사용자 관리의 "마지막 admin" 사전 차단은 지금 보이는 한 페이지의 활성 admin 수로 판단한다. 다른 페이지의 admin은 모른다. 서버가 `last_admin`으로 막고 화면이 그 오류를 보인다.
-- `dashboard.read`가 없는 사용자는 집계를 쓰는 모든 화면(Alert/Event, Ticket, Incident, Case, Hunting, 대시보드)에서 권한 없음을 본다(계획의 알려진 한계). `/settings`, `/users`, `/policy`는 집계를 읽지 않는다.
+- `dashboard.read`가 없으면 대시보드는 권한 없음이고 목록 화면은 집계 카드·전체 건수 없이 열린다(6차 수정으로 계획의 알려진 한계가 바뀌었다). 대시보드 집계는 서버가 한 응답으로 주므로 숨긴 항목의 숫자도 브라우저는 받는다. 권한별 응답 분리는 백엔드 일이다.
+- 흐름 막대 설명 상자 문구 5개는 내가 쓴 것이다(`flow-chart.tsx`). 사이드바 Incident·Case 아이콘은 디자인과 다르다(#274 때 값). 한글 글자 폭이 디자인보다 좁아 줄바꿈 지점이 다르다.
+- 테스트 하나(`403 password_change_required…`)가 PC 부하가 높을 때 기본 대기 시간(1초) 안에 끝나지 못해 한 번 실패했다. 다시 돌리면 통과했다. 계속 나오면 대기 시간을 늘린다.
 - 세션 만료는 다음 요청의 401로만 안다. `news.read` 권한은 목록에 보이지만 뉴스 화면은 없다.
 - 로그인 직후 `removeQueries`로 이전 사용자의 캐시를 비운다. 새 쿼리 키를 `["me"]`로 시작하게 만들면 지워지지 않는다.
 - 범위 밖으로 남긴 백엔드 문제(`reset-password` 권한 상승, 로그인 시도 제한 등)는 계획 "범위 밖"과 `docs/notes/284-auth-roles.md`에 있다.
 
 ## 확인 방법
 
-- `cd frontend && pnpm lint && pnpm test && pnpm build && pnpm contracts:check`: 64개 테스트 통과(`auth.test.tsx` 19, `users.test.tsx` 17, `policy.test.tsx` 6, 기존 `App.test.tsx` 22).
+- `cd frontend && pnpm lint && pnpm test && pnpm build && pnpm contracts:check`: 78개 테스트 통과(`auth.test.tsx` 28, `users.test.tsx` 19, `policy.test.tsx` 7, `App.test.tsx` 22, `json.test.ts` 2).
 - `uv run ruff format --check .`, `uv run ruff check .`, `uv run pytest`: 통과(1375개).
+- 손으로 확인한 것: 헤드리스 Chrome(960×925, 1440×900, 500px)으로 로그인·가입·강제 변경·사용자 목록·빈 목록·작업 패널·오류 화면·대시보드 흐름을 디자인 PNG와 나란히 봤다. 마우스 끌기·hover 모양과 500px보다 좁은 화면은 확인하지 못했다. 실제 백엔드와 연결해서는 확인하지 못했다.
 - 샘플: `tests/fixtures/frontend/auth.json`(가짜 계정, 비밀번호 값 없음).
