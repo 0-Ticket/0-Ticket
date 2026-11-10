@@ -99,6 +99,7 @@ Agent Log가 실행 도중 멈추거나, 쓰기에 실패하거나, 실행 시�
 | `agent_logs` 줄을 호출마다 쓴다. model 줄 `input`이 delta 모양, `records` 줄 `output`이 모델에게 보인 결과, `sent=false` 줄·종료 줄이 생긴다 | `hunts.py`(화면), `store.py`(L3), #215 SQL(문서), `judge.py`·`l2/branch/read.py`·`l2/analyze/context.py`(`agl_` 존재 확인만, 줄이 더 일찍 생기는 쪽이라 영향 없음) |
 | 읽는 규칙(끝난 run, `sent=false`) | 위와 같음. D-036 메모에 적음 |
 | `RunSummary.outcome`에 `"incomplete"` 추가, 생성 TS 변경 | 화면 담당 |
+| 개발 DB 시드 원본 `tests/fixtures/api/ui_seed.json`의 끝난 run에 `"validation": "ok"` 추가 | 화면 담당, 개발 DB를 시드한 사람 |
 | `last_attempt_started_at` 쿼리 변경, 시작 전 실패를 시도로 셈 | L3 담당(`soc.l3.hunt.generate`) |
 | `usage.turns`가 `sent=false` 줄을 뺌(`budget_exceeded` run은 값이 1 줄어듦) | `soc.agent.dev_l1` 출력, 파이프가 `AgentResult.usage`를 읽는 곳 |
 | `[agent]` 설정 키 2개 | 설정 로더(`load_config`가 `agent` 절 전체를 넘김) |
@@ -108,7 +109,7 @@ Agent Log가 실행 도중 멈추거나, 쓰기에 실패하거나, 실행 시�
 **알림(사람이 올린다)**
 
 - **L3 담당**: `store.py` `last_attempt_started_at` 쿼리, 시작 전 실패를 시도로 세는 것(`generate_interval_seconds`만큼 다음 생성이 늦어짐), 끝나지 않은 run은 시도가 아님.
-- **화면 담당**: `RunSummary.outcome`의 `"incomplete"`, 생성 TS 변경, 한글 표시 후속.
+- **화면 담당**: `RunSummary.outcome`의 `"incomplete"`, 생성 TS 변경, 한글 표시 후속. 개발 DB 시드 원본 `tests/fixtures/api/ui_seed.json`의 끝난 run에 `"validation": "ok"`를 더했다. 이미 시드한 개발 DB는 그 Agent Log 행을 지우고 다시 시드해야 한다(방법은 `docs/notes/278-agent-log-durability.md`).
 - **팀 전체**: D-036 문장(저장 방식이 바뀜), 읽는 규칙, #211의 "자르기 전 전체 저장" 변경.
 - **계약 담당**: `agent_log` 계약의 `details` 설명("다른 단계는 읽지 않는다")과 `hunts.py`·`store.py`가 이미 `details`를 읽는 것이 어긋난다(#278 이전부터). 계약 문구를 고치는 후속 이슈 초안이 있다.
 
@@ -170,3 +171,4 @@ Agent Log가 실행 도중 멈추거나, 쓰기에 실패하거나, 실행 시�
 
 ## 바뀐 점
 
+- 2026-11-10 · 개발 중 `tests/fixtures/api/ui_seed.json`(개발 DB 시드 원본)의 끝난 run에 `"validation": "ok"`를 더하기로 사람이 정했다(읽는 규칙 때문에 표시가 없으면 `incomplete`로 보인다). 이미 시드한 개발 DB는 해당 행을 지우고 다시 시드한다. 화면 담당 알림에 넣었다.
