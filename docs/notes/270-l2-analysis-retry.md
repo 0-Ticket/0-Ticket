@@ -30,7 +30,11 @@ Artifact를 저장한 뒤 `analyzing`을 유지해 새 Ticket을 다시 읽는�
   `failure_retry_cooldown_ms`로 바꿔야 한다.
 - #270의 공통 Incident 상태 변경에 대한 L1·L2·L3·화면 담당 승인 기록은 이슈에서
   아직 확인하지 못했다. GitHub에는 쓰지 않았다.
-- 실제 외부 LLM을 부르는 확인은 자격 정보와 연결 설정이 없어 하지 않았다.
+- Azure 서버의 분리된 시험 폴더에서 실제 LLM을 두 번 호출했다. 합성 Incident의
+  첫 분석은 두 번 모두 `evidence_id_error`였고, Incident는 `analyzing`,
+  `failure_streak = 1`, Artifact 0건으로 저장됐다. 두 번째 호출은 임시 DB 조회
+  도구만 허용해 외부 SIEM을 읽지 않았다. 실제 모델이 Artifact를 완성하는 경로와
+  장애 복구 뒤 성공하는 경로는 확인하지 못했다.
 - Windows의 기본 전체 pytest는 기존 `test_name_ending_in_newline_is_not_a_migration`이
   줄바꿈 파일명을 만들 수 없어 실패한다. Linux 컨테이너에서는 전체 테스트가 통과했다.
 
@@ -46,3 +50,5 @@ Artifact를 저장한 뒤 `analyzing`을 유지해 새 Ticket을 다시 읽는�
   6건을 순서대로 연결해 Artifact 7건(첫 분석 포함)과 `analysis_round = 7`을 확인했다.
 - `test_three_failures_hold_until_cooldown_even_if_ticket_updates_incident`:
   모델 실행 후 `held_at`, Ticket 연결 뒤에도 유지되는 복귀 시각, 성공 시 카운터 초기화를 확인했다.
+- Azure 서버의 분리된 시험 폴더에서 #270 관련 단위 테스트 24개와 임시 DB 테스트
+  40개가 통과했다. 서버의 원래 저장소·`.env`는 수정하지 않았다.
