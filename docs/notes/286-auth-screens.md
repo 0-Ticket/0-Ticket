@@ -52,7 +52,7 @@ supersedes: []
 
 ## 확인 방법
 
-- `cd frontend && pnpm lint && pnpm test && pnpm build && pnpm contracts:check`: 78개 테스트 통과(`auth.test.tsx` 28, `users.test.tsx` 19, `policy.test.tsx` 7, `App.test.tsx` 22, `json.test.ts` 2).
-- `uv run ruff format --check .`, `uv run ruff check .`, `uv run pytest`: 통과(1375개).
+- `cd frontend && pnpm lint && pnpm test && pnpm build && pnpm contracts:check`: 80개 테스트 통과(`auth.test.tsx` 28, `users.test.tsx` 19, `policy.test.tsx` 7, `App.test.tsx` 24, `json.test.ts` 2). `origin/main`(#289·#290)을 합친 뒤 다시 돌린 결과다.
+- `uv run ruff format --check .`, `uv run ruff check .`, `uv run pytest`: 통과(1407개).
 - 손으로 확인한 것: 헤드리스 Chrome(960×925, 1440×900, 500px)으로 로그인·가입·강제 변경·사용자 목록·빈 목록·작업 패널·오류 화면·대시보드 흐름을 디자인 PNG와 나란히 봤다. 마우스 끌기·hover 모양과 500px보다 좁은 화면은 확인하지 못했다. 실제 백엔드와 연결해서는 확인하지 못했다.
 - 샘플: `tests/fixtures/frontend/auth.json`(가짜 계정, 비밀번호 값 없음).
