@@ -38,7 +38,7 @@
 모델 입력은 입력 데이터(`task.data`), 도구 결과, 형식 오류 재요청, 앞 모델 출력이다. 기본 LLM은 외부 제공자라(D-009) 여기에 섞인 비밀 값은 제공자의 요청 기록에 남을 수 있다.
 
 - **어디서 가리나.** SDK 입력 필터(`runner.py`의 `screen_input`) 한 곳에서, 모델을 부르기 직전에 항목마다 가린다. 같은 입력 이력은 항상 같은 결과가 된다. system 지시는 우리가 만든 문장이라 가리지 않는다. Agent Log 쓰기 직전에도 같은 함수로 한 번 더 가린다(안전장치).
-- **무엇을 가리나.** 설정 `*_env`가 가리키는 환경변수 값(8자 이상), DB 비밀번호, `password`·`passwd`·`pwd`·`api_key`·`token`·`secret`(`access_token`, `client_secret`처럼 이름이 이 낱말로 끝나는 것 포함)의 `=`·`:` 값, `Bearer`·`Basic`·`ApiKey` 값, 이름이 `password`·`api_key`·`token`·`secret`·`authorization` 등인 객체 키(JSON 문자열 속 `"키": "값"` 포함)의 값. `pwd=`는 값이 `/`로 시작하면(sudo의 `PWD=/home/...`) 가리지 않는다. 가린 자리는 `[REDACTED]`다.
+- **무엇을 가리나.** 설정 `*_env`가 가리키는 환경변수 값(8자 이상), DB 비밀번호, `password`·`passwd`·`pwd`·`api_key`·`token`·`secret`(`access_token`, `client_secret`처럼 이름이 이 낱말로 끝나는 것 포함)의 `=`·`:` 값, `Bearer`·`Basic`·`ApiKey` 값, 이름이 `password`·`api_key`·`token`·`secret`·`authorization` 등인 객체 키(JSON 문자열 속 `"키": "값"` 포함)의 값. `pwd=`는 값이 `/`로 시작하면(sudo의 `PWD=/home/...`) 가리지 않고, 페이지 이동 표지(`next_token`, `page_token`, `next_page_token`, `continuation_token`)는 비밀이 아니라서 가리지 않는다. 가린 자리는 `[REDACTED]`다.
 - **근거 ID는 가리지 않는다.** 접두사 + UUIDv7 모양의 문자열은 어떤 규칙도 건드리지 않는다. 짧은 환경변수 값이 ID 조각과 겹쳐 근거 장부 ID를 바꾸는 일을 막는다.
 - **가리지 못하면 보내지 않는다.** 가림 중 예외가 나면 원문을 보내지 않고 그 run을 `provider_error`로 끝낸다(`sent=false` 줄이 남는다).
 - **Agent Log와의 관계.** model 줄 `input`과 `records` 도구 줄 `output`은 모델이 받은 입력과 같다(가림 적용 후). 모델 출력 줄, `details`, 도구 인자 줄은 쓰기 직전에만 가려서 모델이 낸 원문과 다를 수 있다. 가림 적용 표시는 따로 남기지 않는다. `[REDACTED]` 문자열이 표시다.

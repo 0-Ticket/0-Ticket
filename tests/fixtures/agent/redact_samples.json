@@ -12,6 +12,18 @@
     {
       "name": "plain_words_near_secret_names",
       "text": "tokenizer=whitespace secretary=Kim passwordless login for deploy"
+    },
+    {
+      "name": "pagination_cursors",
+      "text": "GET /events?next_token=eyJvZmZzZXQiOjIwfQ&page_token=cursor-0020&next_page_token=cursor-0040&continuation_token=cursor-0060"
+    },
+    {
+      "name": "token_count_style_fields",
+      "text": "{\"tokens_in\": 120, \"tokens_out\": 8, \"token_count\": 5, \"max_tokens\": 4096, \"secret_santa\": true, \"secretKeeper\": \"bob\"}"
+    },
+    {
+      "name": "prose_mentioning_token_and_secret",
+      "text": "Invalid token provided for user alice from 203.0.113.9; the secret santa party is on Friday"
     }
   ],
   "masked": [

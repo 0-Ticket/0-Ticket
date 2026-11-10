@@ -173,3 +173,9 @@ def test_secret_keys_in_json_text_match_the_object_key_rule() -> None:
     assert redactor(value) == dict.fromkeys(value, REDACTED)
     out = redactor(as_text)
     assert all(v not in out for v in ("fake-t-0007", "fake-s-0008", "Digest x"))
+
+
+def test_normal_object_keys_are_kept() -> None:
+    # 객체 키 규칙은 정확히 같은 이름일 때만 값을 가린다
+    value = {"next_token": "cursor-0020", "tokens_in": 120, "token_count": 5, "secretary": "Kim"}
+    assert build_redactor({}, {})(value) == value

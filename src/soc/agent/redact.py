@@ -61,9 +61,11 @@ _KEY_VALUE = re.compile(
 )
 # 이름이 token·secret으로 끝나는 낱말(access_token, client_secret, refresh-token). tokenizer 제외
 _NAMED_SECRET = re.compile(
-    r"((?<![A-Za-z0-9])(?:[A-Za-z0-9]+[_-])*(?:token|secret)" + _ASSIGN + r")" + _VALUE,
+    r"((?<![A-Za-z0-9])(?P<name>(?:[A-Za-z0-9]+[_-])*(?:token|secret))" + _ASSIGN + r")" + _VALUE,
     re.IGNORECASE,
 )
+# 비밀이 아닌 페이지 이동 표지(next_token, page_token, next_page_token, continuation_token)
+_CURSOR_NAME = re.compile(r"(?:next|prev|previous|continuation|page)(?:[_-]page)?[_-]token", re.I)
 _PWD = re.compile(r"(\bpwd" + _ASSIGN + r")(?!/)" + _VALUE, re.IGNORECASE)
 _BEARER = re.compile(r"(\bBearer\s+)[A-Za-z0-9._~+/=-]+", re.IGNORECASE)
 _AUTH_SCHEME = re.compile(
@@ -104,7 +106,7 @@ def build_redactor(
         for secret in ordered:
             text = text.replace(secret, REDACTED)
         for pattern in _PATTERNS:
-            text = pattern.sub(rf"\g<1>{REDACTED}", text)
+            text = pattern.sub(_mask, text)
         return text
 
     def redact_text(text: str) -> str:
@@ -127,6 +129,14 @@ def build_redactor(
         return value
 
     return redact
+
+
+def _mask(match: re.Match[str]) -> str:
+    """묶음 1(키 부분)은 두고 그 뒤 값만 가린다. 페이지 이동 표지는 그대로 둔다."""
+    name = match.groupdict().get("name")
+    if name is not None and _CURSOR_NAME.fullmatch(name):
+        return match.group(0)
+    return f"{match.group(1)}{REDACTED}"
 
 
 def _lines(secret: str) -> list[str]:

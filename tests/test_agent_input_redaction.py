@@ -224,3 +224,63 @@ def test_tool_name_and_call_ids_are_not_touched() -> None:
     out = next(i for i in items if i.get("type") == "function_call_output")
     assert call["name"] == "leak_text"
     assert call["call_id"] == out["call_id"]
+
+
+def test_without_the_filter_the_model_would_receive_the_secrets(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # 대조: 가림 함수가 아무것도 가리지 않으면 같은 시나리오에서 비밀이 모델 입력에 그대로 있다.
+    # 위 테스트들이 SDK 필터 경로를 실제로 거친다는 증거다
+    import soc.agent.runner as runner
+
+    monkeypatch.setattr(runner, "build_redactor", lambda config, environ=None: lambda value: value)
+    _, model, _ = run(scenario(*TOOLS))
+    seen = json.dumps(sent_inputs(model), ensure_ascii=False)
+    for secret in SECRETS:
+        assert secret in seen
+
+
+def test_normal_fields_reach_the_model_unchanged() -> None:
+    registry = ToolRegistry(
+        [
+            _spec(
+                "leak_records",
+                "records",
+                lambda args, ctx: [
+                    {
+                        "id": ALERT_ID,
+                        "next_token": "cursor-0020",
+                        "tokens_in": 120,
+                        "msg": "sudo: alice : PWD=/home/alice ; USER=root",
+                    }
+                ],
+                id_fields=("id",),
+            )
+        ]
+    )
+    config = copy.deepcopy(LEAK_CONFIG)
+    config["tools"]["allowed"]["l1"] = ["leak_records"]
+    _, model, _ = run(scenario("leak_records"), config=config, registry=registry)
+    seen = json.dumps(sent_inputs(model), ensure_ascii=False)
+    for kept in ("cursor-0020", '\\"tokens_in\\": 120', "PWD=/home/alice"):
+        assert kept in seen
+
+
+def test_sdk_input_items_are_dicts_and_objects_are_converted_not_leaked() -> None:
+    # SDK(openai-agents 0.24.0)는 모델 입력 항목을 모두 dict로 만들어 필터에 넘긴다(to_input_item이
+    # model_dump로 바꾼다). 객체가 오지 않으므로 이 경로는 테스트로 고정할 수 없고, _as_json은 SDK가
+    # 바뀌어 객체가 와도 가림을 건너뛰지 않게 하는 방어다
+    from agents.testing import function_call
+
+    from soc.agent.redact import build_redactor
+    from soc.agent.runner import _as_json
+
+    _, model, _ = run(scenario("leak_records"))
+    assert all(isinstance(item, dict) for call in model.calls for item in call["input"])
+    obj = function_call(
+        "leak_text", json.dumps({"note": "password=fake-pass-obj-0009"}), call_id="call_obj"
+    )
+    assert not isinstance(obj, dict)
+    out = build_redactor({}, {})(_as_json(obj))
+    assert isinstance(out, dict)
+    assert "fake-pass-obj-0009" not in json.dumps(out)
