@@ -93,7 +93,7 @@ function dashboard(
     ),
   );
 }
-test("unknown-only ticket risk is shown instead of an empty dataset", async () => {
+test("unknown-only ticket risk shows no count text", async () => {
   dashboard({ 0: 2, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 });
   server.use(
     http.get("*/api/tickets", () =>
@@ -101,9 +101,8 @@ test("unknown-only ticket risk is shown instead of an empty dataset", async () =
     ),
   );
   show("/tickets");
-  expect(
-    await screen.findByText(/알려진 위험도 없음 · 미상 2건/),
-  ).toBeInTheDocument();
+  expect(await screen.findByText("데이터 없음")).toBeInTheDocument();
+  expect(screen.queryByText(/미상 \d+건/)).not.toBeInTheDocument();
 });
 test("Case waiting tab explicitly shows Incidents and disables decisions", async () => {
   dashboard();
@@ -248,7 +247,7 @@ test("error retries and empty data are distinct", async () => {
     await screen.findByText("조건에 맞는 데이터가 없습니다."),
   ).toBeInTheDocument();
 });
-test("dashboard shows the design flow, keeps ticket total, analyzed incidents and refresh", async () => {
+test("dashboard shows the design flow and keeps ticket total without removed texts", async () => {
   dashboard();
   show("/");
   const flow = await screen.findByRole("list", { name: "처리 흐름" });
@@ -257,16 +256,32 @@ test("dashboard shows the design flow, keeps ticket total, analyzed incidents an
   expect(stage4).toHaveTextContent("3");
   expect(screen.getByText("전체 8건")).toBeInTheDocument();
   expect(
-    screen.getByRole("heading", { name: "분석 결과가 있는 Incident" }),
-  ).toBeInTheDocument();
-  expect(screen.getByText(seed.incidents[1].title)).toBeInTheDocument();
-  const before = requests.filter((r) => r.pathname === "/api/dashboard").length;
-  fireEvent.click(screen.getByRole("button", { name: /집계 새로고침/ }));
-  await waitFor(() =>
-    expect(requests.filter((r) => r.pathname === "/api/dashboard").length).toBe(
-      before + 1,
+    screen.queryByRole("heading", { name: "분석 결과가 있는 Incident" }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: /집계 새로고침/ }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByText(/전체 보관 자료|개발 시드/),
+  ).not.toBeInTheDocument();
+  expect(screen.queryByText(/최신순|페이지당/)).not.toBeInTheDocument();
+});
+
+test("hunts overview uses a slash and drops status counts and promotion ratio", async () => {
+  dashboard();
+  server.use(
+    http.get("*/api/hunts", () =>
+      HttpResponse.json({ items: [], next_cursor: null }),
     ),
   );
+  show("/hunts");
+  expect(
+    await screen.findByRole("heading", {
+      name: "전체 가설 5건 / Ticket 승격 1건",
+    }),
+  ).toBeInTheDocument();
+  expect(screen.queryByText(/승격 비율/)).not.toBeInTheDocument();
+  expect(screen.queryByText(/대기 1건/)).not.toBeInTheDocument();
 });
 test("JSON field table and raw JSON keep external strings as text", async () => {
   dashboard();
@@ -404,7 +419,7 @@ test("profile text and settings button make no request or navigation", async () 
   expect(screen.getByTestId("where")).toHaveTextContent(/^\/$/);
 });
 
-test("normalization includes pending in total and preserves success ratio", async () => {
+test("normalization includes pending in total and shows no success rate", async () => {
   dashboard();
   server.use(
     http.get("*/api/alerts", () =>
@@ -417,7 +432,7 @@ test("normalization includes pending in total and preserves success ratio", asyn
   ).closest("article")!;
   expect(within(card).getByText("9건")).toBeInTheDocument();
   expect(within(card).getByText("7건")).toBeInTheDocument();
-  expect(within(card).getByText(/성공률 88%/)).toBeInTheDocument();
+  expect(within(card).queryByText(/성공률/)).not.toBeInTheDocument();
 });
 
 test("cursor URL restores the previous page and filters clear its trail", async () => {

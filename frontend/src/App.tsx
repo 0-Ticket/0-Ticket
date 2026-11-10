@@ -17,14 +17,7 @@ import { JsonViewer } from "./components/json-viewer";
 import { FilterChips } from "./components/filter-chips";
 import logo from "./assets/o-ticket-mark.png";
 import { Button } from "./components/ui/button";
-import {
-  get,
-  itemId,
-  itemTitle,
-  itemStatus,
-  itemSeverity,
-  seedSource,
-} from "./api/client";
+import { get, itemId, itemTitle, itemStatus, itemSeverity } from "./api/client";
 import type { Resource, Page, Item, Detail } from "./api/client";
 import type { Dashboard } from "./api/generated/Dashboard";
 
@@ -139,13 +132,7 @@ function Bars({
     }));
   if (risk) data.reverse();
   if (data.every((d) => d.value === 0))
-    return (
-      <p className="empty">
-        {risk && counts["0"]
-          ? `알려진 위험도 없음 · 미상 ${counts["0"]}건`
-          : "데이터 없음"}
-      </p>
-    );
+    return <p className="empty">데이터 없음</p>;
   return (
     <>
       <div aria-hidden="true">
@@ -203,10 +190,6 @@ function Bars({
           </BarChart>
         </ResponsiveContainer>
       </div>
-      <p className="chart-caption">
-        {data.map((d) => `${d.name} ${d.value}건`).join(" · ")}
-        {risk ? ` · 미상 ${counts["0"] ?? 0}건` : ""}
-      </p>
     </>
   );
 }
@@ -271,13 +254,6 @@ function Normalization({
           </div>
         ))}
       </div>
-      <p className="chart-caption">
-        성공률{" "}
-        {counts.success_ratio === null
-          ? "데이터 없음"
-          : `${Math.round(counts.success_ratio * 100)}%`}{" "}
-        · 성공/실패 기준
-      </p>
     </article>
   );
 }
@@ -398,13 +374,6 @@ function DashboardView({ data }: { data: Dashboard }) {
           </div>
           <SmallList items={data.top_incidents} />
         </article>
-        <article className="card analyzed-card">
-          <div className="card-heading">
-            <h3>분석 결과가 있는 Incident</h3>
-            <Link to="/incidents">전체 보기 →</Link>
-          </div>
-          <SmallList items={data.analyzed_incidents} />
-        </article>
       </div>
     </>
   );
@@ -435,15 +404,9 @@ function Overview({ resource, data }: { resource: Resource; data: Dashboard }) {
     return (
       <article className="card">
         <h3>
-          전체 가설 {data.hunting.total}건 · Ticket 승격 {data.hunting.promoted}
+          전체 가설 {data.hunting.total}건 / Ticket 승격 {data.hunting.promoted}
           건
         </h3>
-        <p>
-          전체 가설 대비 승격 비율:{" "}
-          {data.hunting.promotion_ratio === null
-            ? "데이터 없음"
-            : `${Math.round(data.hunting.promotion_ratio * 100)}%`}
-        </p>
         <Bars counts={data.hunting.statuses} />
       </article>
     );
@@ -463,17 +426,8 @@ function internalLink(id: string, resource: Resource, label: string) {
   );
 }
 function DetailBody({ data }: { data: Detail }) {
-  const seed =
-    "seed_source" in data
-      ? data.seed_source
-      : "hunt" in data
-        ? data.hunt.details.seed_source
-        : null;
   return (
     <>
-      {typeof seed === "string" && (
-        <p className="seed-note">개발 시드 · {seed}</p>
-      )}
       {"ticket" in data && (
         <>
           <Severity value={data.severity} />
@@ -761,9 +715,6 @@ function ListView({
                   <tr key={itemId(item)} onClick={() => select(item)}>
                     <td>
                       <button className="record-link">{itemTitle(item)}</button>
-                      {seedSource(item) && (
-                        <span className="badge seed">개발 시드</span>
-                      )}
                       {"origin" in item && (
                         <span className="origin-label">{item.origin}</span>
                       )}
@@ -794,7 +745,6 @@ function ListView({
         <p className="empty">조건에 맞는 데이터가 없습니다.</p>
       )}
       <footer className="pagination">
-        <span className="page-size">최신순 · 페이지당 25건</span>
         <div className="pagination-controls">
           <button
             aria-label="이전 페이지"
@@ -901,14 +851,7 @@ export default function App() {
                     : "페이지를 찾을 수 없습니다"}
               </h1>
             </div>
-            <Button variant="outline" onClick={() => void dashboard.refetch()}>
-              집계 새로고침 ↻
-            </Button>
           </header>
-          <p className="scope-note">
-            전체 보관 자료 기준 · 개발 시드 포함 · 시간대{" "}
-            {Intl.DateTimeFormat().resolvedOptions().timeZone}
-          </p>
           {dashboard.isPending ? (
             <p role="status">집계 불러오는 중…</p>
           ) : dashboard.error ? (

@@ -39,9 +39,6 @@ export function itemTitle(item: Item) {
         ? "원본 " + item.raw_id
         : item.id;
 }
-export function seedSource(item: Item) {
-  return "seed_source" in item ? item.seed_source : null;
-}
 export function itemStatus(item: Item) {
   return "normalize_status" in item ? item.normalize_status : item.status;
 }
