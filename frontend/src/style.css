@@ -1064,3 +1064,39 @@ td {
     display: none;
   }
 }
+.panel-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 0;
+  border-top: 1px solid var(--border);
+}
+.panel-section fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0 0 8px;
+}
+.panel-section legend {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.perm {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 4px 0;
+}
+.perm small {
+  color: #6b7a90;
+}
+.detail-content select {
+  height: 40px;
+  border: 1px solid #d5dce8;
+  border-radius: 10px;
+  padding: 0 10px;
+  background: #fff;
+}
+.detail-content .field input {
+  height: 40px;
+}

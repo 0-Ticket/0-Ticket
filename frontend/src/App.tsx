@@ -23,15 +23,10 @@ import { JsonViewer } from "./components/json-viewer";
 import { FilterChips } from "./components/filter-chips";
 import logo from "./assets/o-ticket-mark.png";
 import { Button } from "./components/ui/button";
-import {
-  ApiError,
-  get,
-  itemId,
-  itemTitle,
-  itemStatus,
-  itemSeverity,
-} from "./api/client";
+import { get, itemId, itemTitle, itemStatus, itemSeverity } from "./api/client";
 import type { Resource, Page, Item, Detail } from "./api/client";
+import { usePager } from "./pager";
+import { ErrorState } from "./error-state";
 import type { Dashboard } from "./api/generated/Dashboard";
 import type { Me } from "./api/generated/Me";
 import {
@@ -41,6 +36,7 @@ import {
   SignupPage,
 } from "./auth/pages";
 import { useLoginTarget, useLogout, useMe } from "./auth/session";
+import { UsersPage } from "./users/users-page";
 
 const menu: [string, string, IconName, string[]][] = [
   ["/", "DashBoard", "dashboard", ["dashboard.read"]],
@@ -128,49 +124,6 @@ function Status({ value }: { value: string }) {
     <span className={`badge status-${value}`}>
       {statusNames[value] ?? value}
     </span>
-  );
-}
-function ErrorState({ error, retry }: { error: Error; retry: () => void }) {
-  const code = error instanceof ApiError ? error.code : "";
-  const known: Record<string, [string, string, string]> = {
-    permission_denied: [
-      "이 화면을 볼 권한이 없어요",
-      "계정에 필요한 권한이 없어요. 권한이 필요하면 관리자에게 요청해 주세요.",
-      "403 · permission_denied",
-    ],
-    db_unavailable: [
-      "서버에 일시적으로 연결할 수 없어요",
-      "데이터베이스에 연결하지 못했어요. 입력한 내용은 그대로 유지돼요. 잠시 후 다시 시도해 주세요.",
-      "503 · db_unavailable",
-    ],
-    origin_not_allowed: [
-      "허용되지 않은 접속 주소예요",
-      "현재 접속한 주소는 변경 요청이 허용된 목록에 없어요. 계정 권한과는 관계없어요. 관리자에게 접속 주소 등록을 요청해 주세요.",
-      "403 · origin_not_allowed",
-    ],
-  };
-  const info = known[code];
-  return (
-    <div role="alert" className="empty">
-      {info ? (
-        <>
-          <h3>{info[0]}</h3>
-          <p>{info[1]}</p>
-          <small>{info[2]}</small>
-        </>
-      ) : (
-        <p>{error.message}</p>
-      )}
-      {code === "permission_denied" ? (
-        <Button variant="outline" asChild>
-          <Link to="/">대시보드로 이동</Link>
-        </Button>
-      ) : (
-        <Button variant="outline" onClick={retry}>
-          다시 시도
-        </Button>
-      )}
-    </div>
   );
 }
 function Bars({
@@ -695,6 +648,7 @@ function ListView({
     queryKey: ["list", path],
     queryFn: ({ signal }) => get<Page>(path, signal),
   });
+  const { current, page } = usePager(query.data?.next_cursor);
   function change(key: string, value: string) {
     const next = new URLSearchParams(search);
     next.delete("cursor");
@@ -709,31 +663,7 @@ function ListView({
     next.set("selected", itemId(item));
     setSearch(next);
   }
-  // Repeated query parameters preserve opaque cursors across refresh/back/forward.
-  const trail = search.has("cursor")
-    ? search.has("trail")
-      ? search.getAll("trail")
-      : [""]
-    : [];
-  function page(direction: "previous" | "next") {
-    const next = new URLSearchParams(search);
-    next.delete("selected");
-    next.delete("trail");
-    const history = [...trail];
-    if (direction === "next") {
-      if (!query.data?.next_cursor) return;
-      history.push(search.get("cursor") ?? "");
-      next.set("cursor", query.data.next_cursor);
-    } else {
-      const previous = history.pop();
-      if (previous) next.set("cursor", previous);
-      else next.delete("cursor");
-    }
-    history.forEach((cursor) => next.append("trail", cursor));
-    setSearch(next);
-  }
   const selected = search.get("selected");
-  const current = trail.length + 1;
   const total = totalCount(
     resource,
     status,
@@ -902,7 +832,12 @@ function Workspace({ me }: { me: Me }) {
   });
   const can = (names: string[]) =>
     names.some((n) => me.permissions.includes(n));
-  const page = location.pathname === "/settings" ? "settings" : null;
+  const page =
+    location.pathname === "/settings"
+      ? "settings"
+      : location.pathname === "/users"
+        ? "users"
+        : null;
   const waiting = resource === "cases" && search.get("tab") === "waiting";
   return (
     <div className="app-shell">
@@ -983,7 +918,9 @@ function Workspace({ me }: { me: Me }) {
                 {isHome
                   ? "DashBoard"
                   : page
-                    ? "설정"
+                    ? page === "users"
+                      ? "사용자 관리"
+                      : "설정"
                     : resource
                       ? titles[resource]
                       : "페이지를 찾을 수 없습니다"}
@@ -992,6 +929,8 @@ function Workspace({ me }: { me: Me }) {
           </header>
           {page === "settings" ? (
             <SettingsPage me={me} />
+          ) : page === "users" ? (
+            <UsersPage />
           ) : !isHome && !resource ? null : dashboard.isPending ? (
             <p role="status">집계 불러오는 중…</p>
           ) : dashboard.error ? (
