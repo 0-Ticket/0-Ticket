@@ -24,6 +24,14 @@
     {
       "name": "prose_mentioning_token_and_secret",
       "text": "Invalid token provided for user alice from 203.0.113.9; the secret santa party is on Friday"
+    },
+    {
+      "name": "sudo_deep_path_pwd",
+      "text": "Nov 10 09:20:44 web01 sudo:    bob : TTY=pts/1 ; PWD=/var/log/nginx ; USER=root ; COMMAND=/usr/bin/tail"
+    },
+    {
+      "name": "tool_result_envelope_without_secrets",
+      "text": "<tool_result>\n{\"call_id\": \"agl_01a19f93-1266-7000-8000-000000000001\", \"records\": [{\"msg\": \"a <b> 한글 PWD=/home/alice\", \"tokens_in\": 3, \"next_token\": \"cursor-0020\"}], \"truncated\": false}\n</tool_result>"
     }
   ],
   "masked": [
@@ -31,19 +39,29 @@
       "name": "url_query_token",
       "text": "GET /export?page=2&token=fake-token-abcdef123456&sort=asc HTTP/1.1",
       "secret": "fake-token-abcdef123456",
-      "keep": ["page=2", "sort=asc"]
+      "keep": [
+        "page=2",
+        "sort=asc"
+      ]
     },
     {
       "name": "url_query_access_token_and_secret",
       "text": "GET /cb?access_token=fake-access-0001&client_secret=fake-client-0002&state=ok",
-      "secret": ["fake-access-0001", "fake-client-0002"],
-      "keep": ["state=ok"]
+      "secret": [
+        "fake-access-0001",
+        "fake-client-0002"
+      ],
+      "keep": [
+        "state=ok"
+      ]
     },
     {
       "name": "authorization_basic_header",
       "text": "GET /admin HTTP/1.1 Authorization: Basic ZmFrZXVzZXI6ZmFrZXBhc3M= User-Agent: curl/8.0",
       "secret": "ZmFrZXVzZXI6ZmFrZXBhc3M=",
-      "keep": ["User-Agent: curl/8.0"]
+      "keep": [
+        "User-Agent: curl/8.0"
+      ]
     },
     {
       "name": "authorization_apikey_header",
@@ -55,13 +73,49 @@
       "name": "authorization_json_key",
       "text": "{\"authorization\": \"Digest username=fake, response=fake-digest-0003\", \"method\": \"GET\"}",
       "secret": "fake-digest-0003",
-      "keep": ["\"method\": \"GET\""]
+      "keep": [
+        "\"method\": \"GET\""
+      ]
     },
     {
       "name": "pwd_query_value",
       "text": "POST /login?user=alice&pwd=fake-pwd-0004 HTTP/1.1",
       "secret": "fake-pwd-0004",
-      "keep": ["user=alice"]
+      "keep": [
+        "user=alice"
+      ]
+    },
+    {
+      "name": "pwd_password_starting_with_slash",
+      "text": "POST /login?user=alice&pwd=/Secret99 HTTP/1.1",
+      "secret": "/Secret99",
+      "keep": [
+        "user=alice"
+      ]
+    },
+    {
+      "name": "object_value_under_authorization_key",
+      "text": "<tool_result>\n{\"call_id\": \"agl_01a19f93-1266-7000-8000-000000000001\", \"records\": [{\"headers\": {\"authorization\": {\"scheme\": \"Digest\", \"credentials\": \"fake-digest-0010\"}}, \"method\": \"GET\"}]}\n</tool_result>",
+      "secret": [
+        "fake-digest-0010",
+        "Digest"
+      ],
+      "keep": [
+        "\"method\": \"GET\"",
+        "agl_01a19f93-1266-7000-8000-000000000001"
+      ]
+    },
+    {
+      "name": "non_string_values_under_secret_keys",
+      "text": "<data>\n{\"alert\": {\"token\": 12345678, \"secret\": [\"fake-list-0011\", \"fake-list-0012\"], \"title\": \"x\"}}\n</data>",
+      "secret": [
+        "12345678",
+        "fake-list-0011",
+        "fake-list-0012"
+      ],
+      "keep": [
+        "\"title\": \"x\""
+      ]
     }
   ]
 }

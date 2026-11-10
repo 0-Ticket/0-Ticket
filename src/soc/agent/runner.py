@@ -118,6 +118,10 @@ def run_task(
     started = time.perf_counter()
     try:
         redact = build_redactor(config)  # 모델 입력 필터와 Agent Log 쓰기가 같은 함수를 쓴다(D-048)
+    except Exception:  # 가림을 준비하지 못하면 모델에 아무것도 보내지 않는다
+        detail = "비밀 값 가림을 준비하지 못했다"
+        return _before_start(task, run_id, log_sink, {}, "provider_error", detail, model_name)
+    try:
         writer = _writer(log_sink, config, redact)
     except Exception:  # [agent]의 Agent Log 시간 제한이 틀렸다
         detail = "Agent Log 설정이 잘못됐다"
@@ -307,7 +311,7 @@ def _execute(
         가리지 못하면 원문을 보내지 않는다.
         """
         try:
-            items = [redact(_as_json(item)) for item in data.model_data.input]
+            items = [_screen_item(item, redact) for item in data.model_data.input]
         except Exception:
             raise _Stop("provider_error", "입력 가림에 실패해 보내지 않았다") from None
         chars = input_chars(data.model_data.instructions, items)
@@ -379,6 +383,19 @@ def _check_output(task: AgentTask, final_output: Any) -> tuple[Any, str | None]:
 def _as_json(item: Any) -> Any:
     """입력 항목이 SDK 객체(pydantic)면 JSON 값으로 바꾼다. dict는 그대로다."""
     return item if isinstance(item, dict) else jsonable(item)
+
+
+# 입력 항목의 구조 필드. call_id가 환경변수 값과 우연히 같아도 도구 호출·결과의 짝이 깨지면 안 된다
+_STRUCTURAL_KEYS = ("type", "role", "call_id", "id", "name", "status")
+
+
+def _screen_item(item: Any, redact: Callable[[Any], Any]) -> Any:
+    """입력 항목 하나를 가린다. 최상위 구조 필드는 그대로 두고 나머지(본문)를 가린다."""
+    item = _as_json(item)
+    if not isinstance(item, dict):
+        return redact(item)
+    body = redact({k: v for k, v in item.items() if k not in _STRUCTURAL_KEYS})
+    return {k: item[k] if k in _STRUCTURAL_KEYS else body[k] for k in item}
 
 
 def _redacted(row: dict[str, Any], redact: Any) -> dict[str, Any]:

@@ -181,7 +181,7 @@ def test_redaction_failure_sends_nothing_and_ends_provider_error(
         redact = real(config, environ)
 
         def redact_or_fail(value: Any) -> Any:
-            if isinstance(value, dict) and "role" in value:  # 모델 입력 항목만 실패시킨다
+            if isinstance(value, dict) and "content" in value:  # 첫 사용자 메시지 본문만 실패시킨다
                 raise RuntimeError("boom")
             return redact(value)
 
@@ -217,13 +217,179 @@ def test_short_env_value_is_left_alone(monkeypatch: pytest.MonkeyPatch) -> None:
     assert "login-failed admin" in user and '"user.name": "admin"' in user
 
 
-def test_tool_name_and_call_ids_are_not_touched() -> None:
-    _, model, _ = run(scenario("leak_text"))
+def test_call_ids_and_tool_names_survive_even_when_they_look_like_the_env_secret(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # SDK call_id(call_1_0)와 같은 8자 환경변수 값. 도구 호출·결과의 짝이 깨지면 안 된다.
+    # 본문 속 같은 문자열은 가려진다(가림이 켜져 있다는 증거)
+    monkeypatch.setenv("LLM_API_KEY", "call_1_0")
+    registry = ToolRegistry(
+        [_spec("leak_text", "text", lambda args, ctx: "id call_1_0 appears in the text")]
+    )
+    config = copy.deepcopy(LEAK_CONFIG)
+    config["tools"]["allowed"]["l1"] = ["leak_text"]
+    steps = {
+        "steps": [
+            {"tool_calls": [{"name": "leak_text", "arguments": {}}]},
+            {"final": FINAL},
+        ]
+    }
+    result, model, _ = run(steps, config=config, registry=registry)
+    assert result.ok is True, result.detail
     items = jsonable(model.calls[1]["input"])
     call = next(i for i in items if i.get("type") == "function_call")
     out = next(i for i in items if i.get("type") == "function_call_output")
     assert call["name"] == "leak_text"
-    assert call["call_id"] == out["call_id"]
+    assert call["call_id"] == out["call_id"] == "call_1_0"
+    assert "call_1_0" not in out["output"] and "[REDACTED]" in out["output"]
+
+
+ESCAPE_SECRET = 'pa"ss\\word<9>x한글'
+
+
+def all_strings(value: Any) -> str:
+    if isinstance(value, str):
+        return value
+    if isinstance(value, dict):
+        return "\n".join(all_strings(v) for v in value.values())
+    if isinstance(value, list):
+        return "\n".join(all_strings(v) for v in value)
+    return ""
+
+
+def test_env_secret_with_json_special_characters_is_masked_in_model_input(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("LLM_API_KEY", ESCAPE_SECRET)
+    note = f"env {ESCAPE_SECRET} end"
+    registry = ToolRegistry(
+        [
+            _spec(
+                "leak_records",
+                "records",
+                lambda a, c: [{"id": ALERT_ID, "note": note}],
+                id_fields=("id",),
+            ),
+            _spec("leak_text", "text", lambda a, c: note),
+        ]
+    )
+    config = copy.deepcopy(LEAK_CONFIG)
+    config["tools"]["allowed"]["l1"] = ["leak_records", "leak_text"]
+    data = {"alert": {"id": ALERT_ID, "note": note}}
+    result, model, sink = run(
+        scenario("leak_records", "leak_text"), config=config, registry=registry, data=data
+    )
+    assert result.ok is True, result.detail
+    plain = json.dumps(ESCAPE_SECRET, ensure_ascii=False)[1:-1]
+    variants = [ESCAPE_SECRET, plain, plain.replace("<", "\\u003c").replace(">", "\\u003e")]
+    seen = all_strings(sent_inputs(model))
+    logged = json.dumps(sink.rows, ensure_ascii=False)
+    for variant in variants:
+        assert variant not in seen
+        assert variant not in logged
+    assert rebuild(sink.rows) == sent_inputs(model)
+
+
+def test_object_and_non_string_values_under_secret_keys_are_masked_in_model_input() -> None:
+    record = {
+        "id": ALERT_ID,
+        "authorization": {"scheme": "Digest", "credentials": "fake-digest-obj-0010"},
+        "token": 12345678,
+        "secret": ["fake-list-0011"],
+        "title": "kept",
+    }
+    registry = ToolRegistry(
+        [_spec("leak_records", "records", lambda a, c: [record], id_fields=("id",))]
+    )
+    config = copy.deepcopy(LEAK_CONFIG)
+    config["tools"]["allowed"]["l1"] = ["leak_records"]
+    data = {
+        "alert": {"id": ALERT_ID, "token": 87654321, "meta": {"secret": {"k": "fake-data-0012"}}}
+    }
+    _, model, sink = run(scenario("leak_records"), config=config, registry=registry, data=data)
+    seen = all_strings(sent_inputs(model))
+    for leaked in (
+        "fake-digest-obj-0010",
+        "12345678",
+        "fake-list-0011",
+        "87654321",
+        "fake-data-0012",
+    ):
+        assert leaked not in seen
+    assert "kept" in seen
+    assert rebuild(sink.rows) == sent_inputs(model)
+    row = next(r for r in sink.rows if r["kind"] == "tool")
+    text = jsonable(model.calls[1]["input"])[-1]["output"]
+    body = json.loads(text.split("\n", 1)[1].rsplit("\n", 1)[0])
+    assert body["records"] == row["output"]["records"]
+
+
+def test_model_text_is_unchanged_when_nothing_is_masked() -> None:
+    from soc.tools.registry import _dump, _wrap
+
+    registry = ToolRegistry(
+        [
+            _spec(
+                "leak_records",
+                "records",
+                lambda a, c: [{"id": ALERT_ID, "note": "a <b> & é 한글", "n": 3}],
+                id_fields=("id",),
+            )
+        ]
+    )
+    config = copy.deepcopy(LEAK_CONFIG)
+    config["tools"]["allowed"]["l1"] = ["leak_records"]
+    _, model, sink = run(scenario("leak_records"), config=config, registry=registry)
+    row = next(r for r in sink.rows if r["kind"] == "tool")
+    sent = jsonable(model.calls[1]["input"])[-1]["output"]
+    assert sent == _wrap(_dump(row["output"]))  # 원문 그대로(이스케이프·한글 포함)
+
+
+def test_redaction_failure_on_the_second_call_stops_before_sending(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import soc.agent.runner as runner
+
+    real = runner.build_redactor
+
+    def broken(config: Any, environ: Any = None):
+        redact = real(config, environ)
+
+        def redact_or_fail(value: Any) -> Any:
+            if isinstance(value, dict) and "output" in value:  # 도구 결과 항목 본문만 실패시킨다
+                raise RuntimeError("boom")
+            return redact(value)
+
+        return redact_or_fail
+
+    monkeypatch.setattr(runner, "build_redactor", broken)
+    result, model, sink = run(scenario("leak_records"))
+    assert result.failure == "provider_error"
+    assert len(model.calls) == 1  # 도구 결과가 든 두 번째 입력은 보내지 않았다
+    assert RECORD_PASSWORD not in json.dumps(sent_inputs(model), ensure_ascii=False)
+    assert RECORD_PASSWORD not in json.dumps(sink.rows, ensure_ascii=False)
+    assert [r for r in sink.rows if r["details"].get("sent") is False]
+
+
+def test_redactor_setup_failure_is_reported_apart_from_agent_log_settings(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import soc.agent.runner as runner
+
+    real = runner.build_redactor
+
+    def broken(config: Any, environ: Any = None):
+        if "agent" in config:  # _before_start의 빈 설정 대체 경로는 통과시킨다
+            raise RuntimeError("boom")
+        return real(config, environ)
+
+    monkeypatch.setattr(runner, "build_redactor", broken)
+    result, model, sink = run(scenario())
+    assert result.failure == "provider_error"
+    assert "Agent Log 설정" not in (result.detail or "")
+    assert "가림" in (result.detail or "")
+    assert model.calls == []
+    assert [r for r in sink.rows if r["details"].get("sent") is False]
 
 
 def test_without_the_filter_the_model_would_receive_the_secrets(

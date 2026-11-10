@@ -179,3 +179,98 @@ def test_normal_object_keys_are_kept() -> None:
     # 객체 키 규칙은 정확히 같은 이름일 때만 값을 가린다
     value = {"next_token": "cursor-0020", "tokens_in": 120, "token_count": 5, "secretary": "Kim"}
     assert build_redactor({}, {})(value) == value
+
+
+# 리뷰 반영(#292)
+ESCAPE_SECRET = 'pa"ss\\word<9>x한글'
+
+
+def _json_escaped(secret: str) -> list[str]:
+    plain = json.dumps(secret, ensure_ascii=False)[1:-1]
+    return [plain, plain.replace("<", "\u003c").replace(">", "\u003e")]
+
+
+@pytest.mark.parametrize("unit", ["a-", "a_", "ab1-"])
+def test_named_secret_scan_time_is_bounded(unit: str) -> None:
+    # 이차 시간이던 규칙(프로브: "a-"*16000이 12.6초). 넉넉한 상한만 둔다
+    import time
+
+    text = unit * (32_000 // len(unit))
+    redactor = build_redactor({}, {})
+    started = time.perf_counter()
+    assert redactor(text) == text
+    assert time.perf_counter() - started < 5.0
+
+
+def test_long_prefix_before_token_is_still_masked() -> None:
+    redactor = build_redactor({}, {})
+    assert redactor("my_very_long_prefixword_for_the_app_token=fake-0013") == (
+        f"my_very_long_prefixword_for_the_app_token={REDACTED}"
+    )
+    assert redactor("a-b-c-d-e-f-secret: fake-0014") == f"a-b-c-d-e-f-secret: {REDACTED}"
+
+
+def test_env_value_is_masked_in_json_escaped_text() -> None:
+    # 모델에게 가는 도구 결과는 JSON 문자열(", \, <, >가 이스케이프됨)이다. 파싱이 안 되는
+    # 글(잘린 결과 등)에서도 이스케이프된 값을 가려야 한다
+    redactor = build_redactor({"x": {"k_env": "K"}}, {"K": ESCAPE_SECRET})
+    broken = '<tool_result>\n{"note": "leak ' + _json_escaped(ESCAPE_SECRET)[1] + " end"
+    out = redactor(broken)
+    for variant in [ESCAPE_SECRET, *_json_escaped(ESCAPE_SECRET)]:
+        assert variant not in out
+    assert out.endswith(f"leak {REDACTED} end")
+
+
+def test_pwd_rule_skips_only_two_level_paths() -> None:
+    redactor = build_redactor({}, {})
+    assert redactor("pwd=/Secret99") == f"pwd={REDACTED}"
+    assert redactor("PWD=/home/alice ; USER=root") == "PWD=/home/alice ; USER=root"
+    assert redactor('PWD="/var/log/nginx"') == 'PWD="/var/log/nginx"'
+    assert redactor("PWD=/a/b") == "PWD=/a/b"  # 한계: /a/b 모양 비밀번호는 못 가린다
+    assert redactor("pwd=/") == f"pwd={REDACTED}"
+
+
+def test_id_shaped_value_is_exempt_only_from_env_value_replacement() -> None:
+    long_id = "alt_01a19f93-1150-7000-8000-000000000004"
+    redactor = build_redactor(CONFIG, {"LLM_API_KEY": "7000-8000"})
+    assert redactor(f'{{"id": "{long_id}"}}') == f'{{"id": "{long_id}"}}'
+    assert redactor(f"token={long_id}") == f"token={REDACTED}"  # 키-값 규칙은 면제하지 않는다
+
+
+@pytest.mark.parametrize("value", [(1, 2), {1, 2}, b"x", object()])
+def test_unknown_types_raise_instead_of_passing_through(value: object) -> None:
+    redactor = build_redactor({}, {})
+    with pytest.raises(TypeError):
+        redactor({"a": value})
+    with pytest.raises(TypeError):
+        redactor([value])
+
+
+def test_tool_result_envelope_with_object_and_non_string_secret_values() -> None:
+    redactor = build_redactor({}, {})
+    text = (
+        '<tool_result>\n{"call_id": "agl_01a19f93-1266-7000-8000-000000000001", "records": '
+        '[{"authorization": {"user": "alice-obj", "pw": "zzz"}, "token": 12345678, '
+        '"secret": ["a", "b"], "ok": "fine"}]}\n</tool_result>'
+    )
+    out = redactor(text)
+    body = json.loads(out.split("\n", 1)[1].rsplit("\n", 1)[0])  # 여전히 파싱된다
+    record = body["records"][0]
+    assert record == {
+        "authorization": REDACTED,
+        "token": REDACTED,
+        "secret": REDACTED,
+        "ok": "fine",
+    }
+    assert body["call_id"] == "agl_01a19f93-1266-7000-8000-000000000001"
+
+
+def test_unchanged_envelope_text_is_returned_as_is() -> None:
+    text = '<tool_result>\n{"records": [{"m": "a \u003cb\u003e 한글", "n": 1}]}\n</tool_result>'
+    assert build_redactor({}, {})(text) == text
+
+
+def test_unparseable_envelope_falls_back_to_text_rules() -> None:
+    text = '<tool_result>\n{"records": [{"m": "password=fake-0015", "cut": "ab…'
+    out = build_redactor({}, {})(text)
+    assert "fake-0015" not in out and out.startswith("<tool_result>")
