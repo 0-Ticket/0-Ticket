@@ -49,6 +49,13 @@ supersedes: ["211-tool-registry.md"]  # "Agent Log tool 줄 output은 자르기 
 - **DB에 쓸 수 없는 실패는 줄이 없다.** `DATABASE_URL`이 없으면 `run_agent`는 줄 없이 `log_error`를 돌려주고 실행기 로그(`soc.agent.runner`)에 경고만 남긴다(주소·비밀 없음). DB에 접속할 수 없으면 시작 전 실패도 줄을 못 쓰고 `log_error`(`prior=` 포함)다. 테스트가 고정한다.
 - **L3 동작이 바뀐다(L3 담당 알림).** 시작 전 실패(설정 오류 등)도 `last_attempt_started_at`에서 시도로 세므로 다음 생성이 `generate_interval_seconds`만큼 늦어진다. 끝났다는 표시가 없는 run(강제 종료)은 시도로 세지 않는다(#245의 `cancelled` 취급과 같다).
 - **`usage.turns`가 줄었다.** `sent=false` 줄은 세지 않는다. `budget_exceeded`로 끝난 run은 값이 1 줄어든다(예산 초과 줄을 세던 것이 바뀌었다).
+- **이미 시드한 개발 DB는 정리해야 한다(`ui_seed.json`을 고쳤다).** `python -m soc.api.dev_seed`는 같은 ID의 행이 샘플과 다르면 전체를 되돌린다. 바뀐 행은 Agent Log 하나(`agl_01a19f93-1266-7000-8000-000000000001`, `"validation": "ok"`를 더함)다. 개발 DB에서 그 행만 지우고 다시 시드한다. 다른 시드 행은 그대로 둔다. 운영 DB에서는 하지 않는다.
+
+  ```bash
+  psql "$DATABASE_URL" -c "DELETE FROM agent_logs WHERE id = 'agl_01a19f93-1266-7000-8000-000000000001' AND details->>'seed_source' = 'dev-seed-ui'"
+  uv run python -m soc.api.dev_seed --yes
+  ```
+
 - **화면(화면 담당 알림):** `RunSummary.outcome`에 `"incomplete"`가 생겼다. 화면은 값을 그대로 보여 준다. 한글 표시는 후속이다.
 - **`agent_log` 계약의 `details` 설명("다른 단계는 읽지 않는다")은 #278 이전부터 `hunts.py`·`store.py`가 읽는 것과 어긋난다.** 이 이슈에서 계약은 고치지 않았다(계약 담당 알림, 후속 이슈 초안).
 - **#279·#280은 #278이 머지된 뒤 리베이스한다.** 같은 `runner.py`·`registry.py`를 고친다. #280 C4(동기 도구가 이벤트 루프를 막음)는 이 이슈 범위 밖이다. 이 이슈의 쓰기 스레드는 그 문제를 고치지 않는다.
