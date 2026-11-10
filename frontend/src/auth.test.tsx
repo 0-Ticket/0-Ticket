@@ -412,3 +412,29 @@ test("Alert/Event opens Event when only event.read is held", async () => {
   );
   expect(screen.queryByRole("link", { name: "Alert" })).toBeNull();
 });
+
+test("the dashboard shows only what the account may read", async () => {
+  dashboard();
+  server.use(asAnalyst(["dashboard.read", "ticket.read"]));
+  show("/");
+  const flow = await screen.findByRole("list", { name: "처리 흐름" });
+  const stages = within(flow)
+    .getAllByRole("listitem")
+    .map((li) => li.textContent ?? "");
+  expect(stages.some((t) => t.includes("L2 분석 대기"))).toBe(true);
+  expect(stages.some((t) => t.includes("정규화 대기"))).toBe(false);
+  expect(stages.some((t) => t.includes("내 승인 대기"))).toBe(false);
+  expect(screen.getByText("Tickets by Risk Level")).toBeInTheDocument();
+  expect(screen.queryByText("Threat Hunting")).toBeNull();
+  expect(screen.queryByText("Incident Risk Top 10")).toBeNull();
+});
+
+test("a dashboard with no readable summary says so", async () => {
+  dashboard();
+  server.use(asAnalyst(["dashboard.read"]));
+  show("/");
+  expect(
+    await screen.findByText(/이 계정이 읽을 수 있는 집계가 없어요/),
+  ).toBeInTheDocument();
+  expect(screen.queryByRole("list", { name: "처리 흐름" })).toBeNull();
+});

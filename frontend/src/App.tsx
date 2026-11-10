@@ -333,66 +333,91 @@ function DashboardView({
   data: Dashboard;
   mode: "auto" | "scenario";
 }) {
+  // Everything on the dashboard is shown only if the account may read what it summarizes.
+  const can = useCan();
+  const nothing = !can(
+    "alert.read",
+    "event.read",
+    "ticket.read",
+    "incident.read",
+    "case.read",
+    "hunt.read",
+  );
+  if (nothing)
+    return (
+      <p className="empty">
+        이 계정이 읽을 수 있는 집계가 없어요. 필요한 권한은 관리자에게 요청해
+        주세요.
+      </p>
+    );
   return (
     <>
       <FlowChart data={data} mode={mode} />
       <div className="dashboard-grid">
-        <div className="dashboard-stack">
-          <article className="card">
-            <div className="card-heading">
-              <h3>Tickets by Risk Level</h3>
-              <Link to="/tickets">전체 보기 →</Link>
-            </div>
-            <p className="chart-caption">전체 {data.flow.tickets}건</p>
-            <RiskBars counts={data.ticket_severity} />
-          </article>
-          <article className="card hunting-card">
-            <div className="card-heading">
-              <h3>Threat Hunting</h3>
-              <Link to="/hunts">헌팅 결과 보기 →</Link>
-            </div>
-            <div className="hunting-metrics">
-              <div>
-                <span>가설 검증</span>
-                <strong>
-                  {data.hunting.total}
-                  <small>건</small>
-                </strong>
-              </div>
-              <div>
-                <span>Ticket 승격</span>
-                <strong>
-                  {data.hunting.promoted}
-                  <small>건</small>
-                </strong>
-              </div>
-            </div>
-            <p className="chart-caption">
-              전체 가설 대비 승격{" "}
-              {data.hunting.promotion_ratio === null
-                ? "데이터 없음"
-                : `${Math.round(data.hunting.promotion_ratio * 100)}%`}
-            </p>
-            <div className="progress">
-              <span
-                style={{
-                  width: `${(data.hunting.promotion_ratio ?? 0) * 100}%`,
-                }}
-              />
-            </div>
-          </article>
-        </div>
-        <article className="card top-incidents">
-          <div className="card-heading">
-            <h3>Incident Risk Top 10</h3>
-            <Link to="/incidents">전체 보기 →</Link>
+        {(can("ticket.read") || can("hunt.read")) && (
+          <div className="dashboard-stack">
+            {can("ticket.read") && (
+              <article className="card">
+                <div className="card-heading">
+                  <h3>Tickets by Risk Level</h3>
+                  <Link to="/tickets">전체 보기 →</Link>
+                </div>
+                <p className="chart-caption">전체 {data.flow.tickets}건</p>
+                <RiskBars counts={data.ticket_severity} />
+              </article>
+            )}
+            {can("hunt.read") && (
+              <article className="card hunting-card">
+                <div className="card-heading">
+                  <h3>Threat Hunting</h3>
+                  <Link to="/hunts">헌팅 결과 보기 →</Link>
+                </div>
+                <div className="hunting-metrics">
+                  <div>
+                    <span>가설 검증</span>
+                    <strong>
+                      {data.hunting.total}
+                      <small>건</small>
+                    </strong>
+                  </div>
+                  <div>
+                    <span>Ticket 승격</span>
+                    <strong>
+                      {data.hunting.promoted}
+                      <small>건</small>
+                    </strong>
+                  </div>
+                </div>
+                <p className="chart-caption">
+                  전체 가설 대비 승격{" "}
+                  {data.hunting.promotion_ratio === null
+                    ? "데이터 없음"
+                    : `${Math.round(data.hunting.promotion_ratio * 100)}%`}
+                </p>
+                <div className="progress">
+                  <span
+                    style={{
+                      width: `${(data.hunting.promotion_ratio ?? 0) * 100}%`,
+                    }}
+                  />
+                </div>
+              </article>
+            )}
           </div>
-          <div className="small-list-heading">
-            <span>Incident 정보</span>
-            <span>위험도</span>
-          </div>
-          <SmallList items={data.top_incidents} />
-        </article>
+        )}
+        {can("incident.read") && (
+          <article className="card top-incidents">
+            <div className="card-heading">
+              <h3>Incident Risk Top 10</h3>
+              <Link to="/incidents">전체 보기 →</Link>
+            </div>
+            <div className="small-list-heading">
+              <span>Incident 정보</span>
+              <span>위험도</span>
+            </div>
+            <SmallList items={data.top_incidents} />
+          </article>
+        )}
       </div>
     </>
   );

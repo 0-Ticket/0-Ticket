@@ -1,4 +1,5 @@
 import { useId } from "react";
+import { useCan } from "./auth/session";
 import type { Dashboard } from "./api/generated/Dashboard";
 
 type Stage = {
@@ -6,6 +7,8 @@ type Stage = {
   unit: string;
   count: number;
   tip: string;
+  // Read permissions that make this stage visible (any of).
+  needs: string[];
   mine?: boolean;
 };
 const BAR_MAX = 48; // design: 6px per item, 8 items = 48px
@@ -19,6 +22,7 @@ export function stages(data: Dashboard, mode: "auto" | "scenario"): Stage[] {
       unit: "Alert/Event",
       count: data.flow.normalization_pending,
       tip: "수집됐지만 아직 정규화되지 않은 Alert/Event",
+      needs: ["alert.read", "event.read"],
     },
     ...(mode === "scenario"
       ? [
@@ -26,6 +30,7 @@ export function stages(data: Dashboard, mode: "auto" | "scenario"): Stage[] {
             label: "Ticket 전환 판단 대기",
             unit: "Alert",
             count: data.flow.l1_alerts_pending,
+            needs: ["alert.read"],
             // Design B-2 text.
             tip: "Ticket으로 만들지 L1이 판단하기를 기다리는 Alert (시나리오 모드에서만 사용)",
           },
@@ -36,23 +41,27 @@ export function stages(data: Dashboard, mode: "auto" | "scenario"): Stage[] {
       unit: "Ticket",
       count: data.flow.l1_tickets_pending,
       tip: "L1이 위협 여부를 판정하기를 기다리는 Ticket",
+      needs: ["ticket.read"],
     },
     {
       label: "L2 분석 대기",
       unit: "Ticket",
       count: data.ticket_status.escalated,
       tip: "L2 분석을 기다리는 Ticket",
+      needs: ["ticket.read"],
     },
     {
       label: "L2 분석 중",
       unit: "Incident",
       count: data.incident_status.analyzing ?? 0,
       tip: "L2가 분석하고 있는 Incident",
+      needs: ["incident.read"],
     },
     {
       label: "내 승인 대기",
       unit: "Incident",
       count: data.incident_status.awaiting_review ?? 0,
+      needs: ["incident.read"],
       // Design B-2 text.
       tip: "분석이 끝나 사람이 승인·반려하기를 기다리는 Incident",
       mine: true,
@@ -62,6 +71,7 @@ export function stages(data: Dashboard, mode: "auto" | "scenario"): Stage[] {
       unit: "Case",
       count: (cases.open ?? 0) + (cases.in_progress ?? 0),
       tip: "승인되어 대응이 진행 중인 Case",
+      needs: ["case.read"],
     },
   ];
 }
@@ -96,7 +106,9 @@ export function FlowChart({
   data: Dashboard;
   mode: "auto" | "scenario";
 }) {
-  const list = stages(data, mode);
+  const can = useCan();
+  const list = stages(data, mode).filter((s) => can(...s.needs));
+  if (!list.length) return null;
   const max = Math.max(1, ...list.map((s) => s.count));
   return (
     <ol
