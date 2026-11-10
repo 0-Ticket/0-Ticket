@@ -1100,3 +1100,23 @@ td {
 .detail-content .field input {
   height: 40px;
 }
+.policy-card {
+  max-width: 688px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.policy-card fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+.policy-card legend {
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}

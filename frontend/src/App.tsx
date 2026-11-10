@@ -37,6 +37,7 @@ import {
 } from "./auth/pages";
 import { useLoginTarget, useLogout, useMe } from "./auth/session";
 import { UsersPage } from "./users/users-page";
+import { PolicyPage } from "./policy-page";
 
 const menu: [string, string, IconName, string[]][] = [
   ["/", "DashBoard", "dashboard", ["dashboard.read"]],
@@ -837,7 +838,9 @@ function Workspace({ me }: { me: Me }) {
       ? "settings"
       : location.pathname === "/users"
         ? "users"
-        : null;
+        : location.pathname === "/policy"
+          ? "policy"
+          : null;
   const waiting = resource === "cases" && search.get("tab") === "waiting";
   return (
     <div className="app-shell">
@@ -920,7 +923,9 @@ function Workspace({ me }: { me: Me }) {
                   : page
                     ? page === "users"
                       ? "사용자 관리"
-                      : "설정"
+                      : page === "policy"
+                        ? "Ticket 정책"
+                        : "설정"
                     : resource
                       ? titles[resource]
                       : "페이지를 찾을 수 없습니다"}
@@ -931,6 +936,8 @@ function Workspace({ me }: { me: Me }) {
             <SettingsPage me={me} />
           ) : page === "users" ? (
             <UsersPage />
+          ) : page === "policy" ? (
+            <PolicyPage />
           ) : !isHome && !resource ? null : dashboard.isPending ? (
             <p role="status">집계 불러오는 중…</p>
           ) : dashboard.error ? (

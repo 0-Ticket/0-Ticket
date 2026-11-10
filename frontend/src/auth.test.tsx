@@ -199,7 +199,7 @@ test("a 403 permission_denied response shows the no-permission screen", async ()
   expect(screen.getByText(/403 · permission_denied/)).toBeInTheDocument();
 });
 
-test("403 password_change_required goes to the change screen; origin and db errors show states", async () => {
+test("403 origin_not_allowed shows its own error state", async () => {
   server.use(
     http.get("*/api/dashboard", () =>
       HttpResponse.json({ error: "origin_not_allowed" }, { status: 403 }),
@@ -299,4 +299,25 @@ test("the password never appears in a URL", async () => {
   await login();
   await screen.findByText("아이디 또는 비밀번호가 올바르지 않아요");
   expect(requests.map((r) => r.href).join(" ")).not.toContain("a-long-test");
+});
+
+test("403 password_change_required sends a stale session to the change screen", async () => {
+  let me = auth.analyst as typeof auth.analyst & {
+    must_change_password: boolean;
+  };
+  server.use(
+    http.get("*/api/auth/me", () => HttpResponse.json(me)),
+    http.get("*/api/dashboard", () => {
+      me = { ...me, must_change_password: true };
+      return HttpResponse.json(
+        { error: "password_change_required" },
+        { status: 403 },
+      );
+    }),
+  );
+  show("/");
+  expect(
+    await screen.findByRole("heading", { name: "비밀번호를 변경해 주세요" }),
+  ).toBeInTheDocument();
+  expect(screen.getByTestId("where")).toHaveTextContent(/^\/password$/);
 });
