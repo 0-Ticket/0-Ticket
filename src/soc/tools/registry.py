@@ -7,7 +7,7 @@
 2. invoke가 같은 tool_call_id로 그 agl_을 받는다. 레지스트리는 ID를 만들지 않는다.
 3. 허용 확인(방어선) → 연속 실패 차단 확인 → 인자 검사 → 실행.
 4. 결과 자르기 → call_id 붙이기 → 구분자로 감싸기 → 장부에 넣기.
-5. 자르기 전 전체 결과와 성공·실패를 기록기에 넘긴다(Agent Log output에는 전체).
+5. 모델에게 보인 결과와 성공·실패를 기록기에 넘긴다(Agent Log output. records는 본문, #278).
 
 도구 결과는 밖에서 온 문자열이다(docs/security.md). 예외 메시지·SQL·DB 주소는 모델에 보내지 않는다.
 """
@@ -272,7 +272,11 @@ class ToolSession:
         self._failures[name] = 0
         self.evidence_ids.add(call_id)
         self.evidence_ids.update(shown_ids)
-        self._recorder.report_tool(tool_call_id, raw, None, False)
+        # Agent Log에는 모델에게 보인 결과를 남긴다. records는 본문(뺀 건수 포함, #278)이고,
+        # aggregate는 핸들러가 이미 줄인 결과다.
+        self._recorder.report_tool(
+            tool_call_id, body if spec.result_kind == "records" else raw, None, False
+        )
         return _wrap(_dump(body))
 
     def _fail(

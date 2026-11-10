@@ -49,7 +49,9 @@ class RunSummary(_Model):
     run_id: str
     task: str | None
     attempt: int | None
-    outcome: Literal["ok", "error"]
+    outcome: Literal[
+        "ok", "error", "incomplete"
+    ]  # incomplete: 끝났다는 표시가 없다(진행 중·강제 종료)
     failure: str | None
     tokens_in: int | None
     tokens_out: int | None

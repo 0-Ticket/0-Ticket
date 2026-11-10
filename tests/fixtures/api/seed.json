@@ -181,7 +181,8 @@
       "duration_ms": 3000,
       "details": {
         "task": "l3_hypothesize",
-        "attempt": 1
+        "attempt": 1,
+        "validation": "ok"
       }
     },
     {
@@ -329,7 +330,8 @@
       "duration_ms": 5000,
       "details": {
         "task": "l3_verify",
-        "attempt": 2
+        "attempt": 2,
+        "validation": "ok"
       }
     },
     {
@@ -378,7 +380,8 @@
       "duration_ms": 2500,
       "details": {
         "task": "l3_hypothesize",
-        "attempt": 1
+        "attempt": 1,
+        "validation": "ok"
       }
     },
     {
@@ -403,7 +406,8 @@
       "duration_ms": 10,
       "details": {
         "task": "l2_branch",
-        "attempt": 1
+        "attempt": 1,
+        "validation": "ok"
       }
     }
   ],

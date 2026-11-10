@@ -369,7 +369,7 @@ def test_two_tool_calls_in_one_response_keep_their_own_ids() -> None:
         row = rows[out["call_id"]]
         word = out["records"][0]["title"].split()[0]
         assert row["input"] == {"word": word}  # 그 호출의 줄이다
-        assert row["output"] == out["records"]
+        assert row["output"] == out  # Agent Log에는 모델에게 보인 결과가 남는다(#278)
     assert {o["call_id"] for o in outputs} <= set(result.cited_evidence_ids)
 
 
@@ -433,7 +433,7 @@ def test_id_like_string_in_result_body_is_not_in_ledger() -> None:
 # 결과 자르기와 구분자
 
 
-def test_records_are_dropped_from_the_end_and_log_has_all() -> None:
+def test_records_are_dropped_from_the_end_and_log_has_what_the_model_saw() -> None:
     caller = Caller(REGISTRY, config(chars=600))
     text = call(caller, "records", {"word": "a", "count": 50})
     out = parse(text)
@@ -442,7 +442,9 @@ def test_records_are_dropped_from_the_end_and_log_has_all() -> None:
     shown = len(out["records"])
     assert 0 < shown < 50
     assert out["omitted"] == 50 - shown
-    assert len(caller.rows[-1]["output"]) == 50  # Agent Log에는 전체
+    # Agent Log에는 모델에게 보인 결과와 뺀 건수가 남는다(#278)
+    assert caller.rows[-1]["output"] == out
+    assert len(caller.rows[-1]["output"]["records"]) == shown
     ids = [r["id"] for r in out["records"]]
     assert set(ids) <= caller.session.evidence_ids
     hidden = f"alt_01a19f93-1150-7000-8000-{50:012x}"
@@ -484,7 +486,8 @@ def test_single_oversized_record_has_long_strings_shortened() -> None:
     assert set(out["truncated_fields"]) == {"title", "ocsf.note", "entities[0].value"}
     assert ALERT_ID in caller.session.evidence_ids
     assert OTHER_ALERT not in caller.session.evidence_ids
-    assert caller.rows[-1]["output"][0]["title"] == "x" * 5000  # Agent Log에는 전체
+    assert caller.rows[-1]["output"] == out  # Agent Log에는 줄인 결과가 남는다(#278)
+    assert len(caller.rows[-1]["output"]["records"][0]["title"]) < 5000
 
 
 def test_record_that_cannot_fit_is_omitted() -> None:
@@ -672,7 +675,7 @@ def test_async_handler_is_awaited() -> None:
     out = parse(call(caller, "arecords", {}))
     assert out["records"] == [{"id": OTHER_ALERT, "title": "async"}]
     assert OTHER_ALERT in caller.session.evidence_ids
-    assert caller.rows[0]["output"] == [{"id": OTHER_ALERT, "title": "async"}]
+    assert caller.rows[0]["output"]["records"] == [{"id": OTHER_ALERT, "title": "async"}]
 
 
 def test_async_handler_errors_are_tool_errors() -> None:

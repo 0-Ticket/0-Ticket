@@ -185,7 +185,7 @@ def test_get_alert_returns_full_record_and_ledger_has_id(reader_url: str) -> Non
     assert record == expected
     assert A1 in c.session.evidence_ids
     assert out["call_id"] in c.session.evidence_ids
-    assert c.rows[-1]["output"] == [expected]
+    assert c.rows[-1]["output"]["records"] == [expected]  # 모델에게 보인 결과(#278)
 
 
 def test_get_event_and_missing_id(reader_url: str) -> None:

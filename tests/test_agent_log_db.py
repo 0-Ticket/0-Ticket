@@ -79,35 +79,21 @@ def test_unreachable_database_is_log_error(migrated: str) -> None:
 
 
 def test_partial_write_is_rolled_back(migrated: str) -> None:
-    # 같은 run_id·seq가 이미 있으면 (run_id, seq) 유일 제약으로 실패한다.
-    # 그 실행의 줄은 하나도 남지 않는다.
-    sink = PostgresLogSink(migrated)
-    first = run_task(
-        make_task(),
-        model=FakeModel("verdict_ok"),
-        model_name="fake-model",
-        log_sink=sink,
-        config=CONFIG,
-        registry=REGISTRY,
-    )
-    with psycopg.connect(migrated) as conn:
-        (count,) = conn.execute("SELECT count(*) FROM agent_logs").fetchone()
-    assert count == 3
-
-    class Dup(PostgresLogSink):
+    # 한 번에 쓰는 줄 묶음은 한 트랜잭션이다. 묶음의 마지막 줄이 seq >= 1 검사에 걸리면
+    # 그 묶음의 줄은 하나도 남지 않는다. (같은 (run_id, seq)는 오류가 아니라 건너뛴다, #278)
+    class Bad(PostgresLogSink):
         def write(self, rows: list[dict[str, Any]]) -> None:
             rows = [dict(r) for r in rows]
-            rows[-1]["run_id"] = first.run_id
-            rows[-1]["seq"] = 1
+            rows[-1]["seq"] = 0
             super().write(rows)
 
-    second = run_task(
+    result = run_task(
         make_task(),
         model=FakeModel("verdict_ok"),
         model_name="fake-model",
-        log_sink=Dup(migrated),
+        log_sink=Bad(migrated),
         config=CONFIG,
         registry=REGISTRY,
     )
-    assert second.failure == "log_error"
-    assert fetch(migrated, second.run_id) == []
+    assert result.failure == "log_error"
+    assert fetch(migrated, result.run_id) == []

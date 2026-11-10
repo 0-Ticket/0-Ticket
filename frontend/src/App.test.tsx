@@ -671,6 +671,43 @@ test("Hunt runs, techniques and promoted Ticket navigation are preserved", async
   ).toHaveAttribute("href", `/tickets?selected=${seed.tickets[7].id}`);
 });
 
+test("Hunt run without a closing marker is shown as incomplete", async () => {
+  dashboard();
+  const hunt = seed.hunts[1];
+  const log = seed.agent_logs[0];
+  server.use(
+    http.get("*/api/hunts", () =>
+      HttpResponse.json({ items: [hunt], next_cursor: null }),
+    ),
+    http.get("*/api/hunts/:id", () =>
+      HttpResponse.json({
+        hunt,
+        ticket_id: null,
+        techniques: [],
+        runs: [
+          {
+            run_id: log.run_id,
+            task: "l3_verify",
+            attempt: 1,
+            outcome: "incomplete",
+            failure: null,
+            tokens_in: null,
+            tokens_out: null,
+            started_at: log.started_at,
+            duration_ms: log.duration_ms,
+          },
+        ],
+      }),
+    ),
+  );
+  show("/hunts");
+  fireEvent.click(await screen.findByRole("button", { name: hunt.hypothesis }));
+  const dialog = await screen.findByRole("dialog");
+  expect(
+    await within(dialog).findByText("l3_verify · incomplete"),
+  ).toBeInTheDocument();
+});
+
 test("page indicator shows the maximum from dashboard counts, or - when filtered by severity", async () => {
   dashboard();
   server.use(
