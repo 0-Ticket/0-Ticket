@@ -225,7 +225,7 @@ test("L3 ticket offers Hunt navigation, and filters reset cursor", async () => {
   );
   const last = requests.filter((r) => r.pathname === "/api/tickets").at(-1);
   expect(last?.searchParams.has("cursor")).toBe(false);
-  expect(screen.getByText("1 페이지")).toBeInTheDocument();
+  expect(screen.getByText(/^1\//)).toBeInTheDocument();
 });
 test("error retries and empty data are distinct", async () => {
   dashboard();
@@ -350,13 +350,13 @@ test("previous page returns through the cursor trail", async () => {
   expect(await screen.findByText(items[1].id)).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "다음 페이지" }));
   expect(await screen.findByText(items[2].id)).toBeInTheDocument();
-  expect(screen.getByText("3 페이지")).toBeInTheDocument();
+  expect(screen.getByText(/^3\//)).toBeInTheDocument();
   await waitFor(() =>
     expect(screen.getByRole("button", { name: "이전 페이지" })).toBeEnabled(),
   );
   fireEvent.click(screen.getByRole("button", { name: "이전 페이지" }));
   expect(await screen.findByText(items[1].id)).toBeInTheDocument();
-  expect(screen.getByText("2 페이지")).toBeInTheDocument();
+  expect(screen.getByText(/^2\//)).toBeInTheDocument();
   await waitFor(() =>
     expect(screen.getByRole("button", { name: "이전 페이지" })).toBeEnabled(),
   );
@@ -446,7 +446,7 @@ test("cursor URL restores the previous page and filters clear its trail", async 
   );
   show(`/tickets?origin=l3&cursor=${second}&trail=&trail=${first}`);
   await screen.findByText("조건에 맞는 데이터가 없습니다.");
-  expect(screen.getByText("3 페이지")).toBeInTheDocument();
+  expect(screen.getByText(/^3\//)).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "이전 페이지" }));
   await waitFor(() =>
     expect(
@@ -487,7 +487,7 @@ test("legacy cursor links can advance and return without losing the starting cur
   );
   show(`/tickets?cursor=${first}`);
   await screen.findByText("조건에 맞는 데이터가 없습니다.");
-  expect(screen.getByText("2 페이지")).toBeInTheDocument();
+  expect(screen.getByText(/^2\//)).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "다음 페이지" }));
   await waitFor(() =>
     expect(
@@ -497,13 +497,13 @@ test("legacy cursor links can advance and return without losing the starting cur
         ?.searchParams.get("cursor"),
     ).toBe(second),
   );
-  expect(screen.getByText("3 페이지")).toBeInTheDocument();
+  expect(screen.getByText(/^3\//)).toBeInTheDocument();
   await waitFor(() =>
     expect(screen.getByRole("button", { name: "이전 페이지" })).toBeEnabled(),
   );
   fireEvent.click(screen.getByRole("button", { name: "이전 페이지" }));
   expect(screen.getByTestId("where")).toHaveTextContent(`cursor=${first}`);
-  expect(screen.getByText("2 페이지")).toBeInTheDocument();
+  expect(screen.getByText(/^2\//)).toBeInTheDocument();
 });
 
 for (const resource of ["alerts", "events"] as const) {
@@ -647,4 +647,45 @@ test("Hunt runs, techniques and promoted Ticket navigation are preserved", async
   expect(
     within(dialog).getByRole("link", { name: "승격 Ticket" }),
   ).toHaveAttribute("href", `/tickets?selected=${seed.tickets[7].id}`);
+});
+
+test("page indicator shows the maximum from dashboard counts, or - when filtered by severity", async () => {
+  dashboard();
+  server.use(
+    http.get("*/api/dashboard", () =>
+      HttpResponse.json({
+        flow: { tickets: 60 },
+        ticket_status: { new: 30, linked: 30 },
+        ticket_severity: {},
+        incident_status: {},
+        case_status: {},
+        normalization: {
+          alert: { succeeded: 0, failed: 0, pending: 0, success_ratio: null },
+          event: { succeeded: 0, failed: 0, pending: 0, success_ratio: null },
+        },
+        hunting: { statuses: {}, total: 0, promoted: 0, promotion_ratio: null },
+        analyzed_incidents: [],
+        top_incidents: [],
+      }),
+    ),
+    http.get("*/api/tickets", () =>
+      HttpResponse.json({ items: [], next_cursor: null }),
+    ),
+  );
+  show("/tickets");
+  expect(await screen.findByText("1/3")).toBeInTheDocument();
+  fireEvent.click(
+    within(screen.getByRole("group", { name: "상태 필터" })).getByRole(
+      "button",
+      { name: "L1 대기" },
+    ),
+  );
+  expect(await screen.findByText("1/2")).toBeInTheDocument();
+  fireEvent.click(
+    within(screen.getByRole("group", { name: "위험도 필터" })).getByRole(
+      "button",
+      { name: "미상" },
+    ),
+  );
+  expect(await screen.findByText("1/-")).toBeInTheDocument();
 });

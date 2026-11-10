@@ -585,16 +585,48 @@ function DetailPanel({
     </dialog>
   );
 }
+const PAGE_SIZE = 25;
+// The list API has no total; derive it from dashboard counts. Origin/severity filters have no count.
+function totalCount(
+  resource: Resource,
+  status: string,
+  filtered: boolean,
+  d?: Dashboard,
+) {
+  if (!d || filtered) return undefined;
+  const raw = (n: Dashboard["normalization"][string]) => ({
+    pending: n.pending,
+    succeeded: n.succeeded,
+    failed: n.failed,
+  });
+  const by: Record<string, number> =
+    resource === "alerts"
+      ? raw(d.normalization.alert)
+      : resource === "events"
+        ? raw(d.normalization.event)
+        : resource === "tickets"
+          ? d.ticket_status
+          : resource === "incidents"
+            ? d.incident_status
+            : resource === "cases"
+              ? d.case_status
+              : d.hunting.statuses;
+  return status
+    ? (by[status] ?? 0)
+    : Object.values(by).reduce((a, b) => a + b, 0);
+}
 function ListView({
   resource,
   waiting = false,
+  summary,
 }: {
   resource: Resource;
   waiting?: boolean;
+  summary?: Dashboard;
 }) {
   const [search, setSearch] = useSearchParams();
   const status = waiting ? "awaiting_review" : (search.get("status") ?? "");
-  const params = new URLSearchParams({ limit: "25" });
+  const params = new URLSearchParams({ limit: String(PAGE_SIZE) });
   for (const key of ["cursor", "origin", "severity"])
     if (search.get(key) && (resource === "tickets" || key === "cursor"))
       params.set(key, search.get(key)!);
@@ -642,6 +674,19 @@ function ListView({
     setSearch(next);
   }
   const selected = search.get("selected");
+  const current = trail.length + 1;
+  const total = totalCount(
+    resource,
+    status,
+    resource === "tickets" &&
+      !!(search.get("severity") || search.get("origin")),
+    summary,
+  );
+  // An old cursor link can start past the last page; never show N greater than the maximum.
+  const last =
+    total === undefined
+      ? "-"
+      : Math.max(Math.ceil(total / PAGE_SIZE), 1, current);
   return (
     <section className="card list-card">
       <div className="list-toolbar">
@@ -753,7 +798,9 @@ function ListView({
           >
             <Icon name="left" />
           </button>
-          <span aria-live="polite">{trail.length + 1} 페이지</span>
+          <span aria-live="polite">
+            {current}/{last}
+          </span>
           <button
             aria-label="다음 페이지"
             disabled={
@@ -895,6 +942,7 @@ export default function App() {
               key={`${resource}/${waiting}`}
               resource={waiting ? "incidents" : resource}
               waiting={waiting}
+              summary={dashboard.data}
             />
           )}
         </main>
