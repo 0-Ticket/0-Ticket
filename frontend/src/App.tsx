@@ -1,4 +1,6 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, type CSSProperties, type ReactNode } from "react";
+import { PanelResizer } from "./components/panel-resizer";
+import { usePanelWidth } from "./components/use-panel-width";
 import {
   Link,
   Navigate,
@@ -589,6 +591,7 @@ function DetailPanel({
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const [width, setWidth] = usePanelWidth("panel-width:detail", 650);
   const query = useQuery({
     queryKey: ["detail", resource, id],
     queryFn: ({ signal }) =>
@@ -603,9 +606,11 @@ function DetailPanel({
     <dialog
       ref={ref}
       className="detail-panel"
+      style={{ "--panel-w": `${width}px` } as CSSProperties}
       aria-labelledby="detail-title"
       onCancel={onClose}
     >
+      <PanelResizer width={width} initial={650} onChange={setWidth} />
       <header>
         <div>
           <span className="eyebrow">RECORD DETAIL</span>

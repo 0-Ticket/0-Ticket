@@ -1,4 +1,12 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
+import { PanelResizer } from "../components/panel-resizer";
+import { usePanelWidth } from "../components/use-panel-width";
 import { useSearchParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, get, send } from "../api/client";
@@ -210,6 +218,7 @@ function UserPanel({
   const me = useMe().data!;
   const client = useQueryClient();
   const dialog = useRef<HTMLDialogElement>(null);
+  const [width, setWidth] = usePanelWidth("panel-width:user", 420);
   const temporary = useRef<HTMLInputElement>(null);
   const role = useRef<HTMLSelectElement>(null);
   const [saved, setSaved] = useState(false);
@@ -255,9 +264,11 @@ function UserPanel({
     <dialog
       ref={dialog}
       className="detail-panel user-panel"
+      style={{ "--panel-w": `${width}px` } as CSSProperties}
       aria-labelledby="user-title"
       onCancel={onClose}
     >
+      <PanelResizer width={width} initial={420} onChange={setWidth} />
       <header>
         <div>
           <span className="eyebrow">USER ACTION</span>

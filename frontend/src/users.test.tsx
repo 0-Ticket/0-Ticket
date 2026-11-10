@@ -280,3 +280,23 @@ test("news.read is not offered in the editor but is still sent on save", async (
   await waitFor(() => expect(body).not.toBeNull());
   expect(body!.permissions).toContain("news.read");
 });
+
+test("the side panel can be resized with the keyboard and stays above the minimum", async () => {
+  server.use(list([pendingOne]));
+  show("/users");
+  fireEvent.click(
+    await screen.findByRole("button", { name: pendingOne.username }),
+  );
+  const handle = await screen.findByRole("separator", {
+    name: "패널 너비 조절",
+  });
+  const panel = handle.closest("dialog")!;
+  expect(panel.style.getPropertyValue("--panel-w")).toBe("420px");
+  fireEvent.keyDown(handle, { key: "ArrowLeft" });
+  expect(panel.style.getPropertyValue("--panel-w")).toBe("444px");
+  for (let i = 0; i < 10; i++) fireEvent.keyDown(handle, { key: "ArrowRight" });
+  expect(panel.style.getPropertyValue("--panel-w")).toBe("360px");
+  fireEvent.keyDown(handle, { key: "ArrowLeft" });
+  fireEvent.doubleClick(handle);
+  expect(panel.style.getPropertyValue("--panel-w")).toBe("420px");
+});
