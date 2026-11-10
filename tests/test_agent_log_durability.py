@@ -15,6 +15,7 @@ import psycopg
 import pytest
 from fake_model import FakeModel
 from test_agent_core import CONFIG, REGISTRY, make_task, no_sleep
+from tool_helpers import new_recorder
 
 from soc.agent import AgentResult, run_agent
 from soc.agent.agent_log import LogWriteError, MemoryLogSink, PostgresLogSink, jsonable
@@ -467,15 +468,34 @@ def test_model_rows_store_only_new_input_and_join_back() -> None:
     assert "input_reset" not in first["details"] and "input_reset" not in second["details"]
 
 
-def test_format_error_retry_input_is_restored_even_when_it_is_not_a_prefix() -> None:
+def test_format_error_retry_input_extends_the_previous_input_and_is_restored() -> None:
     sink = MemoryLogSink()
     result, model = go("format_error_then_ok", sink)
     assert result.ok is True
     inputs = [jsonable(c["input"]) for c in model.calls]
-    assert joined_inputs(sink.rows) == inputs
+    assert inputs[1][: len(inputs[0])] == inputs[0]  # SDK의 재요청 입력은 앞 입력을 잇는다
     second = [r for r in sink.rows if r["kind"] == "model"][1]
-    is_prefix = inputs[1][: len(inputs[0])] == inputs[0]
-    assert bool(second["details"].get("input_reset")) is (not is_prefix)
+    assert second["input"]["input_from"] == len(inputs[0])
+    assert "input_reset" not in second["details"]
+    assert joined_inputs(sink.rows) == inputs
+
+
+def test_input_that_does_not_extend_the_previous_one_is_stored_whole_and_restored() -> None:
+    first = [{"role": "user", "content": "a"}]
+    second = [{"role": "user", "content": "b"}, {"role": "assistant", "content": "c"}]
+    recorder = new_recorder()
+
+    async def calls() -> None:
+        await recorder.on_llm_start(None, None, "system text", first)
+        recorder._open.clear()  # 앞 호출은 끝난 것으로 본다(이 테스트는 입력 저장만 본다)
+        await recorder.on_llm_start(None, None, "system text", second)
+
+    asyncio.run(calls())
+    row_1, row_2 = recorder.rows
+    assert row_1["input"] == {"system": "system text", "input": first}
+    assert row_2["input"] == {"input_from": 0, "input": second}
+    assert row_2["details"]["input_reset"] is True
+    assert joined_inputs(recorder.rows) == [first, second]
 
 
 def big_records_registry() -> ToolRegistry:
