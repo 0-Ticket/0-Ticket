@@ -28,8 +28,9 @@ Artifact를 저장한 뒤 `analyzing`을 유지해 새 Ticket을 다시 읽는�
   `held_at`을 쓴다. `held`에 Ticket이 붙어도 상태를 바로 바꾸지 않는다.
 - 로컬 설정의 `max_analysis_rounds`는 제거됐다. `max_failures`와
   `failure_retry_cooldown_ms`로 바꿔야 한다.
-- #270의 공통 Incident 상태 변경에 대한 L1·L2·L3·화면 담당 승인 기록은 이슈에서
-  아직 확인하지 못했다. GitHub에는 쓰지 않았다.
+- 사람은 L1·L2·L3·화면 담당이 공통 Incident 상태 변경을 모두 확인했다고 말했다.
+  다만 2026-11-10에 읽은 #270 이슈 댓글은 0건이라 승인 기록 완료 기준은 아직
+  충족하지 않았다. GitHub에는 쓰지 않았다.
 - Azure 서버의 분리된 시험 폴더에서 실제 LLM을 두 번 호출했다. 합성 Incident의
   첫 분석은 두 번 모두 `evidence_id_error`였고, Incident는 `analyzing`,
   `failure_streak = 1`, Artifact 0건으로 저장됐다. 두 번째 호출은 임시 DB 조회
@@ -52,3 +53,6 @@ Artifact를 저장한 뒤 `analyzing`을 유지해 새 Ticket을 다시 읽는�
   모델 실행 후 `held_at`, Ticket 연결 뒤에도 유지되는 복귀 시각, 성공 시 카운터 초기화를 확인했다.
 - Azure 서버의 분리된 시험 폴더에서 #270 관련 단위 테스트 24개와 임시 DB 테스트
   40개가 통과했다. 서버의 원래 저장소·`.env`는 수정하지 않았다.
+- 마무리 단계에서 백엔드 포맷·린트·계약 생성 검사, Linux 전체 테스트 1377개와
+  임시 DB·Qdrant 테스트 439개를 다시 통과했다. 화면 계약 생성·린트·테스트
+  23개·빌드도 다시 통과했다. Qdrant 버전 조회 경고 1건과 Vite 번들 크기 경고가 있었다.
