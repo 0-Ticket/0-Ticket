@@ -24,7 +24,7 @@ def test_default_config_reads_into_branch_settings() -> None:
 def test_default_config_reads_into_analyze_settings() -> None:
     settings = read_analyze_settings(load_config(REPO_CONFIG)["l2"])
 
-    assert settings.lookback_ms == 86_400_000
+    assert settings.lookback_ms == 259_200_000
     assert settings.max_failures == 3
     assert settings.failure_retry_cooldown_ms == 3_600_000
     assert settings.max_seed_entities == 10

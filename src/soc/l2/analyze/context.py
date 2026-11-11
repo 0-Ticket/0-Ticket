@@ -1,5 +1,6 @@
-"""L2 Incident 분석 문맥과 같은 조회 구간의 관련 기록을 읽는다."""
+"""L2 Incident 분석 문맥과 전체 증거 구간의 관련 기록을 읽는다."""
 
+from collections import defaultdict, deque
 from dataclasses import dataclass
 from typing import Any
 
@@ -11,6 +12,9 @@ from soc.contracts import to_datetime, to_epoch_ms, validate_contract
 from soc.entities import normalize_entity_value
 from soc.l2.branch.read import _contract_row, _existing_ids, read_branch_data
 from soc.l2.config import AnalyzeSettings
+
+BUCKETS = 4
+MAX_RELATED = 80
 
 
 @dataclass(frozen=True)
@@ -26,6 +30,7 @@ class AnalyzeContext:
     previous_artifact: dict[str, Any] | None
     evidence_ids: tuple[str, ...]
     asset_lookup_failed: bool
+    max_range_days: int
 
     def investigate_data(self) -> dict[str, Any]:
         return {
@@ -37,6 +42,7 @@ class AnalyzeContext:
             "assets": self.assets,
             "related": list(self.related),
             "window": self.window,
+            "max_range_days": self.max_range_days,
             "previous_artifact": self.previous_artifact,
             "asset_lookup_failed": self.asset_lookup_failed,
         }
@@ -44,20 +50,11 @@ class AnalyzeContext:
 
 def calculate_window(
     *,
-    earliest_ticket_ms: int,
+    earliest_ms: int,
     now_ms: int,
     lookback_ms: int,
-    max_range_days: int,
 ) -> dict[str, Any]:
-    requested = earliest_ticket_ms - lookback_ms
-    floor = now_ms - max_range_days * 86_400_000
-    start = max(requested, floor)
-    return {
-        "from": start,
-        "to": now_ms,
-        "truncated": start > requested,
-        "requested_from": requested,
-    }
+    return {"from": earliest_ms - lookback_ms, "to": now_ms}
 
 
 def read_context(
@@ -101,18 +98,20 @@ def read_context(
     if not tickets:
         return None
 
+    evidence_times = [row["time"] for row in (*alerts.values(), *events.values())]
     window = calculate_window(
-        earliest_ticket_ms=min(ticket["created_at"] for ticket in tickets),
+        earliest_ms=min(evidence_times, default=min(ticket["created_at"] for ticket in tickets)),
         now_ms=now_ms,
         lookback_ms=settings.lookback_ms,
-        max_range_days=max_range_days,
     )
     try:
         assets = lookup_assets(conn, incident["entities"], asset_statement_timeout_ms)
         asset_failed = False
     except AssetLookupError:
         assets, asset_failed = [], True
-    related = _related(conn, incident["entities"][: settings.max_seed_entities], window, settings)
+    related = _related(
+        conn, _seed_entities(incident, tickets, settings.max_seed_entities), window, settings
+    )
     for item in related:
         evidence.setdefault(item["record"]["id"], None)
     previous_artifact = _previous_artifact(conn, incident_id)
@@ -138,7 +137,45 @@ def read_context(
         previous_artifact=previous_artifact,
         evidence_ids=tuple(evidence),
         asset_lookup_failed=asset_failed,
+        max_range_days=max_range_days,
     )
+
+
+def _seed_entities(
+    incident: dict[str, Any], tickets: list[dict[str, Any]], limit: int
+) -> list[dict[str, Any]]:
+    by_id = {ticket["id"]: ticket for ticket in tickets}
+    latest = next((by_id[id] for id in reversed(incident["ticket_ids"]) if id in by_id), None)
+    ordered = [*(latest["entities"] if latest else []), *incident["entities"]]
+    found: dict[tuple[str, str], dict[str, Any]] = {}
+    for entity in ordered:
+        key = (entity["type"], normalize_entity_value(entity["type"], entity["value"]))
+        found.setdefault(key, entity)
+        if len(found) >= limit:
+            break
+    return list(found.values())
+
+
+def _pick_evenly(
+    items: list[tuple[int, int, str, dict[str, Any]]], limit: int
+) -> list[tuple[int, int, str, dict[str, Any]]]:
+    groups: dict[tuple[int, int, str], list[tuple[int, int, str, dict[str, Any]]]] = defaultdict(
+        list
+    )
+    for item in items:
+        groups[item[:3]].append(item)
+    queues = [
+        deque(sorted(groups[key], key=lambda item: (item[3]["time"], item[3]["id"]), reverse=True))
+        for key in sorted(groups)
+    ]
+    selected = []
+    while len(selected) < limit and any(queues):
+        for queue in queues:
+            if queue:
+                selected.append(queue.popleft())
+                if len(selected) == limit:
+                    break
+    return selected
 
 
 def _related(
@@ -147,26 +184,55 @@ def _related(
     window: dict[str, Any],
     settings: AnalyzeSettings,
 ) -> tuple[dict[str, Any], ...]:
-    found: dict[tuple[str, str], dict[str, Any]] = {}
+    candidates: list[tuple[int, int, str, dict[str, Any]]] = []
     start, end = to_datetime(window["from"]), to_datetime(window["to"])
-    for entity in entities:
+    bucket_ms = max(1, (window["to"] - window["from"] + BUCKETS - 1) // BUCKETS)
+    for entity_index, entity in enumerate(entities):
         value = normalize_entity_value(entity["type"], entity["value"])
         rows = []
         for kind, table in (("alert", "alerts"), ("event", "events")):
             with conn.cursor(row_factory=dict_row) as cursor:
                 fetched = cursor.execute(
-                    f"SELECT * FROM {table} WHERE time BETWEEN %s AND %s "
-                    "AND EXISTS (SELECT 1 FROM jsonb_array_elements(entities) item "
-                    "WHERE item->>'type' = %s AND item->>'value' = %s) "
-                    "ORDER BY time DESC LIMIT %s",
-                    (start, end, entity["type"], value, settings.max_related_per_entity),
+                    "SELECT * FROM (SELECT matched.*, row_number() OVER "
+                    "(PARTITION BY bucket ORDER BY time DESC, id DESC) AS rn FROM ("
+                    f"SELECT t.*, LEAST({BUCKETS - 1}, "
+                    "(floor(extract(epoch FROM t.time) * 1000)::bigint "
+                    f"- %s) / %s) AS bucket FROM {table} t "
+                    "WHERE t.time BETWEEN %s AND %s AND EXISTS "
+                    "(SELECT 1 FROM jsonb_array_elements(t.entities) item "
+                    "WHERE item->>'type' = %s AND item->>'value' = %s)"
+                    ") matched) ranked WHERE rn <= %s",
+                    (
+                        window["from"],
+                        bucket_ms,
+                        start,
+                        end,
+                        entity["type"],
+                        value,
+                        settings.max_related_per_entity,
+                    ),
                 ).fetchall()
-            rows.extend((kind, row) for row in fetched)
-        rows.sort(key=lambda item: item[1]["time"], reverse=True)
-        for kind, row in reversed(rows[: settings.max_related_per_entity]):
-            record = _contract_row(kind, row)
-            found.setdefault((kind, record["id"]), {"kind": kind, "record": record})
-    return tuple(sorted(found.values(), key=lambda item: item["record"]["time"]))
+            for fetched_row in fetched:
+                row = dict(fetched_row)
+                bucket = row.pop("bucket")
+                row.pop("rn")
+                rows.append((entity_index, bucket, kind, row))
+        candidates.extend(_pick_evenly(rows, settings.max_related_per_entity))
+
+    unique: dict[tuple[str, str], tuple[int, int, str, dict[str, Any]]] = {}
+    for item in candidates:
+        unique.setdefault((item[2], item[3]["id"]), item)
+    selected = _pick_evenly(list(unique.values()), MAX_RELATED)
+    related = []
+    for _, _, kind, row in selected:
+        record = _contract_row(kind, row)
+        fields = (
+            ("id", "time", "severity", "title", "entities")
+            if kind == "alert"
+            else ("id", "time", "summary", "entities")
+        )
+        related.append({"kind": kind, "record": {key: record[key] for key in fields}})
+    return tuple(sorted(related, key=lambda item: (item["record"]["time"], item["record"]["id"])))
 
 
 def _previous_artifact(conn: psycopg.Connection, incident_id: str) -> dict[str, Any] | None:

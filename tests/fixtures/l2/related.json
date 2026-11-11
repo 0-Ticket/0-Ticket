@@ -1,0 +1,10 @@
+[
+  {"entity": 0, "bucket": 0, "kind": "alert", "record": {"id": "alt_old", "time": 10}},
+  {"entity": 0, "bucket": 0, "kind": "event", "record": {"id": "evt_old", "time": 11}},
+  {"entity": 0, "bucket": 1, "kind": "alert", "record": {"id": "alt_middle_1", "time": 20}},
+  {"entity": 0, "bucket": 1, "kind": "event", "record": {"id": "evt_middle_1", "time": 21}},
+  {"entity": 0, "bucket": 2, "kind": "alert", "record": {"id": "alt_middle_2", "time": 30}},
+  {"entity": 0, "bucket": 2, "kind": "event", "record": {"id": "evt_middle_2", "time": 31}},
+  {"entity": 0, "bucket": 3, "kind": "alert", "record": {"id": "alt_recent", "time": 40}},
+  {"entity": 0, "bucket": 3, "kind": "event", "record": {"id": "evt_recent", "time": 41}}
+]
