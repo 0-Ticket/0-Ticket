@@ -148,6 +148,7 @@ def test_migrate_creates_all_tables_on_empty_db(temp_database: str) -> None:
         "0003_agent_reader.sql",
         "0004_asset_lookup.sql",
         "0005_auth.sql",
+        "0006_related_time_indexes.sql",
         "0100_ingest_checkpoint.sql",
         "0101_ingest_runs.sql",
         "0102_raw_links.sql",
@@ -178,6 +179,13 @@ def test_migrate_creates_all_tables_on_empty_db(temp_database: str) -> None:
             "user_permissions",
         }
         assert table_names(conn) == {*TABLES.values(), *other_tables, "schema_migrations"}
+        indexes = {
+            row[0]
+            for row in conn.execute(
+                "SELECT indexname FROM pg_indexes WHERE tablename IN ('alerts', 'events')"
+            )
+        }
+        assert {"alerts_time_idx", "events_time_idx"} <= indexes
 
 
 def test_migrate_twice_does_not_reapply(temp_database: str) -> None:
