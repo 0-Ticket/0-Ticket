@@ -146,6 +146,7 @@
 
 새 기록을 맨 위에 쓴다.
 
+- #277 · D-049 결정 반영(사람이 정함). 에이전트에게 보이는 `siem_ref`는 저장 키(`siem_ref_key`, 이스케이프된 값)다. `link_by_refs`는 저장 키 쌍(`SiemRefKey`)을 받고 안에서 이스케이프하지 않는다. 한 dict 안에서 키가 이스케이프 뒤 겹치면 값을 덮어쓰지 않고 `escape_collision` 실패로 기록한다(마이그레이션 없음, `error_code`에 CHECK가 없다).
 - #277 · 원본 보관 형식(D-049)을 추가했다. `raw_records` 원본을 jsonb 대신 JSON 글자(`original_text`, `ensure_ascii=True`)로 보관하고, 정규화 결과의 NUL·짝 없는 서로게이트를 값과 키 모두 6글자 이스케이프로 치환한다. 계약 필드 `original` → `original_text`. 사용자가 계획을 확정함.
 - #277 · 알려진 한계 두 가지(깨진 원본이 claim에서 배치를 멈춤, 치환 결과의 구별 불가와 키 충돌)는 `docs/notes/277-raw-original-text.md`에 문서화했다. 코드는 바꾸지 않았다.
 

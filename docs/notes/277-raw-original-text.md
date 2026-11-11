@@ -122,3 +122,18 @@ supersedes: []
 3. 확인: `SELECT count(*) FROM raw_records;`가 0이어야 한다.
 
 주의: 이 브랜치의 0106 파일 내용을 바꿨으므로(RAISE 문구), 이전 문구의 0106을 이미 적용한 DB는 `이미 적용한 파일의 내용이 기록과 다르다`로 멈춘다(`src/soc/db/migrate.py`는 체크섬을 비교한다). 이런 DB는 1번으로 새로 만든다.
+
+## 결정 반영 (2차)
+
+사람이 아래 네 가지를 정했다. 계획 파일(`docs/plans/277-raw-original-text.md`)은 바꾸지 않았고, 앞 절의 기록도 고쳐 쓰지 않았다.
+
+- **D1 에이전트에게 보이는 siem_ref는 저장 키다.** `query_siem`의 `siem_ref`를 `siem_ref_key("<_index>/<_id>")`로 만든다. 그래서 에이전트가 받은 값은 `raw_records.siem_ref`와 글자가 같다. 따옴표·백슬래시·제어문자·한글 `_id`로 왕복하는 테스트를 더했다. 이스케이프할 글자가 없는 값은 예전과 같다. 커밋 `aca7a6d`.
+- **D2 두 형태를 타입으로 구분한다.** `soc.ids.SiemRefKey`(NewType)를 더했고 `siem_ref_key`가 이 타입을 돌려준다. `link_by_refs`는 저장 키 쌍만 받고 안에서 이스케이프하지 않는다. 보류 쌍도 받은 저장 키 그대로 돌려준다. 원래 형태를 넘기면 찾지 못한다는 DB 테스트와, DB 없이 조회 키 글자만 보는 단위 테스트(`tests/ingest/unit/test_link_keys.py`)를 더했다. 이 저장소의 `link_by_refs` 호출부는 테스트뿐이라 테스트만 고쳤다. 커밋 `50c0e7c`.
+- **D3 키 충돌은 실패로 기록한다.** `escape_unstorable`이 한 dict 안에서 이스케이프 뒤 같은 키를 만들면 `EscapeCollisionError`를 낸다. `NormalizeError`의 하위 클래스이고 코드는 `escape_collision`이다. `FAILURES`에 `escape_collision`을 더했다. `_run_batch`의 except 튜플은 이미 `NormalizeError`를 받으므로 바꾸지 않았다. `_failure_code`는 `error.code`를 그대로 쓴다. 마이그레이션은 없다. `normalize_status.error_code`에는 CHECK가 없다(`0103_normalize_status.sql` 확인). 커밋 `9c5c4fc`.
+- **D4 그대로.** `_index`/`_id` 나누기와 `_raw_record`의 직렬화는 바꾸지 않았다. `siem_ref_key` 독스트링에 "키를 `/`로 나누어 되돌리지 않는다"는 문장만 더했다. 커밋 `aca7a6d`.
+
+계약 설명(`contracts/raw_record.schema.json`)은 저장 키 형태라고 고쳤고, 생성 파일(Python, 프론트 `frontend/src/api/generated/`)은 생성기로 다시 만들었다. 커밋 `52506a5`.
+
+### 알려진 한계
+
+- `link_by_refs`에 원래 형태 ref가 NUL 문자를 담고 넘어오면, DB 조회 전에 psycopg가 `DataError`를 낸다(텍스트 파라미터에 NUL을 넣을 수 없다). 저장 키를 넘기면 생기지 않는다. 호출하는 쪽이 저장 키를 넘기는 것으로 막는다. 이 절에서는 고치지 않았다.
