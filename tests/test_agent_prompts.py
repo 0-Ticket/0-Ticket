@@ -312,7 +312,8 @@ def test_l2_stage_prompt_checks_blocked_or_succeeded_in_analysis() -> None:
     assert "분석 작업의 영향 범위" in text  # 분석 작업으로 한정한 문구(이 파일은 분류에도 합성된다)
     assert "응답 코드나 성공·실패 기록" in text  # HTTP 밖의 Incident도 읽을 수 있는 표현
     assert "차단됐는지 성공했는지" in text
-    assert "확인하지 못했다고 그대로 쓴다" in text
+    assert "조사에서는 확인하지 못했다고 쓰고" in text  # 보고 표기는 l2_report.md 규칙과 같다
+    assert "보고에서는 verdict를 inconclusive로" in text
 
 
 def test_l2_report_prompt_keeps_blocked_attempts_open() -> None:
@@ -328,11 +329,12 @@ def test_l2_report_prompt_keeps_blocked_attempts_open() -> None:
 
 
 def test_l2_investigate_prompt_records_block_or_success_in_timeline() -> None:
-    text = compose_instructions(
-        make_task(stage="l2", prompt=l2_task_prompt("l2_investigate")), max_turns=12
-    )
-    assert "확인한 사실과 확인하지 못한 점만" in text  # 미확인 기록이 첫 규칙과 부딪히지 않는다
-    assert "해당하는 경우" in text  # HTTP가 아닌 Incident에는 지어내지 않는다
-    assert "응답 코드나 성공·실패 기록" in text
+    # l2.md도 합성되므로 합성 텍스트가 아니라 조사 프롬프트 파일을 직접 본다
+    text = l2_task_prompt("l2_investigate").text
+    assert "확인한 사실만 시간순 timeline에 쓴다" in text  # 미확인 항목이 일반 규칙이 되지 않는다
+    assert (
+        "해당하는 경우 공격의 응답 코드나 성공·실패 기록" in text
+    )  # HTTP 밖 Incident는 지어내지 않는다
     assert "근거 ID와 함께 timeline에 쓴다" in text
-    assert "확인하지 못했다고 timeline에 쓴다" in text  # 보고 run은 도구가 없어 timeline만 본다
+    assert "확인하지 못했을 때만 예외로" in text  # 보고 run은 도구가 없어 timeline만 본다
+    assert "확인하지 못했다고 timeline에 쓴다" in text
