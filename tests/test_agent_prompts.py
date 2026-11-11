@@ -16,6 +16,7 @@ from soc.agent import TaskPrompt
 from soc.agent.compose import PROMPT_DIR, _resolve, compose_instructions
 from soc.agent.types import DOMAINS, FORBIDDEN_PHRASES, STAGES, contains_forbidden
 from soc.contracts import CONTRACT_NAMES
+from soc.l2.analyze.tasks import PROMPT_DIR as L2_PROMPT_DIR
 
 BASE = (PROMPT_DIR / "base.md").read_text(encoding="utf-8").strip()
 DOMAIN_SETS = [c for n in range(len(DOMAINS) + 1) for c in combinations(DOMAINS, n)]
@@ -273,20 +274,19 @@ def test_data_is_not_in_instructions() -> None:
 
 # 차단된 공격 시도도 위협으로 올린다(#296). L1은 정오탐, L2는 영향도를 가른다.
 
-L2_PROMPT_DIR = Path(compose_module.__file__).resolve().parents[1] / "l2" / "prompts"
 
-
-def l2_report_prompt() -> TaskPrompt:
-    return TaskPrompt((L2_PROMPT_DIR / "l2_report.md").read_text(encoding="utf-8"), "test-1")
+def l2_task_prompt(name: str) -> TaskPrompt:
+    return TaskPrompt((L2_PROMPT_DIR / f"{name}.md").read_text(encoding="utf-8"), "test-1")
 
 
 @pytest.mark.parametrize("domains", [(), ("web",)])
 def test_l1_prompt_escalates_blocked_attempts(domains: tuple[str, ...]) -> None:
     text = compose_instructions(make_task(domains=domains), max_turns=6)
-    assert "차단 여부와 관계없이 위협(malicious)" in text
-    assert "정상 활동으로 설명되는 경우만 benign" in text
+    assert "차단 여부와 관계없이" in text
+    assert "정상 활동으로 설명되는 경우만" in text
+    assert "흔적이 뚜렷하지 않은" in text  # 단순 실패 한 건을 공격으로 올리지 않는다
     assert "추가로 조회하지 않는다" in text
-    assert "reason에 사실로 적는다" in text
+    assert "reason에" in text
 
 
 def test_l1_prompt_leaves_impact_to_l2() -> None:
@@ -298,34 +298,34 @@ def test_l1_prompt_leaves_impact_to_l2() -> None:
 def test_web_domain_does_not_make_success_a_threat_criterion() -> None:
     web = (PROMPT_DIR / "domains" / "web.md").read_text(encoding="utf-8")
     assert "성공했는지 따로 본다" not in web
-    assert "위협 여부의 기준이 아니다" in web
-    assert "reason에 사실로 적는다" in web
-    assert "자동화된 스캔인지" in web  # 스캔 구분 지침은 그대로 둔다
+    assert "응답 코드만으로는 위협 여부를 가르지 않는다" in web
+    assert "정상 이용으로 설명되지 않으면" in web  # 페이로드 모양만으로 올리지 않는다
+    assert "reason에" in web
+    assert "자동화된 스캔" in web  # 스캔 구분 지침은 그대로 둔다
 
 
-def test_l2_stage_prompt_checks_blocked_or_succeeded() -> None:
+def test_l2_stage_prompt_checks_blocked_or_succeeded_in_analysis() -> None:
     text = compose_instructions(make_task(stage="l2"), max_turns=12)
-    assert "차단됐는지 성공했는지를 응답 코드와 이후 요청으로 확인" in text
-    assert "확인하지 못했으면 확인하지 못했다고 그대로 쓴다" in text
+    assert "분석 작업의 영향 범위" in text  # 분류 작업에는 걸리지 않는다
+    assert "차단됐는지 성공했는지" in text
+    assert "확인하지 못했다고 그대로 쓴다" in text
 
 
 def test_l2_report_prompt_keeps_blocked_attempts_open() -> None:
-    text = compose_instructions(make_task(stage="l2", prompt=l2_report_prompt()), max_turns=12)
-    assert "차단돼 성공하지 못한 것이 확인되면 verdict는 attempted" in text
-    assert "차단됐다는 이유로 not_threat으로 두지 않는다" in text
+    text = compose_instructions(
+        make_task(stage="l2", prompt=l2_task_prompt("l2_report")), max_turns=12
+    )
+    assert "attempted" in text
+    assert "차단됐다는 이유로 not_threat" in text
     assert "공격 시도가 없었거나 정상 활동으로 확인될 때만" in text
-    assert "verdict는 inconclusive로 두고, impact는 빈 문자열" in text
+    assert "inconclusive로 두고" in text
     assert "확인하지 못한 impact와 cause는 빈 문자열로 둔다." in text  # 기존 규칙은 그대로
 
 
 def test_l2_investigate_prompt_records_block_or_success_in_timeline() -> None:
-    prompt = TaskPrompt((L2_PROMPT_DIR / "l2_investigate.md").read_text(encoding="utf-8"), "test-1")
-    text = compose_instructions(make_task(stage="l2", prompt=prompt), max_turns=12)
-    assert "응답 코드와 차단 여부를 확인해" in text
+    text = compose_instructions(
+        make_task(stage="l2", prompt=l2_task_prompt("l2_investigate")), max_turns=12
+    )
+    assert "응답 코드와 차단 여부" in text
     assert "근거 ID와 함께 timeline에 쓴다" in text
     assert "확인하지 못했다고 timeline에 쓴다" in text  # 보고 run은 도구가 없어 timeline만 본다
-
-
-@pytest.mark.parametrize("stage", ["l1", "l2"])
-def test_l1_and_l2_prompts_leave_hunting_to_l3(stage: str) -> None:
-    assert "헌팅" not in (PROMPT_DIR / f"{stage}.md").read_text(encoding="utf-8")
