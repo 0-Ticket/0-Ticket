@@ -313,8 +313,17 @@ def test_l2_report_prompt_keeps_blocked_attempts_open() -> None:
     text = compose_instructions(make_task(stage="l2", prompt=l2_report_prompt()), max_turns=12)
     assert "차단돼 성공하지 못한 것이 확인되면 verdict는 attempted" in text
     assert "차단됐다는 이유로 not_threat으로 두지 않는다" in text
+    assert "공격 시도가 없었거나 정상 활동으로 확인될 때만" in text
     assert "verdict는 inconclusive로 두고, impact는 빈 문자열" in text
     assert "확인하지 못한 impact와 cause는 빈 문자열로 둔다." in text  # 기존 규칙은 그대로
+
+
+def test_l2_investigate_prompt_records_block_or_success_in_timeline() -> None:
+    prompt = TaskPrompt((L2_PROMPT_DIR / "l2_investigate.md").read_text(encoding="utf-8"), "test-1")
+    text = compose_instructions(make_task(stage="l2", prompt=prompt), max_turns=12)
+    assert "응답 코드와 차단 여부를 확인해" in text
+    assert "근거 ID와 함께 timeline에 쓴다" in text
+    assert "확인하지 못했다고 timeline에 쓴다" in text  # 보고 run은 도구가 없어 timeline만 본다
 
 
 @pytest.mark.parametrize("stage", ["l1", "l2"])
