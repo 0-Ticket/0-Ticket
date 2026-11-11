@@ -6,6 +6,7 @@ UUIDv7은 앞 48비트가 밀리초 시각이라 문자열로 정렬하면 만�
 Python 3.13 표준 라이브러리에 UUIDv7이 없어 직접 구현한다(ID 생성, D-034).
 """
 
+import json
 import secrets
 import threading
 import time
@@ -37,6 +38,16 @@ def new_id(prefix: str) -> str:
     if prefix not in PREFIXES:
         raise ValueError(f"알 수 없는 ID 접두사다. 쓸 수 있는 값: {', '.join(PREFIXES)}")
     return f"{prefix}_{_uuid7()}"
+
+
+def siem_ref_key(ref: str) -> str:
+    """SIEM 문서 ref를 저장 키 글자로 바꾼다(D-049).
+
+    인자 ref: 원래 형태 "<_index>/<_id>". 반환: JSON 문자열 이스케이프(ensure_ascii)를 한 뒤
+    양쪽 따옴표를 뺀 값. 보통 ref는 그대로이고, 따옴표·백슬래시·제어문자·비ASCII가 있으면 바뀐다.
+    raw_records.siem_ref 저장, link_by_refs 조회가 모두 이 함수로 만든 키를 쓴다.
+    """
+    return json.dumps(ref, ensure_ascii=True)[1:-1]
 
 
 def _now_ms() -> int:

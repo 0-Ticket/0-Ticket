@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 from fake_elk import EVENTS, make_settings
 
+from soc.ids import siem_ref_key
 from soc.ingest import run
 
 FIXTURES = Path(__file__).resolve().parents[2] / "fixtures" / "ingest"
@@ -72,3 +73,13 @@ def test_siem_ref_escapes_nul_as_six_characters() -> None:
 
     assert record["siem_ref"] == "idx/x\\u0000y"
     assert "\x00" not in record["siem_ref"]
+
+
+def test_siem_ref_of_odd_id_is_the_shared_key_helper() -> None:
+    # 따옴표·백슬래시·제어문자·한글 _id도 soc.ids.siem_ref_key와 같은 저장 키가 된다(#277)
+    hit = load("odd_id_doc.json")
+    record = raw_record(hit)
+
+    assert record["siem_ref"] == siem_ref_key(f"{hit['_index']}/{hit['_id']}")
+    assert record["siem_ref"].isascii()
+    assert json.loads(record["original_text"]) == hit

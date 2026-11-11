@@ -7,7 +7,7 @@ export type Kind = "alert" | "event";
  */
 export type SiemProfile = string;
 /**
- * SIEM 안에서 문서 하나를 가리키는 값. ELK는 <_index>/<_id>
+ * SIEM 안에서 문서 하나를 가리키는 저장 키. ELK는 <_index>/<_id>를 JSON 문자열 이스케이프(ensure_ascii)하고 양쪽 따옴표를 뺀 값(D-049, soc.ids.siem_ref_key)
  */
 export type SiemRef = string;
 /**

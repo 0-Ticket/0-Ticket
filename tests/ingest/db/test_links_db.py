@@ -10,6 +10,7 @@ import psycopg
 import pytest
 
 from soc.db.migrate import migrate
+from soc.ids import siem_ref_key
 from soc.ingest.store import link_by_refs
 
 pytestmark = pytest.mark.db
@@ -125,3 +126,24 @@ def test_failure_rolls_back_the_whole_batch(conn: psycopg.Connection) -> None:
         link_by_refs(conn, PROFILE, [("idx/a1", "idx/e1"), ("idx/a1", "idx/e2")])
 
     assert link_rows(conn) == set()
+
+
+def test_special_id_refs_link_by_original_form(conn: psycopg.Connection) -> None:
+    """따옴표·백슬래시·제어문자·한글 _id는 저장 키로 저장되고, 원래 형태 ref로 연결된다(#277)."""
+    odd_index = ".ds-logs-web-default-2026.11.04-000001"
+    odd_ref = f'{odd_index}/q"b\\s\x01z\x00한글'
+    event_ref = ".ds-logs-web-default-2026.11.04-000002/evt-plain"
+    # 수집이 저장하는 모양과 같은 키로 넣는다
+    insert_raw(conn, siem_ref_key(odd_ref), "alert")
+    insert_raw(conn, siem_ref_key(event_ref), "event")
+    pairs = [(odd_ref, event_ref)]
+
+    assert link_by_refs(conn, PROFILE, pairs) == (1, [])
+    assert link_rows(conn) == {(siem_ref_key(odd_ref), siem_ref_key(event_ref))}
+
+
+def test_pending_special_ref_comes_back_in_original_form(conn: psycopg.Connection) -> None:
+    odd_ref = '.ds-logs-web-default-2026.11.04-000001/q"b\\s\x01z\x00한글'
+    pair = (odd_ref, ".ds-logs-web-default-2026.11.04-000002/evt-plain")
+
+    assert link_by_refs(conn, PROFILE, [pair]) == (0, [pair])

@@ -21,7 +21,8 @@ class RawRecord(BaseModel):
     siem_ref: Annotated[
         str,
         Field(
-            description="SIEM 안에서 문서 하나를 가리키는 값. ELK는 <_index>/<_id>", min_length=1
+            description="SIEM 안에서 문서 하나를 가리키는 저장 키. ELK는 <_index>/<_id>를 JSON 문자열 이스케이프(ensure_ascii)하고 양쪽 따옴표를 뺀 값(D-049, soc.ids.siem_ref_key)",
+            min_length=1,
         ),
     ]
     fetched_at: Annotated[

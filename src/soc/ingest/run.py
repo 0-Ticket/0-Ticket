@@ -21,7 +21,7 @@ import httpx
 import psycopg
 
 from soc.contracts import ContractError, to_epoch_ms
-from soc.ids import new_id
+from soc.ids import new_id, siem_ref_key
 from soc.ingest import elk, store
 from soc.ingest.config import Settings, Source
 from soc.ingest.errors import IngestError
@@ -156,13 +156,13 @@ def _raw_record(
         id(new_id("raw")), kind, siem_profile, siem_ref, fetched_at, original_text를 담은 dict.
         original_text는 json.dumps(hit, ensure_ascii=True)다. NUL·짝 없는 서로게이트는 이스케이프
         글자가 되어 PostgreSQL text에 들어가고, siem_ref는 같은 규칙으로 JSON 문자열 이스케이프한
-        값에서 양쪽 따옴표를 뺀 것이다(D-049).
+        값에서 양쪽 따옴표를 뺀 것이다(D-049, soc.ids.siem_ref_key).
     """
     return {
         "id": new_id("raw"),
         "kind": source.kind,
         "siem_profile": settings.siem_profile,
-        "siem_ref": json.dumps(f"{hit['_index']}/{hit['_id']}")[1:-1],
+        "siem_ref": siem_ref_key(f"{hit['_index']}/{hit['_id']}"),
         "fetched_at": fetched_at,
         "original_text": json.dumps(hit, ensure_ascii=True),
     }

@@ -11,6 +11,7 @@ import psycopg
 from psycopg.types.json import Jsonb
 
 from soc.contracts import to_datetime, to_epoch_ms, validate_contract
+from soc.ids import siem_ref_key
 
 # 같은 (siem_profile, siem_ref)가 이미 있으면 처음 저장한 원본을 그대로 둔다
 _INSERT_RAW = """
@@ -152,17 +153,21 @@ def link_by_refs(
     인자:
         conn: autocommit 연결. 이 함수가 트랜잭션을 연다.
         siem_profile: 두 원본이 속한 SIEM 프로필 이름.
-        pairs: (알럿 siem_ref, 이벤트 siem_ref) 목록. siem_ref는 "<_index>/<_id>"다.
+        pairs: (알럿 ref, 이벤트 ref) 목록. ref는 원래 형태 "<_index>/<_id>"다(저장 키가 아니다).
+            함수가 soc.ids.siem_ref_key로 저장 키를 만들어 찾는다. 이미 저장 키 글자를 넘기면 두 번
+            이스케이프되어 찾지 못한다.
 
     반환:
-        (새로 저장한 연결 수, 원본이 없어 보류한 쌍). 이미 연결된 쌍은 세지 않고 보류하지도 않는다.
+        (새로 저장한 연결 수, 원본이 없어 보류한 쌍). 보류한 쌍은 받은 원래 형태 그대로 돌려준다.
+        이미 연결된 쌍은 세지 않고 보류하지도 않는다.
     """
     linked = 0
     pending: list[tuple[str, str]] = []
     with conn.transaction():
         for alert_ref, event_ref in pairs:
-            alert = conn.execute(_FIND_RAW_ID, (siem_profile, "alert", alert_ref)).fetchone()
-            event = conn.execute(_FIND_RAW_ID, (siem_profile, "event", event_ref)).fetchone()
+            alert_key, event_key = siem_ref_key(alert_ref), siem_ref_key(event_ref)
+            alert = conn.execute(_FIND_RAW_ID, (siem_profile, "alert", alert_key)).fetchone()
+            event = conn.execute(_FIND_RAW_ID, (siem_profile, "event", event_key)).fetchone()
             if alert is None or event is None:
                 pending.append((alert_ref, event_ref))
                 continue
