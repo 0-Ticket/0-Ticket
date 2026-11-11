@@ -40,7 +40,6 @@ def insert_row(conn, table, row):
         "last_attempt_at",
     }
     json_fields = {
-        "original",
         "ocsf",
         "assets",
         "triage",
@@ -113,12 +112,16 @@ def test_raw_pages_and_details(ui_client):
         assert len(set(x["raw_id"] for x in items)) == len(items)
         assert {"pending", "succeeded", "failed"} == {x["normalize_status"] for x in items}
         for item in items:
-            assert "original" not in item and "ocsf" not in item
+            assert "original_text" not in item and "ocsf" not in item
             assert item["seed_source"] == "dev-seed-ui"
             r = ui_client.get(f"/api/{kind}/{item['raw_id']}")
             assert r.status_code == 200, r.text
             data = r.json()
             validate_contract("raw_record", data["raw_record"])
+            stored = next(
+                record for record in SEED["raw_records"] if record["id"] == item["raw_id"]
+            )
+            assert data["raw_record"]["original_text"] == stored["original_text"]
             if item["record_id"]:
                 validate_contract(kind[:-1], data["record"])
                 assert ui_client.get(f"/api/{kind}/{item['record_id']}").json() == data

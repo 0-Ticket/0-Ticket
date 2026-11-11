@@ -54,7 +54,6 @@ TIME_FIELDS = {
     "started_at",
 }
 JSON_FIELDS = {
-    "original",
     "entities",
     "assets",
     "triage",

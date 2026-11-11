@@ -59,14 +59,14 @@ def seed_cases(
         raw_id = case["raw_id"]
         raw_kind = "event" if case["normalization"]["result_kind"] == "event" else "alert"
         conn.execute(
-            "INSERT INTO raw_records (id, kind, siem_profile, siem_ref, fetched_at, original)"
+            "INSERT INTO raw_records (id, kind, siem_profile, siem_ref, fetched_at, original_text)"
             " VALUES (%s, %s, 'fixture', %s, %s, %s)",
             (
                 raw_id,
                 raw_kind,
                 f"ticketing/{case['case']}",
                 to_datetime(NOW_MS),
-                Jsonb({"fixture_case": case["case"]}),
+                json.dumps({"fixture_case": case["case"]}, ensure_ascii=True),
             ),
         )
         alert = case.get("alert")

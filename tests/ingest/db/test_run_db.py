@@ -42,22 +42,21 @@ def runs(conn: psycopg.Connection) -> list[tuple]:
     return conn.execute("SELECT outcome, pages, inserted FROM ingest_runs ORDER BY id").fetchall()
 
 
-def test_rejected_page_rolls_back_and_next_run_resumes(conn: psycopg.Connection) -> None:
-    failed = run_with(
-        conn, FakeElk({"logs-web-*": ["elk_events_page1.json", "elk_bad_record.json"]})
+def test_nul_page_is_stored_and_next_run_resumes(conn: psycopg.Connection) -> None:
+    """NUL이 든 문서가 있어도 페이지는 실패 없이 저장되고(#277), 다음 실행이 이어서 조회한다."""
+    first = run_with(
+        conn, FakeElk({"logs-web-*": ["elk_events_page1.json", "elk_nul_record.json"]})
     )
-    assert (failed.pages, failed.inserted, failed.failure) == (1, 2, "contract_rejected")
-    assert stored(conn) == [APACHE + "/dup-1", NGINX + "/dup-1"]  # 두 인덱스의 같은 _id
-    assert checkpoints(conn) == [{"time_ms": 1793754000000}]
-    assert runs(conn) == [("contract_rejected", 1, 2)]
+    assert (first.pages, first.inserted, first.failure) == (2, 3, None)
+    assert stored(conn) == [APACHE + "/dup-1", NGINX + "/dup-1", NGINX + "/nul-1"]
+    assert runs(conn) == [("ok", 2, 3)]
 
     fake = FakeElk({"logs-web-*": ["elk_events_page1.json", "elk_events_page2.json"]})
     resumed = run_with(conn, fake)
-    assert fake.search_bodies()[0]["query"]["range"]["@timestamp"]["gte"] == 1793754000000
+    assert fake.search_bodies()[0]["query"]["range"]["@timestamp"]["gte"] == 1793754360000
     assert (resumed.pages, resumed.inserted, resumed.failure) == (2, 1, None)
-    assert stored(conn) == [APACHE + "/dup-1", NGINX + "/dup-1", NGINX + "/evt-3"]
-    assert checkpoints(conn) == [{"time_ms": 1793754300000}]
-    assert runs(conn) == [("contract_rejected", 1, 2), ("ok", 2, 1)]
+    assert stored(conn) == [APACHE + "/dup-1", NGINX + "/dup-1", NGINX + "/evt-3", NGINX + "/nul-1"]
+    assert runs(conn) == [("ok", 2, 3), ("ok", 2, 1)]
 
 
 def test_first_page_failure_and_empty_run_leave_history_only(conn: psycopg.Connection) -> None:

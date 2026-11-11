@@ -19,9 +19,7 @@ export interface RawRecord {
    */
   fetched_at: number;
   /**
-   * SIEM이 준 JSON 그대로
+   * SIEM이 준 JSON 그대로, json.dumps(ensure_ascii=True) 글자. 되살릴 때는 json.loads를 쓴다(D-049)
    */
-  original: {
-    [k: string]: unknown;
-  };
+  original_text: string;
 }

@@ -52,7 +52,7 @@ IP_DST = {"type": "ip", "value": "203.0.113.10", "role": "dst"}
 
 TIMES = {"fetched_at", "time", "created_at", "updated_at", "confirmed_at", "resolved_at"}
 TIMES |= {"published_at"}
-JSONB = {"original", "entities", "assets", "triage", "ocsf", "details"}
+JSONB = {"entities", "assets", "triage", "ocsf", "details"}
 SEED_TABLES = (
     "raw_records",
     "alerts",

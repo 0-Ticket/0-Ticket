@@ -14,7 +14,6 @@ from typing import Any
 import psycopg
 import pytest
 from conftest import HiddenUrl
-from psycopg.types.json import Jsonb
 
 from soc.asset_lookup import AssetLookupError, lookup_assets
 from soc.contracts import to_datetime
@@ -63,14 +62,14 @@ def add_raw_records(conn: psycopg.Connection, cases: list[dict[str, Any]]) -> di
     for case in cases:
         ids[case["case"]] = new_id("raw")
         conn.execute(
-            "INSERT INTO raw_records (id, kind, siem_profile, siem_ref, fetched_at, original)"
+            "INSERT INTO raw_records (id, kind, siem_profile, siem_ref, fetched_at, original_text)"
             " VALUES (%s, %s, 'elk-test', %s, %s, %s)",
             (
                 ids[case["case"]],
                 case["kind"],
                 f"{case['original']['_index']}/{case['original']['_id']}",
                 to_datetime(1793754000000),
-                Jsonb(case["original"]),
+                json.dumps(case["original"], ensure_ascii=True),
             ),
         )
     return ids
@@ -108,7 +107,7 @@ def originals_hash(conn: psycopg.Connection) -> str:
     Args:
         conn: 임시 DB 연결.
     """
-    rows = conn.execute("SELECT id, original FROM raw_records ORDER BY id").fetchall()
+    rows = conn.execute("SELECT id, original_text FROM raw_records ORDER BY id").fetchall()
     return hashlib.sha256(json.dumps(rows, sort_keys=True).encode()).hexdigest()
 
 

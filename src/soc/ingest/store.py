@@ -14,8 +14,8 @@ from soc.contracts import to_datetime, to_epoch_ms, validate_contract
 
 # 같은 (siem_profile, siem_ref)가 이미 있으면 처음 저장한 원본을 그대로 둔다
 _INSERT_RAW = """
-INSERT INTO raw_records (id, kind, siem_profile, siem_ref, fetched_at, original)
-VALUES (%(id)s, %(kind)s, %(siem_profile)s, %(siem_ref)s, %(fetched_at)s, %(original)s)
+INSERT INTO raw_records (id, kind, siem_profile, siem_ref, fetched_at, original_text)
+VALUES (%(id)s, %(kind)s, %(siem_profile)s, %(siem_ref)s, %(fetched_at)s, %(original_text)s)
 ON CONFLICT (siem_profile, siem_ref) DO NOTHING
 """
 
@@ -94,7 +94,6 @@ def save_page(
                 {
                     **record,
                     "fetched_at": to_datetime(record["fetched_at"]),
-                    "original": Jsonb(record["original"]),
                 },
             )
             inserted += cur.rowcount

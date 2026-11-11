@@ -32,7 +32,7 @@ TABLES = ("raw_records", "alerts", "events", "hunts", "tickets")
 
 def insert_row(conn: psycopg.Connection, table: str, row: dict[str, Any]) -> None:
     times = {"fetched_at", "time", "created_at", "updated_at", "verified_at"}
-    jsonb = {"original", "entities", "assets", "triage", "ocsf", "details", "verdict"}
+    jsonb = {"entities", "assets", "triage", "ocsf", "details", "verdict"}
     values = []
     for key, value in row.items():
         if value is not None and key in times:

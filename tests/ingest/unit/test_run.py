@@ -4,12 +4,14 @@
 """
 
 import contextlib
+import json
 
 import httpx
 import psycopg
 import pytest
 from fake_elk import ALERTS, API_KEY, BASE_URL, EVENTS, FakeElk, FakeStore, make_settings, respond
 
+from soc.contracts import ContractError, Violation
 from soc.ingest import __main__ as main_module
 from soc.ingest import elk, run
 from soc.ingest.run import exit_code, format_results
@@ -55,8 +57,9 @@ def test_pages_are_saved_with_checkpoint(store: FakeStore) -> None:
     assert record["id"].startswith("raw_")
     assert record["kind"] == "event"
     assert isinstance(record["fetched_at"], int)
-    assert record["original"]["_source"]["message"].startswith("HIT-MARKER")
-    assert record["original"]["sort"] == [1793754000000, 11]  # hit 객체 그대로
+    hit = json.loads(record["original_text"])
+    assert hit["_source"]["message"].startswith("HIT-MARKER")
+    assert hit["sort"] == [1793754000000, 11]  # hit 객체 그대로
     checkpoint = store.checkpoints[EVENT_CP]
     assert checkpoint["cursor"] == {"time_ms": 1793754300000}  # 마지막 페이지 마지막 hit의 시각
     assert run_rows(store) == [("logs-web-*", "ok", 2, 3)]
@@ -89,15 +92,28 @@ def test_empty_result_keeps_checkpoint_and_records_ok_run(store: FakeStore) -> N
     assert run_rows(store) == [("logs-web-*", "ok", 0, 0)]
 
 
-def test_bad_record_stops_with_contract_rejected(store: FakeStore) -> None:
-    fake = FakeElk({"logs-web-*": ["elk_events_page1.json", "elk_bad_record.json"]})
+def test_nul_record_is_saved_without_rejecting_the_page(store: FakeStore) -> None:
+    """NUL이 든 문서는 원본 JSON 글자로 저장되어 페이지를 거부하지 않는다(#277)."""
+    fake = FakeElk({"logs-web-*": ["elk_events_page1.json", "elk_nul_record.json"]})
     (result,) = run_with(fake)
 
-    assert (result.pages, result.inserted, result.failure) == (1, 2, "contract_rejected")
-    assert len(store.records) == 2  # 거부된 페이지는 아무것도 넣지 않았다
-    checkpoint = store.checkpoints[EVENT_CP]
-    assert checkpoint["cursor"] == {"time_ms": 1793754000000}  # 마지막 성공 페이지
-    assert run_rows(store) == [("logs-web-*", "contract_rejected", 1, 2)]
+    assert (result.pages, result.inserted, result.failure) == (2, 3, None)
+    record = store.records[(PROFILE, ".ds-logs-nginx.access-default-2026.11.04-000001/nul-1")]
+    assert json.loads(record["original_text"])["_source"]["message"] == "a\x00b"
+    assert store.checkpoints[EVENT_CP]["cursor"] == {"time_ms": 1793754360000}
+    assert run_rows(store) == [("logs-web-*", "ok", 2, 3)]
+
+
+def test_contract_rejected_page_stops_the_source(store: FakeStore) -> None:
+    """저장 단계가 계약 위반을 내면 그 대상을 멈추고, 이력에 contract_rejected를 남긴다."""
+    store.save_error = ContractError("raw_record", [Violation("(root)", "json")])
+    fake = FakeElk({"logs-web-*": ["elk_events_page1.json"]})
+    (result,) = run_with(fake)
+
+    assert (result.pages, result.inserted, result.failure) == (0, 0, "contract_rejected")
+    assert store.records == {}
+    assert store.checkpoints == {}
+    assert run_rows(store) == [("logs-web-*", "contract_rejected", 0, 0)]
     assert fake.calls()[-1] == "DELETE /_pit"
 
 

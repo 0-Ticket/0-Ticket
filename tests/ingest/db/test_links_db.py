@@ -27,8 +27,8 @@ def conn(temp_database: str) -> Iterator[psycopg.Connection]:
 def insert_raw(conn: psycopg.Connection, ref: str, kind: str, profile: str = PROFILE) -> None:
     """siem_ref가 ref인 원본 한 행을 넣는다. id는 ref에서 만든다."""
     conn.execute(
-        "INSERT INTO raw_records (id, kind, siem_profile, siem_ref, fetched_at, original)"
-        " VALUES (%s, %s, %s, %s, now(), '{}'::jsonb)",
+        "INSERT INTO raw_records (id, kind, siem_profile, siem_ref, fetched_at, original_text)"
+        " VALUES (%s, %s, %s, %s, now(), '{}')",
         (f"raw_{profile}_{ref}", kind, profile, ref),
     )
 

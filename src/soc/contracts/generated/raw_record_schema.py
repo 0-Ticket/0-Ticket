@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Any, Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -32,4 +32,9 @@ class RawRecord(BaseModel):
             le=253402214399999,
         ),
     ]
-    original: Annotated[dict[str, Any], Field(description="SIEM이 준 JSON 그대로")]
+    original_text: Annotated[
+        str,
+        Field(
+            description="SIEM이 준 JSON 그대로, json.dumps(ensure_ascii=True) 글자. 되살릴 때는 json.loads를 쓴다(D-049)"
+        ),
+    ]

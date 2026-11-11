@@ -1,0 +1,10 @@
+{
+  "_index": ".ds-logs-web-default-2026.11.04-000001",
+  "_id": "bs-1",
+  "_source": {
+    "@timestamp": "2026-11-04T01:00:02.000Z",
+    "message": "C:\\temp\\new \"quoted\" literal \\u0000 text",
+    "url": {"original": "/a\\b?q=\\\\"}
+  },
+  "sort": [1793754002000, 23]
+}

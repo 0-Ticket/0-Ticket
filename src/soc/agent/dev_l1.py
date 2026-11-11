@@ -45,7 +45,7 @@ DAY_MS = 86_400_000
 WINDOW_BEFORE_MS = 6 * DAY_MS
 WINDOW_AFTER_MS = 1 * DAY_MS
 
-_RAW_COLUMNS = ("id", "kind", "siem_profile", "siem_ref", "fetched_at", "original")
+_RAW_COLUMNS = ("id", "kind", "siem_profile", "siem_ref", "fetched_at", "original_text")
 _ALERT_COLUMNS = (
     "id",
     "raw_id",
@@ -71,7 +71,7 @@ _EVENT_COLUMNS = (
     "details",
 )
 _TIMES = ("fetched_at", "time")
-_JSONB = ("original", "entities", "assets", "triage", "ocsf", "details")
+_JSONB = ("entities", "assets", "triage", "ocsf", "details")
 
 Run = Callable[[AgentTask], AgentResult]
 
@@ -114,7 +114,7 @@ def build_rows(seed_data: Mapping[str, Any], now_ms: int) -> SeedRows:
                 "siem_profile": SEED_PROFILE,
                 "siem_ref": f"{name}/{kind}/{n}",
                 "fetched_at": time_ms,
-                "original": record["original"],
+                "original_text": json.dumps(record["original"], ensure_ascii=True),
             }
             if kind == "alert":
                 row = {

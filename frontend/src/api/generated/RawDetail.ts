@@ -14,6 +14,10 @@ export type SiemRef = string;
  * UTC epoch 밀리초. 상한은 9999-12-30T23:59:59.999Z(+14시간 시간대로 읽어도 9999년 안)
  */
 export type FetchedAt = number;
+/**
+ * SIEM이 준 JSON 그대로, json.dumps(ensure_ascii=True) 글자. 되살릴 때는 json.loads를 쓴다(D-049)
+ */
+export type OriginalText = string;
 export type Record = Alert | Event | null;
 export type Id1 = string;
 export type RawId = string;
@@ -126,13 +130,7 @@ export interface RawRecord {
   siem_profile: SiemProfile;
   siem_ref: SiemRef;
   fetched_at: FetchedAt;
-  original: Original;
-}
-/**
- * SIEM이 준 JSON 그대로
- */
-export interface Original {
-  [k: string]: unknown;
+  original_text: OriginalText;
 }
 export interface Alert {
   id: Id1;
