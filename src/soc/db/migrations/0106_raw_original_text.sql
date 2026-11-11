@@ -11,7 +11,7 @@ LOCK TABLE raw_records IN ACCESS EXCLUSIVE MODE;
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM raw_records) THEN
-        RAISE EXCEPTION 'raw_records가 비어 있지 않아 0106을 적용하지 않는다. 데이터 이전은 범위 밖이다';
+        RAISE EXCEPTION 'raw_records에 행이 있어 0106을 적용하지 않는다. 개발 DB면 시드 행을 지우거나 개발 DB를 새로 만든다(docs/notes/277-raw-original-text.md "개발 DB에 0106 적용"). 운영 데이터 이전은 범위 밖이다';
     END IF;
 END
 $$;
