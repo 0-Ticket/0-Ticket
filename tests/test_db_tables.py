@@ -187,7 +187,10 @@ def test_migrate_twice_does_not_reapply(temp_database: str) -> None:
 
     assert applied == []
     with psycopg.connect(temp_database) as conn:
-        assert conn.execute("SELECT count(*) FROM schema_migrations").fetchone() == (15,)
+        migration_count = len(find_migrations())
+        assert conn.execute("SELECT count(*) FROM schema_migrations").fetchone() == (
+            migration_count,
+        )
 
 
 def test_failed_migration_rolls_back_only_that_file(temp_database: str, tmp_path: Path) -> None:
