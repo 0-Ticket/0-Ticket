@@ -137,3 +137,28 @@ supersedes: []
 ### 알려진 한계
 
 - `link_by_refs`에 원래 형태 ref가 NUL 문자를 담고 넘어오면, DB 조회 전에 psycopg가 `DataError`를 낸다(텍스트 파라미터에 NUL을 넣을 수 없다). 저장 키를 넘기면 생기지 않는다. 호출하는 쪽이 저장 키를 넘기는 것으로 막는다. 이 절에서는 고치지 않았다.
+
+## 마무리 정리
+
+앞 절들의 문장 중 아래는 이 절과 "결정 반영 (2차)"로 바뀌었다. 앞 절은 고쳐 쓰지 않았다.
+
+- "알려진 한계 2"의 키 충돌 덮어쓰기는 해결됐다. 이제 `escape_collision`으로 그 행이 실패한다(D3).
+- "리뷰 반영"의 `tools/siem.py` 미결정은 해결됐다. 에이전트에게 보이는 `siem_ref`는 저장 키다(D1).
+
+### 완료 기준 확인
+
+- [x] NUL·짝 없는 서로게이트·백슬래시 왕복 테스트 (`tests/ingest/unit/test_raw_original.py`)
+- [x] 정규화 결과의 값과 키에 NUL·서로게이트가 남지 않음 (`tests/normalize/test_normalize_escape.py`)
+- [x] NUL 문서가 든 페이지가 실패 없이 저장됨 (`tests/ingest/db/test_run_db.py`)
+- [x] NUL 때문에 `failed`가 되는 행 없음 (`tests/normalize/test_normalize_db.py`)
+- [x] 원본 상세 API가 저장된 글자를 그대로 돌려줌 (`tests/test_api_ui.py`). 화면이 HTML로 그리지 않음은 Vitest 테스트(`frontend/src/App.test.tsx`)로 확인했다. 브라우저 수동 확인은 하지 않았다. **사람이 확인**
+- [x] 마이그레이션 전제와 확인 방법을 이 기록에 적음 (앞 절 "다음 사람이 알아야 할 것", "개발 DB에 0106 적용")
+- [x] 샘플은 `tests/fixtures/ingest/`의 손으로 만든 파일
+- [x] `ruff format --check`, `ruff check`, `pytest`(1486 통과), `pytest -m db`(434 통과) 통과
+
+### 다음 사람이 알아야 할 것
+
+- 실제 운영 DB에서 `SELECT count(*) FROM raw_records;`가 0인지 **사람이 확인**한다. 이 기록의 검사는 그 DB에 접속하지 않았다.
+- 프런트엔드 `pnpm test`는 이번 마무리에서 돌리지 않았다(앞 절의 Vitest 결과가 마지막 확인). `pnpm`이 PATH에 없다.
+- 후속 이슈 초안은 "알려진 한계 1"의 claim 배치 문제다. 등록은 사람이 한다.
+- 개발 DB는 0106 텍스트가 바뀌어 체크섬이 달라졌다. 이 브랜치 이전의 0106을 적용한 DB는 "개발 DB에 0106 적용" 절차로 새로 만든다.
