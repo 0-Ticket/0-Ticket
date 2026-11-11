@@ -269,3 +269,54 @@ def test_hash_does_not_change_between_calls() -> None:
 def test_data_is_not_in_instructions() -> None:
     task = make_task(data={"alert": {"id": ALERT_ID, "title": "UNIQUE-DATA-MARKER"}})
     assert "UNIQUE-DATA-MARKER" not in compose_instructions(task, max_turns=6)
+
+
+# 차단된 공격 시도도 위협으로 올린다(#296). L1은 정오탐, L2는 영향도를 가른다.
+
+L2_PROMPT_DIR = Path(compose_module.__file__).resolve().parents[1] / "l2" / "prompts"
+
+
+def l2_report_prompt() -> TaskPrompt:
+    return TaskPrompt((L2_PROMPT_DIR / "l2_report.md").read_text(encoding="utf-8"), "test-1")
+
+
+@pytest.mark.parametrize("domains", [(), ("web",)])
+def test_l1_prompt_escalates_blocked_attempts(domains: tuple[str, ...]) -> None:
+    text = compose_instructions(make_task(domains=domains), max_turns=6)
+    assert "차단 여부와 관계없이 위협(malicious)" in text
+    assert "정상 활동으로 설명되는 경우만 benign" in text
+    assert "추가로 조회하지 않는다" in text
+    assert "reason에 사실로 적는다" in text
+
+
+def test_l1_prompt_leaves_impact_to_l2() -> None:
+    text = compose_instructions(make_task(), max_turns=6)
+    assert "L2가 가린다" in text
+    assert "성공했는지 따로 본다" not in text
+
+
+def test_web_domain_does_not_make_success_a_threat_criterion() -> None:
+    web = (PROMPT_DIR / "domains" / "web.md").read_text(encoding="utf-8")
+    assert "성공했는지 따로 본다" not in web
+    assert "위협 여부의 기준이 아니다" in web
+    assert "reason에 사실로 적는다" in web
+    assert "자동화된 스캔인지" in web  # 스캔 구분 지침은 그대로 둔다
+
+
+def test_l2_stage_prompt_checks_blocked_or_succeeded() -> None:
+    text = compose_instructions(make_task(stage="l2"), max_turns=12)
+    assert "차단됐는지 성공했는지를 응답 코드와 이후 요청으로 확인" in text
+    assert "확인하지 못했으면 확인하지 못했다고 그대로 쓴다" in text
+
+
+def test_l2_report_prompt_keeps_blocked_attempts_open() -> None:
+    text = compose_instructions(make_task(stage="l2", prompt=l2_report_prompt()), max_turns=12)
+    assert "차단돼 성공하지 못한 것이 확인되면 verdict는 attempted" in text
+    assert "차단됐다는 이유로 not_threat으로 두지 않는다" in text
+    assert "verdict는 inconclusive로 두고, impact는 빈 문자열" in text
+    assert "확인하지 못한 impact와 cause는 빈 문자열로 둔다." in text  # 기존 규칙은 그대로
+
+
+@pytest.mark.parametrize("stage", ["l1", "l2"])
+def test_l1_and_l2_prompts_leave_hunting_to_l3(stage: str) -> None:
+    assert "헌팅" not in (PROMPT_DIR / f"{stage}.md").read_text(encoding="utf-8")
