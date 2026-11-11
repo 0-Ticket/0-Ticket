@@ -4,6 +4,7 @@
 시각 비교는 모두 DB의 now()를 쓴다. SQL은 매개변수로만 값을 넣는다.
 """
 
+import json
 from typing import Any, Literal
 
 import psycopg
@@ -131,9 +132,10 @@ def _claim_batch(
     claimed = conn.execute(_LEASE, (owner, lease_seconds, status, batch_size)).fetchall()
     ids = [row[0] for row in claimed]
     rows = conn.execute(
-        "SELECT id, kind, original FROM raw_records WHERE id = ANY(%s) ORDER BY id", (ids,)
+        "SELECT id, kind, original_text FROM raw_records WHERE id = ANY(%s) ORDER BY id", (ids,)
     ).fetchall()
-    return [RawRow(id=row[0], kind=row[1], original=row[2]) for row in rows]
+    # 원본은 저장된 JSON 글자를 그대로 되살린다(D-049). 매핑 코드는 dict를 받는다
+    return [RawRow(id=row[0], kind=row[1], original=json.loads(row[2])) for row in rows]
 
 
 def save_success(

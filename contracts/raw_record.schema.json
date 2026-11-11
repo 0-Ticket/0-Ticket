@@ -5,7 +5,7 @@
   "description": "SIEM에서 가져온 Alert·Event 원본. 바꾸지 않고 그대로 보관한다",
   "type": "object",
   "additionalProperties": false,
-  "required": ["id", "kind", "siem_profile", "siem_ref", "fetched_at", "original"],
+  "required": ["id", "kind", "siem_profile", "siem_ref", "fetched_at", "original_text"],
   "properties": {
     "id": {"$ref": "common/types.schema.json#/definitions/raw_id"},
     "kind": {
@@ -18,15 +18,14 @@
       "minLength": 1
     },
     "siem_ref": {
-      "description": "SIEM 안에서 문서 하나를 가리키는 값. ELK는 <_index>/<_id>",
+      "description": "SIEM 안에서 문서 하나를 가리키는 이스케이프된 저장 키(siem_ref_key 형태). 원래 형태 \"<_index>/<_id>\"가 아니다. <_index>/<_id>를 JSON 문자열 이스케이프(ensure_ascii)하고 양쪽 따옴표를 뺀 값이다(D-049, soc.ids.siem_ref_key)",
       "type": "string",
       "minLength": 1
     },
     "fetched_at": {"$ref": "common/types.schema.json#/definitions/epoch_ms"},
-    "original": {
-      "description": "SIEM이 준 JSON 그대로",
-      "type": "object",
-      "additionalProperties": true
+    "original_text": {
+      "description": "SIEM이 준 JSON 그대로, json.dumps(ensure_ascii=True) 글자. 되살릴 때는 json.loads를 쓴다(D-049)",
+      "type": "string"
     }
   }
 }

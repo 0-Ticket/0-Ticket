@@ -1,0 +1,9 @@
+{
+  "_index": ".ds-logs-web-default-2026.11.04-000001",
+  "_id": "evt-plain",
+  "_source": {
+    "@timestamp": "2026-11-04T01:00:03.000Z",
+    "message": "plain text 한글"
+  },
+  "sort": [1793754003000, 24]
+}

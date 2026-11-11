@@ -11,11 +11,12 @@ import psycopg
 from psycopg.types.json import Jsonb
 
 from soc.contracts import to_datetime, to_epoch_ms, validate_contract
+from soc.ids import SiemRefKey
 
 # 같은 (siem_profile, siem_ref)가 이미 있으면 처음 저장한 원본을 그대로 둔다
 _INSERT_RAW = """
-INSERT INTO raw_records (id, kind, siem_profile, siem_ref, fetched_at, original)
-VALUES (%(id)s, %(kind)s, %(siem_profile)s, %(siem_ref)s, %(fetched_at)s, %(original)s)
+INSERT INTO raw_records (id, kind, siem_profile, siem_ref, fetched_at, original_text)
+VALUES (%(id)s, %(kind)s, %(siem_profile)s, %(siem_ref)s, %(fetched_at)s, %(original_text)s)
 ON CONFLICT (siem_profile, siem_ref) DO NOTHING
 """
 
@@ -94,7 +95,6 @@ def save_page(
                 {
                     **record,
                     "fetched_at": to_datetime(record["fetched_at"]),
-                    "original": Jsonb(record["original"]),
                 },
             )
             inserted += cur.rowcount
@@ -144,28 +144,31 @@ SELECT id FROM raw_records WHERE siem_profile = %s AND kind = %s AND siem_ref = 
 
 
 def link_by_refs(
-    conn: psycopg.Connection, siem_profile: str, pairs: list[tuple[str, str]]
-) -> tuple[int, list[tuple[str, str]]]:
-    """알럿과 이벤트를 siem_ref 쌍으로 받아 raw_links에 한 트랜잭션으로 연결한다.
+    conn: psycopg.Connection, siem_profile: str, pairs: list[tuple[SiemRefKey, SiemRefKey]]
+) -> tuple[int, list[tuple[SiemRefKey, SiemRefKey]]]:
+    """알럿과 이벤트를 저장 키 쌍으로 받아 raw_links에 한 트랜잭션으로 연결한다.
 
     한쪽 원본이 아직 저장되지 않은 쌍은 연결하지 않고 돌려준다. 호출한 쪽이 나중에 다시 넘긴다.
 
     인자:
         conn: autocommit 연결. 이 함수가 트랜잭션을 연다.
         siem_profile: 두 원본이 속한 SIEM 프로필 이름.
-        pairs: (알럿 siem_ref, 이벤트 siem_ref) 목록. siem_ref는 "<_index>/<_id>"다.
+        pairs: (알럿 저장 키, 이벤트 저장 키) 목록. 입력은 soc.ids.siem_ref_key로 만든 저장 키다
+            (raw_records.siem_ref와 같은 글자). 원래 형태 "<_index>/<_id>"를 넘기면 찾지 못한다.
+            이 함수는 이스케이프하지 않는다.
 
     반환:
-        (새로 저장한 연결 수, 원본이 없어 보류한 쌍). 이미 연결된 쌍은 세지 않고 보류하지도 않는다.
+        (새로 저장한 연결 수, 원본이 없어 보류한 쌍). 보류한 쌍은 받은 저장 키 그대로 돌려준다.
+        이미 연결된 쌍은 세지 않고 보류하지도 않는다.
     """
     linked = 0
-    pending: list[tuple[str, str]] = []
+    pending: list[tuple[SiemRefKey, SiemRefKey]] = []
     with conn.transaction():
-        for alert_ref, event_ref in pairs:
-            alert = conn.execute(_FIND_RAW_ID, (siem_profile, "alert", alert_ref)).fetchone()
-            event = conn.execute(_FIND_RAW_ID, (siem_profile, "event", event_ref)).fetchone()
+        for alert_key, event_key in pairs:
+            alert = conn.execute(_FIND_RAW_ID, (siem_profile, "alert", alert_key)).fetchone()
+            event = conn.execute(_FIND_RAW_ID, (siem_profile, "event", event_key)).fetchone()
             if alert is None or event is None:
-                pending.append((alert_ref, event_ref))
+                pending.append((alert_key, event_key))
                 continue
             linked += conn.execute(_INSERT_LINK, (alert[0], event[0])).rowcount
     return linked, pending

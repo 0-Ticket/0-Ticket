@@ -31,7 +31,7 @@ SEED_PATH = Path(__file__).resolve().parents[4] / "tests" / "fixtures" / "l3_hun
 SEED_PROFILE = "dev-seed"
 SEED_MARK = Jsonb({"dev_seed": True})
 
-_RAW_COLUMNS = ("id", "kind", "siem_profile", "siem_ref", "fetched_at", "original")
+_RAW_COLUMNS = ("id", "kind", "siem_profile", "siem_ref", "fetched_at", "original_text")
 _ALERT_COLUMNS = (
     "id",
     "raw_id",
@@ -57,7 +57,7 @@ _EVENT_COLUMNS = (
     "details",
 )
 _TIMES = ("fetched_at", "time")
-_JSONB = ("original", "entities", "assets", "triage", "ocsf", "details")
+_JSONB = ("entities", "assets", "triage", "ocsf", "details")
 
 
 class SeedInUse(Exception):
@@ -102,7 +102,7 @@ def build_rows(seed_data: Mapping[str, Any], now_ms: int) -> SeedRows:
                     "siem_profile": SEED_PROFILE,
                     "siem_ref": f"{name}/{kind}/{n}",
                     "fetched_at": time_ms,
-                    "original": record["original"],
+                    "original_text": json.dumps(record["original"], ensure_ascii=True),
                 }
                 if kind == "alert":
                     row = {

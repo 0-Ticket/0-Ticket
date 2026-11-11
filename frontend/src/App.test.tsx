@@ -75,7 +75,9 @@ test("Case waiting tab explicitly shows Incidents and disables decisions", async
 });
 test("untrusted raw text remains text, with no executable element or external link", async () => {
   dashboard();
-  const raw = seed.raw_records.find((r) => r.original.message)!;
+  const raw = seed.raw_records.find((r) =>
+    r.original_text.includes("<script>"),
+  )!;
   server.use(
     http.get("*/api/alerts", () =>
       HttpResponse.json({
@@ -109,6 +111,10 @@ test("untrusted raw text remains text, with no executable element or external li
   expect(
     await screen.findByText(/<script>alert\(1\)<\/script>/),
   ).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "원본 JSON" }));
+  expect(container.querySelector("pre.json")?.textContent).toBe(
+    raw.original_text,
+  );
   expect(screen.getByText(/실패 코드: schema_failed/)).toBeInTheDocument();
   expect(screen.getByText("정규화 결과 없음")).toBeInTheDocument();
   expect(container.querySelector("script")).toBeNull();
@@ -222,12 +228,15 @@ test("hunts overview uses a slash and drops status counts and promotion ratio", 
 });
 test("JSON field table and raw JSON keep external strings as text", async () => {
   dashboard();
+  const { original, ...sampleMetadata } = sample;
+  const rawText = JSON.stringify(original);
+  const rawRecord = { ...sampleMetadata, original_text: rawText };
   server.use(
     http.get("*/api/events", () =>
       HttpResponse.json({
         items: [
           {
-            raw_id: sample.id,
+            raw_id: rawRecord.id,
             record_id: null,
             normalize_status: "pending",
             error_code: null,
@@ -242,7 +251,7 @@ test("JSON field table and raw JSON keep external strings as text", async () => 
     ),
     http.get("*/api/events/:id", () =>
       HttpResponse.json({
-        raw_record: sample,
+        raw_record: rawRecord,
         record: null,
         normalize_status: "pending",
         error_code: null,
@@ -250,16 +259,12 @@ test("JSON field table and raw JSON keep external strings as text", async () => 
       }),
     ),
   );
-  const { container } = show(`/events?selected=${sample.id}`);
+  const { container } = show(`/events?selected=${rawRecord.id}`);
   const dialog = await screen.findByRole("dialog");
-  expect(
-    await within(dialog).findByText(sample.original.message),
-  ).toBeInTheDocument();
-  expect(within(dialog).getByText("original.<b>key</b>")).toBeInTheDocument();
-  expect(within(dialog).getByText("T1190, T1059")).toBeInTheDocument();
+  expect(await within(dialog).findByText(rawText)).toBeInTheDocument();
   expect(dialog.querySelector("img, b, strong, script")).toBeNull();
   fireEvent.click(within(dialog).getByRole("button", { name: "원본 JSON" }));
-  expect(within(dialog).getByText(/"<b>key<\/b>": "값"/)).toBeInTheDocument();
+  expect(dialog.querySelector("pre.json")?.textContent).toBe(rawText);
   expect(dialog.querySelector("img, b, strong, script")).toBeNull();
   expect(container.querySelector('a[href^="https://example.com"]')).toBeNull();
 });

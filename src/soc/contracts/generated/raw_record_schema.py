@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Any, Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -21,7 +21,8 @@ class RawRecord(BaseModel):
     siem_ref: Annotated[
         str,
         Field(
-            description="SIEM 안에서 문서 하나를 가리키는 값. ELK는 <_index>/<_id>", min_length=1
+            description='SIEM 안에서 문서 하나를 가리키는 이스케이프된 저장 키(siem_ref_key 형태). 원래 형태 "<_index>/<_id>"가 아니다. <_index>/<_id>를 JSON 문자열 이스케이프(ensure_ascii)하고 양쪽 따옴표를 뺀 값이다(D-049, soc.ids.siem_ref_key)',
+            min_length=1,
         ),
     ]
     fetched_at: Annotated[
@@ -32,4 +33,9 @@ class RawRecord(BaseModel):
             le=253402214399999,
         ),
     ]
-    original: Annotated[dict[str, Any], Field(description="SIEM이 준 JSON 그대로")]
+    original_text: Annotated[
+        str,
+        Field(
+            description="SIEM이 준 JSON 그대로, json.dumps(ensure_ascii=True) 글자. 되살릴 때는 json.loads를 쓴다(D-049)"
+        ),
+    ]

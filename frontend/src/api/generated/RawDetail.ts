@@ -7,13 +7,17 @@ export type Kind = "alert" | "event";
  */
 export type SiemProfile = string;
 /**
- * SIEM 안에서 문서 하나를 가리키는 값. ELK는 <_index>/<_id>
+ * SIEM 안에서 문서 하나를 가리키는 이스케이프된 저장 키(siem_ref_key 형태). 원래 형태 "<_index>/<_id>"가 아니다. <_index>/<_id>를 JSON 문자열 이스케이프(ensure_ascii)하고 양쪽 따옴표를 뺀 값이다(D-049, soc.ids.siem_ref_key)
  */
 export type SiemRef = string;
 /**
  * UTC epoch 밀리초. 상한은 9999-12-30T23:59:59.999Z(+14시간 시간대로 읽어도 9999년 안)
  */
 export type FetchedAt = number;
+/**
+ * SIEM이 준 JSON 그대로, json.dumps(ensure_ascii=True) 글자. 되살릴 때는 json.loads를 쓴다(D-049)
+ */
+export type OriginalText = string;
 export type Record = Alert | Event | null;
 export type Id1 = string;
 export type RawId = string;
@@ -126,13 +130,7 @@ export interface RawRecord {
   siem_profile: SiemProfile;
   siem_ref: SiemRef;
   fetched_at: FetchedAt;
-  original: Original;
-}
-/**
- * SIEM이 준 JSON 그대로
- */
-export interface Original {
-  [k: string]: unknown;
+  original_text: OriginalText;
 }
 export interface Alert {
   id: Id1;

@@ -8,6 +8,7 @@
 대상마다 실행이 끝나면(성공·실패 모두) 실행 이력 한 행을 남긴다(store.record_run).
 """
 
+import json
 import sys
 import time
 from collections.abc import Callable
@@ -20,7 +21,7 @@ import httpx
 import psycopg
 
 from soc.contracts import ContractError, to_epoch_ms
-from soc.ids import new_id
+from soc.ids import new_id, siem_ref_key
 from soc.ingest import elk, store
 from soc.ingest.config import Settings, Source
 from soc.ingest.errors import IngestError
@@ -148,20 +149,22 @@ def _raw_record(
     인자:
         settings: siem_profile을 얻는 데 쓴다.
         source: kind를 얻는 데 쓴다.
-        hit: ELK 검색 응답의 hit 객체. 바꾸지 않고 original에 그대로 넣는다.
+        hit: ELK 검색 응답의 hit 객체. 바꾸지 않고 JSON 글자로 original_text에 넣는다.
         fetched_at: 가져온 시각(epoch ms).
 
     반환:
-        id(new_id("raw")), kind, siem_profile, siem_ref("<_index>/<_id>"), fetched_at,
-        original을 담은 dict.
+        id(new_id("raw")), kind, siem_profile, siem_ref, fetched_at, original_text를 담은 dict.
+        original_text는 json.dumps(hit, ensure_ascii=True)다. NUL·짝 없는 서로게이트는 이스케이프
+        글자가 되어 PostgreSQL text에 들어가고, siem_ref는 같은 규칙으로 JSON 문자열 이스케이프한
+        값에서 양쪽 따옴표를 뺀 것이다(D-049, soc.ids.siem_ref_key).
     """
     return {
         "id": new_id("raw"),
         "kind": source.kind,
         "siem_profile": settings.siem_profile,
-        "siem_ref": f"{hit['_index']}/{hit['_id']}",
+        "siem_ref": siem_ref_key(f"{hit['_index']}/{hit['_id']}"),
         "fetched_at": fetched_at,
-        "original": hit,
+        "original_text": json.dumps(hit, ensure_ascii=True),
     }
 
 

@@ -46,7 +46,6 @@ TIMES = {
     "last_attempt_at",
 }
 JSON_FIELDS = {
-    "original",
     "ocsf",
     "assets",
     "triage",

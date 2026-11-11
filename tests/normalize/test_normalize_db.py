@@ -14,7 +14,6 @@ from typing import Any
 import psycopg
 import pytest
 from conftest import HiddenUrl
-from psycopg.types.json import Jsonb
 
 from soc.asset_lookup import AssetLookupError, lookup_assets
 from soc.contracts import to_datetime
@@ -63,14 +62,14 @@ def add_raw_records(conn: psycopg.Connection, cases: list[dict[str, Any]]) -> di
     for case in cases:
         ids[case["case"]] = new_id("raw")
         conn.execute(
-            "INSERT INTO raw_records (id, kind, siem_profile, siem_ref, fetched_at, original)"
+            "INSERT INTO raw_records (id, kind, siem_profile, siem_ref, fetched_at, original_text)"
             " VALUES (%s, %s, 'elk-test', %s, %s, %s)",
             (
                 ids[case["case"]],
                 case["kind"],
                 f"{case['original']['_index']}/{case['original']['_id']}",
                 to_datetime(1793754000000),
-                Jsonb(case["original"]),
+                json.dumps(case["original"], ensure_ascii=True),
             ),
         )
     return ids
@@ -108,7 +107,7 @@ def originals_hash(conn: psycopg.Connection) -> str:
     Args:
         conn: 임시 DB 연결.
     """
-    rows = conn.execute("SELECT id, original FROM raw_records ORDER BY id").fetchall()
+    rows = conn.execute("SELECT id, original_text FROM raw_records ORDER BY id").fetchall()
     return hashlib.sha256(json.dumps(rows, sort_keys=True).encode()).hexdigest()
 
 
@@ -389,6 +388,43 @@ def test_database_error_while_saving_is_recorded_as_db_error(
     result = run(SETTINGS, conn, owner())
 
     assert result.failures == {"db_error": 1}
+
+
+def test_colliding_escaped_keys_are_recorded_as_escape_collision(
+    conn: psycopg.Connection, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    raw_id = add_raw_records(conn, [c for c in CASES if c["case"] == "alert_flat_keys"])[
+        "alert_flat_keys"
+    ]
+
+    def colliding(raw: RawRow):
+        mapped = map_normalize(raw)
+        return replace(mapped, row={**mapped.row, "details": {"a\x00": 1, "a\\u0000": 2}})
+
+    monkeypatch.setattr(run_module, "normalize", colliding)
+    result = run(SETTINGS, conn, owner())
+
+    assert result.failures == {"escape_collision": 1}
+    assert conn.execute(
+        "SELECT status, error_code FROM normalize_status WHERE raw_id = %s", (raw_id,)
+    ).fetchone() == ("failed", "escape_collision")
+    assert count(conn, "alerts") == 0
+
+
+def test_non_colliding_nul_keys_still_succeed_in_the_db(
+    conn: psycopg.Connection, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    add_raw_records(conn, [c for c in CASES if c["case"] == "alert_flat_keys"])
+
+    def with_nul_keys(raw: RawRow):
+        mapped = map_normalize(raw)
+        return replace(mapped, row={**mapped.row, "details": {"a\x00": 1, "b\x00": 2}})
+
+    monkeypatch.setattr(run_module, "normalize", with_nul_keys)
+    result = run(SETTINGS, conn, owner())
+
+    assert (result.succeeded, result.failed) == (1, 0)
+    assert count(conn, "alerts") == 1
 
 
 def test_asset_lookup_matches_by_type_and_value(conn: psycopg.Connection) -> None:

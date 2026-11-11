@@ -22,6 +22,7 @@ from tool_helpers import Caller, body_chars, new_recorder, parse
 from soc.agent.agent_log import MemoryLogSink
 from soc.agent.config import load_config
 from soc.agent.runner import run_task
+from soc.ids import siem_ref_key
 from soc.tools import (
     RESULT_CLOSE,
     ToolConfigError,
@@ -229,6 +230,21 @@ def test_query_cloudtrail(elk: FakeElk) -> None:
     assert hit["fields"]["cloud.account.id"] == "111122223333"
     assert hit["fields"]["event.outcome"] == "failure"
     assert not any(key.startswith("aws.") for key in hit["fields"])
+
+
+def test_siem_ref_is_the_stored_key_for_an_odd_id(elk: FakeElk) -> None:
+    # 따옴표·백슬래시·제어문자·한글 _id: 에이전트가 받은 siem_ref는 수집이 raw_records.siem_ref에
+    # 넣는 저장 키와 같아야 한다(#277, D-049). 수집 쪽 키 규칙은 test_raw_original이 본다.
+    index = ".ds-logs-web-default-2026.11.04-000001"
+    doc_id = 'q"b\\s\x01z\x00한글'
+    hit = {"_index": index, "_id": doc_id, "_source": {"@timestamp": START + 1000}}
+    elk.add(
+        httpx.Response(200, json={"hits": {"total": {"value": 1, "relation": "eq"}, "hits": [hit]}})
+    )
+    body = parse(call(caller(elk), "query_siem", query()))
+
+    assert body["hits"][0]["siem_ref"] == siem_ref_key(f"{index}/{doc_id}")
+    assert body["hits"][0]["siem_ref"].isascii()
 
 
 def test_query_sort_and_filters_in_fixed_order(elk: FakeElk) -> None:

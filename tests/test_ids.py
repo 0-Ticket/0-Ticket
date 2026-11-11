@@ -1,5 +1,6 @@
 """new_id(): 접두사 + UUIDv7, 만든 순서대로 정렬."""
 
+import json
 import re
 import uuid
 
@@ -7,7 +8,7 @@ import pytest
 from contract_samples import load_schema
 
 from soc import ids
-from soc.ids import PREFIXES, new_id
+from soc.ids import PREFIXES, new_id, siem_ref_key
 
 # 접두사 → contracts/common/types.schema.json의 정의 이름
 DEFINITIONS = {
@@ -91,3 +92,23 @@ def test_order_holds_when_clock_goes_back(fixed_clock) -> None:
     values = [new_id("evt") for _ in range(5)]
 
     assert values == sorted(values)
+
+
+def test_siem_ref_key_keeps_plain_refs_unchanged() -> None:
+    assert siem_ref_key(".ds-logs-web-default-2026.11.04-000001/evt-plain") == (
+        ".ds-logs-web-default-2026.11.04-000001/evt-plain"
+    )
+
+
+def test_siem_ref_key_is_json_escape_without_quotes() -> None:
+    ref = 'idx/q"b\\s\x01z\x00한글'
+
+    key = siem_ref_key(ref)
+
+    assert key == json.dumps(ref)[1:-1]
+    assert key.isascii()
+    assert "\x00" not in key
+    assert "\\u0000" in key
+    assert "\\ud55c" in key
+    # 따옴표를 붙이면 원래 ref로 되돌아간다
+    assert json.loads(f'"{key}"') == ref
