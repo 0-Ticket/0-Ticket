@@ -274,3 +274,76 @@ def test_unparseable_envelope_falls_back_to_text_rules() -> None:
     text = '<tool_result>\n{"records": [{"m": "password=fake-0015", "cut": "ab…'
     out = build_redactor({}, {})(text)
     assert "fake-0015" not in out and out.startswith("<tool_result>")
+
+
+# 마무리 점검(#292): 모든 정규식의 시간, 실제 봉투 모양
+ADVERSARIAL_UNITS = [
+    "a.",
+    "a:",
+    "a://",
+    "://",
+    "a:b@",
+    "http://u:",
+    'a" ',
+    '" ',
+    '":"',
+    '\\"',
+    " : ",
+    "password ",
+    "Bearer ",
+    "pwd=",
+    "token=",
+    '"token": ',
+    "Authorization: ",
+    "alt_",
+    "0a1b2c3d-",
+]
+
+
+@pytest.mark.parametrize("unit", ADVERSARIAL_UNITS)
+def test_every_rule_stays_fast_on_repeated_input(unit: str) -> None:
+    # 모든 규칙(URL 비밀번호, 키-값, Bearer, token·secret, JSON 키, 봉투, ID)을 한 번에 지나가는
+    # 평문과 봉투 입력. 재 보니 최악이 0.1초 아래였다. 상한은 느린 CI를 위해 넉넉히 잡는다
+    import time
+
+    redactor = build_redactor({"a": {"k_env": "K"}}, {"K": ESCAPE_SECRET})
+    plain = (unit * (32_000 // len(unit) + 1))[:32_000]
+    body = json.dumps({"call_id": "agl_x", "records": [{"v": plain}]}, ensure_ascii=False)
+    for text in (plain, f"<tool_result>\n{body}\n</tool_result>", "<t>\n" + plain):
+        started = time.perf_counter()
+        redactor(text)
+        assert time.perf_counter() - started < 5.0
+
+
+def test_envelope_is_the_real_registry_and_wrap_data_output() -> None:
+    # 손으로 쓴 문자열이 아니라 실제 직렬화 출력으로 확인한다. 태그나 직렬화 모양이 바뀌면
+    # _ENVELOPE이 맞지 않아 여기서 실패해야 한다(redact._ENVELOPE·_envelope도 같이 고칠 것)
+    from soc.agent.redact import _ENVELOPE
+    from soc.agent.runner import wrap_data
+    from soc.tools.registry import _dump, _wrap
+
+    secret = {
+        "authorization": {"scheme": "Digest", "credentials": "fake-digest-0020"},
+        "token": 12345678,
+        "secret": ["fake-list-0021"],
+        "note": "a <b> & 한글",
+        "ok": "fine",
+    }
+    clean = {"note": "a <b> & 한글", "n": 3}
+    redactor = build_redactor({}, {})
+    call_id = "agl_01a19f93-1266-7000-8000-000000000001"
+    real = {
+        "tool_result": _wrap(_dump({"call_id": call_id, "records": [secret]})),
+        "data": wrap_data({"alert": secret}),
+    }
+    for tag, text in real.items():
+        match = _ENVELOPE.fullmatch(text)
+        assert match is not None and match["tag"] == tag
+        out = redactor(text)
+        for leaked in ("fake-digest-0020", "12345678", "fake-list-0021"):
+            assert leaked not in out
+        body = json.loads(_ENVELOPE.fullmatch(out)["body"])  # 봉투가 그대로 풀린다
+        assert "fine" in json.dumps(body) and REDACTED in json.dumps(body)
+    for text in (_wrap(_dump({"call_id": call_id, "records": [clean]})), wrap_data(clean)):
+        assert _ENVELOPE.fullmatch(text) is not None
+        assert redactor(text) == text  # 가릴 것이 없으면 원문 그대로

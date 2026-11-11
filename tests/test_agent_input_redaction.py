@@ -12,6 +12,7 @@ from fake_model import FakeModel
 from test_agent_core import ALERT_ID, CONFIG, make_task, no_sleep
 
 from soc.agent.agent_log import MemoryLogSink, jsonable
+from soc.agent.redact import build_redactor
 from soc.agent.runner import run_task
 from soc.tools import ToolRegistry, ToolSpec
 
@@ -450,3 +451,47 @@ def test_sdk_input_items_are_dicts_and_objects_are_converted_not_leaked() -> Non
     out = build_redactor({}, {})(_as_json(obj))
     assert isinstance(out, dict)
     assert "fake-pass-obj-0009" not in json.dumps(out)
+
+
+def test_structural_key_exemption_applies_only_to_top_level_keys(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # 최상위 type·role·call_id·id·name·status만 그대로 둔다. 중첩 값과 content·arguments·output
+    # 안의 같은 이름 키는 계속 가린다
+    from soc.agent.runner import _screen_item
+
+    monkeypatch.setenv("LLM_API_KEY", "call_1_0")
+    redact = build_redactor(LEAK_CONFIG, {"LLM_API_KEY": "call_1_0"})
+    item = {
+        "type": "function_call_output",
+        "call_id": "call_1_0",
+        "id": "call_1_0",
+        "name": "call_1_0",
+        "status": "call_1_0",
+        "role": "call_1_0",
+        "output": "<tool_result>\n"
+        + json.dumps({"records": [{"call_id": "call_1_0", "name": "call_1_0", "id": "call_1_0"}]})
+        + "\n</tool_result>",
+        "content": [
+            {"type": "input_text", "text": "call_1_0", "name": "call_1_0", "id": "call_1_0"},
+        ],
+        "arguments": json.dumps({"call_id": "call_1_0", "name": "password=fake-name-0030"}),
+    }
+    out = _screen_item(item, redact)
+    for key in ("type", "call_id", "id", "name", "status", "role"):
+        assert out[key] == item[key]  # 최상위는 그대로(call_id 등은 환경변수 값과 같은 값이다)
+    assert list(out) == list(item)  # 키 순서도 그대로
+    nested = json.dumps([out["output"], out["content"], out["arguments"]], ensure_ascii=False)
+    assert "call_1_0" not in nested  # 중첩 값은 가려진다
+    assert "fake-name-0030" not in nested
+    assert nested.count("[REDACTED]") >= 8
+
+
+def test_structural_key_exemption_does_not_cover_non_structural_top_level_keys() -> None:
+    from soc.agent.runner import _screen_item
+
+    redact = build_redactor({}, {})
+    item = {"role": "user", "content": "password=fake-pass-0031", "extra": "token=fake-0032"}
+    out = _screen_item(item, redact)
+    assert out["role"] == "user"
+    assert "fake-pass-0031" not in out["content"] and "fake-0032" not in out["extra"]
