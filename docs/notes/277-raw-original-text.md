@@ -29,6 +29,19 @@ supersedes: []
 - 화면 검사는 Vitest와 Vite 빌드로 했으며 브라우저에서 수동 확인하지 않았다. 로컬 Node는
   25.8.1이었고, 레포의 고정 버전(Node 22.22.3)과 다르다.
 
+## 알려진 한계 (문서화만, 코드는 바꾸지 않음)
+
+1. **깨진 `original_text`를 claim에서 읽으면 배치가 멈춘다.**
+   - 위치: `src/soc/normalize/store.py`의 `_claim_batch`가 `json.loads`를 호출한다. 이 호출은 `_run_batch`의 `try` 바깥에 있어 `run()`이 예외로 끝난다.
+   - 임대는 이미 잡혀 있으므로 `lease_seconds` 동안 배치가 `pending`에 남고, 같은 행이 다시 잡히면 반복된다.
+   - 트리거: 저장 경로(`json.dumps`)에서는 생기지 않는다. DB를 수동으로 고친 경우에만 생기며, DB 검사는 첫 글자 `{`만 본다.
+   - 후속: 행마다 파싱하고 실패하면 `invalid_original`로 그 행만 실패 기록. `error_code`에 CHECK가 없어 마이그레이션은 필요 없다.
+
+2. **정규화 결과의 NUL·서로게이트 치환은 구별되지 않는다.**
+   - 위치: `src/soc/normalize/run.py`의 `escape_unstorable`.
+   - 결과 값만 보면 원래 `\u0000` 글자와 치환된 NUL이 같다. 원본 `original_text`에서는 백슬래시가 `\\`로 쓰이므로 구별된다.
+   - 딕셔너리 키가 NUL 또는 서로게이트 한 글자 차이로만 다르면 치환 뒤 같은 키가 되고, 뒤의 값이 앞의 값을 조용히 덮어쓴다. 원본은 온전하므로 `original_text`에서 복구할 수 있다.
+
 ## 확인 방법
 
 - `uv run ruff format --check .`, `uv run ruff check .`: 통과.
