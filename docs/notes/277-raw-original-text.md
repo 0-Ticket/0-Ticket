@@ -42,6 +42,38 @@ supersedes: []
    - 결과 값만 보면 원래 `\u0000` 글자와 치환된 NUL이 같다. 원본 `original_text`에서는 백슬래시가 `\\`로 쓰이므로 구별된다.
    - 딕셔너리 키가 NUL 또는 서로게이트 한 글자 차이로만 다르면 치환 뒤 같은 키가 되고, 뒤의 값이 앞의 값을 조용히 덮어쓴다. 원본은 온전하므로 `original_text`에서 복구할 수 있다.
 
+## 후속 이슈 초안 (아직 등록하지 않음)
+
+아래를 GitHub 이슈로 옮겨 등록한다. 등록 전에 사람이 확인한다.
+
+```
+제목: fix(normalize): 깨진 원본 한 건이 claim 배치 전체를 멈추지 않게 한다
+
+## 무엇을
+- normalize claim에서 original_text를 행마다 파싱한다.
+- 파싱에 실패한 행은 invalid_original 실패로 그 행만 기록하고, 같은 배치의 나머지 행은 계속 처리한다.
+
+## 왜
+- #277 이후 raw_records 원본은 text로 저장된다. claim의 json.loads는 run()의 try 바깥에 있어서,
+  깨진 값 하나가 있으면 예외가 run()까지 올라가 배치 전체가 멈추고 임대가 lease 시간 동안 잡힌다.
+- 같은 행이 다시 잡히면 실행마다 반복된다(#294가 없애려는 뺑뺑이와 같은 모양).
+- 트리거는 DB를 수동으로 고친 경우뿐이다. 그래서 이번 PR 범위 밖으로 두었다.
+
+## 어떻게
+- src/soc/normalize/store.py의 _claim_batch에서 행마다 json.loads를 try로 감싼다.
+- 실패한 행은 save_failure(conn, owner, raw_id, "invalid_original")로 기록하고 반환 목록에서 뺀다.
+- error_code에 CHECK가 없으므로 마이그레이션은 필요 없다(확인 필요: 실제 제약 재확인).
+
+## 완료 기준
+- [ ] original_text가 깨진 행을 DB 테스트에서 직접 넣어 재현하고, 같은 배치의 정상 행이 succeeded가 된다
+- [ ] 깨진 행은 failed(invalid_original)가 되고 다음 실행에서 다시 잡히지 않는다
+- [ ] uv run ruff format --check ., uv run ruff check ., uv run pytest 통과, uv run pytest -m db 통과
+- [ ] docs/notes/277-raw-original-text.md의 한계 1을 해결됨으로 갱신하는 새 기록을 남긴다(지난 기록은 고치지 않는다)
+
+## 함께 반영할 이슈
+- #277 (원본 저장 형식)
+```
+
 ## 확인 방법
 
 - `uv run ruff format --check .`, `uv run ruff check .`: 통과.
