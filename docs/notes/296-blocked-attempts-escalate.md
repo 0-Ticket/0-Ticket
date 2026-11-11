@@ -19,7 +19,8 @@ supersedes: []
 ## 계획과 달라진 점
 
 - **`l2.md` 문구.** 계획 문구는 "확인하지 못했으면 그렇다고 적는다"였다. `l2_report.md`의 기존 규칙(확인하지 못한 `impact`는 빈 문자열)과 같은 합성 지시문 안에서 부딪히지 않게 "확인하지 못했으면 확인하지 못했다고 그대로 쓴다"로 썼다. 보고서에서 어떻게 표기하는지는 `l2_report.md`가 정한다.
-- **`l2_report.md`에 한 문장을 더했다.** "`not_threat`은 정상 활동으로 확인될 때만 쓴다." 계획에는 "차단된 시도는 `not_threat`이 아니다"까지만 있었다. 막힌 건을 닫는 길을 막으려고 기준을 좁힌 것이라, L2가 정상 활동이 아닌 다른 이유로 위협이 아니라고 봐야 하는 경우가 있으면 이 문장을 다시 본다.
+- **`l2_report.md`에 한 문장을 더했다.** "`not_threat`은 공격 시도가 없었거나 정상 활동으로 확인될 때만 쓴다." 계획에는 "차단된 시도는 `not_threat`이 아니다"까지만 있었다. 막힌 건을 닫는 길을 막으려고 기준을 좁혔고, 룰 오작동 같은 오탐은 닫을 수 있게 "공격 시도가 없었거나"를 넣었다(리뷰 지적 뒤 사람이 정함, 계획 "바뀐 점").
+- **`l2_investigate.md`를 바꿀 곳에 더했다**(계획 "바뀐 점", 2026-11-11). 보고 run(`l2_report`)은 도구를 부르지 않고 입력이 `findings`뿐이다(`make_report_task`). 조사 run이 응답 코드·차단 여부를 `timeline`에 근거 ID와 함께 남겨야 보고가 `attempted`/`succeeded`를 고를 수 있다. 확인하지 못했을 때도 그 공격 요청의 근거 ID와 함께 못 했다고 남긴다(`timeline` 항목은 근거 ID가 1개 이상 필요하다).
 - **샘플 파일을 따로 만들지 않았다.** 바뀐 것이 프롬프트 문구뿐이라 `tests/test_agent_prompts.py`가 합성한 지시문에 기준이 들어가는지 본다(작업 데이터는 기존 `make_task`의 손 샘플). 실제 모델이 어떻게 판정하는지는 랩 시험(사람)에서 본다.
 
 ## 다음 사람이 알아야 할 것
@@ -35,7 +36,7 @@ supersedes: []
 ## 확인 방법
 
 - `uv run ruff format --check .`, `uv run ruff check .`: 통과
-- `uv run pytest`: 1490건 통과(`db`·`qdrant` 마커 453건은 기본 실행에서 빠져 돌리지 않았다)
-- 새 테스트(`tests/test_agent_prompts.py`, 모두 네트워크 없음): `test_l1_prompt_escalates_blocked_attempts`(`domains` 없음·`("web",)`), `test_l1_prompt_leaves_impact_to_l2`, `test_web_domain_does_not_make_success_a_threat_criterion`, `test_l2_stage_prompt_checks_blocked_or_succeeded`, `test_l2_report_prompt_keeps_blocked_attempts_open`, `test_l1_and_l2_prompts_leave_hunting_to_l3`(2건). 변경 전 프롬프트로 되돌려 보면 앞의 6건이 실패하고, L3 경계 테스트 2건은 양쪽에서 통과한다(경계를 지키는 보호용).
+- `uv run pytest`: 1491건 통과(`db`·`qdrant` 마커 453건은 기본 실행에서 빠진다). L2 프롬프트를 쓰는 `uv run pytest -m "db or qdrant" tests/test_l2_branch_db.py`는 38건 통과(로컬 PostgreSQL·Qdrant 컨테이너)
+- 새 테스트(`tests/test_agent_prompts.py`, 모두 네트워크 없음): `test_l1_prompt_escalates_blocked_attempts`(`domains` 없음·`("web",)`), `test_l1_prompt_leaves_impact_to_l2`, `test_web_domain_does_not_make_success_a_threat_criterion`, `test_l2_stage_prompt_checks_blocked_or_succeeded`, `test_l2_report_prompt_keeps_blocked_attempts_open`, `test_l2_investigate_prompt_records_block_or_success_in_timeline`, `test_l1_and_l2_prompts_leave_hunting_to_l3`(2건). 변경 전 프롬프트로 되돌려 보면 앞의 6건이 실패하고(`l2_investigate`·`l2_report` 보강 테스트는 보강 전에 실패하는 것을 확인했다), L3 경계 테스트 2건은 양쪽에서 통과한다(경계를 지키는 보호용).
 - `contracts/`와 `src/soc/l1/`에는 변경이 없다(`git diff --stat`로 확인).
 - 실제 모델과 랩 ELK로는 확인하지 않았다.
