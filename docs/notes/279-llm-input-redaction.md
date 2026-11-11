@@ -46,6 +46,11 @@ supersedes: []
 - **알 수 없는 타입은 `TypeError`.** `redact`는 dict·list·str·숫자·불리언·None 외를 만나면 예외를 낸다. 필터에서는 `provider_error`로 끝나고(모델 호출 없음) Agent Log 쓰기에서는 쓰기 실패로 센다. 전체 테스트가 통과해 기존 줄(`jsonable`을 거친 값)은 모두 JSON 값이다. 가림 준비(`build_redactor`) 실패는 "Agent Log 설정이 잘못됐다"와 다른 "비밀 값 가림을 준비하지 못했다"로 알린다.
 - **입력 항목의 구조 필드는 가리지 않는다.** "call_id가 비밀 모양 문자열과 겹치는 경우" 테스트를 쓰려면 그 동작이 필요했다. 최상위 `type`·`role`·`call_id`·`id`·`name`·`status`는 그대로 두고 본문만 가린다. 환경변수 값이 SDK의 `call_1_0`과 같아도 도구 호출과 결과의 `call_id`가 `[REDACTED]`로 바뀌어 짝이 깨지는 일이 없다. 본문에 같은 문자열이 있으면 가려진다(테스트로 확인). 사람이 요청한 테스트를 구현한 것이지만 목록에는 없던 동작이라 계획 "바뀐 점"에 적었다.
 - **테스트.** `test_tool_name_and_call_ids_are_not_touched`(가림을 꺼도 통과하던 테스트)는 위 동작을 확인하는 `test_call_ids_and_tool_names_survive_even_when_they_look_like_the_env_secret`으로 바꿨다. 도구 결과가 든 두 번째 호출에서 가림이 실패하는 경우, 이스케이프 문자가 든 환경변수 값, 객체·비문자열 값 아래의 비밀 키, 가림 준비 실패 메시지, 크기별 시간 상한, `pwd=/Secret99`, 객체 값 샘플을 더했다.
+- **마무리 점검(2026-11-11, 코드는 바뀌지 않았다).**
+  - 정규식 아홉 개(`_URL_PASSWORD`, `_JSON_SECRET_KEY`, `_KEY_VALUE`, `_NAMED_SECRET`, `_PWD`, `_BEARER`, `_AUTH_SCHEME`, `_ID`, `_ENVELOPE`)를 각각 `a-`·`a.`·`a_`·`a:`·`a://`·`://`·`a:b@`·따옴표·공백·`password `·`Bearer `·`token=` 등 반복 입력 31가지 × 8k·32k·64k자로 쟀다. 패턴별 최악은 `_URL_PASSWORD` 0.015초, `_NAMED_SECRET` 0.012초이고 0.5초를 넘는 것은 없었다. 전체 가림 함수(평문과 봉투)의 최악은 0.075초였다. 고칠 정규식이 없어, 모든 규칙이 한 번에 지나가는 시간 상한 테스트만 더했다(`test_every_rule_stays_fast_on_repeated_input`, 32,000자에 5초).
+  - `_ENVELOPE`은 손으로 쓴 문자열이 아니라 실제 `registry._wrap(_dump(...))`와 `runner.wrap_data(...)` 출력으로 확인한다(`test_envelope_is_the_real_registry_and_wrap_data_output`). 태그 이름에 `_`를 못 받게 바꾸면 실패하는 것을 확인했다.
+  - 구조 필드 면제는 입력 항목의 최상위 키에만 적용된다. 중첩 값과 `content`·`arguments`·`output` 안의 같은 이름 키는 계속 가려진다(`test_structural_key_exemption_applies_only_to_top_level_keys`). 면제 키를 `content`·`arguments`·`output`까지 넓히거나 면제를 없애면 실패하는 것을 확인했다.
+  - PR 커밋 8개의 메시지에 `Co-Authored-By`·`Claude-Session`·"Generated with" 같은 AI 표시가 없다.
 - 항목별 가림 캐시는 만들지 않았다(사람이 정함). 정규식이 선형이 된 뒤 12턴 비용은 위 표와 같다.
 
 ## 다음 사람이 알아야 할 것
@@ -70,7 +75,8 @@ supersedes: []
 - `PYTHONUTF8=1 uv run ruff format --check .`: 통과
 - `PYTHONUTF8=1 uv run ruff check .`: 통과
 - `PYTHONUTF8=1 uv run python scripts/generate_contracts.py --check`: 통과(계약은 바뀌지 않았다)
-- `PYTHONUTF8=1 uv run pytest`: 1,459건 통과, 1건 실패(위 `test_migrate`, 변경과 무관). #292 리뷰 반영 뒤의 코드로 다시 돌린 값이다(그 전에는 1,435건 통과). 기준은 `origin/main`(`d0247ac`)이다. db·qdrant·embedder·elk·ssh·llm 마커 테스트는 기본 실행에서 빠진다
+- `PYTHONUTF8=1 uv run pytest`: 1,459건 통과, 1건 실패(위 `test_migrate`, 변경과 무관). #292 리뷰 반영 뒤의 코드로 다시 돌린 값이다(그 전에는 1,435건 통과). 기준은 `origin/main`(`d0247ac`)이다.
+- 마무리 점검에서 테스트 22건을 더했다(코드는 그대로). 전체 `pytest`는 다시 돌리지 않았고, 두 파일(`test_agent_redact.py`, `test_agent_input_redaction.py`)만 83건 통과를 확인했다. 전체는 위 1,459건에 22건을 더한 1,481건 통과, 1건 실패로 예상하지만 돌려서 확인한 값은 아니다. db·qdrant·embedder·elk·ssh·llm 마커 테스트는 기본 실행에서 빠진다
 - 테스트를 먼저 썼다. 구현 전에는 새 테스트 중 규칙·필터를 보는 것이 실패했다(샘플 마스킹, 최소 길이, `pwd`, ID 보존, 필터).
 - 주요 테스트
   - `tests/test_agent_input_redaction.py`: 가짜 모델 입력과 Agent Log에 비밀이 없음(도구 결과 세 종류, `task.data`), 로그 model 줄을 이어 붙인 입력이 모델이 받은 입력과 같음, 여러 턴과 형식 오류 재요청에서 앞 입력이 뒤 입력의 접두이고 `input_reset`이 없음, 가림 실패 시 모델 호출 없음·`provider_error`·`sent=false` 줄, 환경변수 값이 ID 조각과 겹쳐도 ID·근거 인용 유지, 짧은 환경변수 값은 그대로, 도구 이름과 `call_id`는 그대로
