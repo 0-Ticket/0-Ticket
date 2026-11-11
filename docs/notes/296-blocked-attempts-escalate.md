@@ -32,6 +32,7 @@ supersedes: []
 - **프롬프트가 바뀌어 `prompt_version`(해시)이 바뀐다.** L1·L2 Agent Log를 이전 것과 비교할 때 달라 보이는 것은 정상이다.
 - **모델이 "L2의 범위까지 알아내려고 추가로 조회하지 않는다"를 지키는지는 확인하지 못했다.** 랩 시험에서 Agent Log의 L1 도구 호출 수가 늘지 않았는지 본다. 늘었으면 `l1.md` 문구를 다시 본다.
 - **L2가 `inconclusive`만 낼 수 있다.** 랩 nginx 로그가 HTTP Activity(4002)로 정규화되지 않아 `query_http_flow`·`summarize_http_flow`가 0건을 줄 수 있다(`docs/notes/264-lab-cycle.md` 발견한 문제 1). 랩 시험에서 `inconclusive`가 나오면 프롬프트 탓인지 이 문제 탓인지 도구 결과로 먼저 가른다.
+- **`l2_investigate.md`는 #267(`data.related`, `max_range_days`)과 같은 파일이다.** 상류는 파일 끝 두 줄을, 이 이슈는 `L3`·`L5`를 바꿔 충돌 없이 합쳐졌다. 조회 도구는 호출마다 `max_range_days`일 이내의 구간만 받으므로, 차단·성공을 "이후 요청"으로 확인하려면 호출이 여러 번 필요할 수 있다. 랩에서 조사 run이 `max_turns`(12) 안에 끝나는지도 같이 본다.
 - **막힌 시도를 모두 올리면 Ticket과 사람 검토 대기가 늘 수 있다.** 페이로드 없는 단순 스캔의 판정은 이번에 바꾸지 않았다. 랩 결과를 보고 따로 정한다.
 - **개발용 시드(`tests/fixtures/l1_e2e/dev_seed.json`)의 `task_prompt`는 바꾸지 않았다.** 이 프롬프트의 "공격 흔적이 확인된다"는 새 기준과 부딪히지 않고, 2층 `l1.md`는 여기에도 합성된다.
 - **아직 안 한 것(사람, 랩).** 완료 기준의 랩 시험 두 가지: 403으로 막힌 공격에서 Ticket `escalated`와 L2 `verdict`, 정상에 가까운 알럿의 `benign`. 결과는 건수로 PR에 적는다.
@@ -39,7 +40,7 @@ supersedes: []
 ## 확인 방법
 
 - `uv run ruff format --check .`, `uv run ruff check .`: 통과
-- `uv run pytest`: 1490건 통과(`db`·`qdrant` 마커 453건은 기본 실행에서 빠진다). L2 프롬프트를 쓰는 `uv run pytest -m "db or qdrant" tests/test_l2_branch_db.py`는 38건 통과(로컬 PostgreSQL·Qdrant 컨테이너)
+- `uv run pytest`: 1493건 통과(`db`·`qdrant` 마커 457건은 기본 실행에서 빠진다). #298(#267)이 머지된 `origin/main` 위로 rebase한 뒤 `uv run pytest -m "db or qdrant"`도 돌렸다(로컬 PostgreSQL·Qdrant 컨테이너, `QDRANT_URL`은 셸에서 지정): 427건 + qdrant 22건 통과
 - 새 테스트(`tests/test_agent_prompts.py`, 모두 네트워크 없음): `test_l1_prompt_escalates_blocked_attempts`(`domains` 없음·`("web",)`), `test_l1_prompt_leaves_impact_to_l2`, `test_web_domain_does_not_make_success_a_threat_criterion`, `test_l2_stage_prompt_checks_blocked_or_succeeded_in_analysis`, `test_l2_report_prompt_keeps_blocked_attempts_open`, `test_l2_investigate_prompt_records_block_or_success_in_timeline`, (단언은 문장 전체가 아니라 핵심어 위주다). 변경 전 프롬프트로 되돌려 보면 앞의 6건이 실패하고, 이후 보강한 `l1.md`·`web.md`·`l2.md`·`l2_investigate.md`·`l2_report.md` 단언도 보강 전에 실패하는 것을 확인했다. L1·L2 프롬프트에 "헌팅"이 없다는 단어 부재 테스트는 경계를 보호하지 못해 뺐다(경계는 계획 "범위 밖"에 있다).
 - `contracts/`와 `src/soc/l1/`에는 변경이 없다(`git diff --stat`로 확인).
 - 실제 모델과 랩 ELK로는 확인하지 않았다.
