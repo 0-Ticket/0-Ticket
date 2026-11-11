@@ -104,3 +104,10 @@ PostgreSQL `jsonb`는 `\u0000`을 받지 않아, NUL이 든 문서 하나가 페
 
 ## 바뀐 점
 
+리뷰 지적 4건 반영(F1·F5·F6·F7). 결정은 사용자가 정한 것만 적는다.
+
+- **F1 키 형태**: `soc.ids.siem_ref_key(ref)`가 `<_index>/<_id>`를 JSON 문자열 이스케이프(ensure_ascii)하고 양쪽 따옴표를 뺀다. 수집 저장(`run._raw_record`)과 `store.link_by_refs`가 이 함수만 쓴다. `link_by_refs`의 입력 `pairs`는 **원래 형태** ref이고, 보류 목록도 받은 그대로 돌려준다. 계약 `raw_record.siem_ref`의 설명을 저장 키 기준으로 고쳤다.
+- **F1 도구 출력(결정 1 대기)**: `tools/siem.py`의 `siem_ref`(원래 형태)는 아직 바꾸지 않았다. 사용자가 저장 키 또는 원래 형태를 정하기 전까지 도구 출력은 그대로다.
+- **F6 거부 방식(결정 2)**: 계약 위반은 hit 데이터만으로 만들 수 없어 롤백 테스트는 `raw_records` INSERT 트리거로 DB 오류(`db_error`)를 낸다. `contract_rejected` 경로는 단위 테스트가 계속 맡는다.
+- **F5**: `escape_unstorable`의 NUL과 서로게이트를 정규식 하나와 치환 함수 하나로 합쳤다. 동작은 바뀌지 않는다. 정규화 값은 수집 키와 같은 규칙을 쓰지 않는다(백슬래시·한글은 그대로).
+- **F7**: 0106의 RAISE 문구에 개발 DB 해결 절차(`docs/notes/277-raw-original-text.md` "개발 DB에 0106 적용")를 가리키도록 했다. 마이그레이션은 데이터를 지우지 않는다.

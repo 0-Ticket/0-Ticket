@@ -84,3 +84,41 @@ supersedes: []
 - `pnpm lint`, `pnpm test`(80건), `pnpm build`, `pnpm contracts:check`: 통과. ESLint의 기존
   Fast Refresh 경고와 Vite의 큰 JS 청크 경고가 남았다.
 - `git diff --check`: 통과.
+
+## 리뷰 반영
+
+리뷰에서 나온 지적 네 건을 고쳤다. 이전 절은 고치지 않았다. 이전 절의 "확인 방법" 결과는 리뷰 반영 전 기준이다.
+
+- **F1 `siem_ref` 키 불일치**: 수집이 저장하는 `siem_ref`와 `link_by_refs`가 찾는 키가 달랐다. 이제 `soc.ids.siem_ref_key`(JSON 이스케이프, 따옴표 제외) 한 곳에서 만든다. 보통 ID는 값이 같고, 따옴표·백슬래시·제어문자·한글 ID만 바뀐다.
+  - 함정: `link_by_refs(conn, profile, pairs)`의 `pairs`는 **원래 형태** `<_index>/<_id>`를 받는다. 저장 키를 넘기면 이중 이스케이프되어 원본을 찾지 못하고 영원히 보류된다. 보류 목록도 받은 원래 형태로 돌아온다.
+  - 아직 열린 결정: SIEM 도구(`src/soc/tools/siem.py`)의 결과 `siem_ref`는 원래 형태 그대로다. 저장 키로 바꿀지 사람이 정하기 전에는 건드리지 않았다. 결정이 나면 `docs/decisions.md` D-049 뒤에 기록을 한 줄 더한다.
+- **F5 NUL·서로게이트 치환 규칙**: 정규화 `escape_unstorable`의 NUL과 짝 없는 서로게이트를 정규식 하나와 치환 함수 하나로 합쳤다. 수집 쪽 `json.dumps` 이스케이프와 글자 모양이 같다(`json.dumps(ch)[1:-1]`). 한글·백슬래시·따옴표·원래 글자 `\u0000`은 바뀌지 않는다. 동작은 바뀌지 않는다.
+- **F6 롤백·재개 테스트**: 옛 NUL 샘플로 하던 거부·롤백 검증이 사라져 있었다. NUL 문서는 이제 정상 저장되므로, 같은 페이지의 원본 INSERT를 트리거로 실패시키는 테스트(`test_db_error_on_page_rolls_back_and_next_run_resumes`)를 더했다. 실패 종류는 `db_error`다. `contract_rejected` 경로는 단위 테스트가 본다. hit 데이터만으로는 계약 위반을 만들 수 없다(`elk._read_page`가 먼저 막는다).
+- **F7 시드가 든 개발 DB에서 0106 실패**: 0106은 `raw_records`가 비어 있을 때만 적용된다. RAISE 문구에 이 절차를 가리키도록 했다. 마이그레이션은 데이터를 지우지 않는다.
+
+### 개발 DB에 0106 적용
+
+개발 DB에 시드(`soc.agent.dev_l1`, `soc.l3 dev-seed`, `soc.api.dev_seed`)가 들어 있으면 0106이 "raw_records에 행이 있어" 멈춘다. 두 방법 중 하나를 고른다.
+
+1. **권장: 개발 DB를 새로 만든다.** 개발 PostgreSQL의 모든 데이터가 지워진다. Qdrant 볼륨은 그대로 둔다.
+   ```bash
+   docker compose stop postgres
+   docker compose rm -f postgres
+   docker volume ls                                  # 이름을 확인한다(이 레포의 프로젝트 이름은 zero-ticket-soc)
+   docker volume rm zero-ticket-soc_postgres-data    # 위에서 확인한 PostgreSQL 데이터 볼륨 이름
+   docker compose up -d
+   uv run python -m soc.db.migrate
+   # 필요한 시드를 다시 넣는다
+   ```
+2. **남길 데이터가 있을 때만: 수동 SQL.** 개발 DB에서만, 한 트랜잭션으로 실행한다. 외래 키 순서는 `raw_links`와 `normalize_status`가 `raw_records`를, `alerts`와 `events`가 `raw_records`를 가리키므로 아래 순서다(0001·0102·0103 기준). `alerts`·`events`를 가리키는 티켓 같은 테이블은 외래 키가 없어 끊긴 참조로 남는다. 정리는 개발자가 한다.
+   ```sql
+   DELETE FROM raw_links;
+   DELETE FROM normalize_status;
+   DELETE FROM alerts;
+   DELETE FROM events;
+   DELETE FROM raw_records;
+   ```
+   `uv run python -m soc.db.migrate`를 다시 실행한다. `soc.agent.dev_l1 remove`와 `soc.l3 dev-seed --remove`는 `raw_links`·`normalize_status`를 지우지 않아 외래 키에 걸릴 수 있으므로 이 절차 대신 쓰지 않는다.
+3. 확인: `SELECT count(*) FROM raw_records;`가 0이어야 한다.
+
+주의: 이 브랜치의 0106 파일 내용을 바꿨으므로(RAISE 문구), 이전 문구의 0106을 이미 적용한 DB는 `이미 적용한 파일의 내용이 기록과 다르다`로 멈춘다(`src/soc/db/migrate.py`는 체크섬을 비교한다). 이런 DB는 1번으로 새로 만든다.
