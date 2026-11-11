@@ -40,6 +40,7 @@
 | D-006 | 처음 연결할 SIEM은 ELK | 다른 SIEM은 필요해질 때 |
 | D-007 | 알럿·이벤트 정규화 형식은 OCSF 1.9.0, 라이브러리 없이 직접 구현 | SIEM이 바뀌어도 같은 형태로 다룬다. 정규화 결과의 OCSF 객체는 OCSF 서버의 1.9.0 클래스·객체 정의로 검증한다. 클래스별 공식 JSON Schema 파일을 두도록 한 기존 검증 방식은 #234에서 바꿨다 |
 | D-008 | SIEM에서 가져온 원본 Alert·Event는 바꾸지 않고 보관하며, 정규화 결과는 별도 테이블에 둔다 | 보관 기간은 설정 값 |
+| D-049 | `raw_records` 원본은 `text`(JSON 글자, `original_text`)로 보관한다. 이스케이프는 `json.dumps(..., ensure_ascii=True)`다. 정규화 결과의 NUL·짝 없는 서로게이트는 `\u0000`·`\udXXX` 6글자로 치환한다(문자열 값과 dict 키 모두, `_normalize_and_save`에서) | jsonb는 `\u0000`을 받지 않아 NUL 문서 하나가 페이지 저장을 실패시켰다(#277). 원본은 `json.loads`로 SIEM이 준 JSON 그대로 되살린다(D-008). `CHECK (left(original_text, 1) = '{')`. `siem_ref`는 `<_index>/<_id>`를 JSON 문자열 이스케이프한 값(따옴표 제외)이다. 마이그레이션 `0106`은 빈 `raw_records`에서만 적용된다 |
 
 ### 에이전트
 
@@ -144,6 +145,8 @@
 ## 기록
 
 새 기록을 맨 위에 쓴다.
+
+- #277 · 원본 보관 형식(D-049)을 추가했다. `raw_records` 원본을 jsonb 대신 JSON 글자(`original_text`, `ensure_ascii=True`)로 보관하고, 정규화 결과의 NUL·짝 없는 서로게이트를 값과 키 모두 6글자 이스케이프로 치환한다. 계약 필드 `original` → `original_text`. 사용자가 계획을 확정함.
 
 - #279 · 모델 입력 비밀 값 가림(D-048)을 추가했다. 외부 LLM으로 보내는 입력을 SDK 입력 필터 한 곳에서 가리고, 가림 실패는 `provider_error`로 끝낸다. 환경변수 값 가림 최소 길이를 4에서 8로 올리고 `token`·`secret`·`Authorization: Basic|ApiKey` 모양을 더했다. D-036 메모의 복원 설명을 "모델에게 보낸 가림 적용 후 입력"으로 맞췄다. 팀 공유가 필요하다. 사용자가 계획을 확정함.
 
