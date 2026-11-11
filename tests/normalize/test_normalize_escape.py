@@ -9,11 +9,13 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from soc.contracts import validate_contract
 from soc.ids import new_id
 from soc.normalize.mapping import RawRow, normalize
 from soc.normalize.ocsf_schema import validate_ocsf
-from soc.normalize.run import escape_unstorable
+from soc.normalize.run import EscapeCollisionError, escape_unstorable
 
 CASES = json.loads(
     (Path(__file__).parent.parent / "fixtures" / "normalize" / "raw.json").read_text(
@@ -103,3 +105,15 @@ def test_each_replaced_character_matches_the_json_escape_of_collection() -> None
         escape_unstorable("a\x00한\udc00")
         == "a" + json.dumps("\x00")[1:-1] + "한" + (json.dumps("\udc00")[1:-1])
     )
+
+
+def test_colliding_escaped_keys_in_one_dict_raise_instead_of_overwriting() -> None:
+    # NUL 키와 원래 글자 \\u0000(6글자) 키는 이스케이프 뒤 같아진다. 덮어쓰지 않고 실패로 본다(#277)
+    with pytest.raises(EscapeCollisionError) as info:
+        escape_unstorable({"a\x00": 1, "a\\u0000": 2})
+
+    assert info.value.code == "escape_collision"
+
+
+def test_non_colliding_nul_keys_still_succeed() -> None:
+    assert escape_unstorable({"a\x00": 1, "b\x00": 2}) == {"a\\u0000": 1, "b\\u0000": 2}
