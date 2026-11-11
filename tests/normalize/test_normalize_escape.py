@@ -87,3 +87,19 @@ def test_normalized_alert_with_nul_and_surrogates_passes_contract() -> None:
     assert row["title"] == "Web\\u0000scan\\ud83d"
     validate_ocsf(row["ocsf"])
     validate_contract(mapped.kind, row)
+
+
+def test_korean_backslash_quote_and_literal_escape_text_are_unchanged() -> None:
+    """한글, 백슬래시, 따옴표, 원래 글자로 든 \\u0000(6글자)은 치환 대상이 아니라 그대로 둔다."""
+    for text in ["한글 값", "C:\\Windows\\system32", 'say "hi"', "\\u0000", "\\ud83d"]:
+        assert escape_unstorable(text) == text
+
+
+def test_each_replaced_character_matches_the_json_escape_of_collection() -> None:
+    """NUL과 짝 없는 서로게이트 한 글자의 치환은 수집의 json.dumps 이스케이프와 같은 글자다."""
+    for ch in ["\x00", "\ud800", "\ud83d", "\udc00", "\udfff"]:
+        assert escape_unstorable(ch) == json.dumps(ch)[1:-1]
+    assert (
+        escape_unstorable("a\x00한\udc00")
+        == "a" + json.dumps("\x00")[1:-1] + "한" + (json.dumps("\udc00")[1:-1])
+    )

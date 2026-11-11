@@ -120,8 +120,8 @@ def _normalize_and_save(
     return save_success(conn, owner, raw.id, mapped.kind, row)
 
 
-# 짝 없는 서로게이트(U+D800..U+DFFF). UTF-8로 쓸 수 없어 저장이 실패한다
-_SURROGATE = re.compile("[\ud800-\udfff]")
+# NUL과 짝 없는 서로게이트(U+D800..U+DFFF). jsonb는 NUL을, UTF-8은 서로게이트를 받지 않는다
+_UNSTORABLE = re.compile("[\x00\ud800-\udfff]")
 
 
 def escape_unstorable(value: Any) -> Any:
@@ -139,8 +139,7 @@ def escape_unstorable(value: Any) -> Any:
         같은 모양의 새 값.
     """
     if isinstance(value, str):
-        text = value.replace("\x00", "\\u0000")
-        return _SURROGATE.sub(lambda match: f"\\u{ord(match.group()):04x}", text)
+        return _UNSTORABLE.sub(lambda match: f"\\u{ord(match.group()):04x}", value)
     if isinstance(value, dict):
         return {escape_unstorable(key): escape_unstorable(item) for key, item in value.items()}
     if isinstance(value, list):
