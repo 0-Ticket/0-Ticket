@@ -1,7 +1,7 @@
 """알럿↔원본 이벤트 연결(raw_links)을 실제 PostgreSQL로 확인한다(#218 후속, db 마커).
 
 연결 키를 알럿 문서의 어느 필드에서 읽는지는 아직 확인되지 않아 다루지 않는다.
-합성 siem_ref 쌍으로 저장 규칙만 본다.
+합성 siem_ref 쌍으로 저장 규칙만 본다. link_by_refs는 저장 키 쌍을 받는다(D-049).
 """
 
 from collections.abc import Iterator
@@ -128,22 +128,27 @@ def test_failure_rolls_back_the_whole_batch(conn: psycopg.Connection) -> None:
     assert link_rows(conn) == set()
 
 
-def test_special_id_refs_link_by_original_form(conn: psycopg.Connection) -> None:
-    """따옴표·백슬래시·제어문자·한글 _id는 저장 키로 저장되고, 원래 형태 ref로 연결된다(#277)."""
+def test_special_id_refs_link_by_stored_key(conn: psycopg.Connection) -> None:
+    """따옴표·백슬래시·제어문자·한글 _id는 저장 키로 저장되고, 저장 키로 연결된다(#277)."""
     odd_index = ".ds-logs-web-default-2026.11.04-000001"
     odd_ref = f'{odd_index}/q"b\\s\x01z\x00한글'
     event_ref = ".ds-logs-web-default-2026.11.04-000002/evt-plain"
     # 수집이 저장하는 모양과 같은 키로 넣는다
     insert_raw(conn, siem_ref_key(odd_ref), "alert")
     insert_raw(conn, siem_ref_key(event_ref), "event")
-    pairs = [(odd_ref, event_ref)]
+    pairs = [(siem_ref_key(odd_ref), siem_ref_key(event_ref))]
 
     assert link_by_refs(conn, PROFILE, pairs) == (1, [])
     assert link_rows(conn) == {(siem_ref_key(odd_ref), siem_ref_key(event_ref))}
 
 
-def test_pending_special_ref_comes_back_in_original_form(conn: psycopg.Connection) -> None:
-    odd_ref = '.ds-logs-web-default-2026.11.04-000001/q"b\\s\x01z\x00한글'
-    pair = (odd_ref, ".ds-logs-web-default-2026.11.04-000002/evt-plain")
+def test_original_form_of_special_ref_is_not_a_key(conn: psycopg.Connection) -> None:
+    """원래 형태(이스케이프 전) ref는 저장 키가 아니므로 찾지 못하고 보류로 돌아온다(#277)."""
+    odd_ref = '.ds-logs-web-default-2026.11.04-000001/q"b\\s'
+    event_ref = ".ds-logs-web-default-2026.11.04-000002/evt-plain"
+    insert_raw(conn, siem_ref_key(odd_ref), "alert")
+    insert_raw(conn, siem_ref_key(event_ref), "event")
+    pair = (odd_ref, event_ref)  # 원래 형태를 그대로 넘긴다
 
     assert link_by_refs(conn, PROFILE, [pair]) == (0, [pair])
+    assert link_rows(conn) == set()
