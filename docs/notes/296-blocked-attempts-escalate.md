@@ -35,12 +35,14 @@ supersedes: []
 - **`l2_investigate.md`는 #267(`data.related`, `max_range_days`)과 같은 파일이다.** 상류는 파일 끝 두 줄을, 이 이슈는 `L3`·`L5`를 바꿔 충돌 없이 합쳐졌다. 조회 도구는 호출마다 `max_range_days`일 이내의 구간만 받으므로, 차단·성공을 "이후 요청"으로 확인하려면 호출이 여러 번 필요할 수 있다. 랩에서 조사 run이 `max_turns`(12) 안에 끝나는지도 같이 본다.
 - **막힌 시도를 모두 올리면 Ticket과 사람 검토 대기가 늘 수 있다.** 페이로드 없는 단순 스캔의 판정은 이번에 바꾸지 않았다. 랩 결과를 보고 따로 정한다.
 - **개발용 시드(`tests/fixtures/l1_e2e/dev_seed.json`)의 `task_prompt`는 바꾸지 않았다.** 이 프롬프트의 "공격 흔적이 확인된다"는 새 기준과 부딪히지 않고, 2층 `l1.md`는 여기에도 합성된다.
+- **계획 파일 본문은 확정 당시 문구다.** 개발 중 사람이 정한 최종 문구와 범위(`l2_investigate.md` 추가, `l1.md`의 조회 범위 제한, 근거 ID 요구 등)는 계획 "바뀐 점"에 날짜순으로 쌓여 있다. 계획을 읽을 때는 본문과 "바뀐 점"을 함께 본다.
 - **아직 안 한 것(사람, 랩).** 완료 기준의 랩 시험 두 가지: 403으로 막힌 공격에서 Ticket `escalated`와 L2 `verdict`, 정상에 가까운 알럿의 `benign`. 결과는 건수로 PR에 적는다.
 
 ## 확인 방법
 
 - `uv run ruff format --check .`, `uv run ruff check .`: 통과
 - `uv run pytest`: 1493건 통과(`db`·`qdrant` 마커 457건은 기본 실행에서 빠진다). #298(#267)이 머지된 `origin/main` 위로 rebase한 뒤 `uv run pytest -m "db or qdrant"`도 돌렸다(로컬 PostgreSQL·Qdrant 컨테이너, `QDRANT_URL`은 셸에서 지정): 427건 + qdrant 22건 통과
-- 새 테스트(`tests/test_agent_prompts.py`, 모두 네트워크 없음): `test_l1_prompt_escalates_blocked_attempts`(`domains` 없음·`("web",)`), `test_l1_prompt_leaves_impact_to_l2`, `test_web_domain_does_not_make_success_a_threat_criterion`, `test_l2_stage_prompt_checks_blocked_or_succeeded_in_analysis`, `test_l2_report_prompt_keeps_blocked_attempts_open`, `test_l2_investigate_prompt_records_block_or_success_in_timeline`, (단언은 문장 전체가 아니라 핵심어 위주다). 변경 전 프롬프트로 되돌려 보면 앞의 6건이 실패하고, 이후 보강한 `l1.md`·`web.md`·`l2.md`·`l2_investigate.md`·`l2_report.md` 단언도 보강 전에 실패하는 것을 확인했다. L1·L2 프롬프트에 "헌팅"이 없다는 단어 부재 테스트는 경계를 보호하지 못해 뺐다(경계는 계획 "범위 밖"에 있다).
+- 새 테스트(`tests/test_agent_prompts.py`, 모두 네트워크 없음, 단언은 문장 전체가 아니라 핵심어 위주): `test_l1_prompt_escalates_blocked_attempts`와 `test_l1_prompt_leaves_impact_to_l2`(둘 다 `domains` 없음·`("web",)`), `test_web_domain_does_not_make_success_a_threat_criterion`, `test_l2_stage_prompt_checks_blocked_or_succeeded_in_analysis`, `test_l2_report_prompt_keeps_blocked_attempts_open`, `test_l2_investigate_prompt_records_block_or_success_in_timeline`. 프롬프트를 고치기 전에 새 단언이 실패하는 것을 매번 확인했다. 조사 프롬프트 테스트는 `l2.md`와 겹치는 구절에 속지 않게 합성 텍스트가 아니라 `l2_investigate.md` 파일을 직접 본다.
+- 지운 테스트와 `skip`·`xfail`, 린트 예외 주석은 없다. L1·L2 프롬프트에 "헌팅"이 없다는 단어 부재 테스트는 개발 중에 만들었다가 경계를 보호하지 못해 같은 브랜치에서 뺐다(경계는 계획 "범위 밖"에 있다).
 - `contracts/`와 `src/soc/l1/`에는 변경이 없다(`git diff --stat`로 확인).
 - 실제 모델과 랩 ELK로는 확인하지 않았다.
