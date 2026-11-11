@@ -21,7 +21,8 @@ supersedes: []
 - **`l2.md` 문구.** 계획 문구는 "확인하지 못했으면 그렇다고 적는다"였다. `l2_report.md`의 기존 규칙(확인하지 못한 `impact`는 빈 문자열)과 같은 합성 지시문 안에서 부딪히지 않게 "확인하지 못했으면 확인하지 못했다고 그대로 쓴다"로 썼다. 보고서에서 어떻게 표기하는지는 `l2_report.md`가 정한다. 이 줄은 "분석 작업의 영향 범위"로 한정해, 추가 조회가 없는 분류 작업(`l2_classify`)에 조회 지시처럼 읽히지 않게 했다.
 - **`l2_report.md`에 한 문장을 더했다.** "`not_threat`은 공격 시도가 없었거나 정상 활동으로 확인될 때만 쓴다." 계획에는 "차단된 시도는 `not_threat`이 아니다"까지만 있었다. 막힌 건을 닫는 길을 막으려고 기준을 좁혔고, 룰 오작동 같은 오탐은 닫을 수 있게 "공격 시도가 없었거나"를 넣었다(리뷰 지적 뒤 사람이 정함, 계획 "바뀐 점").
 - **`l2_investigate.md`를 바꿀 곳에 더했다**(계획 "바뀐 점", 2026-11-11). 보고 run(`l2_report`)은 도구를 부르지 않고 입력이 `findings`뿐이다(`make_report_task`). 조사 run이 응답 코드·차단 여부를 `timeline`에 근거 ID와 함께 남겨야 보고가 `attempted`/`succeeded`를 고를 수 있다. 확인하지 못했을 때도 그 공격 요청의 근거 ID와 함께 못 했다고 남긴다(`timeline` 항목은 근거 ID가 1개 이상 필요하다).
-- **`l1.md`·`web.md`에 단서를 더했다**(리뷰 지적 뒤 사람이 정함, 계획 "바뀐 점"). `l1.md`는 흔적의 예(악성 페이로드, 악용 시도, 알려진 공격 도구나 패턴)를 들고 "거부된 로그인 한 건처럼 흔적이 뚜렷하지 않은 것"은 흔적으로 보지 않게 했다. 도메인과 관계없는 규칙이라 단순 실패가 `malicious`로 쏠리는 것을 줄이려는 것이다. `web.md`는 페이로드 모양이 "정상 이용으로 설명되지 않으면" 흔적으로 보게 했다. 응답 코드가 걸러 주던 정상 요청(검색어에 SQL 낱말 등)의 오탐을 되살리지 않기 위해서다.
+- **`l1.md`·`web.md`에 단서를 더했다**(리뷰 지적 뒤 사람이 정함, 계획 "바뀐 점"). `l1.md`는 흔적의 예(악성 페이로드, 악용 시도)를 들고("알려진 공격 도구나 패턴"은 `sqlmap` 같은 User-Agent만으로 페이로드 없는 스캔을 올리게 돼 확정한 4-A와 어긋나서 뺐다) "거부된 로그인 한 건처럼 흔적이 뚜렷하지 않은 것"은 흔적으로 보지 않게 했다. 도메인과 관계없는 규칙이라 단순 실패가 `malicious`로 쏠리는 것을 줄이려는 것이다. `web.md`는 페이로드 모양이 "정상 이용으로 설명되지 않으면" 흔적으로 보게 했다. 응답 코드가 걸러 주던 정상 요청(검색어에 SQL 낱말 등)의 오탐을 되살리지 않기 위해서다.
+- **L2 조사·분석 문구는 HTTP에 묶지 않았다**(계획 "바뀐 점"). `l2.md`·`l2_investigate.md`는 "응답 코드나 성공·실패 기록"이라고 쓰고, 조사 줄은 "해당하는 경우"로 한정했다. L2 조사는 웹이 아닌 Incident에도 같은 프롬프트로 돈다. `l2_investigate.md`의 첫 규칙은 "확인한 사실과 확인하지 못한 점만"으로 바꿔 미확인 기록과 부딪히지 않게 했다. `l2_report.md`에는 `succeeded` 기준을 더했다.
 - **샘플 파일을 따로 만들지 않았다.** 바뀐 것이 프롬프트 문구뿐이라 `tests/test_agent_prompts.py`가 합성한 지시문에 기준이 들어가는지 본다(작업 데이터는 기존 `make_task`의 손 샘플). 실제 모델이 어떻게 판정하는지는 랩 시험(사람)에서 본다.
 
 ## 다음 사람이 알아야 할 것
@@ -37,7 +38,7 @@ supersedes: []
 ## 확인 방법
 
 - `uv run ruff format --check .`, `uv run ruff check .`: 통과
-- `uv run pytest`: 1489건 통과(`db`·`qdrant` 마커 453건은 기본 실행에서 빠진다). L2 프롬프트를 쓰는 `uv run pytest -m "db or qdrant" tests/test_l2_branch_db.py`는 38건 통과(로컬 PostgreSQL·Qdrant 컨테이너)
+- `uv run pytest`: 1490건 통과(`db`·`qdrant` 마커 453건은 기본 실행에서 빠진다). L2 프롬프트를 쓰는 `uv run pytest -m "db or qdrant" tests/test_l2_branch_db.py`는 38건 통과(로컬 PostgreSQL·Qdrant 컨테이너)
 - 새 테스트(`tests/test_agent_prompts.py`, 모두 네트워크 없음): `test_l1_prompt_escalates_blocked_attempts`(`domains` 없음·`("web",)`), `test_l1_prompt_leaves_impact_to_l2`, `test_web_domain_does_not_make_success_a_threat_criterion`, `test_l2_stage_prompt_checks_blocked_or_succeeded_in_analysis`, `test_l2_report_prompt_keeps_blocked_attempts_open`, `test_l2_investigate_prompt_records_block_or_success_in_timeline`, (단언은 문장 전체가 아니라 핵심어 위주다). 변경 전 프롬프트로 되돌려 보면 앞의 6건이 실패하고, 이후 보강한 `l1.md`·`web.md`·`l2.md`·`l2_investigate.md`·`l2_report.md` 단언도 보강 전에 실패하는 것을 확인했다. L1·L2 프롬프트에 "헌팅"이 없다는 단어 부재 테스트는 경계를 보호하지 못해 뺐다(경계는 계획 "범위 밖"에 있다).
 - `contracts/`와 `src/soc/l1/`에는 변경이 없다(`git diff --stat`로 확인).
 - 실제 모델과 랩 ELK로는 확인하지 않았다.

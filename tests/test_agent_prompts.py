@@ -285,12 +285,14 @@ def test_l1_prompt_escalates_blocked_attempts(domains: tuple[str, ...]) -> None:
     assert "차단 여부와 관계없이" in text
     assert "정상 활동으로 설명되는 경우만" in text
     assert "흔적이 뚜렷하지 않은" in text  # 단순 실패 한 건을 공격으로 올리지 않는다
+    assert "알려진 공격 도구" not in text  # 페이로드 없는 단순 스캔은 이번에 바꾸지 않는다
     assert "추가로 조회하지 않는다" in text
     assert "reason에" in text
 
 
-def test_l1_prompt_leaves_impact_to_l2() -> None:
-    text = compose_instructions(make_task(), max_turns=6)
+@pytest.mark.parametrize("domains", [(), ("web",)])
+def test_l1_prompt_leaves_impact_to_l2(domains: tuple[str, ...]) -> None:
+    text = compose_instructions(make_task(domains=domains), max_turns=6)
     assert "L2가 가린다" in text
     assert "성공했는지 따로 본다" not in text
 
@@ -306,7 +308,8 @@ def test_web_domain_does_not_make_success_a_threat_criterion() -> None:
 
 def test_l2_stage_prompt_checks_blocked_or_succeeded_in_analysis() -> None:
     text = compose_instructions(make_task(stage="l2"), max_turns=12)
-    assert "분석 작업의 영향 범위" in text  # 분류 작업에는 걸리지 않는다
+    assert "분석 작업의 영향 범위" in text  # 분석 작업으로 한정한 문구(이 파일은 분류에도 합성된다)
+    assert "응답 코드나 성공·실패 기록" in text  # HTTP 밖의 Incident도 읽을 수 있는 표현
     assert "차단됐는지 성공했는지" in text
     assert "확인하지 못했다고 그대로 쓴다" in text
 
@@ -316,6 +319,7 @@ def test_l2_report_prompt_keeps_blocked_attempts_open() -> None:
         make_task(stage="l2", prompt=l2_task_prompt("l2_report")), max_turns=12
     )
     assert "attempted" in text
+    assert "성공한 것이 확인되면 verdict는 succeeded" in text
     assert "차단됐다는 이유로 not_threat" in text
     assert "공격 시도가 없었거나 정상 활동으로 확인될 때만" in text
     assert "inconclusive로 두고" in text
@@ -326,6 +330,8 @@ def test_l2_investigate_prompt_records_block_or_success_in_timeline() -> None:
     text = compose_instructions(
         make_task(stage="l2", prompt=l2_task_prompt("l2_investigate")), max_turns=12
     )
-    assert "응답 코드와 차단 여부" in text
+    assert "확인한 사실과 확인하지 못한 점만" in text  # 미확인 기록이 첫 규칙과 부딪히지 않는다
+    assert "해당하는 경우" in text  # HTTP가 아닌 Incident에는 지어내지 않는다
+    assert "응답 코드나 성공·실패 기록" in text
     assert "근거 ID와 함께 timeline에 쓴다" in text
     assert "확인하지 못했다고 timeline에 쓴다" in text  # 보고 run은 도구가 없어 timeline만 본다
