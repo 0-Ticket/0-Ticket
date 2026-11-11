@@ -15,6 +15,7 @@ import json
 import logging
 import os
 import time
+from collections.abc import Callable
 from typing import Any
 
 import openai
@@ -36,6 +37,7 @@ from soc.agent.agent_log import (
     LogSink,
     PostgresLogSink,
     RowWriter,
+    jsonable,
     log_timeouts,
 )
 from soc.agent.compose import compose_instructions, has_top_level_field
@@ -115,7 +117,12 @@ def run_task(
     run_id = run_id or new_id("run")
     started = time.perf_counter()
     try:
-        writer = _writer(log_sink, config)
+        redact = build_redactor(config)  # 모델 입력 필터와 Agent Log 쓰기가 같은 함수를 쓴다(D-048)
+    except Exception:  # 가림을 준비하지 못하면 모델에 아무것도 보내지 않는다
+        detail = "비밀 값 가림을 준비하지 못했다"
+        return _before_start(task, run_id, log_sink, {}, "provider_error", detail, model_name)
+    try:
+        writer = _writer(log_sink, config, redact)
     except Exception:  # [agent]의 Agent Log 시간 제한이 틀렸다
         detail = "Agent Log 설정이 잘못됐다"
         return _before_start(task, run_id, log_sink, {}, "provider_error", detail, model_name)
@@ -150,7 +157,7 @@ def run_task(
     detail: str | None = None
     validation: str | None = None
     try:
-        output, cited = _execute(task, model, instructions, recorder, config, tools, sleep)
+        output, cited = _execute(task, model, instructions, recorder, config, tools, sleep, redact)
         validation = "ok"
     except _Stop as stop:
         failure, detail, validation = stop.failure, stop.detail, stop.validation
@@ -183,10 +190,12 @@ def _postgres_sink(database_url: str, config: dict[str, Any]) -> PostgresLogSink
     )
 
 
-def _writer(sink: LogSink, config: dict[str, Any]) -> RowWriter:
+def _writer(
+    sink: LogSink, config: dict[str, Any], redact: Callable[[Any], Any] | None = None
+) -> RowWriter:
     """줄을 쓰기 직전에 가리고 계약을 검사하는 쓰기 도구. 마감은 연결 + 문장 시간 제한이다."""
     connect, statement = log_timeouts(config)
-    redact = build_redactor(config)
+    redact = redact or build_redactor(config)
 
     def prepare(row: dict[str, Any]) -> dict[str, Any]:
         out = _redacted(row, redact)
@@ -272,6 +281,7 @@ def _execute(
     config: dict[str, Any],
     tools: ToolSession,
     sleep: Sleep,
+    redact: Callable[[Any], Any],
 ) -> tuple[Any, list[str]]:
     stage = config["agent"][task.stage]
     max_turns = int(stage["max_turns"])
@@ -293,14 +303,24 @@ def _execute(
         ),
     )
 
-    def check_budget(data: CallModelData[Any]) -> ModelInputData:
-        chars = input_chars(data.model_data.instructions, data.model_data.input)
+    def screen_input(data: CallModelData[Any]) -> ModelInputData:
+        """모델에게 보내기 직전 입력을 가리고 예산을 검사한다(D-048).
+
+        항목마다 따로 가려서 같은 입력 이력은 같은 결과가 된다(D-036 input_from 접두 비교).
+        SDK가 이 결과를 on_llm_start에 넘기므로 Agent Log의 model 줄은 보낸 입력과 같다.
+        가리지 못하면 원문을 보내지 않는다.
+        """
+        try:
+            items = [_screen_item(item, redact) for item in data.model_data.input]
+        except Exception:
+            raise _Stop("provider_error", "입력 가림에 실패해 보내지 않았다") from None
+        chars = input_chars(data.model_data.instructions, items)
         if chars > max_input_chars:
             recorder.add_budget_exceeded(chars, max_input_chars)
             raise _Stop("budget_exceeded", "입력 예산(max_input_chars)을 넘어 보내지 않았다")
-        return data.model_data
+        return ModelInputData(input=items, instructions=data.model_data.instructions)
 
-    run_config = RunConfig(tracing_disabled=True, call_model_input_filter=check_budget)
+    run_config = RunConfig(tracing_disabled=True, call_model_input_filter=screen_input)
 
     def run(items: list[Any], turns: int) -> Any:
         try:
@@ -358,6 +378,24 @@ def _check_output(task: AgentTask, final_output: Any) -> tuple[Any, str | None]:
     except ContractError as exc:
         return None, ", ".join(f"{v.path}: {v.rule}" for v in exc.violations)
     return data, None
+
+
+def _as_json(item: Any) -> Any:
+    """입력 항목이 SDK 객체(pydantic)면 JSON 값으로 바꾼다. dict는 그대로다."""
+    return item if isinstance(item, dict) else jsonable(item)
+
+
+# 입력 항목의 구조 필드. call_id가 환경변수 값과 우연히 같아도 도구 호출·결과의 짝이 깨지면 안 된다
+_STRUCTURAL_KEYS = ("type", "role", "call_id", "id", "name", "status")
+
+
+def _screen_item(item: Any, redact: Callable[[Any], Any]) -> Any:
+    """입력 항목 하나를 가린다. 최상위 구조 필드는 그대로 두고 나머지(본문)를 가린다."""
+    item = _as_json(item)
+    if not isinstance(item, dict):
+        return redact(item)
+    body = redact({k: v for k, v in item.items() if k not in _STRUCTURAL_KEYS})
+    return {k: item[k] if k in _STRUCTURAL_KEYS else body[k] for k in item}
 
 
 def _redacted(row: dict[str, Any], redact: Any) -> dict[str, Any]:
