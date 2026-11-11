@@ -27,6 +27,7 @@ from typing import Any
 
 import httpx
 
+from soc.ids import siem_ref_key
 from soc.tools.internal import SORT_ARG, TIME_RANGE_ARGS, check_time_range
 from soc.tools.registry import CUT_MARK, Arg, CallContext, ToolConfigError, ToolError, ToolSpec
 
@@ -438,7 +439,7 @@ def _hit(hit: Any, fields: tuple[str, ...]) -> dict[str, Any]:
         value = _lookup(source, field.split("."))
         if value is not _MISSING:
             picked[field] = _cap(value, field, cut)
-    shaped: dict[str, Any] = {"siem_ref": f"{index}/{doc_id}", "fields": picked}
+    shaped: dict[str, Any] = {"siem_ref": siem_ref_key(f"{index}/{doc_id}"), "fields": picked}
     if cut:
         shaped["truncated_fields"] = cut
     return shaped
@@ -550,7 +551,7 @@ def siem_tools(
         name="query_siem",
         description=(
             "SIEM(ELK)에서 시간 범위 안의 문서를 찾는다. 대상마다 정해진 필드만 돌려준다. "
-            "히트마다 siem_ref(<_index>/<_id>)와 fields가 있다. "
+            "히트마다 siem_ref(저장 키: <_index>/<_id>를 JSON 이스케이프한 값)와 fields가 있다. "
             + _COMMON_DESCRIPTION
             + _target_lines()
         ),

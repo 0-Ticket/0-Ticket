@@ -10,6 +10,7 @@ import json
 import secrets
 import threading
 import time
+from typing import NewType
 
 # 접두사 목록의 기준. contracts/common/types.schema.json의 ID 정의와 맞춘다.
 PREFIXES = (
@@ -40,14 +41,19 @@ def new_id(prefix: str) -> str:
     return f"{prefix}_{_uuid7()}"
 
 
-def siem_ref_key(ref: str) -> str:
+# 저장 키 글자(siem_ref_key의 결과). 원래 형태 "<_index>/<_id>"와 타입으로 구분한다(D-049).
+SiemRefKey = NewType("SiemRefKey", str)
+
+
+def siem_ref_key(ref: str) -> SiemRefKey:
     """SIEM 문서 ref를 저장 키 글자로 바꾼다(D-049).
 
     인자 ref: 원래 형태 "<_index>/<_id>". 반환: JSON 문자열 이스케이프(ensure_ascii)를 한 뒤
     양쪽 따옴표를 뺀 값. 보통 ref는 그대로이고, 따옴표·백슬래시·제어문자·비ASCII가 있으면 바뀐다.
-    raw_records.siem_ref 저장, link_by_refs 조회가 모두 이 함수로 만든 키를 쓴다.
+    키는 "/"로 나누어 _index와 _id로 되돌리지 않는다(index 이름의 "/"를 가정하지 않는다).
+    raw_records.siem_ref 저장, link_by_refs 조회, query_siem의 siem_ref가 모두 이 키를 쓴다.
     """
-    return json.dumps(ref, ensure_ascii=True)[1:-1]
+    return SiemRefKey(json.dumps(ref, ensure_ascii=True)[1:-1])
 
 
 def _now_ms() -> int:
