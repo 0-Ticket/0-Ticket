@@ -77,7 +77,8 @@ fixture 파일은 저장소 관례대로 `tests/fixtures/ingest/`에 있다.
 - `test_run_checks_reject_broken_rows`: `ingest_runs`의 CHECK 제약(코드 모양 outcome, 음수 건수, 시작보다 이른 종료 등)이 잘못된 행을 막는다.
 
 ### `test_run_db.py`: 실행 전체를 실제 DB로
-- `test_rejected_page_rolls_back_and_next_run_resumes`: 거부된 페이지는 롤백되고, 다음 실행이 같은 위치에서 이어간다. 이력에 `contract_rejected`, `ok`가 차례로 쌓인다.
+- `test_nul_page_is_stored_and_next_run_resumes`: NUL이 든 문서는 실패 없이 저장되고(#277), 다음 실행이 이어서 조회한다.
+- `test_db_error_on_page_rolls_back_and_next_run_resumes`: 페이지 중간의 원본 INSERT를 트리거로 실패시키면 그 페이지는 롤백되고(같은 페이지의 앞 문서도 함께), 체크포인트는 이전 페이지에 남으며, 다음 실행이 거기서 이어간다. 실패 종류는 `contract_rejected`가 아니라 `db_error`다(#277). 이력은 `db_error`, `ok`가 차례로 쌓인다.
 - `test_first_page_failure_and_empty_run_leave_history_only`: 첫 페이지 실패와 0건 성공은 체크포인트 없이 이력 행만 남긴다.
 - `test_failed_run_record_keeps_saved_pages`: 이력 쓰기가 DB 오류로 실패해도 실행은 성공이고 원본·체크포인트는 커밋돼 있다.
 

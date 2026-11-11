@@ -1,0 +1,33 @@
+{
+  "pit_id": "pit-synthetic-4",
+  "took": 2,
+  "timed_out": false,
+  "hits": {
+    "hits": [
+      {
+        "_index": ".ds-logs-nginx.access-default-2026.11.04-000001",
+        "_id": "evt-3",
+        "_score": null,
+        "_source": {
+          "@timestamp": "2026-11-04T01:05:00.000Z",
+          "source": {"ip": "192.0.2.15"},
+          "url": {"original": "/"},
+          "http": {"response": {"status_code": 200}}
+        },
+        "sort": [1793754300000, 13]
+      },
+      {
+        "_index": ".ds-logs-nginx.access-default-2026.11.04-000001",
+        "_id": "reject-1",
+        "_score": null,
+        "_source": {
+          "@timestamp": "2026-11-04T01:05:00.000Z",
+          "source": {"ip": "192.0.2.16"},
+          "url": {"original": "/reject"},
+          "http": {"response": {"status_code": 200}}
+        },
+        "sort": [1793754300000, 14]
+      }
+    ]
+  }
+}

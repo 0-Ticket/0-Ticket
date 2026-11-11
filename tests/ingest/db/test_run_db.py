@@ -59,6 +59,51 @@ def test_nul_page_is_stored_and_next_run_resumes(conn: psycopg.Connection) -> No
     assert runs(conn) == [("ok", 2, 3), ("ok", 2, 1)]
 
 
+def test_db_error_on_page_rolls_back_and_next_run_resumes(conn: psycopg.Connection) -> None:
+    """페이지 중간의 원본 쓰기가 DB 오류로 실패하면 그 페이지만 롤백되고 다음 실행이 이어간다(#277).
+
+    계약 위반은 hit 데이터만으로 만들 수 없어(elk._read_page가 먼저 막는다), 특정 원본의 INSERT를
+    트리거로 실패시켜 롤백 경로를 본다. 실패 종류는 contract_rejected가 아니라 db_error다.
+    """
+    conn.execute(
+        "CREATE FUNCTION reject_page_row() RETURNS trigger LANGUAGE plpgsql"
+        " AS $$ BEGIN IF NEW.siem_ref LIKE '%/reject-1' THEN"
+        " RAISE EXCEPTION 'injected row failure'; END IF; RETURN NEW; END $$"
+    )
+    conn.execute(
+        "CREATE TRIGGER reject_page_row BEFORE INSERT ON raw_records"
+        " FOR EACH ROW EXECUTE FUNCTION reject_page_row()"
+    )
+
+    first = run_with(
+        conn,
+        FakeElk({"logs-web-*": ["elk_events_page1.json", "elk_events_page2_reject.json"]}),
+    )
+
+    # page2의 evt-3는 같은 트랜잭션이라 함께 롤백된다
+    assert (first.pages, first.inserted, first.failure) == (1, 2, "db_error")
+    assert stored(conn) == [APACHE + "/dup-1", NGINX + "/dup-1"]
+    assert checkpoints(conn) == [{"time_ms": 1793754000000}]
+    assert runs(conn) == [("db_error", 1, 2)]
+
+    conn.execute("DROP TRIGGER reject_page_row ON raw_records")
+    fake = FakeElk(
+        {"logs-web-*": ["elk_events_page1.json", "elk_events_page2_reject.json", "elk_empty.json"]}
+    )
+    resumed = run_with(conn, fake)
+
+    assert fake.search_bodies()[0]["query"]["range"]["@timestamp"]["gte"] == 1793754000000
+    assert (resumed.pages, resumed.inserted, resumed.failure) == (2, 2, None)
+    assert stored(conn) == [
+        APACHE + "/dup-1",
+        NGINX + "/dup-1",
+        NGINX + "/evt-3",
+        NGINX + "/reject-1",
+    ]
+    assert checkpoints(conn) == [{"time_ms": 1793754300000}]
+    assert runs(conn) == [("db_error", 1, 2), ("ok", 2, 2)]
+
+
 def test_first_page_failure_and_empty_run_leave_history_only(conn: psycopg.Connection) -> None:
     failed = run_with(conn, FakeElk({"logs-web-*": [respond(500, {"error": "SECRET-BODY"})]}))
     empty = run_with(conn, FakeElk({"logs-web-*": ["elk_empty.json"]}))
