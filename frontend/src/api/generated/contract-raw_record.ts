@@ -11,7 +11,7 @@ export interface RawRecord {
    */
   siem_profile: string;
   /**
-   * SIEM 안에서 문서 하나를 가리키는 저장 키. ELK는 <_index>/<_id>를 JSON 문자열 이스케이프(ensure_ascii)하고 양쪽 따옴표를 뺀 값(D-049, soc.ids.siem_ref_key)
+   * SIEM 안에서 문서 하나를 가리키는 이스케이프된 저장 키(siem_ref_key 형태). 원래 형태 "<_index>/<_id>"가 아니다. <_index>/<_id>를 JSON 문자열 이스케이프(ensure_ascii)하고 양쪽 따옴표를 뺀 값이다(D-049, soc.ids.siem_ref_key)
    */
   siem_ref: string;
   /**
