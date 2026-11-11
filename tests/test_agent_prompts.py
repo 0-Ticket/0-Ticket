@@ -286,7 +286,7 @@ def test_l1_prompt_escalates_blocked_attempts(domains: tuple[str, ...]) -> None:
     assert "정상 활동으로 설명되는 경우만" in text
     assert "흔적이 뚜렷하지 않은" in text  # 단순 실패 한 건을 공격으로 올리지 않는다
     assert "알려진 공격 도구" not in text  # 페이로드 없는 단순 스캔은 이번에 바꾸지 않는다
-    assert "추가로 조회하지 않는다" in text
+    assert "L2의 범위까지 알아내려고 추가로 조회하지 않는다" in text  # 정오탐 조회는 줄이지 않는다
     assert "evidence_ids에 넣고 reason에" in text  # 적은 사실에는 근거 ID가 붙는다
     assert "추측해 적지 않는다" in text
 
