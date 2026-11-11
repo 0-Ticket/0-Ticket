@@ -287,7 +287,8 @@ def test_l1_prompt_escalates_blocked_attempts(domains: tuple[str, ...]) -> None:
     assert "흔적이 뚜렷하지 않은" in text  # 단순 실패 한 건을 공격으로 올리지 않는다
     assert "알려진 공격 도구" not in text  # 페이로드 없는 단순 스캔은 이번에 바꾸지 않는다
     assert "추가로 조회하지 않는다" in text
-    assert "reason에" in text
+    assert "evidence_ids에 넣고 reason에" in text  # 적은 사실에는 근거 ID가 붙는다
+    assert "추측해 적지 않는다" in text
 
 
 @pytest.mark.parametrize("domains", [(), ("web",)])
@@ -302,7 +303,7 @@ def test_web_domain_does_not_make_success_a_threat_criterion() -> None:
     assert "성공했는지 따로 본다" not in web
     assert "응답 코드만으로는 위협 여부를 가르지 않는다" in web
     assert "정상 이용으로 설명되지 않으면" in web  # 페이로드 모양만으로 올리지 않는다
-    assert "reason에" in web
+    assert "근거 ID와 함께 reason에" in web
     assert "자동화된 스캔" in web  # 스캔 구분 지침은 그대로 둔다
 
 
