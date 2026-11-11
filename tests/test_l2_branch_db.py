@@ -823,6 +823,10 @@ def test_analyze_context_reaches_older_related_event_and_first_call_fits_budget(
     old_event_id = "evt_01a19f93-1150-7000-8000-000000000267"
     with psycopg.connect(database_url) as conn:
         conn.execute(
+            "UPDATE tickets SET created_at = %s WHERE id = %s",
+            (to_datetime(old_alert_time), sample["tickets"][0]["id"]),
+        )
+        conn.execute(
             "UPDATE alerts SET time = %s, entities = %s WHERE id = %s",
             (
                 to_datetime(old_alert_time),
@@ -856,6 +860,7 @@ def test_analyze_context_reaches_older_related_event_and_first_call_fits_budget(
         )
 
     assert context is not None
+    assert context.tickets[0]["created_at"] == old_alert_time
     assert context.window == {
         "from": old_alert_time - ANALYZE_SETTINGS.lookback_ms,
         "to": sample["now"],
