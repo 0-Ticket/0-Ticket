@@ -195,7 +195,8 @@ def _related(
                 fetched = cursor.execute(
                     "SELECT * FROM (SELECT matched.*, row_number() OVER "
                     "(PARTITION BY bucket ORDER BY time DESC, id DESC) AS rn FROM ("
-                    "SELECT t.*, LEAST(3, (floor(extract(epoch FROM t.time) * 1000)::bigint "
+                    f"SELECT t.*, LEAST({BUCKETS - 1}, "
+                    "(floor(extract(epoch FROM t.time) * 1000)::bigint "
                     f"- %s) / %s) AS bucket FROM {table} t "
                     "WHERE t.time BETWEEN %s AND %s AND EXISTS "
                     "(SELECT 1 FROM jsonb_array_elements(t.entities) item "

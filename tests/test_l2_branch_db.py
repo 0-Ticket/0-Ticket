@@ -1,6 +1,7 @@
 """L2 분류 입력을 PostgreSQL에서 읽는 경계를 확인한다(db 마커)."""
 
 import json
+from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -976,6 +977,48 @@ def test_analyze_context_caps_related_and_only_licenses_visible_ids(
     assert len(related_ids & generated_ids) == 80
     assert related_ids <= set(context.evidence_ids)
     assert not (generated_ids - related_ids) & set(context.evidence_ids)
+
+
+def test_related_sql_bucket_clamp_follows_bucket_count(
+    l2_database: tuple[str, dict[str, Any]], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    database_url, sample = l2_database
+    monkeypatch.setattr(analyze_context, "BUCKETS", 6)
+    start = 1_800_000_000_000
+    day = 86_400_000
+    entity = {"type": "host", "value": "bins.example.com", "role": "target"}
+    expected = set()
+    with psycopg.connect(database_url) as conn:
+        for number in range(12):
+            suffix = f"01a19f93-1150-7000-8000-{500 + number:012d}"
+            raw_id, event_id = f"raw_{suffix}", f"evt_{suffix}"
+            bucket = number if number < 6 else 5
+            if bucket == 4:
+                expected.add(event_id)
+            insert(
+                conn,
+                "raw_records",
+                {**sample["raw_records"][1], "id": raw_id, "siem_ref": f"bucket-267-{number}"},
+            )
+            insert(
+                conn,
+                "events",
+                {
+                    **sample["events"][0],
+                    "id": event_id,
+                    "raw_id": raw_id,
+                    "time": start + bucket * day + (number + 1) * 1000,
+                    "entities": [entity],
+                },
+            )
+        related = analyze_context._related(
+            conn,
+            [entity],
+            {"from": start, "to": start + 6 * day},
+            replace(ANALYZE_SETTINGS, max_related_per_entity=6),
+        )
+
+    assert expected <= {item["record"]["id"] for item in related}
 
 
 def test_analyze_worker_saves_artifact_proposals_and_incident_atomically(
