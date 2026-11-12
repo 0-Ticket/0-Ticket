@@ -1,0 +1,20 @@
+{
+  "records": [
+    {"name": "host", "kind": "alert", "type": "host", "value": " WEB-01 "},
+    {"name": "user", "kind": "event", "type": "user", "value": "\tAdministrator\n"},
+    {"name": "domain", "kind": "alert", "type": "domain", "value": "\rExample.COM\f"},
+    {"name": "vertical_tab", "kind": "event", "type": "host", "value": "\u000bWeb-02\t"},
+    {"name": "url", "kind": "alert", "type": "url", "value": " /Admin "},
+    {"name": "process", "kind": "event", "type": "process", "value": "\t/usr/bin/Admin\n"}
+  ],
+  "queries": [
+    {"type": "host", "value": "web-01", "expected": ["host"]},
+    {"type": "user", "value": "administrator", "expected": ["user"]},
+    {"type": "domain", "value": "example.com", "expected": ["domain"]},
+    {"type": "host", "value": "web-02", "expected": ["vertical_tab"]},
+    {"type": "url", "value": "/admin", "expected": []},
+    {"type": "url", "value": "/Admin", "expected": ["url"]},
+    {"type": "process", "value": "/usr/bin/admin", "expected": []},
+    {"type": "process", "value": "/usr/bin/Admin", "expected": ["process"]}
+  ]
+}

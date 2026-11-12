@@ -3,6 +3,7 @@
 import ipaddress
 
 _LOWER_TYPES = {"host", "domain", "file_hash", "user"}
+_BTRIM = r"btrim(item->>'value', E' \t\n\r\f\v')"
 
 
 def normalize_entity_value(entity_type: str, value: str) -> str:
@@ -21,3 +22,8 @@ def normalize_entity_value(entity_type: str, value: str) -> str:
     if entity_type in _LOWER_TYPES:
         return value.lower()
     return value
+
+
+def entity_value_sql(entity_type: str) -> str:
+    """normalize_entity_value와 같은 비교 규칙의 SQL 식. ip 정규형은 맞추지 않는다."""
+    return f"lower({_BTRIM})" if entity_type in _LOWER_TYPES else _BTRIM

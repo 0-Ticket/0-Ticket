@@ -9,7 +9,7 @@ from psycopg.rows import dict_row
 
 from soc.asset_lookup import AssetLookupError, lookup_assets
 from soc.contracts import to_datetime, to_epoch_ms, validate_contract
-from soc.entities import normalize_entity_value
+from soc.entities import entity_value_sql, normalize_entity_value
 from soc.l2.branch.read import _contract_row, _existing_ids, read_branch_data
 from soc.l2.config import AnalyzeSettings
 
@@ -189,6 +189,7 @@ def _related(
     bucket_ms = max(1, (window["to"] - window["from"] + BUCKETS - 1) // BUCKETS)
     for entity_index, entity in enumerate(entities):
         value = normalize_entity_value(entity["type"], entity["value"])
+        value_sql = entity_value_sql(entity["type"])
         rows = []
         for kind, table in (("alert", "alerts"), ("event", "events")):
             with conn.cursor(row_factory=dict_row) as cursor:
@@ -200,7 +201,7 @@ def _related(
                     f"- %s) / %s) AS bucket FROM {table} t "
                     "WHERE t.time BETWEEN %s AND %s AND EXISTS "
                     "(SELECT 1 FROM jsonb_array_elements(t.entities) item "
-                    "WHERE item->>'type' = %s AND item->>'value' = %s)"
+                    f"WHERE item->>'type' = %s AND {value_sql} = %s)"
                     ") matched) ranked WHERE rn <= %s",
                     (
                         window["from"],

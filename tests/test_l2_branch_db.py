@@ -37,6 +37,7 @@ from soc.store import CollectionMissing, SearchHit, StoreError
 pytestmark = pytest.mark.db
 
 FIXTURE = Path(__file__).parent / "fixtures" / "l2" / "branch.json"
+RELATED_ENTITY_FIXTURE = Path(__file__).parent / "fixtures" / "l2" / "related_entity_normalize.json"
 SETTINGS = BranchSettings(
     candidate_window_ms=86_400_000,
     max_candidates=5,
@@ -1023,6 +1024,52 @@ def test_related_sql_bucket_clamp_follows_bucket_count(
         )
 
     assert expected <= {item["record"]["id"] for item in related}
+
+
+def test_related_matches_normalized_stored_entities(
+    l2_database: tuple[str, dict[str, Any]],
+) -> None:
+    database_url, sample = l2_database
+    fixture = json.loads(RELATED_ENTITY_FIXTURE.read_text(encoding="utf-8"))
+    ids = {}
+    with psycopg.connect(database_url) as conn:
+        for index, item in enumerate(fixture["records"]):
+            suffix = f"01a19f93-1150-7000-8000-{3050 + index:012d}"
+            kind = item["kind"]
+            raw_id = f"raw_{suffix}"
+            record_id = f"{'alt' if kind == 'alert' else 'evt'}_{suffix}"
+            ids[item["name"]] = record_id
+            insert(
+                conn,
+                "raw_records",
+                {
+                    **sample["raw_records"][0 if kind == "alert" else 1],
+                    "id": raw_id,
+                    "siem_ref": f"related-305-{index}",
+                },
+            )
+            insert(
+                conn,
+                "alerts" if kind == "alert" else "events",
+                {
+                    **(sample["alerts"][0] if kind == "alert" else sample["events"][0]),
+                    "id": record_id,
+                    "raw_id": raw_id,
+                    "time": sample["now"] - (index + 1) * 1000,
+                    "entities": [{"type": item["type"], "value": item["value"], "role": "target"}],
+                },
+            )
+    inserted_ids = set(ids.values())
+    with psycopg.connect(database_url) as conn:
+        for query in fixture["queries"]:
+            related = analyze_context._related(
+                conn,
+                [{"type": query["type"], "value": query["value"], "role": "target"}],
+                {"from": sample["now"] - 10_000, "to": sample["now"]},
+                ANALYZE_SETTINGS,
+            )
+            actual = {item["record"]["id"] for item in related} & inserted_ids
+            assert actual == {ids[name] for name in query["expected"]}
 
 
 def test_analyze_worker_saves_artifact_proposals_and_incident_atomically(

@@ -3,6 +3,7 @@
 import json
 from pathlib import Path
 
+from soc import entities
 from soc.l2.analyze.context import _pick_evenly, _seed_entities, calculate_window
 from soc.l2.analyze.store import build_records
 from soc.l2.analyze.tasks import analysis_citations, findings_citations, make_report_task
@@ -39,6 +40,14 @@ def test_window_covers_old_evidence_without_tool_range_floor() -> None:
     )
 
     assert window == {"from": 1_789_740_800_000, "to": 1_800_000_000_000}
+
+
+def test_entity_value_sql_uses_type_specific_comparison() -> None:
+    trim = r"btrim(item->>'value', E' \t\n\r\f\v')"
+    for entity_type in ("host", "domain", "file_hash", "user"):
+        assert entities.entity_value_sql(entity_type) == f"lower({trim})"
+    for entity_type in ("ip", "url", "process"):
+        assert entities.entity_value_sql(entity_type) == trim
 
 
 def test_related_round_robin_spreads_time_and_kind_and_donates_empty_slots() -> None:
