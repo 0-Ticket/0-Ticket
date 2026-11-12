@@ -1,0 +1,14 @@
+{
+  "pit_id": "pit-non-object-last-1",
+  "hits": {
+    "hits": [
+      {
+        "_index": "logs-web-000001",
+        "_id": "normal-before-scalar",
+        "sort": [1793754000000, 11],
+        "_source": {"message": "before scalar"}
+      },
+      ["synthetic", "raw", "member"]
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+[
+  {
+    "case": "reason_code_not_lowercase_code",
+    "violations": [{"path": "reason_code", "rule": "pattern"}],
+    "data": {
+      "siem_profile": "elk-dev",
+      "source_kind": "event",
+      "source_key": "logs-web-*",
+      "siem_ref": "synthetic:v1:n:n:vMTIz:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "reason_code": "Nonfinite",
+      "original_text": "{}",
+      "seen_at": 1793678580000
+    }
+  },
+  {
+    "case": "missing_original_text",
+    "violations": [{"path": "original_text", "rule": "required"}],
+    "data": {
+      "siem_profile": "elk-dev",
+      "source_kind": "event",
+      "source_key": "logs-web-*",
+      "siem_ref": "synthetic:v1:n:n:vMTIz:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "reason_code": "non_finite",
+      "seen_at": 1793678580000
+    }
+  }
+]

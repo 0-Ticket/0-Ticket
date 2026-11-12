@@ -1,7 +1,7 @@
-"""수집한 페이지를 raw_records(0001)와 ingest_checkpoints(0100)에 쓴다.
+"""수집한 페이지를 raw_records·ingest_quarantine·ingest_checkpoints에 쓴다.
 
-페이지의 원본과 다음 위치(체크포인트)는 트랜잭션 하나로 함께 커밋하거나 함께 되돌린다.
-그래서 체크포인트는 늘 마지막으로 저장에 성공한 페이지를 가리킨다.
+페이지의 정상 원본·격리 행·다음 위치(필요한 경우 체크포인트)는 트랜잭션 하나로 함께
+커밋하거나 함께 되돌린다. 마지막 sort를 쓸 수 없으면 체크포인트 없이 페이지 행만 커밋한다.
 실행 이력은 그와 따로 ingest_runs(0101)에 실행마다 한 행씩 쌓는다.
 """
 
@@ -28,11 +28,20 @@ ON CONFLICT (siem_profile, source_kind, source_key) DO UPDATE SET
     updated_at = EXCLUDED.updated_at
 """
 
+_INSERT_QUARANTINE = """
+INSERT INTO ingest_quarantine
+    (siem_profile, source_kind, source_key, siem_ref, reason_code, original_text, seen_at)
+VALUES (%(siem_profile)s, %(source_kind)s, %(source_key)s, %(siem_ref)s, %(reason_code)s,
+        %(original_text)s, %(seen_at)s)
+ON CONFLICT (siem_profile, siem_ref) DO NOTHING
+"""
+
 _INSERT_RUN = """
 INSERT INTO ingest_runs
-    (siem_profile, source_kind, source_key, started_at, finished_at, outcome, pages, inserted)
+    (siem_profile, source_kind, source_key, started_at, finished_at, outcome, pages, inserted,
+     quarantined)
 VALUES (%(siem_profile)s, %(source_kind)s, %(source_key)s, %(started_at)s, %(finished_at)s,
-        %(outcome)s, %(pages)s, %(inserted)s)
+        %(outcome)s, %(pages)s, %(inserted)s, %(quarantined)s)
 """
 
 
@@ -69,24 +78,36 @@ def load_checkpoint(
 
 
 def save_page(
-    conn: psycopg.Connection, records: list[dict[str, Any]], checkpoint: dict[str, Any]
-) -> int:
-    """페이지의 원본과 체크포인트를 한 트랜잭션으로 쓰고, 새로 저장한 원본 수를 돌려준다.
+    conn: psycopg.Connection,
+    records: list[dict[str, Any]],
+    checkpoint: dict[str, Any] | None,
+    *,
+    quarantines: list[dict[str, Any]] | None = None,
+) -> tuple[int, int]:
+    """페이지 정상·격리 행과 체크포인트를 한 트랜잭션으로 저장한다.
 
     인자:
         conn: autocommit 연결. 이 함수가 트랜잭션을 연다.
         records: 한 페이지의 RawRecord dict 목록. 비어 있을 수 있다.
-        checkpoint: 이 페이지를 끝낸 뒤의 ingest_checkpoint dict. cursor는 다음 조회 위치다.
+        checkpoint: 이 페이지를 끝낸 뒤의 ingest_checkpoint dict. None이면 기존 값을 유지한다.
+        quarantines: 이 페이지에서 격리할 ingest_quarantine dict 목록.
 
-    쓰기 전에 모든 원본(raw_record)과 체크포인트(ingest_checkpoint)를 계약으로 검사한다. 하나라도
-    맞지 않으면 ContractError를 내고 아무것도 쓰지 않는다. DB 오류가 나면 둘 다 되돌리고 그 예외를
-    그대로 낸다.
+    반환:
+        이번 호출에서 새로 저장한 (RawRecord 수, 격리 행 수). 중복 키는 세지 않는다.
+
+    쓰기 전에 원본·격리 행·체크포인트를 계약으로 검사한다. 하나라도 맞지 않으면 ContractError를 내고
+    아무것도 쓰지 않는다. DB 오류가 나면 해당 트랜잭션 전체를 되돌리고 예외를 그대로 낸다.
     """
+    quarantines = [] if quarantines is None else quarantines
     for record in records:
         validate_contract("raw_record", record)
-    validate_contract("ingest_checkpoint", checkpoint)
+    for quarantine in quarantines:
+        validate_contract("ingest_quarantine", quarantine)
+    if checkpoint is not None:
+        validate_contract("ingest_checkpoint", checkpoint)
 
     inserted = 0
+    quarantined_count = 0
     # autocommit 연결에서도 트랜잭션을 열고, 이미 열린 트랜잭션 안에서는 savepoint가 된다
     with conn.transaction():
         for record in records:
@@ -98,15 +119,25 @@ def save_page(
                 },
             )
             inserted += cur.rowcount
-        conn.execute(
-            _UPSERT_CHECKPOINT,
-            {
-                **checkpoint,
-                "cursor": Jsonb(checkpoint["cursor"]),
-                "updated_at": to_datetime(checkpoint["updated_at"]),
-            },
-        )
-    return inserted
+        for quarantine in quarantines:
+            cur = conn.execute(
+                _INSERT_QUARANTINE,
+                {
+                    **quarantine,
+                    "seen_at": to_datetime(quarantine["seen_at"]),
+                },
+            )
+            quarantined_count += cur.rowcount
+        if checkpoint is not None:
+            conn.execute(
+                _UPSERT_CHECKPOINT,
+                {
+                    **checkpoint,
+                    "cursor": Jsonb(checkpoint["cursor"]),
+                    "updated_at": to_datetime(checkpoint["updated_at"]),
+                },
+            )
+    return inserted, quarantined_count
 
 
 def record_run(conn: psycopg.Connection, run: dict[str, Any]) -> None:
@@ -115,7 +146,7 @@ def record_run(conn: psycopg.Connection, run: dict[str, Any]) -> None:
     인자:
         conn: autocommit 연결. INSERT 한 번이 바로 커밋된다.
         run: ingest_run 계약 모양의 dict. started_at·finished_at은 epoch ms, outcome은 "ok" 또는
-            FAILURES 중 하나의 코드다.
+            FAILURES 중 하나의 코드다. inserted와 quarantined는 새로 저장한 행 수다.
 
     쓰기 전에 계약으로 검사하고, 맞지 않으면 ContractError를 내고 쓰지 않는다.
     DB 오류는 그대로 낸다.

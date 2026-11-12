@@ -16,6 +16,7 @@ CONTRACT_NAMES = (
     "raw_record",
     "ingest_checkpoint",
     "ingest_run",
+    "ingest_quarantine",
     "alert",
     "event",
     "ticket",

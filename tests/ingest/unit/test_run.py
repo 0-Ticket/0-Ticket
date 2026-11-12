@@ -128,7 +128,7 @@ def test_siem_failure_keeps_checkpoint_and_other_sources_run(store: FakeStore) -
     before = dict(store.checkpoints[EVENT_CP])
     fake = FakeElk(
         {
-            "logs-web-*": [respond(500, {"error": "SECRET-BODY"})],
+            "logs-web-*": [respond(400, {"error": "SECRET-BODY"})],
             ".alerts-security.alerts-default": ["elk_alerts_page1.json"],
         }
     )
@@ -148,7 +148,7 @@ def test_siem_failure_keeps_checkpoint_and_other_sources_run(store: FakeStore) -
 
 
 def test_first_page_failure_records_run_without_checkpoint(store: FakeStore) -> None:
-    (result,) = run_with(FakeElk({"logs-web-*": [respond(500, {"error": "SECRET-BODY"})]}))
+    (result,) = run_with(FakeElk({"logs-web-*": [respond(400, {"error": "SECRET-BODY"})]}))
     assert result.failure == "http_status"
     assert store.checkpoints == {}  # 다음 실행은 처음부터 조회한다
     assert run_rows(store) == [("logs-web-*", "http_status", 0, 0)]
@@ -198,14 +198,14 @@ def test_failure_prints_name_and_kind_only(
 
 def test_format_results_has_counts_only() -> None:
     results = [
-        run.SourceResult(name="event:logs-web-*", started_at=0, pages=2, inserted=3),
+        run.SourceResult(name="event:logs-web-*", started_at=0, pages=2, inserted=3, quarantined=2),
         run.SourceResult(
             name="alert:.alerts-security.alerts-default", started_at=0, failure="auth"
         ),
     ]
     assert format_results(results) == [
-        "event:logs-web-*: 페이지 2, 새로 저장 3, 실패 없음",
-        "alert:.alerts-security.alerts-default: 페이지 0, 새로 저장 0, 실패 auth",
+        "event:logs-web-*: 페이지 2, 새로 저장 3, 격리 2, 실패 없음",
+        "alert:.alerts-security.alerts-default: 페이지 0, 새로 저장 0, 격리 0, 실패 auth",
     ]
     assert exit_code(results[:1]) == 0
 
@@ -254,7 +254,7 @@ def test_main_runs_sources_and_never_prints_secrets(
     fake = FakeElk(
         {
             "logs-web-*": ["elk_events_page2.json"],
-            ".alerts-security.alerts-default": [respond(500, {"error": "SECRET-BODY"})],
+            ".alerts-security.alerts-default": [respond(400, {"error": "SECRET-BODY"})],
         }
     )
     connected: list[dict] = []
@@ -280,8 +280,8 @@ def test_main_runs_sources_and_never_prints_secrets(
     assert fake.requests[0].headers["Authorization"] == f"ApiKey {API_KEY}"
     captured = capsys.readouterr()
     assert captured.out.splitlines() == [
-        "event:logs-web-*: 페이지 1, 새로 저장 1, 실패 없음",
-        "alert:.alerts-security.alerts-default: 페이지 0, 새로 저장 0, 실패 http_status",
+        "event:logs-web-*: 페이지 1, 새로 저장 1, 격리 0, 실패 없음",
+        "alert:.alerts-security.alerts-default: 페이지 0, 새로 저장 0, 격리 0, 실패 http_status",
     ]
     assert captured.err == "alert:.alerts-security.alerts-default: 실패 http_status\n"
     output = captured.out + captured.err

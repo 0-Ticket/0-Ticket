@@ -1,0 +1,30 @@
+{
+  "pit_id": "pit-bad-refs-1",
+  "hits": {
+    "hits": [
+      {
+        "_index": "logs-web-000001",
+        "_id": "",
+        "sort": [1793754000000, 11],
+        "_source": {"message": "empty id"}
+      },
+      {
+        "_index": 17,
+        "_id": "numeric-index",
+        "sort": [1793754001000, 12],
+        "_source": {"message": "non-string index"}
+      },
+      {
+        "_id": "missing-index",
+        "sort": [1793754002000, 13],
+        "_source": {"message": "missing index"}
+      },
+      {
+        "_index": "logs-web-000001",
+        "_id": 18,
+        "sort": [1793754003000, 14],
+        "_source": {"message": "numeric id"}
+      }
+    ]
+  }
+}

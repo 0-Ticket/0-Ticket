@@ -22,6 +22,7 @@ import httpx
 
 from soc.ingest.config import ConfigError, Settings, Source
 from soc.ingest.errors import IngestError
+from soc.ingest.quarantine import has_bad_sort, valid_sort_value
 
 # PIT와 검색 요청의 생존 시간. 페이지 사이 간격보다 길어야 PIT가 살아 있다.
 KEEP_ALIVE = "1m"
@@ -79,7 +80,8 @@ def iter_pages(
     start_ms: int | None,
     *,
     clock: Callable[[], float] = time.monotonic,
-) -> Iterator[list[dict[str, Any]]]:
+    sleep: Callable[[float], None] = time.sleep,
+) -> Iterator[list[Any]]:
     """시각 오름차순으로 hit 목록을 한 페이지씩 내놓는다. 빈 페이지는 내놓지 않는다.
 
     start_ms가 있으면 time_field >= start_ms인 문서부터, 없으면 time_field가 있는 문서 전체다.
@@ -100,7 +102,10 @@ def iter_pages(
     """
 
     def call(method: str, path: str, **kwargs: Any) -> Any:
-        return _call(client, method, path, settings=settings, clock=clock, **kwargs)
+        retry = kwargs.pop("retry", True)
+        return _call(
+            client, method, path, settings=settings, clock=clock, sleep=sleep, retry=retry, **kwargs
+        )
 
     opened = call("POST", f"/{source.key}/_pit", params={"keep_alive": KEEP_ALIVE})
     if not isinstance(opened, dict) or not _is_text(opened.get("id")):
@@ -120,30 +125,39 @@ def iter_pages(
             "query": query,
         }
         while True:
-            pit_id, hits = _read_page(call("POST", "/_search", json=body))
+            page_attempts = 0
+            while True:
+                pit_id, hits = _read_page(call("POST", "/_search", json=body))
+                page_attempts += 1
+                if not any(has_bad_sort(hit) for hit in hits) or page_attempts == 3:
+                    break
+                body["pit"]["id"] = pit_id
+                sleep(1)
             if hits:
                 yield hits
+                if not valid_sort_value(hits[-1]):
+                    raise IngestError("sort_value")
             if len(hits) < settings.page_size:
                 return
             body["pit"]["id"] = pit_id
             body["search_after"] = hits[-1]["sort"]
     finally:
         try:
-            call("DELETE", "/_pit", json={"id": pit_id})
+            call("DELETE", "/_pit", json={"id": pit_id}, retry=False)
         except IngestError:
             # 닫지 못한 PIT는 keep_alive가 지나면 ELK가 지운다.
             # 받은 페이지나 원래 실패를 가리지 않는다.
             pass
 
 
-def _read_page(data: Any) -> tuple[str, list[dict[str, Any]]]:
+def _read_page(data: Any) -> tuple[str, list[Any]]:
     """검색 응답을 검사해 (다음 요청에 쓸 PIT ID, hit 목록)을 돌려준다.
 
     인자:
         data: JSON으로 파싱한 검색 응답.
 
     반환:
-        (pit_id, hits). hit마다 _index·_id가 문자열이고 sort 첫 값이 0 이상의 정수여야 한다.
+        (pit_id, hits). hit 내용은 문서 단위 분류를 위해 바꾸지 않고 돌려준다.
 
     발생:
         IngestError("response_shape"): 필드가 없거나 모양이 다를 때.
@@ -154,15 +168,6 @@ def _read_page(data: Any) -> tuple[str, list[dict[str, Any]]]:
     hits = outer.get("hits") if isinstance(outer, dict) else None
     if not isinstance(hits, list):
         raise IngestError("response_shape")
-    for hit in hits:
-        if not isinstance(hit, dict) or not _is_text(hit.get("_index")):
-            raise IngestError("response_shape")
-        sort = hit.get("sort")
-        if not _is_text(hit.get("_id")) or not isinstance(sort, list) or not sort:
-            raise IngestError("response_shape")
-        first = sort[0]
-        if isinstance(first, bool) or not isinstance(first, int) or first < 0:
-            raise IngestError("response_shape")
     return data["pit_id"], hits
 
 
@@ -178,6 +183,8 @@ def _call(
     *,
     settings: Settings,
     clock: Callable[[], float],
+    sleep: Callable[[float], None],
+    retry: bool,
     **kwargs: Any,
 ) -> Any:
     """ELK 요청 하나를 보내고 응답 본문을 JSON으로 돌려준다.
@@ -197,27 +204,40 @@ def _call(
         IngestError: 401·403은 auth, 그 밖의 비 2xx는 http_status, 크기 초과는 too_large,
         마감 초과는 timeout, 연결·프로토콜 오류는 network, JSON이 아니면 response_shape.
     """
-    started = clock()
-    body = bytearray()
-    try:
-        with client.stream(method, path, follow_redirects=False, **kwargs) as response:
-            if response.status_code in (401, 403):
-                raise IngestError("auth")
-            if not 200 <= response.status_code < 300:
-                raise IngestError("http_status")
-            for chunk in response.iter_bytes():
-                body += chunk
-                if len(body) > settings.max_bytes:
-                    raise IngestError("too_large")
-                if clock() - started > settings.deadline_seconds:
-                    raise IngestError("timeout")
-    except httpx.TimeoutException:
-        raise IngestError("timeout") from None
-    except httpx.HTTPError:
-        # 연결 실패, 프로토콜 오류, 압축 해제 오류 등.
-        # 예외 메시지에 주소가 들어 있을 수 있어 남기지 않는다.
-        raise IngestError("network") from None
-    try:
-        return json.loads(body)
-    except (ValueError, RecursionError):
-        raise IngestError("response_shape") from None
+    for attempt in range(3 if retry else 1):
+        started = clock()
+        body = bytearray()
+        try:
+            with client.stream(method, path, follow_redirects=False, **kwargs) as response:
+                if response.status_code in (401, 403):
+                    raise IngestError("auth")
+                if not 200 <= response.status_code < 300:
+                    retryable = (
+                        response.status_code in (408, 429) or 500 <= response.status_code < 600
+                    )
+                    raise IngestError("http_status", retryable=retryable)
+                for chunk in response.iter_bytes():
+                    body += chunk
+                    if len(body) > settings.max_bytes:
+                        raise IngestError("too_large")
+                    if clock() - started > settings.deadline_seconds:
+                        raise IngestError("timeout", retryable=True)
+        except httpx.TimeoutException:
+            error = IngestError("timeout", retryable=True)
+        except httpx.HTTPError:
+            # 연결 실패, 프로토콜 오류, 압축 해제 오류 등.
+            # 예외 메시지에 주소가 들어 있을 수 있어 남기지 않는다.
+            error = IngestError("network", retryable=True)
+        except IngestError as exc:
+            error = exc
+        else:
+            try:
+                return json.loads(body)
+            except (ValueError, RecursionError):
+                raise IngestError("response_shape") from None
+
+        if not retry or not error.retryable or attempt == 2:
+            raise error
+        sleep(1)
+
+    raise AssertionError("요청 재시도 루프를 마치지 못했다")

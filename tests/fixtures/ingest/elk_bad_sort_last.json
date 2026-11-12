@@ -1,0 +1,19 @@
+{
+  "pit_id": "pit-bad-sort-last-1",
+  "hits": {
+    "hits": [
+      {
+        "_index": "logs-web-000001",
+        "_id": "normal-before-bad-last",
+        "sort": [1793754000000, 11],
+        "_source": {"message": "before"}
+      },
+      {
+        "_index": "logs-web-000001",
+        "_id": "bad-sort-last",
+        "sort": [true, 12],
+        "_source": {"message": "last"}
+      }
+    ]
+  }
+}

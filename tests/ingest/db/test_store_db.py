@@ -55,7 +55,7 @@ def next_checkpoint(page: dict, time_ms: int) -> dict:
 def test_page_and_checkpoint_are_saved(conn: psycopg.Connection, page: dict) -> None:
     assert load_checkpoint(conn, *TARGET) is None
 
-    assert save_page(conn, page["records"], page["checkpoint"]) == 2
+    assert save_page(conn, page["records"], page["checkpoint"]) == (2, 0)
 
     assert raw_rows(conn) == page["records"]
     assert load_checkpoint(conn, *TARGET) == page["checkpoint"]
@@ -86,7 +86,7 @@ def test_saving_same_documents_again_keeps_originals(conn: psycopg.Connection, p
         record["original_text"] = json.dumps(hit, ensure_ascii=True)
     later = next_checkpoint(page, 1793678600000)
 
-    assert save_page(conn, again, later) == 0
+    assert save_page(conn, again, later) == (0, 0)
     assert raw_rows(conn) == before
     assert load_checkpoint(conn, *TARGET) == later
 
@@ -133,7 +133,7 @@ def test_db_failure_on_checkpoint_rolls_back_records(conn: psycopg.Connection, p
 def run_rows(conn: psycopg.Connection) -> list[dict]:
     rows = conn.execute(
         "SELECT siem_profile, source_kind, source_key, started_at, finished_at, outcome, pages,"
-        " inserted FROM ingest_runs ORDER BY id"
+        " inserted, quarantined FROM ingest_runs ORDER BY id"
     ).fetchall()
     return [
         {
@@ -145,8 +145,19 @@ def run_rows(conn: psycopg.Connection) -> list[dict]:
             "outcome": outcome,
             "pages": pages,
             "inserted": inserted,
+            "quarantined": quarantined,
         }
-        for profile, kind, key, started_at, finished_at, outcome, pages, inserted in rows
+        for (
+            profile,
+            kind,
+            key,
+            started_at,
+            finished_at,
+            outcome,
+            pages,
+            inserted,
+            quarantined,
+        ) in rows
     ]
 
 
@@ -161,6 +172,7 @@ def run_of(outcome: str, pages: int, inserted: int, started_at: int) -> dict:
         "outcome": outcome,
         "pages": pages,
         "inserted": inserted,
+        "quarantined": 0,
     }
 
 
@@ -218,6 +230,7 @@ def test_checks_reject_broken_rows(conn: psycopg.Connection, values: dict) -> No
         {"outcome": "timeout\n"},
         {"pages": -1},
         {"inserted": -1},
+        {"quarantined": -1},
         {"finished_at": "2026-11-03T23:59:59Z"},
     ],
 )
@@ -255,7 +268,7 @@ def test_special_characters_are_saved_and_restore_the_hit(
         "original_text": json.dumps(hit, ensure_ascii=True),
     }
 
-    assert save_page(conn, [record], next_checkpoint(page, 1793678600000)) == 1
+    assert save_page(conn, [record], next_checkpoint(page, 1793678600000)) == (1, 0)
 
     (stored,) = raw_rows(conn)
     assert json.loads(stored["original_text"]) == hit

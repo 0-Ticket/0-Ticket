@@ -1,14 +1,14 @@
 """설정의 조회 대상을 차례로 수집한다.
 
-대상마다 체크포인트를 읽고, 페이지마다 RawRecord를 만들어 원본과 다음 위치를 한 트랜잭션으로
-저장한다(store.save_page). 첫 실패에서 그 대상의 실행을 멈춘다. 같은 실행 안에서 다시 시도하거나
-실패한 페이지를 건너뛰지 않는다. 체크포인트는 마지막 성공 페이지에 남아 다음 실행이 거기서
-다시 조회한다.
+대상마다 체크포인트를 읽고, 정상 RawRecord·격리 행·필요한 다음 체크포인트를 페이지 단위 트랜잭션으로
+함께 저장한다(store.save_page). 일시적인 요청 실패는 요청마다 최대 3회 시도한다.
+정렬 값이 잘못된 페이지는 같은 경계를 유지해 최대 3회 다시 읽는다.
+그 밖의 실패는 해당 대상 실행을 멈추며 실패한 페이지를 건너뛰지 않는다.
+체크포인트는 마지막 커밋 페이지에 남아 다음 실행에서 거기서 다시 조회한다.
 한 대상이 실패해도 다음 대상은 계속한다.
 대상마다 실행이 끝나면(성공·실패 모두) 실행 이력 한 행을 남긴다(store.record_run).
 """
 
-import json
 import sys
 import time
 from collections.abc import Callable
@@ -20,11 +20,18 @@ from typing import Any
 import httpx
 import psycopg
 
-from soc.contracts import ContractError, to_epoch_ms
+from soc.contracts import ContractError, to_epoch_ms, validate_contract
 from soc.ids import new_id, siem_ref_key
 from soc.ingest import elk, store
 from soc.ingest.config import Settings, Source
 from soc.ingest.errors import IngestError
+from soc.ingest.quarantine import (
+    contains_nonfinite,
+    exceeds_depth,
+    quarantine_key,
+    serialize_original,
+    valid_sort_value,
+)
 
 
 @dataclass
@@ -36,6 +43,7 @@ class SourceResult:
         started_at: 이 대상의 실행을 시작한 시각(epoch ms). 실행 이력에 쓴다.
         pages: 저장까지 끝난 페이지 수. 빈 페이지는 세지 않는다.
         inserted: 이번 실행에서 새로 저장한 원본 수. 이미 있던 문서는 세지 않는다.
+        quarantined: 이번 실행에서 새로 저장한 격리 행 수. 중복은 세지 않는다.
         failure: 실패 종류 코드. 성공이면 None.
     """
 
@@ -43,6 +51,7 @@ class SourceResult:
     started_at: int
     pages: int = 0
     inserted: int = 0
+    quarantined: int = 0
     failure: str | None = None
 
 
@@ -52,6 +61,7 @@ def run(
     client: httpx.Client,
     *,
     clock: Callable[[], float] = time.monotonic,
+    sleep: Callable[[float], None] = time.sleep,
 ) -> list[SourceResult]:
     """설정의 조회 대상을 순서대로 수집한다. 한 대상이 실패해도 다음 대상은 계속한다.
 
@@ -64,7 +74,9 @@ def run(
     반환:
         대상마다 하나의 SourceResult. 설정 순서와 같다.
     """
-    return [_run_source(settings, source, conn, client, clock) for source in settings.sources]
+    return [
+        _run_source(settings, source, conn, client, clock, sleep) for source in settings.sources
+    ]
 
 
 def _run_source(
@@ -73,6 +85,7 @@ def _run_source(
     conn: psycopg.Connection,
     client: httpx.Client,
     clock: Callable[[], float],
+    sleep: Callable[[float], None],
 ) -> SourceResult:
     """대상 하나를 수집한다. 첫 실패에서 멈추고, 끝나면 실행 이력을 남긴다.
 
@@ -95,20 +108,44 @@ def _run_source(
         checkpoint = store.load_checkpoint(conn, settings.siem_profile, source.kind, source.key)
         # 체크포인트가 없거나 cursor가 비어 있으면 처음부터 조회한다
         # (빈 cursor는 0100 시기에 첫 페이지 실패로 남은 행에만 있다)
-        start_ms = None if checkpoint is None else checkpoint["cursor"].get("time_ms")
-        with closing(elk.iter_pages(client, settings, source, start_ms, clock=clock)) as pages:
+        start_ms = _checkpoint_time(checkpoint)
+        with closing(
+            elk.iter_pages(client, settings, source, start_ms, clock=clock, sleep=sleep)
+        ) as pages:
             for hits in pages:
                 fetched_at = _now_ms()
-                records = [_raw_record(settings, source, hit, fetched_at) for hit in hits]
-                next_checkpoint = {
-                    "siem_profile": settings.siem_profile,
-                    "source_kind": source.kind,
-                    "source_key": source.key,
-                    # 마지막 hit의 첫 정렬 값이 time_field 시각(epoch ms)이다
-                    "cursor": {"time_ms": hits[-1]["sort"][0]},
-                    "updated_at": fetched_at,
-                }
-                result.inserted += store.save_page(conn, records, next_checkpoint)
+                records: list[dict[str, Any]] = []
+                quarantines: list[dict[str, Any]] = []
+                for hit in hits:
+                    reason = _quarantine_reason(hit)
+                    if reason is None:
+                        record = _raw_record(settings, source, hit, fetched_at)
+                        try:
+                            validate_contract("raw_record", record)
+                        except ContractError:
+                            reason = "contract_rejected"
+                        else:
+                            records.append(record)
+                    if reason is not None:
+                        quarantines.append(
+                            _quarantine_record(settings, source, hit, reason, fetched_at)
+                        )
+
+                next_checkpoint = None
+                if valid_sort_value(hits[-1]):
+                    next_checkpoint = {
+                        "siem_profile": settings.siem_profile,
+                        "source_kind": source.kind,
+                        "source_key": source.key,
+                        # 마지막 hit의 첫 정렬 값이 time_field 시각(epoch ms)이다
+                        "cursor": {"time_ms": hits[-1]["sort"][0]},
+                        "updated_at": fetched_at,
+                    }
+                inserted, quarantined = store.save_page(
+                    conn, records, next_checkpoint, quarantines=quarantines
+                )
+                result.inserted += inserted
+                result.quarantined += quarantined
                 result.pages += 1
     except IngestError as exc:
         result.failure = exc.kind
@@ -133,6 +170,7 @@ def _run_source(
                 "outcome": result.failure or "ok",
                 "pages": result.pages,
                 "inserted": result.inserted,
+                "quarantined": result.quarantined,
             },
         )
     except psycopg.Error:
@@ -164,7 +202,59 @@ def _raw_record(
         "siem_profile": settings.siem_profile,
         "siem_ref": siem_ref_key(f"{hit['_index']}/{hit['_id']}"),
         "fetched_at": fetched_at,
-        "original_text": json.dumps(hit, ensure_ascii=True),
+        "original_text": serialize_original(hit),
+    }
+
+
+def _checkpoint_time(checkpoint: dict[str, Any] | None) -> int | None:
+    """체크포인트 시각을 확인한다. 빈 커서는 처음부터 시작하는 예전 행이다."""
+    if checkpoint is None:
+        return None
+    cursor = checkpoint["cursor"]
+    if not isinstance(cursor, dict):
+        raise IngestError("checkpoint_cursor")
+    if not cursor:
+        return None
+    if "time_ms" not in cursor:
+        raise IngestError("checkpoint_cursor")
+    time_ms = cursor["time_ms"]
+    if isinstance(time_ms, bool) or not isinstance(time_ms, int) or time_ms < 0:
+        raise IngestError("checkpoint_cursor")
+    return time_ms
+
+
+def _quarantine_reason(hit: Any) -> str | None:
+    """hit 하나의 저장 적합성을 계획에 정한 순서대로 분류한다."""
+    if not isinstance(hit, dict):
+        return "hit_ref"
+    if not valid_sort_value(hit):
+        return "sort_value"
+    if not _valid_identifier(hit.get("_index")) or not _valid_identifier(hit.get("_id")):
+        return "hit_ref"
+    if exceeds_depth(hit):
+        return "depth_exceeded"
+    if contains_nonfinite(hit):
+        return "non_finite"
+    return None
+
+
+def _valid_identifier(value: Any) -> bool:
+    """SIEM의 _index·_id가 비어 있지 않은 문자열인지 확인한다."""
+    return isinstance(value, str) and bool(value)
+
+
+def _quarantine_record(
+    settings: Settings, source: Source, hit: Any, reason: str, seen_at: int
+) -> dict[str, Any]:
+    """격리 행의 계약 필드를 만든다. 전체 hit는 original_text에 보존한다."""
+    return {
+        "siem_profile": settings.siem_profile,
+        "source_kind": source.kind,
+        "source_key": source.key,
+        "siem_ref": quarantine_key(source.kind, source.key, hit),
+        "reason_code": reason,
+        "original_text": serialize_original(hit),
+        "seen_at": seen_at,
     }
 
 
@@ -183,7 +273,8 @@ def format_results(results: list[SourceResult]) -> list[str]:
         "이름: 페이지 n, 새로 저장 n, 실패 종류(또는 없음)" 형식의 줄 목록.
     """
     return [
-        f"{r.name}: 페이지 {r.pages}, 새로 저장 {r.inserted}, 실패 {r.failure or '없음'}"
+        f"{r.name}: 페이지 {r.pages}, 새로 저장 {r.inserted}, 격리 {r.quarantined}, "
+        f"실패 {r.failure or '없음'}"
         for r in results
     ]
 
