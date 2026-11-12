@@ -33,7 +33,7 @@ supersedes: ["218-elk-rawrecord.md"]
   synthetic:v1:<index-token>:<id-token>:<time-token>:<sha256>
   ```
 
-- 결측 토큰은 `n`, 값이 있는 토큰은 `v<Base64url>`이다. `_index`·`_id`는 비어 있지 않은 문자열일 때만 값 토큰을 만들고, `json.dumps(value, ensure_ascii=True, allow_nan=True)` JSON 문자열 결과의 ASCII 바이트를 인코딩한다. `sort-token`은 `sort`가 비어 있지 않은 배열이면 `sort[0]`의 JSON 타입을 보존해 만든다(예: 정수 `123`과 문자열 `"123"`은 다른 토큰). sort 토큰은 `json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True, allow_nan=True)`의 ASCII 바이트를 URL-safe Base64로 인코딩하고 패딩 `=`을 뺀다. 체크포인트에 쓸 유효 정렬 값은 별도로 bool이 아닌 0 이상의 정수만 허용한다.
+- 결측 토큰은 `n`, 값이 있는 짧은 토큰은 `v<Base64url>`이다. `_index`·`_id`는 비어 있지 않은 문자열일 때만 값 토큰을 만들고, `json.dumps(value, ensure_ascii=True, allow_nan=True)` JSON 문자열 결과의 ASCII 바이트를 인코딩한다. `sort-token`은 `sort`가 비어 있지 않은 배열이면 `sort[0]`의 JSON 타입을 보존해 만든다(예: 정수 `123`과 문자열 `"123"`은 다른 토큰). sort 토큰은 `json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True, allow_nan=True)`의 ASCII 바이트를 URL-safe Base64로 인코딩하고 패딩 `=`을 뺀다. 패딩을 뺀 Base64url 페이로드가 128자를 넘으면 `h`와 같은 JSON 바이트의 SHA-256 lowercase hex 64자를 쓴다. 이 접두사는 값 존재를 나타내고, 결측 표기 `n`과 구분된다. 이렇게 각 가변 토큰을 제한해 PostgreSQL B-tree 유일 인덱스에 들어가는 키 길이를 제한한다. 체크포인트에 쓸 유효 정렬 값은 별도로 bool이 아닌 0 이상의 정수만 허용한다.
 - 해시 입력은 원본을 바꾸지 않은 별도 투영이다. `source_kind`, `source_key`, 그리고 hit 복사본을 포함한다. 최상위 `_score`는 빼고, 비어 있지 않은 `sort` 배열은 첫 값만 남겨 PIT 종속 `_shard_doc` 등 뒤쪽 값을 제외한다. `sort`가 없거나 비어 있거나 배열이 아니면 그 상태를 유지한다. 그 밖의 hit 필드는 유지한다.
 - 해시용 직렬화 규칙 v1은 `json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True, allow_nan=True).encode("ascii")`에 해당하는 결정적 바이트다. NaN·Infinity 표기와 깊은 중첩을 포함해 이 규칙을 재귀 한도와 무관하게 구현한다. SHA-256을 계산하고 골든 fixture로 고정한다.
 - 유일 제약은 `(siem_profile, siem_ref)`이며 `ON CONFLICT DO NOTHING`으로 처음 저장한 행을 보존한다. 모든 격리 키에 위치 토큰과 안정적인 hit 해시가 있으므로 같은 위치·해시의 hit만 한 행으로 병합한다. 반복 횟수는 저장하지 않는다. 전체 원본은 `original_text`에 보존한다.
@@ -95,6 +95,7 @@ supersedes: ["218-elk-rawrecord.md"]
 - [ ] NaN, ±Infinity, 깊이 초과, RawRecord 계약 위반, 정렬 값 문제 hit를 격리하고 해당 원문을 보존한다.
 - [ ] `_index`·`_id` 누락·빈 값·잘못된 형식의 hit가 합성 키로 격리되고 수집이 이어진다.
 - [ ] D-049 RawRecord 키와 격리 전용 키가 혼용되지 않고, 결측/실제 값, 정수·문자열·비정상 sort 토큰, 제어 문자, Unicode, 짝 없는 서로게이트를 안전하게 처리한다.
+- [ ] 128자보다 긴 Base64url 페이로드는 고정 길이 SHA-256 토큰으로 축약되어 유일 키 길이를 제한하고, 전체 값은 `original_text`에 남는다.
 - [ ] 해시 골든 fixture가 키 순서·공백 차이, NaN·±Infinity, Unicode, 깊은 중첩, `_score` 및 `_shard_doc` 변화에 대한 정책을 고정한다.
 - [ ] 같은 합성 키를 재수집하면 한 행만 남고 `quarantined`에는 새로 커밋된 격리 행만 반영된다.
 - [ ] 정상 원본·격리 행·체크포인트가 페이지 단위로 원자적이며, DB 오류 시 전부 롤백된다.
@@ -109,7 +110,7 @@ supersedes: ["218-elk-rawrecord.md"]
 ## 토론으로 정한 것
 
 - 원 이슈의 식별자 누락 시 격리 불가라는 중단 방향을 합성 키 사용·수집 지속으로 바꾼다. RawRecord에는 D-049를 유지하고 격리 hit는 모두 위치·해시 합성 키를 쓴다. 같은 위치·안정 해시의 hit는 한 행으로 합치고, 문서별 반복 수는 세지 않는다.
-- 합성 토큰은 존재 여부 접두사와 Base64url로 구분자·결측 sentinel 충돌을 막는다. 해시 입력은 `_score`와 PIT 종속 sort 후행 값을 제외한 전체 hit 투영으로 정하고, D-049 원문 보존은 그대로 유지한다.
+- 합성 토큰은 존재 여부 접두사와 Base64url로 구분자·결측 sentinel 충돌을 막는다. 패딩을 뺀 Base64url 페이로드가 128자를 넘는 토큰은 `h<sha256>`로 줄이고 전체 값은 `original_text`에 보존한다. 해시 입력은 `_score`와 PIT 종속 sort 후행 값을 제외한 전체 hit 투영으로 정하고, D-049 원문 보존은 그대로 유지한다.
 - NaN·±Infinity와 깊이 100 초과 문서는 원문을 보존하면서 격리한다. NUL·짝 없는 서로게이트는 D-049가 보존하므로 격리하지 않는다.
 - 일시 오류와 정렬 값 재조회는 각각 총 3회 예산으로 계산하고 고정 1초 대기를 둔다. 한 페이지 검색 요청의 최댓값은 9회다.
 - 실행별 신규 격리 수를 `ingest_run`과 출력에 추가한다. 중복 건너뜀과 롤백은 세지 않는다.
@@ -119,3 +120,4 @@ supersedes: ["218-elk-rawrecord.md"]
 ## 바뀐 점
 
 - 2026-11-12 · 사람이 #294 정책과 합성 키·해시·실행별 격리 건수를 확정했다.
+- 2026-11-12 · 리뷰에서 PostgreSQL 유일 인덱스의 키 길이 한계를 확인해 사람과 논의했다. Base64url 토큰이 128자를 넘으면 해당 JSON 바이트의 SHA-256 토큰으로 축약하고 원문은 `original_text`에 보존하기로 확정했다.
