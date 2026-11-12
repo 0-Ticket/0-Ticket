@@ -1,0 +1,19 @@
+{
+  "pit_id": "pit-quarantine-1",
+  "hits": {
+    "hits": [
+      {
+        "_index": "logs-web-000001",
+        "_id": "normal-1",
+        "sort": [1793754000000, 11],
+        "_source": {"message": "synthetic normal hit"}
+      },
+      {
+        "_index": "logs-web-000001",
+        "_id": "nonfinite-1",
+        "sort": [1793754060000, 12],
+        "_source": {"value": [NaN, Infinity, -Infinity]}
+      }
+    ]
+  }
+}

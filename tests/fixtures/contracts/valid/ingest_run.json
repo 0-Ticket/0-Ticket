@@ -9,7 +9,8 @@
       "finished_at": 1793678580000,
       "outcome": "ok",
       "pages": 2,
-      "inserted": 3
+      "inserted": 3,
+      "quarantined": 2
     }
   },
   {
@@ -22,7 +23,8 @@
       "finished_at": 1793678580000,
       "outcome": "http_status",
       "pages": 0,
-      "inserted": 0
+      "inserted": 0,
+      "quarantined": 0
     }
   }
 ]

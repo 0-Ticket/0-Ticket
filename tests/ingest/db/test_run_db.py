@@ -9,6 +9,7 @@ from fake_elk import FakeElk, make_settings, respond
 from soc.contracts import to_epoch_ms
 from soc.db.migrate import migrate
 from soc.ingest.run import run
+from soc.ingest.store import load_checkpoint, save_page
 
 pytestmark = pytest.mark.db
 
@@ -105,7 +106,7 @@ def test_db_error_on_page_rolls_back_and_next_run_resumes(conn: psycopg.Connecti
 
 
 def test_first_page_failure_and_empty_run_leave_history_only(conn: psycopg.Connection) -> None:
-    failed = run_with(conn, FakeElk({"logs-web-*": [respond(500, {"error": "SECRET-BODY"})]}))
+    failed = run_with(conn, FakeElk({"logs-web-*": [respond(400, {"error": "SECRET-BODY"})]}))
     empty = run_with(conn, FakeElk({"logs-web-*": ["elk_empty.json"]}))
 
     assert (failed.failure, empty.failure) == ("http_status", None)
@@ -116,6 +117,45 @@ def test_first_page_failure_and_empty_run_leave_history_only(conn: psycopg.Conne
     ).fetchone()
     assert to_epoch_ms(started_at) == empty.started_at
     assert finished_at >= started_at
+
+
+def test_quarantined_count_is_recorded_for_committed_page(conn: psycopg.Connection) -> None:
+    result = run_with(conn, FakeElk({"logs-web-*": ["elk_quarantine_page.json", "elk_empty.json"]}))
+
+    assert (result.pages, result.inserted, result.quarantined, result.failure) == (1, 1, 1, None)
+    assert conn.execute("SELECT outcome, inserted, quarantined FROM ingest_runs").fetchall() == [
+        ("ok", 1, 1)
+    ]
+    assert conn.execute("SELECT reason_code FROM ingest_quarantine").fetchall() == [("non_finite",)]
+
+
+def test_last_bad_sort_commits_page_keeps_checkpoint_and_records_failure(
+    conn: psycopg.Connection,
+) -> None:
+    checkpoint = {
+        "siem_profile": "elk-test",
+        "source_kind": "event",
+        "source_key": "logs-web-*",
+        "cursor": {"time_ms": 1793753940000},
+        "updated_at": 1793753940000,
+    }
+    assert save_page(conn, [], checkpoint) == (0, 0)
+    fake = FakeElk({"logs-web-*": ["elk_bad_sort_last.json"] * 3})
+
+    result = run_with(conn, fake)
+
+    assert (result.pages, result.inserted, result.quarantined, result.failure) == (
+        1,
+        1,
+        1,
+        "sort_value",
+    )
+    assert conn.execute("SELECT count(*) FROM raw_records").fetchone() == (1,)
+    assert conn.execute("SELECT reason_code FROM ingest_quarantine").fetchall() == [("sort_value",)]
+    assert load_checkpoint(conn, "elk-test", "event", "logs-web-*") == checkpoint
+    assert conn.execute("SELECT outcome, inserted, quarantined FROM ingest_runs").fetchall() == [
+        ("sort_value", 1, 1)
+    ]
 
 
 def test_failed_run_record_keeps_saved_pages(conn: psycopg.Connection) -> None:

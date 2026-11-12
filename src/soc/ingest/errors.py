@@ -9,6 +9,8 @@ FAILURES = (
     "network",
     "auth",
     "response_shape",
+    "sort_value",
+    "checkpoint_cursor",
     "contract_rejected",
     "db_error",
 )
@@ -24,9 +26,10 @@ class IngestError(Exception):
     둘 다 FAILURES에 들어 있다.
     """
 
-    def __init__(self, kind: str) -> None:
+    def __init__(self, kind: str, *, retryable: bool = False) -> None:
         """인자 kind는 FAILURES 중 하나여야 한다. 아니면 ValueError."""
         if kind not in FAILURES:
             raise ValueError(f"알 수 없는 실패 종류: {kind}")
         super().__init__(kind)
         self.kind = kind
+        self.retryable = retryable

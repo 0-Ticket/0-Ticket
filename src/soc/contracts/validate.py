@@ -41,6 +41,7 @@ from soc.contracts.generated import (
     incident_proposal_schema,
     incident_schema,
     ingest_checkpoint_schema,
+    ingest_quarantine_schema,
     ingest_run_schema,
     raw_record_schema,
     ticket_schema,
@@ -58,6 +59,10 @@ _CONTRACTS: dict[str, tuple[str, type[BaseModel]]] = {
         ingest_checkpoint_schema.IngestCheckpoint,
     ),
     "ingest_run": ("ingest_run.schema.json", ingest_run_schema.IngestRun),
+    "ingest_quarantine": (
+        "ingest_quarantine.schema.json",
+        ingest_quarantine_schema.IngestQuarantine,
+    ),
     "alert": ("alert.schema.json", alert_schema.Alert),
     "event": ("event.schema.json", event_schema.Event),
     "ticket": ("ticket.schema.json", ticket_schema.Ticket),

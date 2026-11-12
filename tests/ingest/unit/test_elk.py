@@ -13,14 +13,20 @@ from soc.ingest.errors import IngestError
 SORT = [{"@timestamp": "asc"}, {"_shard_doc": "asc"}]
 
 
-def pages_of(fake: FakeElk, start_ms: int | None = None, **settings) -> list[list[dict]]:
+def pages_of(
+    fake: FakeElk, start_ms: int | None = None, *, sleep=lambda _: None, **settings
+) -> list[list[dict]]:
     with fake.client() as client:
-        return list(elk.iter_pages(client, make_settings(**settings), EVENTS, start_ms))
+        return list(
+            elk.iter_pages(client, make_settings(**settings), EVENTS, start_ms, sleep=sleep)
+        )
 
 
-def failure_of(fake: FakeElk, start_ms: int | None = None, **settings) -> str:
+def failure_of(
+    fake: FakeElk, start_ms: int | None = None, *, sleep=lambda _: None, **settings
+) -> str:
     with pytest.raises(IngestError) as caught:
-        pages_of(fake, start_ms, **settings)
+        pages_of(fake, start_ms, sleep=sleep, **settings)
     return caught.value.kind
 
 
@@ -84,7 +90,7 @@ def test_start_time_becomes_range_gte() -> None:
 
 
 @pytest.mark.parametrize(
-    ("status", "kind"), [(401, "auth"), (403, "auth"), (500, "http_status"), (302, "http_status")]
+    ("status", "kind"), [(401, "auth"), (403, "auth"), (400, "http_status"), (302, "http_status")]
 )
 def test_search_status_is_failure_and_pit_is_closed(status: int, kind: str) -> None:
     fake = FakeElk({"logs-web-*": [respond(status, {"error": "SECRET-BODY"})]})
@@ -111,6 +117,7 @@ def test_failed_close_does_not_hide_pages() -> None:
     fake = FakeElk({"logs-web-*": ["elk_events_page2.json"]})
     fake.close_response = respond(500, {"error": "x"})
     assert len(pages_of(fake)) == 1
+    assert fake.calls().count("DELETE /_pit") == 1
 
 
 def test_oversized_response_is_too_large() -> None:
@@ -133,7 +140,7 @@ def test_request_timeout_and_network_error() -> None:
     for handler, kind in ((timeout, "timeout"), (refused, "network")):
         with httpx.Client(base_url=BASE_URL, transport=httpx.MockTransport(handler)) as client:
             with pytest.raises(IngestError) as caught:
-                list(elk.iter_pages(client, make_settings(), EVENTS, None))
+                list(elk.iter_pages(client, make_settings(), EVENTS, None, sleep=lambda _: None))
         assert caught.value.kind == kind
 
 
@@ -145,11 +152,23 @@ def test_slow_response_stops_at_deadline() -> None:
             now[0] += 5.0
             yield b" "
 
-    fake = FakeElk({"logs-web-*": [httpx.Response(200, content=slow())]})
+    fake = FakeElk({"logs-web-*": [httpx.Response(200, content=slow()) for _ in range(3)]})
+    delays: list[float] = []
     with fake.client() as client, pytest.raises(IngestError) as caught:
-        list(elk.iter_pages(client, make_settings(), EVENTS, None, clock=lambda: now[0]))
+        list(
+            elk.iter_pages(
+                client,
+                make_settings(),
+                EVENTS,
+                None,
+                clock=lambda: now[0],
+                sleep=delays.append,
+            )
+        )
     assert caught.value.kind == "timeout"
     assert now[0] < 100 * 5.0
+    assert fake.calls().count("POST /_search") == 3
+    assert delays == [1.0, 1.0]
 
 
 def hit(**change) -> dict:
@@ -166,22 +185,14 @@ def hit(**change) -> dict:
         respond(200, {"pit_id": "p", "hits": {}}),
         respond(200, {"pit_id": "p", "hits": {"hits": {}}}),
         respond(200, {"hits": {"hits": [hit()]}}),  # pit_id 없음
-        respond(200, {"pit_id": "p", "hits": {"hits": ["x"]}}),
-        respond(200, {"pit_id": "p", "hits": {"hits": [hit(_id=None)]}}),
-        respond(200, {"pit_id": "p", "hits": {"hits": [hit(_index="")]}}),
-        respond(200, {"pit_id": "p", "hits": {"hits": [hit(_id=7)]}}),
-        respond(200, {"pit_id": "p", "hits": {"hits": [hit(sort=[])]}}),
-        respond(200, {"pit_id": "p", "hits": {"hits": [hit(sort=["2026-11-04"])]}}),
-        respond(200, {"pit_id": "p", "hits": {"hits": [hit(sort=[True])]}}),
-        respond(200, {"pit_id": "p", "hits": {"hits": [hit(sort=[-1])]}}),
     ],
 )
 def test_malformed_search_response_is_response_shape(answer: httpx.Response) -> None:
     assert failure_of(FakeElk({"logs-web-*": [answer]})) == "response_shape"
 
 
-def test_fixture_without_sort_is_response_shape() -> None:
-    assert failure_of(FakeElk({"logs-web-*": ["elk_malformed.json"]})) == "response_shape"
+def test_fixture_without_sort_is_sort_value() -> None:
+    assert failure_of(FakeElk({"logs-web-*": ["elk_malformed.json"] * 3})) == "sort_value"
 
 
 @pytest.mark.parametrize("body", [{}, {"id": ""}, {"id": 1}, []])
