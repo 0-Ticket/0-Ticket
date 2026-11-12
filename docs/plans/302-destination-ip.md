@@ -60,3 +60,7 @@ supersedes: [234-ocsf-alert-event.md]
 - 새로운 도구나 팀 공통 정책 변경이 없어 `docs/decisions.md`에 추가할 결정은 없다.
 
 ## 바뀐 점
+
+- 2026-11-12 · 사용자가 Base Event의 목적지 IP를 `ocsf.unmapped.destination.ip`에 보존하고 그 이유를 명시하는 안을 승인했다. Base Event에는 목적지 전용 필드가 없으므로 OCSF 표준의 자유 형식 `unmapped` 객체 안에 원본 경로로 남긴다. 이는 임의 접두사나 새 표준 목적지 필드가 아니다.
+- 위 방법의 “검증기는 바꾸지 않는다”를 이 범위에서 대체한다. `src/soc/normalize/ocsf_schema.py`가 공식 `object_t`/`object` 자유 형식 객체의 JSON 값을 허용하도록 보완한다. 정의가 있는 다른 객체와 클래스의 필수 속성·타입·알 수 없는 속성 검사는 그대로 유지한다. JSON이 아닌 값·문자열 아닌 객체 키·비유한 숫자는 거부한다.
+- 구현 위치는 HTTP·API `ocsf.dst_endpoint.ip`, Alert `ocsf.evidences[].dst_endpoint.ip`, Base `ocsf.unmapped.destination.ip`로 명시한다. Base의 목적지 외 필드나 새 OCSF 클래스 매핑은 추가하지 않는다. 테스트에는 Base 저장·조회와 자유 형식 객체 허용/거부 경계를 포함한다.
