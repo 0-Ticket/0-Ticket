@@ -17,3 +17,9 @@ OCSF가 클래스별 JSON Schema 파일을 따로 배포하지 않아, 이 정�
 
 - 목적지 IP 증거 객체: `https://schema.ocsf.io/api/1.9.0/objects/evidences?profiles=`
   (2026-11-12 확인). Detection Finding의 `evidences[].dst_endpoint`에 사용한다.
+
+- Base Event는 `dst_endpoint`·`evidences`를 허용하지 않아 목적지 IP만
+  `unmapped.destination.ip`에 보존한다. `unmapped`의 `object_type: object`는
+  `https://schema.ocsf.io/api/1.9.0/objects/object?profiles=`의 generic object 정의
+  (2026-11-12 확인)를 따른다. 이 객체에만 문자열 키와 JSON 값(유한 실수 포함)을
+  재귀로 허용하고, 이름 있는 객체와 클래스 최상위 속성은 기존 정의로 엄격히 검사한다.

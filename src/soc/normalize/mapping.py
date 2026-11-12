@@ -210,7 +210,13 @@ def _base_event(raw: RawRow) -> Result:
     """
     source = _source(raw)
     return _event(
-        raw, source, 0, 0, UNKNOWN_ID, {}, _summary(source, _text(source, "event.action"))
+        raw,
+        source,
+        0,
+        0,
+        UNKNOWN_ID,
+        {"unmapped": {"destination": {"ip": _text(source, "destination.ip")}}},
+        _summary(source, _text(source, "event.action")),
     )
 
 
