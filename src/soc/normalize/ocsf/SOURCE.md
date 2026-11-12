@@ -9,8 +9,17 @@ OCSF가 클래스별 JSON Schema 파일을 따로 배포하지 않아, 이 정�
   `https://schema.ocsf.io/api/1.9.0/objects/<이름>?profiles=`
 - 클래스: base_event(0), detection_finding(2004), http_activity(4002), api_activity(6003)
 - 객체: 정규화가 내보내는 속성의 객체만 담았다. metadata, product, finding_info, network_endpoint,
-  http_request, url, http_response, actor, user, api, service
+  http_request, url, http_response, actor, user, api, service, evidences
 - 줄인 방법: 속성마다 `type`, `requirement`, `object_type`, `is_array`, `enum` 목록(값)만 남기고,
   클래스·객체의 `uid`, `name`, `constraints`를 남겼다. 설명 문장은 버렸다.
 - 프로필 속성(cloud 등)은 담지 않았다. 필요해지면 해당 프로필로 다시 받는다.
 - 새 속성을 내보내려면 그 속성의 객체 정의를 `objects.json`에 더한다. 정의에 없는 속성은 검사에서 실패한다.
+
+- 목적지 IP 증거 객체: `https://schema.ocsf.io/api/1.9.0/objects/evidences?profiles=`
+  (2026-11-12 확인). Detection Finding의 `evidences[].dst_endpoint`에 사용한다.
+
+- Base Event는 `dst_endpoint`·`evidences`를 허용하지 않아 목적지 IP만
+  `unmapped.destination.ip`에 보존한다. `unmapped`의 `object_type: object`는
+  `https://schema.ocsf.io/api/1.9.0/objects/object?profiles=`의 generic object 정의
+  (2026-11-12 확인)를 따른다. 이 객체에만 문자열 키와 JSON 값(유한 실수 포함)을
+  재귀로 허용하고, 이름 있는 객체와 클래스 최상위 속성은 기존 정의로 엄격히 검사한다.

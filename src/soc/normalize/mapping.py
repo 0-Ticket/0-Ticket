@@ -47,6 +47,7 @@ API_ACTIVITY_PREFIXES = (
 )
 ENTITY_FIELDS = (
     ("source.ip", "ip", "src"),
+    ("destination.ip", "ip", "dst"),
     ("host.name", "host", None),
     ("user.name", "user", "actor"),
     ("url.domain", "domain", None),
@@ -119,6 +120,9 @@ def _alert(raw: RawRow) -> Result:
         raise NormalizeError("validation_failed")
     severity = SEVERITY_IDS.get(_text(source, "kibana.alert.severity"), UNKNOWN_ID)
     ocsf = _ocsf(2004, 2, 1, time_ms, severity, {"finding_info": {"uid": uid, "title": title}})
+    destination = _text(source, "destination.ip")
+    if destination is not None:
+        ocsf["evidences"] = [{"dst_endpoint": {"ip": destination}}]
     row = {
         "id": new_id("alt"),
         "raw_id": raw.id,
@@ -149,6 +153,7 @@ def _web_event(raw: RawRow) -> Result:
     code = _integer(source, "http.response.status_code")
     extra = {
         "src_endpoint": {"ip": _text(source, "source.ip")},
+        "dst_endpoint": {"ip": _text(source, "destination.ip")},
         "http_request": {
             "http_method": method if method in HTTP_ACTIVITY_IDS else None,
             "url": {
@@ -185,6 +190,7 @@ def _cloud_event(raw: RawRow) -> Result:
             }
         },
         "src_endpoint": {"ip": _text(source, "source.ip")},
+        "dst_endpoint": {"ip": _text(source, "destination.ip")},
     }
     activity_id = UNKNOWN_ID
     if operation:
@@ -204,7 +210,13 @@ def _base_event(raw: RawRow) -> Result:
     """
     source = _source(raw)
     return _event(
-        raw, source, 0, 0, UNKNOWN_ID, {}, _summary(source, _text(source, "event.action"))
+        raw,
+        source,
+        0,
+        0,
+        UNKNOWN_ID,
+        {"unmapped": {"destination": {"ip": _text(source, "destination.ip")}}},
+        _summary(source, _text(source, "event.action")),
     )
 
 

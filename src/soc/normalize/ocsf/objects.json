@@ -102,6 +102,205 @@
   },
   "name": "api"
  },
+ "evidences": {
+  "attributes": {
+   "actor": {
+    "object_type": "actor",
+    "requirement": "recommended",
+    "type": "object_t"
+   },
+   "ai_agent": {
+    "object_type": "ai_agent",
+    "requirement": "recommended",
+    "type": "object_t"
+   },
+   "api": {
+    "object_type": "api",
+    "requirement": "recommended",
+    "type": "object_t"
+   },
+   "connection_info": {
+    "object_type": "network_connection_info",
+    "requirement": "recommended",
+    "type": "object_t"
+   },
+   "container": {
+    "object_type": "container",
+    "requirement": "recommended",
+    "type": "object_t"
+   },
+   "data": {
+    "requirement": "optional",
+    "type": "json_t"
+   },
+   "database": {
+    "object_type": "database",
+    "requirement": "recommended",
+    "type": "object_t"
+   },
+   "databucket": {
+    "object_type": "databucket",
+    "requirement": "recommended",
+    "type": "object_t"
+   },
+   "device": {
+    "object_type": "device",
+    "requirement": "recommended",
+    "type": "object_t"
+   },
+   "dst_endpoint": {
+    "object_type": "network_endpoint",
+    "requirement": "recommended",
+    "type": "object_t"
+   },
+   "email": {
+    "object_type": "email",
+    "requirement": "recommended",
+    "type": "object_t"
+   },
+   "file": {
+    "object_type": "file",
+    "requirement": "recommended",
+    "type": "object_t"
+   },
+   "http_request": {
+    "object_type": "http_request",
+    "requirement": "recommended",
+    "type": "object_t"
+   },
+   "http_response": {
+    "object_type": "http_response",
+    "requirement": "recommended",
+    "type": "object_t"
+   },
+   "ja4_fingerprint_list": {
+    "is_array": true,
+    "object_type": "ja4_fingerprint",
+    "requirement": "recommended",
+    "type": "object_t"
+   },
+   "job": {
+    "object_type": "job",
+    "requirement": "recommended",
+    "type": "object_t"
+   },
+   "name": {
+    "requirement": "optional",
+    "type": "string_t"
+   },
+   "process": {
+    "object_type": "process",
+    "requirement": "recommended",
+    "type": "object_t"
+   },
+   "query": {
+    "object_type": "dns_query",
+    "requirement": "recommended",
+    "type": "object_t"
+   },
+   "reg_key": {
+    "object_type": "win/reg_key",
+    "requirement": "recommended",
+    "type": "object_t"
+   },
+   "reg_value": {
+    "object_type": "win/reg_value",
+    "requirement": "recommended",
+    "type": "object_t"
+   },
+   "resources": {
+    "is_array": true,
+    "object_type": "resource_details",
+    "requirement": "recommended",
+    "type": "object_t"
+   },
+   "script": {
+    "object_type": "script",
+    "requirement": "recommended",
+    "type": "object_t"
+   },
+   "src_endpoint": {
+    "object_type": "network_endpoint",
+    "requirement": "recommended",
+    "type": "object_t"
+   },
+   "tls": {
+    "object_type": "tls",
+    "requirement": "recommended",
+    "type": "object_t"
+   },
+   "uid": {
+    "requirement": "optional",
+    "type": "string_t"
+   },
+   "uid_numeric": {
+    "requirement": "optional",
+    "type": "long_t"
+   },
+   "url": {
+    "object_type": "url",
+    "requirement": "recommended",
+    "type": "object_t"
+   },
+   "user": {
+    "object_type": "user",
+    "requirement": "recommended",
+    "type": "object_t"
+   },
+   "verdict": {
+    "requirement": "optional",
+    "type": "string_t"
+   },
+   "verdict_id": {
+    "enum": [
+     "0",
+     "1",
+     "10",
+     "2",
+     "3",
+     "4",
+     "5",
+     "6",
+     "7",
+     "8",
+     "9",
+     "99"
+    ],
+    "requirement": "optional",
+    "type": "integer_t"
+   },
+   "win_service": {
+    "object_type": "win/win_service",
+    "requirement": "recommended",
+    "type": "object_t"
+   }
+  },
+  "constraints": {
+   "at_least_one": [
+    "actor",
+    "api",
+    "connection_info",
+    "data",
+    "database",
+    "databucket",
+    "device",
+    "dst_endpoint",
+    "email",
+    "file",
+    "process",
+    "query",
+    "src_endpoint",
+    "url",
+    "user",
+    "job",
+    "script",
+    "reg_key",
+    "reg_value",
+    "win_service"
+   ]
+  },
+  "name": "evidences"
+ },
  "finding_info": {
   "attributes": {
    "analytic": {
