@@ -58,6 +58,7 @@
 | D-049 | 도구의 동기 핸들러(DB·SIEM)는 호출마다 전용 데몬 스레드에서 돌리고 레지스트리가 `asyncio.wrap_future`로 기다린다. `async def` 핸들러(SSH)는 이벤트 루프에서 그대로 await한다. 취소하면 기다림만 끊고 진행 중인 DB 문장·HTTP 요청은 끝까지 두며 결과는 버린다. 취소로 버려진 스레드가 생기면 `soc.agent.executor` 로그에 도구 이름과 경과 시간만 WARNING으로 남긴다. `asyncio.to_thread`와 async 클라이언트(psycopg async, `httpx.AsyncClient`)는 쓰지 않는다 | `to_thread`의 기본 실행기 스레드는 프로세스 종료 때 합류돼 종료가 도구 시간만큼 붙잡히고(#278), psycopg async는 Windows 기본 이벤트 루프(`ProactorEventLoop`)에서 동작하지 않는다. 핸들러는 별도 스레드에서 돌므로 `ctx`와 자기 인자 밖의 스레드 로컬·`contextvars`에 기대지 않는다. 한계: 버려진 스레드는 DB는 접속·문장 시간 제한 안에, SIEM은 `deadline_seconds` 안에 끝나지만 DB 서버가 얼면 제한이 없다. 서버 쪽 문장 취소와 DB 정지 동작은 실제 PostgreSQL로 확인하지 못했다(#280) |
 | D-050 | 실행기 단계 스레드의 예외 처리와 종료 코드. `poll`·`handle`의 `Exception`·`CancelledError`·`SystemExit`은 예외 종류만 로그에 남기고 다음 건으로 간다. 그 밖의 `BaseException`과 단계 스레드 자체의 오류는 그 단계를 죽은 것으로 표시하고, 메인 루프가 감지해 다른 단계를 정리한 뒤 종료 코드 3으로 끝난다. 죽은 스레드를 재시작하지 않는다. 종료 코드는 0 정상, 1 종료 대기 시간 초과, 2 설정 오류, 3 단계 스레드가 죽음이다 | 예외 메시지는 밖에서 온 문자열일 수 있어 남기지 않고, 스레드 밖으로 다시 올리지 않는다(`threading.excepthook`이 메시지가 든 트레이스백을 찍는다). `SystemExit`을 치명으로 두면 한 건이 프로세스를 죽이고 재시작 뒤에도 같은 건이 다시 나온다. 재시작은 `BaseException` 뒤 상태를 믿을 수 없어 하지 않고, 프로세스 재시작은 프로세스 관리자의 몫이다. 실행기는 라운드마다 워커별 받은 건수·처리 건수·처리 시간을 `soc.agent.executor`에 INFO로 남긴다. 대기 시간·DB·화면 지표는 새 이슈(#295)에서 각 담당과 정한다(#280) |
 | D-051 | 위협 인텔 조회 도구 `lookup_indicator`는 VirusTotal API v3 무료 키를 httpx(D-039)로 부른다. 지표 값(IP·도메인·해시)만 보내고, 공개 주소가 아니거나 비공개 이름이거나 설정 제외 목록에 있는 값은 보내지 않는다. 캐시와 호출 한도는 프로세스 메모리에 두며 재시작하거나 프로세스가 여럿이면 따로 센다. 키는 `VT_API_KEY` 환경변수로만 읽고, 키가 없으면 도구를 등록하지 않는다 | 무료 키 약관은 상업 이용을 제한한다(PR "이유"에 적는다). 회사의 공개 도메인은 설정 제외 목록에 적지 않으면 나간다. l3는 허용하지 않는다(#309) |
+| D-052 | 로컬 ATT&CK·KEV 조회 도구 `get_attack_technique`·`search_attack_techniques`·`get_cve`는 네트워크 없이 PostgreSQL의 저장본만 읽고, 허용 단계는 `l2`·`l3`다. 에이전트 읽기 역할 `soc_agent_reader`에는 `attack_techniques`·`kev_entries`·`intel_source_state`의 SELECT만 주고 `threat_news`는 주지 않는다. KEV 상세는 새 테이블 `kev_entries`에 저장하고(`threat_news`는 그대로), 응답에는 데이터 버전·수집 시각을 넣는다. KEV에 없는 CVE는 `not_in_kev`(KEV 목록에 없다는 뜻이지 악용되지 않는다는 뜻이 아님), 데이터가 없으면 `no_data`다. 도구가 읽는 ATT&CK 버전은 `[tools.local_intel] attack_version`이고 `[l3.intel.attack] version`과 함께 바꾼다 | 0300의 "에이전트 읽기 역할에 이 테이블 권한을 주지 않는다"를 이 세 테이블에 한해 바꾼 것이다. NVD 등 KEV 밖의 CVE 데이터는 적재하지 않는다. 기법·CVE 문자열은 밖에서 온 데이터로 다룬다(D-048 입력 필터를 그대로 거친다). 지난 계획·기록(221)은 고치지 않는다(#311) |
 
 ### L2
 
@@ -73,7 +74,7 @@
 |---|---|---|
 | D-029 | L3 위협 시나리오 입력은 보안 뉴스(보안뉴스·The Hacker News RSS, CISA KEV)와 MITRE ATT&CK을 코드(`soc.l3.intel`)로 수집한다. 에이전트에는 웹 접근을 주지 않는다 | 수집한 제목·요약은 밖에서 온 문자열이다(`docs/security.md`). 에이전트에는 L3 헌팅 코드가 `AgentTask.data`로만 넘긴다(#221) |
 | D-030 | L3 실행 방식. 실행기(`uv run python -m soc.agent`)의 L3 단계에서 생성 워커(수집 → 가설 생성, `soc.l3.hunt.generate`)와 검증 워커(`soc.l3.hunt.verify`)로 주기 실행한다. 수동 명령(`uv run python -m soc.l3 hunt`)은 그대로 둔다. 기본은 꺼짐(`[executor.l3] interval_seconds = 0`)이고 `config/local.toml`에서 켠다 | 가설 생성은 마지막 시도부터 `[l3.hunt] generate_interval_seconds`(기본 하루)마다 한다. 마지막 시도는 `cancelled`가 아닌 `l3_hypothesize` Agent Log와 프로세스 안 기록 중 늦은 것이다. 종료로 `cancelled`가 된 검증 run은 시도 횟수에 넣지 않는다(#245) |
-| D-040 | 데이터셋 MITRE ATT&CK Enterprise(공식 STIX JSON, `mitre-attack/attack-stix-data`). 원본은 커밋하지 않고 실행할 때 받아, 폐기·대체되지 않은 기법의 ID·이름·전술·버전만 저장한다 | 버전마다 쌓고 쓰는 쪽이 설정 버전으로 고른다. 이용 약관에 따라 README "제3자 데이터" 절에 MITRE 고지문을 싣는다(#221) |
+| D-040 | 데이터셋 MITRE ATT&CK Enterprise(공식 STIX JSON, `mitre-attack/attack-stix-data`). 원본은 커밋하지 않고 실행할 때 받아, 폐기·대체되지 않은 기법의 ID·이름·전술·버전과 설명(길이를 자른 평문)·탐지 데이터 소스·수집 시각만 저장한다 | 버전마다 쌓고 쓰는 쪽이 설정 버전으로 고른다. 이용 약관에 따라 README "제3자 데이터" 절에 MITRE 고지문을 싣는다(#221). 설명·탐지 데이터 소스·수집 시각은 로컬 조회 도구를 위해 더했다(#311). 탐지 데이터 소스는 20.0 번들의 detects 관계로 이어진 탐지 전략·analytic의 data component 이름이다 |
 
 ### 저장
 
@@ -150,6 +151,7 @@
 
 새 기록을 맨 위에 쓴다.
 
+- #311 · 로컬 ATT&CK·KEV 조회 도구(D-052)를 추가했다. 요청 필드가 저장되어 있지 않아 수집을 확장하고 ATT&CK 데이터셋 저장 필드(D-040)에 설명·탐지 데이터 소스·수집 시각을 더했다. 에이전트 읽기 역할에 새 테이블 세 개의 SELECT를 준다(`threat_news` 제외). L3 담당(이슈 담당)이 확인했고 사용자가 계획을 확정함.
 - #309 · 위협 인텔 조회 도구(D-051)를 추가했다. VirusTotal 무료 키, 지표 값만 전송, 캐시·한도는 프로세스 메모리, 키가 없으면 도구 미등록. 사용자가 계획을 확정함.
 <<<<<<< HEAD
 - #280 · 동기 도구 핸들러를 호출마다 전용 데몬 스레드에서 돌리는 방식(D-049)과 실행기 단계 스레드의 예외 처리·종료 코드 3(D-050)을 추가했다. 팀 합의(#280). 사용자가 계획을 확정함.
