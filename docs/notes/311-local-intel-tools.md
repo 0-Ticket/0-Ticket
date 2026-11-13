@@ -34,12 +34,12 @@ L2·L3 에이전트가 `get_attack_technique`, `search_attack_techniques`, `get_
 
 - **마이그레이션 뒤 수집을 한 번 더 돌려야 한다.** 이미 저장된 ATT&CK 20.0과 KEV는 새 열·표가 비어 있어, 그 전까지 도구는 `no_data`를 돌려준다(오류가 아님). 수집은 같은 버전이라도 `collected_at`이 비어 있으면 다시 받는다.
 - **버전은 두 곳에서 바꾼다.** `[l3.intel.attack] version`(수집)과 `[tools.local_intel] attack_version`(도구)이 다르면 도구가 `no_data`(`attack_version_missing`)를 돌려준다. `config/local.toml`에서 `[tools.allowed]`의 `l2`·`l3`를 따로 정의했으면 세 도구 이름을 직접 더해야 한다.
-- **ATT&CK 20.0에는 옛 `x_mitre_data_sources`가 없다.** 탐지 데이터 소스는 `detects` 관계로 이어진 탐지 전략·analytic의 data component 이름이다. 기법 706개 중 654개가 하나 이상 갖는다(나머지 52개는 탐지 정보가 이어지지 않는다. 원인은 확인하지 않았다). analytic의 `channel`(이벤트 코드)은 저장하지 않는다.
+- **ATT&CK 20.0에는 옛 `x_mitre_data_sources`가 없다.** 탐지 데이터 소스는 `detects` 관계로 이어진 탐지 전략·analytic의 data component 이름이다. 기법 706개 중 654개가 하나 이상 갖는다(나머지 52개는 파서가 놓친 것이 아니라 번들에 정보가 없다: 49개는 탐지 전략과 analytic은 있지만 analytic에 로그 소스 참조가 없고("조직 밖에서 일어나는 활동이라 탐지가 어렵다"는 취지의 설명, 예: 인프라 확보 하위 기법), 3개(`T1685.007`, `T1698`, `T1699`)는 `detects` 관계 자체가 없다. 가리키는 data component 객체가 없는 경우는 0건이다). analytic의 `channel`(이벤트 코드)은 저장하지 않는다.
 - **KEV에서 빠진 CVE는 `kev_entries`에서 지우지 않는다.** 카탈로그에서 내려간 항목도 계속 `found`로 나온다(범위 밖으로 둠).
 - **`kev_entries`는 `threat_news`와 이름·요약이 중복된다.** 헌팅·API가 `threat_news`를 읽고 도구가 `kev_entries`를 읽게 나눈 대가다.
 - **한국어 질의로는 검색되지 않는다.** 이름·설명이 영어이고 `ILIKE`라서다. 프롬프트와 도구 설명이 영어 키워드를 쓰라고 안내한다. 706행 전체를 읽는 검색이라 색인은 두지 않았다.
 - **첫 ATT&CK 수집이 메모리를 더 쓴다.** 실제 20.0 번들(약 55MB)을 받아 파싱하는 첫 실행의 최대 상주 메모리가 약 370MB였다. 같은 버전을 건너뛰는 실행은 약 70MB다. 상한 `max_bytes`(100MB) 안이다.
-- 네트워크 호출 없음 테스트는 파이썬 소켓·`httpx`만 막는다. DB 접속은 libpq가 해서 막히지 않는다. 도구 모듈이 `httpx`를 가져오지 않는 것도 테스트한다.
+- 네트워크 호출 없음 테스트는 파이썬 소켓 연결(`socket.connect`)·`httpx`만 막는다. DB 접속은 libpq가 해서 막히지 않고, psycopg가 DB 호스트 이름을 풀 때 `socket.getaddrinfo`를 부르므로 DB 테스트에서는 그것을 막지 않는다. 도구 모듈이 `httpx`를 가져오지 않는 것도 테스트한다. 이 한계는 2026-11-13에 따로 확인했다(임시 DB, 테스트 코드 아님): 파이썬 감사 훅으로 도구 호출 세 번의 소켓·`urllib`·`http.client`·`ssl` 이벤트를 모으면 `socket.connect` 0건, HTTP·TLS 0건이고 `getaddrinfo`가 DB 호스트 이름으로 3건, 이벤트 루프 내부 소켓 생성이 6건이었다. 같은 호출 중 `lsof`로 본 이 프로세스의 인터넷 연결은 DB 서버 포트로 가는 연결 3개(호출마다 1개)뿐이었다.
 - `docs/decisions.md`의 기존 충돌 표식과 D-049/D-050 중복은 건드리지 않았다. 팀이 따로 정리해야 한다.
 - 0300 헤더의 "에이전트 읽기 역할에 권한을 주지 않는다"는 `threat_news`에만 남는다. 적용된 마이그레이션은 고치지 않아 주석은 그대로이고, 갱신된 내용은 D-052에 있다.
 
