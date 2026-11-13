@@ -25,6 +25,8 @@ supersedes: []
 - `uv run pytest`는 `db` 표식 테스트를 실행하지 않는다. CI의 db job은 이미 PostgreSQL에서 실행한다.
 - `entity_value_sql()`의 식은 `jsonb_array_elements(... ) item` 별칭에 맞춰져 있다. SQL에서
   `E' \t\n\r\f\v'`가 지정한 공백만 trim하며, Unicode 공백 전체와 IP 표기 정규화는 다루지 않는다.
+- 실제 SIEM·모델과 운영 규모 데이터의 조회 성능은 확인하지 않았다. 새 식은 행별 문자열
+  처리를 추가하므로 대량 데이터에서 비용을 다시 측정해야 한다.
 
 ## 확인 방법
 
@@ -32,10 +34,11 @@ supersedes: []
   1건 실패하는 것을 확인했다.
 - 비밀번호 없는 일회용 PostgreSQL 17.6 컨테이너에서
   `uv run pytest -m db tests/test_l2_branch_db.py -q --tb=short`: 43건 통과.
-- `uv run ruff format --check .`: 348개 파일 통과. `uv run ruff check .`: 통과.
+- `uv run ruff format .`: 348개 파일 변경 없음. `uv run ruff format --check .`:
+  348개 파일 통과. `uv run ruff check .`: 통과.
 - Windows `uv run pytest -q --tb=short`: 1,602건 통과, 1건 실패. 기존
   `test_name_ending_in_newline_is_not_a_migration`이 Windows에서 줄바꿈 파일명을 만들지 못한
   오류이며 #267 기록에도 같은 제한이 있다.
-- Linux Python 3.13 일회용 컨테이너에서 `uv run pytest -q --tb=short`:
-  1,603건 통과. 읽기 전용 마운트여서 pytest 캐시 쓰기 경고 2건과 기존 FakeSshServer의
-  종료 시 pending-task 경고가 출력됐으나 종료 코드는 0이다.
+- Linux Python 3.13 일회용 컨테이너에서 `uv run pytest`: 1,603건 통과.
+  읽기 전용 마운트여서 pytest 캐시 쓰기 경고 2건과 기존 FakeSshServer의 종료 시
+  pending-task 경고가 출력됐으나 종료 코드는 0이다.
