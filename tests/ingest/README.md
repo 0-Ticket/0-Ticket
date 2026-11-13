@@ -1,4 +1,4 @@
-# 수집(ingest) 테스트 (#218, #294)
+# 수집(ingest) 테스트 (#218, #294, #317)
 
 ELK 수집 명령(`soc.ingest`)의 테스트를 계층별로 모았다. 계층은 "외부 연결이 있는가"로 나눈다.
 
@@ -102,3 +102,7 @@ fixture 파일은 저장소 관례대로 `tests/fixtures/ingest/`에 있다.
 - `test_failure_rolls_back_the_whole_batch`: 중간에 실패하면 이미 넣은 연결도 되돌린다.
 - 연결 키를 알럿 문서의 어느 필드에서 읽는지는 아직 확인되지 않아 이 테스트들은 합성 `siem_ref`만 쓴다.
 
+## 수동 수집 반복 실행(#317)
+
+- `unit/test_window.py`: `--since` 읽기(`parse_since`), 조회 시작 시각 규칙 네 경우(`resolve_start_ms`), 체크포인트 후퇴 방지, 연속 두 번 실행(새로 저장 0), 소스 일부 실패, 요약 줄과 이유 문구(비밀 값 없음), 인증서 실패 `tls`와 `network` 구분, 새 설정 키 검사, `--since` 오류(종료 코드 2), 잠금 실패(종료 코드 3).
+- `db/test_manual_ingest_db.py`: `save_page`가 체크포인트를 앞으로만 옮기는지, 빈 커서 교체, 과거 구간 재조회, 수집 잠금의 배타·해제, 커밋 전 원본이 정규화 `claim_pending_batch`에 안 보이는지.
