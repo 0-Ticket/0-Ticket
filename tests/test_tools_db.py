@@ -163,7 +163,14 @@ def test_reader_role_migration_applies_to_another_database(
             " WHERE grantee = %s ORDER BY table_name",
             (READER,),
         ).fetchall()
-    assert granted == [("alerts", "SELECT"), ("events", "SELECT")]
+    # alerts·events는 0003, 나머지 셋은 로컬 ATT&CK·KEV 조회 도구용 0302(#311)
+    assert granted == [
+        ("alerts", "SELECT"),
+        ("attack_techniques", "SELECT"),
+        ("events", "SELECT"),
+        ("intel_source_state", "SELECT"),
+        ("kev_entries", "SELECT"),
+    ]
 
 
 def test_reader_role_is_nologin(migrated: str) -> None:

@@ -2,7 +2,7 @@
 
 import json
 from collections.abc import Iterator
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta, timezone
 from pathlib import Path
 
 import httpx
@@ -11,7 +11,7 @@ import pytest
 from soc.l3.intel.clean import clean_text
 from soc.l3.intel.errors import IntelError
 from soc.l3.intel.fetch import fetch
-from soc.l3.intel.parse import parse_attack, parse_kev, parse_rss
+from soc.l3.intel.parse import parse_attack, parse_kev, parse_kev_catalog, parse_rss
 
 FIXTURES = Path(__file__).parent / "fixtures" / "l3_intel"
 URL = "https://feeds.example.com/feed.xml"
@@ -262,6 +262,57 @@ def test_kev_missing_field_is_parse_failure() -> None:
     assert failure_of(lambda: parse_kev(data, summary_max_chars=1000)) == "parse"
 
 
+def test_kev_catalog_keeps_detail_and_catalog_info() -> None:
+    catalog = parse_kev_catalog(fixture("kev.json"), summary_max_chars=1000)
+    assert catalog.catalog_version == "2026.11.03"
+    assert catalog.released_at == datetime(2026, 11, 3, 20, 0, 24, 874100, tzinfo=UTC)
+    assert [i.source_ref for i in catalog.items] == [e.cve_id for e in catalog.entries]
+    first, second, third = catalog.entries
+    assert (first.vendor_project, first.product) == ("Example", "Example VPN")
+    assert first.vulnerability_name == "Example VPN Remote Code Execution Vulnerability"
+    assert first.short_description == "Example VPN contains a remote code execution vulnerability."
+    assert first.date_added == date(2026, 11, 3)
+    assert first.due_date == date(2026, 11, 24)
+    assert first.known_ransomware_use == "Unknown"
+    assert first.required_action == "Apply mitigations per vendor instructions."
+    assert second.known_ransomware_use == "Known"
+    assert (
+        second.vulnerability_name == "Example Mail Path Traversal Vulnerability"
+    )  # 제어 문자 제거
+    assert third.short_description == ""
+
+
+def test_kev_catalog_cuts_long_text() -> None:
+    catalog = parse_kev_catalog(fixture("kev.json"), summary_max_chars=10)
+    assert catalog.entries[0].short_description == "Example VP"
+    assert catalog.entries[0].required_action == "Apply miti"
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        lambda c: c.pop("catalogVersion"),
+        lambda c: c["vulnerabilities"][0].pop("vendorProject"),
+        lambda c: c["vulnerabilities"][0].pop("knownRansomwareCampaignUse"),
+        lambda c: c["vulnerabilities"][0].pop("requiredAction"),
+    ],
+)
+def test_kev_catalog_missing_detail_is_parse_failure(change) -> None:
+    catalog = json.loads(fixture("kev.json"))
+    change(catalog)
+    data = json.dumps(catalog).encode()
+    assert failure_of(lambda: parse_kev_catalog(data, summary_max_chars=1000)) == "parse"
+
+
+def test_kev_catalog_tolerates_bad_due_date_and_release_time() -> None:
+    catalog = json.loads(fixture("kev.json"))
+    catalog["dateReleased"] = "yesterday"
+    catalog["vulnerabilities"][0]["dueDate"] = ""
+    parsed = parse_kev_catalog(json.dumps(catalog).encode(), summary_max_chars=1000)
+    assert parsed.released_at is None
+    assert parsed.entries[0].due_date is None
+
+
 # --- ATT&CK ---
 
 
@@ -297,6 +348,51 @@ def mutated_attack(change) -> bytes:
     ],
 )
 def test_malformed_attack_is_parse_failure(change) -> None:
+    data = mutated_attack(change)
+    assert failure_of(lambda: parse_attack(data, version="20.0")) == "parse"
+
+
+def test_attack_keeps_description_and_detection_sources() -> None:
+    by_id = {t.technique_id: t for t in parse_attack(fixture("attack.json"), version="20.0")}
+    first = by_id["T1190"]
+    # 태그와 제어 문자는 지우고 문단 사이 공백은 하나로 줄인다
+    assert first.description == (
+        "Adversaries may attack a public-facing application. (Citation: Example) Second paragraph."
+    )
+    # detects 관계 → 탐지 전략 → analytic → data component. 중복은 한 번, 이름순
+    assert first.detection_sources == ("Application Log Content", "Network Traffic Content")
+    # 없는 data component 참조, 폐기된 기법(T1000)·폐기된 관계는 건너뛴다
+    assert by_id["T1059.004"].detection_sources == ("Command Execution",)
+
+
+def test_attack_description_is_cut() -> None:
+    techniques = parse_attack(fixture("attack.json"), version="20.0", description_max_chars=12)
+    assert {t.technique_id: t.description for t in techniques}["T1190"] == "Adversaries"
+
+
+def test_attack_without_description_or_detection_is_empty() -> None:
+    def change(objs) -> None:
+        del objs[1]["description"]
+        objs[:] = [o for o in objs if o["type"] != "relationship"]
+
+    by_id = {t.technique_id: t for t in parse_attack(mutated_attack(change), version="20.0")}
+    assert by_id["T1190"].description == ""
+    assert by_id["T1190"].detection_sources == ()
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        lambda objs: next(o for o in objs if o["type"] == "x-mitre-detection-strategy").update(
+            x_mitre_analytic_refs="x"
+        ),
+        lambda objs: next(o for o in objs if o["type"] == "x-mitre-analytic").update(
+            x_mitre_log_source_references="x"
+        ),
+        lambda objs: objs[1].update(description=1),
+    ],
+)
+def test_malformed_attack_detail_is_parse_failure(change) -> None:
     data = mutated_attack(change)
     assert failure_of(lambda: parse_attack(data, version="20.0")) == "parse"
 

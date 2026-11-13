@@ -303,3 +303,115 @@ def test_news_id_cannot_be_set_by_hand(conn: psycopg.Connection) -> None:
             "INSERT INTO threat_news (id, source, kind, source_ref, title, summary, fetched_at,"
             " updated_at) VALUES (1, 's', 'rss', 'r', 't', '', now(), now())"
         )
+
+
+# --- 로컬 조회 도구용 저장(#311) ---
+
+
+def attack_detail(conn: psycopg.Connection) -> dict[str, tuple]:
+    rows = conn.execute(
+        "SELECT technique_id, description, detection_sources, collected_at FROM attack_techniques"
+        " ORDER BY technique_id"
+    ).fetchall()
+    return {r[0]: r[1:] for r in rows}
+
+
+def kev_rows(conn: psycopg.Connection) -> dict[str, tuple]:
+    rows = conn.execute(
+        "SELECT cve_id, vulnerability_name, vendor_project, product, date_added, due_date,"
+        " known_ransomware_use, required_action, updated_at FROM kev_entries ORDER BY cve_id"
+    ).fetchall()
+    return {r[0]: r[1:] for r in rows}
+
+
+def test_collect_saves_attack_and_kev_detail(conn: psycopg.Connection) -> None:
+    run(conn, FakeWeb(all_sources()))
+
+    detail = attack_detail(conn)
+    assert detail["T1190"] == (
+        "Adversaries may attack a public-facing application. (Citation: Example) Second paragraph.",
+        ["Application Log Content", "Network Traffic Content"],
+        NOW,
+    )
+    assert detail["T1059.004"][1:] == (["Command Execution"], NOW)
+    kev = kev_rows(conn)
+    assert list(kev) == ["CVE-2026-0001", "CVE-2026-0002", "CVE-2026-0003"]
+    assert kev["CVE-2026-0001"] == (
+        "Example VPN Remote Code Execution Vulnerability",
+        "Example",
+        "Example VPN",
+        datetime(2026, 11, 3).date(),
+        datetime(2026, 11, 24).date(),
+        "Unknown",
+        "Apply mitigations per vendor instructions.",
+        NOW,
+    )
+    assert conn.execute(
+        "SELECT source, catalog_version, released_at, collected_at FROM intel_source_state"
+    ).fetchall() == [
+        ("cisa_kev", "2026.11.03", datetime(2026, 11, 3, 20, 0, 24, 874100, tzinfo=UTC), NOW)
+    ]
+
+
+def test_second_collect_keeps_detail_and_moves_collected_time(conn: psycopg.Connection) -> None:
+    run(conn, FakeWeb(all_sources()))
+    before = kev_rows(conn)
+    run(conn, FakeWeb(all_sources()), now=LATER)
+
+    assert kev_rows(conn) == before  # updated_at도 그대로다
+    assert conn.execute("SELECT collected_at FROM intel_source_state").fetchall() == [(LATER,)]
+
+
+def test_changed_kev_detail_updates_only_that_row(conn: psycopg.Connection) -> None:
+    run(conn, FakeWeb(all_sources()))
+    before = kev_rows(conn)
+    kev = json.loads(fixture("kev.json"))
+    kev["vulnerabilities"][1]["knownRansomwareCampaignUse"] = "Unknown"
+    run(conn, FakeWeb(all_sources() | {KEV: json.dumps(kev).encode()}), now=LATER)
+
+    after = kev_rows(conn)
+    assert after["CVE-2026-0001"] == before["CVE-2026-0001"]
+    assert after["CVE-2026-0002"][5] == "Unknown"
+    assert after["CVE-2026-0002"][-1] == LATER
+
+
+def test_failed_kev_parse_leaves_kev_detail_and_state_untouched(conn: psycopg.Connection) -> None:
+    run(conn, FakeWeb(all_sources()))
+    before = kev_rows(conn)
+    bad = json.loads(fixture("kev.json"))
+    del bad["vulnerabilities"][1]["requiredAction"]
+    results = run(conn, FakeWeb(all_sources() | {KEV: json.dumps(bad).encode()}), now=LATER)
+
+    assert results["cisa_kev"].failure == "parse"
+    assert kev_rows(conn) == before
+    assert conn.execute("SELECT collected_at FROM intel_source_state").fetchall() == [(NOW,)]
+
+
+def test_stored_attack_version_without_detail_is_downloaded_again(
+    conn: psycopg.Connection,
+) -> None:
+    run(conn, FakeWeb(all_sources()))
+    # 0301 전에 저장한 행처럼 새 열을 비운다
+    conn.execute("UPDATE attack_techniques SET description = NULL, detection_sources = NULL")
+    conn.execute("UPDATE attack_techniques SET collected_at = NULL")
+    web = FakeWeb(all_sources())
+
+    results = run(conn, web, now=LATER)
+
+    assert ATTACK in web.requested
+    assert counts(results["attack"]) == (2, 0, 2, None)
+    detail = attack_detail(conn)
+    assert detail["T1190"][2] == LATER
+    assert detail["T1190"][1] == ["Application Log Content", "Network Traffic Content"]
+    assert conn.execute("SELECT count(*) FROM attack_techniques").fetchone() == (2,)
+
+
+def test_kev_entries_check_rejects_broken_rows(conn: psycopg.Connection) -> None:
+    insert = (
+        "INSERT INTO kev_entries (cve_id, vulnerability_name, short_description, vendor_project,"
+        " product, date_added, known_ransomware_use, required_action, updated_at)"
+        " VALUES (%s, %s, '', '', '', '2026-11-03', 'Unknown', '', now())"
+    )
+    for cve_id, name in (("CVE-2026-0009\n", "x"), ("CVE-26-1", "x"), ("CVE-2026-0009", "")):
+        with pytest.raises(psycopg.errors.CheckViolation):
+            conn.execute(insert, (cve_id, name))
