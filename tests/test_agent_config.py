@@ -83,7 +83,7 @@ def test_default_tools_config(default_config_dir: Path) -> None:
     assert tools["similar_cases"] == {
         "limit_default": 5,
         "limit_max": 10,
-        "min_score": 0.5,
+        "min_score": 0.6,
         "query_max_chars": 200,
         "reason_max_chars": 300,
         "entities_max": 5,
