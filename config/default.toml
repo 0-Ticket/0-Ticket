@@ -112,6 +112,7 @@ max_limit = 100
 # SSH 점검 도구(#213): run_host_check는 l2·l3. [[tools.ssh.hosts]]가 비어 있으면 등록되지 않는다
 # 위협 인텔 조회(#309): lookup_indicator는 l1·l2. l3에 넣지 않는다(무료 키 분당 4건을 헌팅이 쓰지 않게).
 # 환경변수 VT_API_KEY가 없으면 등록되지 않는다
+# 로컬 ATT&CK·KEV 조회(#311): get_attack_technique·search_attack_techniques·get_cve는 l2·l3
 l1 = [
     "get_alert", "get_event", "query_records", "query_http_flow", "summarize_http_flow",
     "query_siem", "lookup_indicator",
@@ -119,10 +120,12 @@ l1 = [
 l2 = [
     "get_alert", "get_event", "query_records", "query_http_flow", "summarize_http_flow",
     "query_siem", "count_siem", "run_host_check", "lookup_indicator",
+    "get_attack_technique", "search_attack_techniques", "get_cve",
 ]
 l3 = [
     "get_alert", "get_event", "query_records", "query_http_flow", "summarize_http_flow",
     "query_siem", "count_siem", "run_host_check",
+    "get_attack_technique", "search_attack_techniques", "get_cve",
 ]
 
 # SIEM 조회 도구(#212). 수집(#218)과 같은 ELK에 같은 환경변수로 접속한다.
@@ -275,6 +278,19 @@ cache_max_entries = 1000
 # 실제 값은 config/local.toml(커밋 안 함)에 적는다
 exclude_cidrs = []
 exclude_domains = []
+
+# 로컬 ATT&CK·KEV 조회 도구(#311, D-052): get_attack_technique, search_attack_techniques, get_cve.
+# 네트워크 없이 soc.l3.intel이 PostgreSQL에 저장한 사본만 읽는다(읽기 역할 soc_agent_reader).
+# 허용 단계는 l2·l3다. 환경변수는 따로 없고 AGENT_DATABASE_URL을 쓴다.
+[tools.local_intel]
+# 읽을 ATT&CK 버전. L3 수집 설정(l3.intel.attack 표)의 version과 같은 값이어야 하므로
+# 버전을 올릴 때 함께 바꾼다.
+# 다르면 도구가 status=no_data(attack_version_missing)를 돌려준다
+attack_version = "20.0"
+# 설명·KEV 요약·필수 조치 문구 하나의 글자 수 상한
+description_max_chars = 600
+# 하위 기법·탐지 데이터 소스 목록의 항목 수 상한
+list_max_items = 20
 
 # L2 Ticket 분류 후보 만들기(#226, Incident 분류 방법 D-027).
 [l2.branch]

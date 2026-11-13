@@ -22,15 +22,23 @@ from soc.tools.registry import (
 
 def default_registry() -> ToolRegistry:
     """운영 레지스트리: 내부 데이터 3개, Web 2개, SIEM 2개(#212), SSH 점검 1개(#213),
-    위협 인텔 조회 1개(#309)."""
+    위협 인텔 조회 1개(#309), 로컬 ATT&CK·KEV 조회 3개(#311)."""
     from soc.tools.internal import INTERNAL_TOOLS
+    from soc.tools.local_intel import LOCAL_INTEL_TOOLS
     from soc.tools.siem import siem_tools
     from soc.tools.ssh import RUN_HOST_CHECK
     from soc.tools.threat_intel import lookup_indicator_tool
     from soc.tools.web import WEB_TOOLS
 
     return ToolRegistry(
-        [*INTERNAL_TOOLS, *WEB_TOOLS, *siem_tools(), RUN_HOST_CHECK, lookup_indicator_tool()]
+        [
+            *INTERNAL_TOOLS,
+            *WEB_TOOLS,
+            *siem_tools(),
+            RUN_HOST_CHECK,
+            lookup_indicator_tool(),
+            *LOCAL_INTEL_TOOLS,
+        ]
     )
 
 
