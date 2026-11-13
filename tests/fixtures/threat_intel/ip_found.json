@@ -1,0 +1,15 @@
+{
+  "data": {
+    "id": "192.0.2.10",
+    "type": "ip_address",
+    "attributes": {
+      "last_analysis_stats": {"malicious": 3, "suspicious": 1, "harmless": 60, "undetected": 20, "timeout": 0},
+      "reputation": -5,
+      "last_analysis_date": 1793750400,
+      "tags": ["scanner", "tor"],
+      "asn": 64496,
+      "as_owner": "Example Net",
+      "country": "XX"
+    }
+  }
+}

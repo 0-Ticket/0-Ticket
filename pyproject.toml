@@ -60,5 +60,6 @@ markers = [
     "embedder: 실제 BGE-M3 모델을 내려받아 추론하는 테스트(약 2.27GB). uv run pytest -m embedder 으로 실행(docs/notes/257-vector-store-embedder.md)",
     "elk: 실제 ELK에 접속하는 테스트. uv run pytest -m elk 으로 실행(docs/notes/212-siem-tools.md)",
     "ssh: 실제 SSH 호스트에 접속하는 테스트. uv run pytest -m ssh 으로 실행(docs/notes/213-ssh-tool.md)",
+    "virustotal: 실제 VirusTotal을 호출하는 테스트. uv run pytest -m virustotal 으로 실행(docs/notes/309-virustotal-lookup.md)",
 ]
-addopts = "-m 'not llm and not db and not qdrant and not embedder and not elk and not ssh'"
+addopts = "-m 'not llm and not db and not qdrant and not embedder and not elk and not ssh and not virustotal'"
