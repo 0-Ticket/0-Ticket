@@ -110,17 +110,19 @@ max_limit = 100
 [tools.allowed]
 # SIEM 도구(#212): query_siem은 l1·l2·l3, count_siem은 l2·l3
 # SSH 점검 도구(#213): run_host_check는 l2·l3. [[tools.ssh.hosts]]가 비어 있으면 등록되지 않는다
+# 유사 사례 검색(#313, D-053): search_similar_cases는 l1·l2. l3에 넣지 않는다.
+# 환경변수 QDRANT_URL이 없으면 등록되지 않는다
 # 위협 인텔 조회(#309): lookup_indicator는 l1·l2. l3에 넣지 않는다(무료 키 분당 4건을 헌팅이 쓰지 않게).
 # 환경변수 VT_API_KEY가 없으면 등록되지 않는다
 # 로컬 ATT&CK·KEV 조회(#311): get_attack_technique·search_attack_techniques·get_cve는 l2·l3
 l1 = [
     "get_alert", "get_event", "query_records", "query_http_flow", "summarize_http_flow",
-    "query_siem", "lookup_indicator",
+    "query_siem", "lookup_indicator", "search_similar_cases",
 ]
 l2 = [
     "get_alert", "get_event", "query_records", "query_http_flow", "summarize_http_flow",
     "query_siem", "count_siem", "run_host_check", "lookup_indicator",
-    "get_attack_technique", "search_attack_techniques", "get_cve",
+    "get_attack_technique", "search_attack_techniques", "get_cve", "search_similar_cases",
 ]
 l3 = [
     "get_alert", "get_event", "query_records", "query_http_flow", "summarize_http_flow",
@@ -291,6 +293,22 @@ attack_version = "20.0"
 description_max_chars = 600
 # 하위 기법·탐지 데이터 소스 목록의 항목 수 상한
 list_max_items = 20
+
+# 유사 사례 검색 도구 search_similar_cases(#313, D-053). 판정이 끝난 Ticket을 임베딩으로 찾는다.
+# 허용 단계는 l1·l2다. Qdrant 주소는 [store.qdrant]의 환경변수, DB는 AGENT_DATABASE_URL을 쓴다.
+# 색인은 L1 판정 직후에 쓰고, 이미 쌓인 Ticket은 uv run python -m soc.similar reindex로 채운다.
+[tools.similar_cases]
+# limit 인자를 주지 않을 때의 건수와 모델이 줄 수 있는 상한
+limit_default = 5
+limit_max = 10
+# 이 유사도(코사인, 0~1) 아래는 결과에서 뺀다. 실모델로 정한 값이다(docs/notes/313-similar-cases-tool.md)
+min_score = 0.5
+# query 인자의 글자 수 상한(로그 원문을 통째로 넣지 못하게 한다)
+query_max_chars = 200
+# 결과의 판정 이유 요약 글자 수 상한
+reason_max_chars = 300
+# 결과 하나에 담는 대표 엔티티 수 상한
+entities_max = 5
 
 # L2 Ticket 분류 후보 만들기(#226, Incident 분류 방법 D-027).
 [l2.branch]

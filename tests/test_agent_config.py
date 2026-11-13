@@ -51,9 +51,14 @@ def test_default_tools_config(default_config_dir: Path) -> None:
         "summarize_http_flow",
     ]
     # SIEM 도구(#212): query_siem은 l1·l2·l3, count_siem은 l2·l3. SSH 점검(#213)은 l2·l3
-    # 위협 인텔 조회(#309)는 l1·l2. 로컬 ATT&CK·KEV 조회(#311)는 l2·l3
+    # 위협 인텔 조회(#309)는 l1·l2. 로컬 ATT&CK·KEV 조회(#311)는 l2·l3. 유사 사례 검색(#313)은 l1·l2
     local_intel = ["get_attack_technique", "search_attack_techniques", "get_cve"]
-    assert tools["allowed"]["l1"] == [*expected, "query_siem", "lookup_indicator"]
+    assert tools["allowed"]["l1"] == [
+        *expected,
+        "query_siem",
+        "lookup_indicator",
+        "search_similar_cases",
+    ]
     assert tools["allowed"]["l2"] == [
         *expected,
         "query_siem",
@@ -61,6 +66,7 @@ def test_default_tools_config(default_config_dir: Path) -> None:
         "run_host_check",
         "lookup_indicator",
         *local_intel,
+        "search_similar_cases",
     ]
     assert tools["allowed"]["l3"] == [
         *expected,
@@ -73,6 +79,14 @@ def test_default_tools_config(default_config_dir: Path) -> None:
         "attack_version": "20.0",
         "description_max_chars": 600,
         "list_max_items": 20,
+    }
+    assert tools["similar_cases"] == {
+        "limit_default": 5,
+        "limit_max": 10,
+        "min_score": 0.5,
+        "query_max_chars": 200,
+        "reason_max_chars": 300,
+        "entities_max": 5,
     }
 
 

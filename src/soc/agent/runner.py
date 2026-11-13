@@ -50,6 +50,7 @@ from soc.agent.types import AgentResult, AgentTask
 from soc.contracts import ContractError, validate_contract
 from soc.ids import new_id
 from soc.tools import ToolConfigError, ToolRegistry, ToolSession, default_registry
+from soc.tools import services as tool_services
 
 logger = logging.getLogger(__name__)
 
@@ -174,7 +175,10 @@ def run_task(
     )
     try:
         tools = (registry or default_registry()).session(
-            stage=task.stage, config=config, recorder=recorder
+            stage=task.stage,
+            config=config,
+            recorder=recorder,
+            services=tool_services.snapshot(),  # 실행기가 시작할 때 만든 공유 객체(#313)
         )
     except ToolConfigError:
         detail = "도구 설정 오류(허용 목록이나 도구 결과 한도)"

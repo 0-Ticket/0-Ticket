@@ -15,9 +15,13 @@ from soc.agent import AgentResult, AgentTask, run_agent
 from soc.agent.types import TaskPrompt
 from soc.contracts import to_datetime, to_epoch_ms, validate_contract
 from soc.l1.ticketing import _insert_ticket, _make_ticket
+from soc.similar.index import make_indexer
+from soc.tools import services
+from soc.tools.similar_cases import SERVICE as SERVICE_NAME
 
 logger = logging.getLogger("soc.l1.judge")
 Run = Callable[[AgentTask], AgentResult]
+Indexer = Callable[[psycopg.Connection, str], None]
 _DAY_MS = 86_400_000
 _PROMPT = (
     "입력된 Alert 또는 Ticket의 Alert를 조사해 verdict를 작성한다. "
@@ -158,10 +162,12 @@ class L1Worker:
         *,
         run: Run = run_agent,
         clock: Callable[[], datetime] = _utcnow,
+        indexer: Indexer | None = None,
     ) -> None:
         """database_url은 쓰기 DB 주소, threshold는 0~1 확신도 임계값이다.
 
         run은 AgentTask를 받아 AgentResult를 반환하고, clock은 현재 시각을 반환한다.
+        indexer는 Ticket 판정을 저장한 직후 (연결, Ticket ID)로 부르는 유사 사례 색인 함수다(#313).
         """
         if type(threshold) not in (int, float) or not 0 <= threshold <= 1:
             raise ValueError("L1 confidence_threshold는 0과 1 사이다")
@@ -169,6 +175,7 @@ class L1Worker:
         self._threshold = float(threshold)
         self._run = run
         self._clock = clock
+        self._indexer = indexer
 
     def poll(self, limit: int) -> list[str]:
         """양의 정수 limit개 이하의 pending Alert와 new Ticket ID를 반환한다."""
@@ -204,10 +211,20 @@ class L1Worker:
                     self._failure(conn, subject_id)
                     return
                 self._apply(conn, subject_id, result.output)
+                self._index(conn, subject_id)
         except Exception as exc:
             logger.warning("L1 처리 예외 subject=%s (%s)", subject_id, type(exc).__name__)
             with psycopg.connect(self._database_url, autocommit=True, row_factory=dict_row) as conn:
                 self._failure(conn, subject_id)
+
+    def _index(self, conn: psycopg.Connection, subject_id: str) -> None:
+        """판정이 저장된 Ticket을 유사 사례 색인에 넣는다. 실패해도 L1 판정은 그대로 둔다(D-053)."""
+        if self._indexer is None or _subject_type(subject_id) != "ticket":
+            return
+        try:
+            self._indexer(conn, subject_id)
+        except Exception as exc:
+            logger.warning("유사 사례 색인 예외 subject=%s (%s)", subject_id, type(exc).__name__)
 
     def _failure(self, conn: psycopg.Connection, subject_id: str) -> None:
         """DB 연결에 대상 ID의 실패를 기록하고 세 번째면 보류한다."""
@@ -267,4 +284,6 @@ def build_worker(config: dict[str, Any]) -> L1Worker:
     if not database_url:
         raise ValueError("DATABASE_URL이 필요하다")
     threshold = config["agent"]["l1"]["confidence_threshold"]
-    return L1Worker(database_url, threshold)
+    similar = services.snapshot().get(SERVICE_NAME)  # 실행기가 시작할 때 만든 임베더와 저장소(#313)
+    indexer = None if similar is None else make_indexer(similar.embedder, similar.store)
+    return L1Worker(database_url, threshold, indexer=indexer)

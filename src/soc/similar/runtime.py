@@ -5,12 +5,12 @@ from dataclasses import dataclass
 from typing import Any
 
 from soc.similar.index import PURPOSE
-from soc.store import BgeM3Embedder, Embedder, StoreError, VectorStore
+from soc.store import BgeM3Embedder, ConfigError, Embedder, StoreError, VectorStore
 from soc.store.config import read_settings
 from soc.tools import services
+from soc.tools.similar_cases import NAME as TOOL_NAME
+from soc.tools.similar_cases import SERVICE as SERVICE_NAME
 
-SERVICE_NAME = "similar"
-TOOL_NAME = "search_similar_cases"
 logger = logging.getLogger("soc.similar")
 
 
@@ -34,7 +34,7 @@ def build_service(config: dict[str, Any]) -> SimilarService | None:
         settings = read_settings(config["store"])
         embedder = BgeM3Embedder(settings.embedder)
         return SimilarService(embedder, VectorStore(PURPOSE, embedder, settings))
-    except (StoreError, KeyError, ValueError) as exc:
+    except (ConfigError, StoreError, KeyError, ValueError) as exc:
         logger.warning("유사 사례 검색을 쓰지 않는다(%s)", type(exc).__name__)
         return None
 

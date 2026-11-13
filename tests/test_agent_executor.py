@@ -544,3 +544,37 @@ def test_main_still_exits_zero_when_every_stage_stops_normally(tmp_path: Path) -
     stop = threading.Event()
     threading.Timer(0.2, stop.set).start()
     assert main([], config_dir=tmp_path, stop_event=stop, resolve=resolver(workers)) == 0
+
+
+def test_main_installs_the_similar_service_before_the_workers_are_built(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """L1 워커가 색인 함수를 받아 가려면 공유 객체가 먼저 있어야 한다(#313)."""
+    from soc.tools import services
+
+    monkeypatch.setenv("QDRANT_URL", "http://localhost:6333")
+    (tmp_path / "default.toml").write_text(
+        "[executor]\nshutdown_timeout_seconds = 5\n"
+        "[executor.l1]\ninterval_seconds = 0.01\npoll_limit = 1\nworkers = ['soc.test:a']\n"
+        "[executor.l2]\ninterval_seconds = 0\npoll_limit = 1\nworkers = []\n"
+        "[executor.l3]\ninterval_seconds = 0\npoll_limit = 1\nworkers = []\n"
+        "[tools.allowed]\nl1 = ['search_similar_cases']\n"
+        "[store.qdrant]\nurl_env = 'QDRANT_URL'\n"
+        "[store.embedder]\nmodel_id = 'BAAI/bge-m3'\n"
+        "revision = '5617a9f61b028005a4858fdac845db406aefb181'\n",
+        encoding="utf-8",
+    )
+    seen: list[set[str]] = []
+    worker = FakeWorker("l1", "a", [])
+
+    def resolve(path: str) -> Any:
+        def factory(_config: Any) -> FakeWorker:
+            seen.append(set(services.snapshot()))
+            return worker
+
+        return factory
+
+    stop = threading.Event()
+    threading.Timer(0.1, stop.set).start()
+    assert main([], config_dir=tmp_path, stop_event=stop, resolve=resolve) == 0
+    assert seen == [{"similar"}]
