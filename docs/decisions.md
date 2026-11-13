@@ -60,6 +60,7 @@
 | D-051 | 위협 인텔 조회 도구 `lookup_indicator`는 VirusTotal API v3 무료 키를 httpx(D-039)로 부른다. 지표 값(IP·도메인·해시)만 보내고, 공개 주소가 아니거나 비공개 이름이거나 설정 제외 목록에 있는 값은 보내지 않는다. 캐시와 호출 한도는 프로세스 메모리에 두며 재시작하거나 프로세스가 여럿이면 따로 센다. 키는 `VT_API_KEY` 환경변수로만 읽고, 키가 없으면 도구를 등록하지 않는다 | 무료 키 약관은 상업 이용을 제한한다(PR "이유"에 적는다). 회사의 공개 도메인은 설정 제외 목록에 적지 않으면 나간다. l3는 허용하지 않는다(#309) |
 | D-052 | 로컬 ATT&CK·KEV 조회 도구 `get_attack_technique`·`search_attack_techniques`·`get_cve`는 네트워크 없이 PostgreSQL의 저장본만 읽고, 허용 단계는 `l2`·`l3`다. 에이전트 읽기 역할 `soc_agent_reader`에는 `attack_techniques`·`kev_entries`·`intel_source_state`의 SELECT만 주고 `threat_news`는 주지 않는다. KEV 상세는 새 테이블 `kev_entries`에 저장하고(`threat_news`는 그대로), 응답에는 데이터 버전·수집 시각을 넣는다. KEV에 없는 CVE는 `not_in_kev`(KEV 목록에 없다는 뜻이지 악용되지 않는다는 뜻이 아님), 데이터가 없으면 `no_data`다. 도구가 읽는 ATT&CK 버전은 `[tools.local_intel] attack_version`이고 `[l3.intel.attack] version`과 함께 바꾼다 | 0300의 "에이전트 읽기 역할에 이 테이블 권한을 주지 않는다"를 이 세 테이블에 한해 바꾼 것이다. NVD 등 KEV 밖의 CVE 데이터는 적재하지 않는다. 기법·CVE 문자열은 밖에서 온 데이터로 다룬다(D-048 입력 필터를 그대로 거친다). 지난 계획·기록(221)은 고치지 않는다(#311) |
 | D-053 | 유사 사례 검색 도구 `search_similar_cases`는 판정이 끝난 Ticket을 담은 Qdrant 컬렉션(용도 `ticket_verdicts`)을 임베딩 유사도로 읽고, 허용 단계는 `l1`·`l2`다. L1 판정이 적용된 직후 `verdict`가 있는 Ticket을 같은 프로세스에서 색인하며 point ID는 Ticket ID이고 payload는 비운다. 색인 텍스트는 Alert 제목·Event 요약·Hunt 문장이고 판정 이유는 넣지 않는다. 상태·판정·시각·엔티티는 PostgreSQL에서 읽으므로 `soc_agent_reader`에 `tickets`(id, status, verdict, entities, alert_ids, created_at)·`incidents`(id, ticket_ids, status)·`cases`(id, incident_id)의 열 단위 SELECT를 준다. `decided_by`는 그 Ticket의 Incident에 Case가 있으면 `human`, 그 밖에는 `agent`다. `ticket_id` 검색은 자기 자신과 같은 Incident의 Ticket을 뺀다. 실행기가 임베더를 한 번 만들어 도구 세션에 주입하며, Qdrant 환경변수나 임베더가 없으면 도구를 등록하지 않는다 | Qdrant 쓰기는 PostgreSQL 트랜잭션에 묶지 않아 누락될 수 있고 재색인 명령으로 복구한다(D-013). 판정 이유를 임베딩하지 않는 것은 질의 쪽에 이유가 없어 같은 종류의 텍스트끼리 비교하고, LLM이 쓴 문장이 검색 순위를 좌우하지 않게 하려는 것이다. `decided_by=agent` 사례 경고는 프롬프트 수준이며 D-025의 자동 종결을 구조적으로 막지 못한다. 0003의 "tickets·incidents·cases에 권한을 주지 않는다"를 이 세 표의 위 열에 한해 바꾼 것이다. `python -m soc.agent` 프로세스에 약 2.27GB 모델이 올라간다. L1 담당과 L2 담당이 확인했다(#313) |
+| D-054 | 활성화 파이프 `uv run python -m soc.pipeline`은 정규화·Ticket 생성·L1·L2를 한 프로세스에서 주기 실행한다. 실행기(D-024)에 단계 이름 `normalize`·`ticketing`을 `executor.py` 안에서만 더해 같은 스레드·종료·죽음 처리(D-050)를 쓰고, 수집과 L3는 띄우지 않는다(`[executor.l3]` 값과 관계없이). 기동하면 준비 점검을 항목별 OK/FAIL로 출력하고 하나라도 FAIL이면 단계를 띄우지 않고 종료 코드 4로 끝낸다. 점검은 DB·마이그레이션(읽기만)·Qdrant·임베더 로드·LLM 실호출 1회·도구 설정을 본다. 정규화·Ticket 간격과 종료 대기 시간은 `[pipeline]`에 두고 L1·L2 간격은 `[executor.l1\|l2]`를 그대로 쓴다 | 정규화 failed 재시도는 넣지 않는다. 점검 출력에는 항목 이름과 실패 종류 코드만 낸다(주소·계정·키 값 없음). LLM은 고정 문자열만 보낸다. 키가 틀리면 L1이 첫 건부터 실패를 세어 3회째에 `held`로 두기(D-025) 때문에 기동 때 실호출로 먼저 거른다. 임베더 파일이 없으면 점검이 약 2.27GB를 내려받는다(D-044). 정규화·Ticket 배치는 종료 신호로 중단하지 못하므로 종료 대기 시간 안에 끝나지 않으면 정규화 임대(최대 10분)가 풀릴 때까지 다음 기동이 그 건을 집지 못할 수 있다. `python -m soc.agent`는 바뀌지 않고, 두 명령을 동시에 띄우는 것은 막지 않는다(#316) |
 
 ### L2
 
@@ -152,20 +153,18 @@
 
 새 기록을 맨 위에 쓴다.
 
+- #316 · 활성화 파이프(D-054)를 추가했다. 정규화·Ticket 생성을 실행기 단계로 더해 L1·L2와 한 프로세스에서 돌리고, 기동 때 준비 점검(LLM 실호출 1회 포함)을 한다. 이 이슈에서 `docs/decisions.md`의 머지 충돌 표식 3줄을 지웠고, 중복된 D-049·D-050 ID는 고치지 않았다. 사용자가 계획을 확정함.
 - #313 · 임베더가 모델 파일을 Hugging Face 캐시 대신 `<HF_HOME>/soc-onnx/…`에 받도록 고쳤다(D-044 메모). 사용자가 이 이슈에서 고치기로 정함.
 - #313 · 유사 사례 검색 도구(D-053)를 추가했다. 판정이 끝난 Ticket 전용 컬렉션과 색인 코드를 이 이슈에 포함하고, 에이전트 읽기 역할에 `tickets`·`incidents`·`cases`의 지정 열 SELECT를 준다. 이슈의 `kind` 인자는 두지 않고 결과에 `case_id`·`decided_by`를 넣는다. 사용자가 계획을 확정함.
 - #311 · 로컬 ATT&CK·KEV 조회 도구(D-052)를 추가했다. 요청 필드가 저장되어 있지 않아 수집을 확장하고 ATT&CK 데이터셋 저장 필드(D-040)에 설명·탐지 데이터 소스·수집 시각을 더했다. 에이전트 읽기 역할에 새 테이블 세 개의 SELECT를 준다(`threat_news` 제외). L3 담당(이슈 담당)이 확인했고 사용자가 계획을 확정함.
 - #309 · 위협 인텔 조회 도구(D-051)를 추가했다. VirusTotal 무료 키, 지표 값만 전송, 캐시·한도는 프로세스 메모리, 키가 없으면 도구 미등록. 사용자가 계획을 확정함.
-<<<<<<< HEAD
 - #280 · 동기 도구 핸들러를 호출마다 전용 데몬 스레드에서 돌리는 방식(D-049)과 실행기 단계 스레드의 예외 처리·종료 코드 3(D-050)을 추가했다. 팀 합의(#280). 사용자가 계획을 확정함.
-=======
 - #294 · PostgreSQL 유일 인덱스의 키 길이 한계를 막도록 Base64url 페이로드가 128자를 넘으면 `h` + JSON 바이트 SHA-256 hex로 축약하기로 정했다. 원문은 계속 `original_text`에 보존한다.
 - #294 · 수집 불가 hit 격리·재시도 정책(D-050)을 확정했다. 격리 전용 키·페이지 원자 저장·별도 재시도 예산·실행별 격리 건수를 정했다. 계획 218의 문서 단위 정지 원칙을 대체하며 기존 계획 파일은 수정하지 않는다.
 - #277 · D-049 결정 반영(사람이 정함). 에이전트에게 보이는 `siem_ref`는 저장 키(`siem_ref_key`, 이스케이프된 값)다. `link_by_refs`는 저장 키 쌍(`SiemRefKey`)을 받고 안에서 이스케이프하지 않는다. 한 dict 안에서 키가 이스케이프 뒤 겹치면 값을 덮어쓰지 않고 `escape_collision` 실패로 기록한다(마이그레이션 없음, `error_code`에 CHECK가 없다).
 - #277 · 원본 보관 형식(D-049)을 추가했다. `raw_records` 원본을 jsonb 대신 JSON 글자(`original_text`, `ensure_ascii=True`)로 보관하고, 정규화 결과의 NUL·짝 없는 서로게이트를 값과 키 모두 6글자 이스케이프로 치환한다. 계약 필드 `original` → `original_text`. 사용자가 계획을 확정함.
 - #277 · 알려진 한계 두 가지(깨진 원본이 claim에서 배치를 멈춤, 치환 결과의 구별 불가와 키 충돌)는 `docs/notes/277-raw-original-text.md`에 문서화했다. 코드는 바꾸지 않았다.
 
->>>>>>> 48f1e73b744abff09a9a08bb75b08e3dc2abc896
 - #279 · 모델 입력 비밀 값 가림(D-048)을 추가했다. 외부 LLM으로 보내는 입력을 SDK 입력 필터 한 곳에서 가리고, 가림 실패는 `provider_error`로 끝낸다. 환경변수 값 가림 최소 길이를 4에서 8로 올리고 `token`·`secret`·`Authorization: Basic|ApiKey` 모양을 더했다. D-036 메모의 복원 설명을 "모델에게 보낸 가림 적용 후 입력"으로 맞췄다. 팀 공유가 필요하다. 사용자가 계획을 확정함.
 
 - #278 · Agent Log 저장 방식(D-036)을 고쳤다. 호출이 끝날 때마다 줄을 바로 쓰고, model 줄 입력은 새로 더해진 항목만, `records` 도구 줄 출력은 모델에게 보인 결과만 저장한다. 복원 방법과 "끝난 run" 읽는 규칙을 메모에 적었다. #211 기록의 "자르기 전 전체 결과 저장"을 바꾼다. 팀 공유가 필요하다. 사용자가 계획을 확정함.

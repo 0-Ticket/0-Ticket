@@ -16,6 +16,9 @@
 - 스레드는 asyncio 이벤트 루프를 하나 만들어 그 스레드의 기본 루프로 등록한다. run_agent 안의
   Runner.run_sync는 스레드의 기본 루프를 그대로 쓰므로(openai-agents 0.24.0), 종료할 때 이 루프의
   작업을 취소하면 진행 중인 run이 failure="cancelled"로 끝난다(에이전트 구조, D-024).
+- 단계 이름은 STAGES(l1·l2·l3)에 활성화 파이프용 normalize·ticketing을 더한 EXECUTOR_STAGES다
+  (#316). STAGES는 AgentTask.stage 검증에도 쓰여서 바꾸지 않는다. [executor.normalize]·
+  [executor.ticketing] 절은 기본 설정에 없으므로 `python -m soc.agent`는 이 단계를 띄우지 않는다.
 - 워커는 [executor.<stage>] workers의 "soc.<모듈>:<함수>"로 등록한다. 함수는 설정 전체를 받아
   워커를 돌려준다(build_worker(config) -> AgentWorker).
 """
@@ -49,6 +52,9 @@ CANCEL_INTERVAL = 0.2
 
 # 한 건의 실패로 보고 다음 건으로 가는 예외. 그 밖의 BaseException은 단계를 죽은 것으로 본다(D-050)
 _ISOLATED = (Exception, asyncio.CancelledError, SystemExit)
+
+# 실행기가 아는 단계. 앞의 둘은 활성화 파이프(soc.pipeline)가 켠다(#316)
+EXECUTOR_STAGES: tuple[str, ...] = ("normalize", "ticketing", *STAGES)
 
 _FACTORY_PATH = re.compile(r"soc(\.[A-Za-z_][A-Za-z0-9_]*)*:[A-Za-z_][A-Za-z0-9_]*\Z")
 
@@ -90,14 +96,14 @@ def read_settings(config: Mapping[str, Any]) -> tuple[float, list[StageSettings]
     section = config.get("executor")
     if not isinstance(section, Mapping):
         raise ExecutorConfigError("[executor] 설정이 없다")
-    unknown = set(section) - {"shutdown_timeout_seconds", *STAGES}
+    unknown = set(section) - {"shutdown_timeout_seconds", *EXECUTOR_STAGES}
     if unknown:
         raise ExecutorConfigError(f"[executor]에 모르는 키가 있다: {', '.join(sorted(unknown))}")
     timeout = section.get("shutdown_timeout_seconds")
     if not _is_number(timeout) or timeout <= 0:
         raise ExecutorConfigError("[executor] shutdown_timeout_seconds는 0보다 큰 수다")
     stages = []
-    for stage in STAGES:
+    for stage in EXECUTOR_STAGES:
         values = section.get(stage, {"interval_seconds": 0, "poll_limit": 1, "workers": []})
         stages.append(_stage_settings(stage, values))
     return float(timeout), stages
@@ -306,8 +312,7 @@ def main(
     set_tracing_disabled(True)  # 진입점에서 끈다(D-022). run_agent도 다시 끈다
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 
-    def err(line: str) -> None:
-        print(line, file=sys.stderr)
+    err = _err
 
     try:
         config = load_full_config(config_dir)
@@ -322,20 +327,39 @@ def main(
     if not executor.stages:
         err("등록된 워커가 없다. [executor.<단계>]의 workers와 interval_seconds를 확인한다")
         return 0
+    return run_executor(executor, stop_event)
+
+
+def run_executor(
+    executor: Executor,
+    stop_event: threading.Event | None = None,
+    *,
+    started: Callable[[], None] | None = None,
+) -> int:
+    """만든 실행기를 띄우고 종료 신호나 단계 스레드가 죽을 때까지 기다린다. 종료 코드를 돌려준다.
+
+    started는 단계를 띄운 직후 한 번 부른다(활성화 파이프의 "준비 완료" 출력, #316).
+    """
     stop = threading.Event() if stop_event is None else stop_event
     if stop_event is None and threading.current_thread() is threading.main_thread():
         for signum in (signal.SIGINT, signal.SIGTERM):
             signal.signal(signum, lambda *_: stop.set())
     executor.start()
-    err(f"실행 중: {', '.join(executor.stages)}. 끝내려면 Ctrl+C")
+    _err(f"실행 중: {', '.join(executor.stages)}. 끝내려면 Ctrl+C")
+    if started is not None:
+        started()
     while not stop.wait(0.5):
         if executor.dead_stages():
             break
     dead = executor.dead_stages()
     if dead:
-        err("단계 스레드가 죽었다: " + ", ".join(f"{s}({name})" for s, name in dead.items()))
-    err("종료 중: 진행 중인 run을 취소한다")
+        _err("단계 스레드가 죽었다: " + ", ".join(f"{s}({name})" for s, name in dead.items()))
+    _err("종료 중: 진행 중인 run을 취소한다")
     unfinished = executor.stop()
     if executor.dead_stages():
         return 3
     return 1 if unfinished else 0
+
+
+def _err(line: str) -> None:
+    print(line, file=sys.stderr)
