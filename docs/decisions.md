@@ -85,7 +85,7 @@
 | D-013 | 벡터 DB는 Qdrant. 판정이 끝난 Ticket·Case를 넣고 용도마다 컬렉션을 따로 둔다. L2 분류 후보용 컬렉션에는 Incident에 붙은 `linked` Ticket을 넣고 payload에 소속 Incident를 달아, 새 Ticket과 비슷한 Ticket이 속한 Incident를 후보로 삼는다 | Incident는 Ticket이 붙을수록 텍스트가 길어져 닮은 부분이 묻히거나 입력 길이에서 잘릴 수 있으므로 통째로 임베딩하지 않는다. 분류 후보용 컬렉션은 PostgreSQL을 베낀 파생 색인이고 payload의 관계는 복사본이며 권위 원본은 PostgreSQL이다. 일부 point 누락은 자동으로 감지하지 않고 PostgreSQL에서 컬렉션을 다시 만드는 명령으로 복구한다. Qdrant 쓰기는 PostgreSQL 트랜잭션이나 outbox에 묶지 않는다. 유사 사례 검색용 컬렉션(`ticket_verdicts`, D-053)에는 판정이 있는 Ticket을 넣고, Case는 별도 point로 넣지 않고 Ticket의 Incident에 Case가 있다는 사실로 읽는다(#313) |
 | D-014 | Ticket·Case는 외부 도구 없이 자체 테이블과 내부 화면으로 관리한다 | |
 | D-031 | 기본 임베딩 모델은 BAAI bge-m3의 dense 표현이며 로컬 ONNX로 실행한다. 기본 벡터는 1024차원이고 거리 방식은 Cosine이다. 모델 ID와 revision은 설정 값이며 컬렉션 이름은 용도·모델 ID·revision에서 파생한다 | sparse·multi-vector는 쓰지 않고 torch를 설치하지 않는다. 실행 라이브러리는 D-044를 따른다. revision은 설정 값이지만 고정한다. 임베더가 출력 차원을 알려 주고 컬렉션은 그 값을 사용해 작은 차원의 가짜 임베더로도 테스트할 수 있게 한다 |
-| D-044 | 벡터 DB 클라이언트와 임베딩 실행은 `qdrant-client==1.20.0`, `onnxruntime==1.31.1`, `huggingface-hub==2.4.0`, `tokenizers==0.23.3`, `numpy==2.5.4`. FastEmbed는 bge-m3를 공식 지원하지 않아 쓰지 않고, torch를 끌어오는 경로도 쓰지 않는다 | 2GB가 넘는 torch를 `uv sync`와 CI에 올리지 않기 위해서다. bge-m3 ONNX는 외부 데이터 방식이라 `model.onnx`와 함께 약 2.27GB의 `model.onnx_data`를 요구하고, tokenizer 파일도 같은 revision에서 받는다. 모델 ID와 revision은 설정 값이다(D-031) |
+| D-044 | 벡터 DB 클라이언트와 임베딩 실행은 `qdrant-client==1.20.0`, `onnxruntime==1.31.1`, `huggingface-hub==2.4.0`, `tokenizers==0.23.3`, `numpy==2.5.4`. FastEmbed는 bge-m3를 공식 지원하지 않아 쓰지 않고, torch를 끌어오는 경로도 쓰지 않는다 | 2GB가 넘는 torch를 `uv sync`와 CI에 올리지 않기 위해서다. bge-m3 ONNX는 외부 데이터 방식이라 `model.onnx`와 함께 약 2.27GB의 `model.onnx_data`를 요구하고, tokenizer 파일도 같은 revision에서 받는다. 모델 ID와 revision은 설정 값이다(D-031). 파일은 Hugging Face 기본 캐시(심링크)가 아니라 `<HF_HOME>/soc-onnx/<모델 ID>/<revision>`에 실제 파일로 받는다. onnxruntime이 심링크 캐시의 외부 데이터 경로를 거부해 macOS·Linux에서 모델이 열리지 않았기 때문이다(#313) |
 
 ### 데이터 계약 · DB
 
@@ -152,6 +152,7 @@
 
 새 기록을 맨 위에 쓴다.
 
+- #313 · 임베더가 모델 파일을 Hugging Face 캐시 대신 `<HF_HOME>/soc-onnx/…`에 받도록 고쳤다(D-044 메모). 사용자가 이 이슈에서 고치기로 정함.
 - #313 · 유사 사례 검색 도구(D-053)를 추가했다. 판정이 끝난 Ticket 전용 컬렉션과 색인 코드를 이 이슈에 포함하고, 에이전트 읽기 역할에 `tickets`·`incidents`·`cases`의 지정 열 SELECT를 준다. 이슈의 `kind` 인자는 두지 않고 결과에 `case_id`·`decided_by`를 넣는다. 사용자가 계획을 확정함.
 - #311 · 로컬 ATT&CK·KEV 조회 도구(D-052)를 추가했다. 요청 필드가 저장되어 있지 않아 수집을 확장하고 ATT&CK 데이터셋 저장 필드(D-040)에 설명·탐지 데이터 소스·수집 시각을 더했다. 에이전트 읽기 역할에 새 테이블 세 개의 SELECT를 준다(`threat_news` 제외). L3 담당(이슈 담당)이 확인했고 사용자가 계획을 확정함.
 - #309 · 위협 인텔 조회 도구(D-051)를 추가했다. VirusTotal 무료 키, 지표 값만 전송, 캐시·한도는 프로세스 메모리, 키가 없으면 도구 미등록. 사용자가 계획을 확정함.

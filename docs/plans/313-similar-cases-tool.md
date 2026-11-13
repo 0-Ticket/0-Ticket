@@ -120,3 +120,4 @@ L1·L2 에이전트가 `search_similar_cases`로 판정이 끝난 과거 Ticket 
 ## 바뀐 점
 
 - 2026-11-13 · 읽기 권한 `tickets` 열에 `alert_ids`를 더했다. `ticket_id` 검색이 Ticket의 Alert 제목으로 질의 텍스트를 만들어야 하는데 Ticket과 Alert의 연결이 이 열뿐이다. D-053의 열 목록도 같이 고쳤다.
+- 2026-11-13 · `BgeM3Embedder`가 macOS·Linux에서 Hugging Face 캐시(심링크)로는 모델을 못 여는 문제를 이 이슈에서 고친다(사람이 정함). 이슈 밖 문제였으나 `reindex`와 실행기의 첫 임베딩이 실패해 이 이슈의 색인이 동작하지 않는다. `hf_hub_download(local_dir=…)`로 `HF_HOME/soc-onnx/<모델>/<revision>`에 실제 파일로 받는다. 새 설정 키는 없다. 범위에 `src/soc/store/embedder.py`와 D-044 메모가 더해진다.

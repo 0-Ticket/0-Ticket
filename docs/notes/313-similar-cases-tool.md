@@ -25,6 +25,7 @@ L1·L2 에이전트가 `search_similar_cases`로 판정이 끝난 과거 Ticket 
 - **`ToolSpec`에 `requires_service`를 더했다.** 계획의 "`CallContext`·`ToolSession`에 선택 필드"를 `ToolSpec`까지 넓힌 것이다. 필요한 공유 객체가 없으면 그 도구는 설정 검사 없이 등록에서 빠진다. 기본값은 없음이라 기존 도구는 같다.
 - **`ticket_id`가 없는 `origin=l3` Ticket은 `no_data`(`no_text`)다.** 에이전트 읽기 역할이 `hunts`를 읽지 못해서 Hunt 가설로 질의를 만들 수 없다.
 - **Qdrant에서 결과의 두 배(+ 뺄 Ticket 수)를 받는다.** 뺄 Ticket과 PostgreSQL에 없는 point(파생 색인의 누락·잔재)를 버려도 `limit`이 차게 하려는 것이다. 상한은 200이다.
+- **macOS·Linux에서 임베더가 모델을 못 여는 문제를 이 이슈에서 고쳤다**(계획 "바뀐 점", 사람이 정함). `hf_hub_download`가 캐시의 심링크 파일을 돌려주면 onnxruntime 1.31.1이 외부 데이터 `model.onnx_data`를 모델 폴더 밖 경로로 보고 `External data path validation failed`로 거부한다. #257 기록은 심링크가 없는 Windows에서 확인한 것이다. 이제 `local_dir=<HF_HOME>/soc-onnx/<모델 ID>/<revision>`(`HF_HOME`이 없으면 `$XDG_CACHE_HOME`·`~/.cache` 아래 `huggingface`)에 세 파일을 실제 파일로 받는다. 새 설정 키는 없고 D-044 메모에 적었다.
 - **기존 테스트의 기대값을 고쳤다**(지우거나 건너뛰지 않음): `test_agent_config.py::test_default_tools_config`(허용 목록·`similar_cases` 표), `test_tools_registry.py::test_default_registry_has_the_five_tools`(도구 이름 목록), `test_db_tables.py`(마이그레이션 목록), `test_tools_db.py::test_reader_role_is_denied_elsewhere`(아래 "다음 사람이 알아야 할 것").
 - **코드를 테스트보다 먼저 쓴 곳이 있다.** 레지스트리 `number`·`services`, `similar` 패키지(텍스트·색인·재색인·실행기 등록)는 구현 뒤에 테스트를 썼다. 도구 `similar_cases.py`와 임베더 잠금은 테스트를 먼저 쓰고 실패를 확인했다(임베더 잠금은 잠금을 빼면 실패하는 것도 확인).
 
@@ -39,12 +40,14 @@ L1·L2 에이전트가 `search_similar_cases`로 판정이 끝난 과거 Ticket 
 - **색인은 Qdrant에만 있어 PostgreSQL 트랜잭션에 묶이지 않는다.** 색인에 실패한 Ticket은 검색되지 않고(경고 로그만), 재색인으로 채운다. 반대로 PostgreSQL에서 지워진 Ticket의 point는 남을 수 있는데 도구가 행이 없으면 버린다.
 - **같은 Incident의 Ticket 제외는 `ticket_id` 검색에서만 된다.** 도구는 지금 판정 중인 Ticket을 모르므로 `query` 검색은 자기 자신이 색인돼 있으면 결과에 나올 수 있다. Alert 1차 판정은 Ticket이 없어 `query`만 쓴다.
 - **`BgeM3Embedder._load()`에 잠금을 더했다.** 단계 스레드 여러 개가 첫 호출을 겹쳐도 모델을 한 번만 올린다. `_session`을 마지막에 써서, 잠금 밖의 빠른 확인이 나머지 값(`_tokenizer`·`_output`)이 준비된 뒤에만 참이 되게 했다.
+- **옛 HF 캐시의 모델 파일(약 2.27GB)은 더 쓰지 않는다.** 새 위치에 한 번 더 받는다. 쓰지 않는 `~/.cache/huggingface/hub/models--BAAI--bge-m3`는 사람이 지운다. 이미 받은 사람은 첫 임베딩에서 다시 받는다.
 - **한국어 질의 품질은 확인하지 못했다.** bge-m3는 다국어지만 색인 텍스트는 Alert 제목이라 SIEM 룰 언어에 달려 있다. 아래 측정은 영어 제목과 한국어 한 건뿐이다.
 
 ## 확인 방법
 
 - `uv run ruff format --check .`, `uv run ruff check .`: 통과
 - `uv run pytest`: 1851건 통과
+- `uv run pytest -m embedder tests/test_store_embedder.py`(실제 bge-m3, macOS): 5건 통과. 고치기 전에는 같은 모델이 `External data path validation failed`로 열리지 않았다. 새 위치에 약 2.1GB를 받았다.
 - `uv run pytest -m "db or qdrant"`(로컬 PostgreSQL·Qdrant 컨테이너): 534건 통과
 - 주요 테스트
   - `tests/test_tools_similar_cases.py`: 유사도 순서, `decided_by`·`case_id`, 자기 자신과 같은 Incident 제외, `min_score`·`limit`, 결과 없음, DB 행·판정이 없는 hit 버리기, 없는 컬렉션(`no_index`)과 저장소 장애(`unavailable`), 이유·엔티티 길이, 결과 한도 줄이기, 잘못된 인자(둘 다 없음·둘 다 있음·길이·`kind`)가 임베더·DB에 닿지 않음, 서비스가 없으면 미등록, `l3` 미허용, 설정 오류, 닫는 태그 이스케이프
@@ -55,4 +58,3 @@ L1·L2 에이전트가 `search_similar_cases`로 판정이 끝난 과거 Ticket 
   - `tests/test_store_embedder.py`: 여러 스레드가 겹쳐도 모델을 한 번만 올림(잠금을 빼면 실패 확인), `tests/test_tools_services.py`: `number` 인자·`requires_service`·`ctx.services`
   - `tests/test_agent_executor.py`: 실행기가 워커를 만들기 전에 서비스를 등록
 - **`min_score` 기본값 0.6 (실모델 측정, 2026-11-13, 임시 스크립트, 커밋 안 함).** bge-m3(고정 revision)로 영어 Alert 제목 11개(한국어 1개 포함)의 55쌍 코사인을 쟀다. 같은 공격으로 본 문장 쌍은 0.61~0.92(표현이 비슷하면 0.85 이상, 표현이 다른 SSH·포트스캔 바꿔 쓴 쌍은 0.61~0.64)였고, 다른 공격 쌍은 중앙값 약 0.50, 최대 0.70(둘 다 "external host"가 들어간 SSH 무차별 대입과 포트 스캔)이었다. 0.6이면 바꿔 쓴 같은 공격을 놓치지 않고 대부분의 다른 공격이 빠지지만 겹치는 낱말이 많은 다른 공격은 섞일 수 있다. 도구가 점수를 같이 돌려주고 프롬프트가 "참고 증거"라고 하므로 재현율 쪽을 택했다. 표본이 작아 실제 SIEM 제목으로 다시 재고 `[tools.similar_cases] min_score`를 조정해야 한다.
-- **실제 모델 경로 확인에서 알게 된 것(이 이슈 코드가 아님).** macOS에서 `BgeM3Embedder`는 기본 Hugging Face 캐시(심링크)로 `model.onnx`를 열 때 `External data path validation failed`로 실패한다(onnxruntime 1.31.1). #257 기록은 심링크가 없는 Windows에서 확인한 것이다. 측정은 파일을 복사한 폴더를 가리키게 `hf_hub_download`를 바꿔서 했다. `python -m soc.similar reindex`와 실행기의 첫 임베딩도 macOS에서는 같은 이유로 실패할 수 있다. 별도 이슈가 필요하다.
