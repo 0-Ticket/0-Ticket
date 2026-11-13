@@ -1,0 +1,585 @@
+{
+ "now": 1793764500000,
+ "raw_records": [
+  {
+   "id": "raw_01a19f93-1150-7000-8000-000000000101",
+   "kind": "alert",
+   "siem_profile": "test",
+   "siem_ref": "alert-1",
+   "fetched_at": 1793764000000,
+   "original_text": "{\"sample\": true}"
+  },
+  {
+   "id": "raw_01a19f93-1150-7000-8000-000000000102",
+   "kind": "alert",
+   "siem_profile": "test",
+   "siem_ref": "alert-2",
+   "fetched_at": 1793764000000,
+   "original_text": "{\"sample\": true}"
+  },
+  {
+   "id": "raw_01a19f93-1150-7000-8000-000000000103",
+   "kind": "alert",
+   "siem_profile": "test",
+   "siem_ref": "alert-3",
+   "fetched_at": 1793764000000,
+   "original_text": "{\"sample\": true}"
+  },
+  {
+   "id": "raw_01a19f93-1150-7000-8000-000000000104",
+   "kind": "alert",
+   "siem_profile": "test",
+   "siem_ref": "alert-4",
+   "fetched_at": 1793764000000,
+   "original_text": "{\"sample\": true}"
+  },
+  {
+   "id": "raw_01a19f93-1150-7000-8000-000000000105",
+   "kind": "alert",
+   "siem_profile": "test",
+   "siem_ref": "alert-5",
+   "fetched_at": 1793764000000,
+   "original_text": "{\"sample\": true}"
+  },
+  {
+   "id": "raw_01a19f93-1150-7000-8000-000000000106",
+   "kind": "alert",
+   "siem_profile": "test",
+   "siem_ref": "alert-6",
+   "fetched_at": 1793764000000,
+   "original_text": "{\"sample\": true}"
+  },
+  {
+   "id": "raw_01a19f93-1150-7000-8000-000000000107",
+   "kind": "alert",
+   "siem_profile": "test",
+   "siem_ref": "alert-7",
+   "fetched_at": 1793764000000,
+   "original_text": "{\"sample\": true}"
+  }
+ ],
+ "alerts": [
+  {
+   "id": "alt_01a19f93-1150-7000-8000-000000000001",
+   "raw_id": "raw_01a19f93-1150-7000-8000-000000000101",
+   "time": 1793764001000,
+   "severity": 4,
+   "title": "SQL injection attempt on login form",
+   "rule_id": "test-rule",
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.1",
+     "role": "src"
+    }
+   ],
+   "assets": [],
+   "triage": null,
+   "ocsf": {
+    "class_uid": 2004,
+    "severity_id": 4,
+    "time": 1793764001000
+   },
+   "details": {}
+  },
+  {
+   "id": "alt_01a19f93-1150-7000-8000-000000000002",
+   "raw_id": "raw_01a19f93-1150-7000-8000-000000000102",
+   "time": 1793764002000,
+   "severity": 4,
+   "title": "SQL injection attempt on search form",
+   "rule_id": "test-rule",
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.2",
+     "role": "src"
+    }
+   ],
+   "assets": [],
+   "triage": null,
+   "ocsf": {
+    "class_uid": 2004,
+    "severity_id": 4,
+    "time": 1793764002000
+   },
+   "details": {}
+  },
+  {
+   "id": "alt_01a19f93-1150-7000-8000-000000000003",
+   "raw_id": "raw_01a19f93-1150-7000-8000-000000000103",
+   "time": 1793764003000,
+   "severity": 4,
+   "title": "Brute force SSH login from external host",
+   "rule_id": "test-rule",
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.3",
+     "role": "src"
+    }
+   ],
+   "assets": [],
+   "triage": null,
+   "ocsf": {
+    "class_uid": 2004,
+    "severity_id": 4,
+    "time": 1793764003000
+   },
+   "details": {}
+  },
+  {
+   "id": "alt_01a19f93-1150-7000-8000-000000000004",
+   "raw_id": "raw_01a19f93-1150-7000-8000-000000000104",
+   "time": 1793764004000,
+   "severity": 4,
+   "title": "SQL injection attempt on login form repeated",
+   "rule_id": "test-rule",
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.4",
+     "role": "src"
+    }
+   ],
+   "assets": [],
+   "triage": null,
+   "ocsf": {
+    "class_uid": 2004,
+    "severity_id": 4,
+    "time": 1793764004000
+   },
+   "details": {}
+  },
+  {
+   "id": "alt_01a19f93-1150-7000-8000-000000000005",
+   "raw_id": "raw_01a19f93-1150-7000-8000-000000000105",
+   "time": 1793764005000,
+   "severity": 4,
+   "title": "Port scan from external host",
+   "rule_id": "test-rule",
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.5",
+     "role": "src"
+    }
+   ],
+   "assets": [],
+   "triage": null,
+   "ocsf": {
+    "class_uid": 2004,
+    "severity_id": 4,
+    "time": 1793764005000
+   },
+   "details": {}
+  },
+  {
+   "id": "alt_01a19f93-1150-7000-8000-000000000006",
+   "raw_id": "raw_01a19f93-1150-7000-8000-000000000106",
+   "time": 1793764007000,
+   "severity": 4,
+   "title": "Port scan from external host again",
+   "rule_id": "test-rule",
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.6",
+     "role": "src"
+    }
+   ],
+   "assets": [],
+   "triage": null,
+   "ocsf": {
+    "class_uid": 2004,
+    "severity_id": 4,
+    "time": 1793764001000
+   },
+   "details": {}
+  },
+  {
+   "id": "alt_01a19f93-1150-7000-8000-000000000007",
+   "raw_id": "raw_01a19f93-1150-7000-8000-000000000107",
+   "time": 1793764008000,
+   "severity": 4,
+   "title": "Brute force SSH login from external host retry",
+   "rule_id": "test-rule",
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.7",
+     "role": "src"
+    }
+   ],
+   "assets": [],
+   "triage": null,
+   "ocsf": {
+    "class_uid": 2004,
+    "severity_id": 4,
+    "time": 1793764001000
+   },
+   "details": {}
+  }
+ ],
+ "hunts": [
+  {
+   "id": "hnt_01a19f93-1150-7000-8000-000000000001",
+   "hunt_run_id": "hrn_01a19f93-1150-7000-8000-000000000001",
+   "status": "confirmed",
+   "hypothesis": "Possible DNS beaconing to an example domain",
+   "attack_techniques": [
+    "T1071.004"
+   ],
+   "confidence": 0.8,
+   "reason": "Hunt reason sample",
+   "evidence_ids": [
+    "alt_01a19f93-1150-7000-8000-000000000001"
+   ],
+   "entities": [
+    {
+     "type": "domain",
+     "value": "beacon.example.com",
+     "role": "dst"
+    }
+   ],
+   "attempts": 1,
+   "verified_at": 1793764200000,
+   "created_at": 1793764000000,
+   "updated_at": 1793764200000,
+   "details": {}
+  }
+ ],
+ "tickets": [
+  {
+   "id": "tkt_01a19f93-1150-7000-8000-000000000001",
+   "origin": "auto",
+   "status": "closed",
+   "alert_ids": [
+    "alt_01a19f93-1150-7000-8000-000000000001"
+   ],
+   "hunt_id": null,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.1",
+     "role": "src"
+    },
+    {
+     "type": "host",
+     "value": "web-1.example.com",
+     "role": "target"
+    }
+   ],
+   "verdict": {
+    "decision": "benign",
+    "confidence": 0.95,
+    "reason": "Scheduled scanner of the security team",
+    "evidence_ids": [
+     "alt_01a19f93-1150-7000-8000-000000000001"
+    ],
+    "decided_at": 1793764060000
+   },
+   "created_at": 1793764001000,
+   "updated_at": 1793764006000,
+   "details": {
+    "l1_note": "계약 밖 값. 에이전트 읽기 역할은 읽지 못한다"
+   }
+  },
+  {
+   "id": "tkt_01a19f93-1150-7000-8000-000000000002",
+   "origin": "auto",
+   "status": "linked",
+   "alert_ids": [
+    "alt_01a19f93-1150-7000-8000-000000000002"
+   ],
+   "hunt_id": null,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.2",
+     "role": "src"
+    },
+    {
+     "type": "host",
+     "value": "web-2.example.com",
+     "role": "target"
+    }
+   ],
+   "verdict": {
+    "decision": "malicious",
+    "confidence": 0.9,
+    "reason": "Injection payload reached the search endpoint",
+    "evidence_ids": [
+     "alt_01a19f93-1150-7000-8000-000000000002"
+    ],
+    "decided_at": 1793764060000
+   },
+   "created_at": 1793764002000,
+   "updated_at": 1793764007000,
+   "details": {
+    "l1_note": "계약 밖 값. 에이전트 읽기 역할은 읽지 못한다"
+   }
+  },
+  {
+   "id": "tkt_01a19f93-1150-7000-8000-000000000003",
+   "origin": "auto",
+   "status": "escalated",
+   "alert_ids": [
+    "alt_01a19f93-1150-7000-8000-000000000003"
+   ],
+   "hunt_id": null,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.3",
+     "role": "src"
+    },
+    {
+     "type": "host",
+     "value": "web-3.example.com",
+     "role": "target"
+    }
+   ],
+   "verdict": {
+    "decision": "malicious",
+    "confidence": 0.85,
+    "reason": "Repeated failed logins then success",
+    "evidence_ids": [
+     "alt_01a19f93-1150-7000-8000-000000000003"
+    ],
+    "decided_at": 1793764060000
+   },
+   "created_at": 1793764003000,
+   "updated_at": 1793764008000,
+   "details": {
+    "l1_note": "계약 밖 값. 에이전트 읽기 역할은 읽지 못한다"
+   }
+  },
+  {
+   "id": "tkt_01a19f93-1150-7000-8000-000000000004",
+   "origin": "auto",
+   "status": "new",
+   "alert_ids": [
+    "alt_01a19f93-1150-7000-8000-000000000004"
+   ],
+   "hunt_id": null,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.4",
+     "role": "src"
+    },
+    {
+     "type": "host",
+     "value": "web-4.example.com",
+     "role": "target"
+    }
+   ],
+   "verdict": null,
+   "created_at": 1793764004000,
+   "updated_at": 1793764009000,
+   "details": {
+    "l1_note": "계약 밖 값. 에이전트 읽기 역할은 읽지 못한다"
+   }
+  },
+  {
+   "id": "tkt_01a19f93-1150-7000-8000-000000000005",
+   "origin": "auto",
+   "status": "linked",
+   "alert_ids": [
+    "alt_01a19f93-1150-7000-8000-000000000005"
+   ],
+   "hunt_id": null,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.5",
+     "role": "src"
+    },
+    {
+     "type": "host",
+     "value": "web-5.example.com",
+     "role": "target"
+    }
+   ],
+   "verdict": {
+    "decision": "malicious",
+    "confidence": 0.82,
+    "reason": "Port scan preceded the injection",
+    "evidence_ids": [
+     "alt_01a19f93-1150-7000-8000-000000000005"
+    ],
+    "decided_at": 1793764060000
+   },
+   "created_at": 1793764005000,
+   "updated_at": 1793764010000,
+   "details": {
+    "l1_note": "계약 밖 값. 에이전트 읽기 역할은 읽지 못한다"
+   }
+  },
+  {
+   "id": "tkt_01a19f93-1150-7000-8000-000000000006",
+   "origin": "auto",
+   "status": "held",
+   "alert_ids": [
+    "alt_01a19f93-1150-7000-8000-000000000006"
+   ],
+   "hunt_id": null,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.6",
+     "role": "src"
+    },
+    {
+     "type": "host",
+     "value": "web-6.example.com",
+     "role": "target"
+    }
+   ],
+   "verdict": {
+    "decision": "undetermined",
+    "confidence": 0.4,
+    "reason": "Not enough evidence",
+    "evidence_ids": [],
+    "decided_at": 1793764060000
+   },
+   "created_at": 1793764006000,
+   "updated_at": 1793764011000,
+   "details": {
+    "l1_note": "계약 밖 값. 에이전트 읽기 역할은 읽지 못한다"
+   }
+  },
+  {
+   "id": "tkt_01a19f93-1150-7000-8000-000000000007",
+   "origin": "l3",
+   "status": "escalated",
+   "alert_ids": [],
+   "hunt_id": "hnt_01a19f93-1150-7000-8000-000000000001",
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.7",
+     "role": "src"
+    },
+    {
+     "type": "host",
+     "value": "web-7.example.com",
+     "role": "target"
+    }
+   ],
+   "verdict": {
+    "decision": "malicious",
+    "confidence": 0.8,
+    "reason": "Beacon pattern confirmed by hunt",
+    "evidence_ids": [
+     "alt_01a19f93-1150-7000-8000-000000000001"
+    ],
+    "decided_at": 1793764060000
+   },
+   "created_at": 1793764007000,
+   "updated_at": 1793764012000,
+   "details": {
+    "l1_note": "계약 밖 값. 에이전트 읽기 역할은 읽지 못한다"
+   }
+  },
+  {
+   "id": "tkt_01a19f93-1150-7000-8000-000000000008",
+   "origin": "auto",
+   "status": "held",
+   "alert_ids": [
+    "alt_01a19f93-1150-7000-8000-000000000007"
+   ],
+   "hunt_id": null,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.8",
+     "role": "src"
+    },
+    {
+     "type": "host",
+     "value": "web-8.example.com",
+     "role": "target"
+    }
+   ],
+   "verdict": null,
+   "created_at": 1793764008000,
+   "updated_at": 1793764013000,
+   "details": {
+    "l1_note": "계약 밖 값. 에이전트 읽기 역할은 읽지 못한다"
+   }
+  }
+ ],
+ "incidents": [
+  {
+   "id": "inc_01a19f93-1150-7000-8000-000000000001",
+   "title": "Incident 1",
+   "summary": null,
+   "status": "confirmed",
+   "ticket_ids": [
+    "tkt_01a19f93-1150-7000-8000-000000000002",
+    "tkt_01a19f93-1150-7000-8000-000000000005"
+   ],
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.2",
+     "role": "src"
+    }
+   ],
+   "severity": 4,
+   "assessed_severity": null,
+   "analysis_round": 0,
+   "review_round": 0,
+   "created_at": 1793764000000,
+   "updated_at": 1793764300000,
+   "details": {}
+  },
+  {
+   "id": "inc_01a19f93-1150-7000-8000-000000000002",
+   "title": "Incident 2",
+   "summary": null,
+   "status": "dismissed",
+   "ticket_ids": [
+    "tkt_01a19f93-1150-7000-8000-000000000006"
+   ],
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.2",
+     "role": "src"
+    }
+   ],
+   "severity": 4,
+   "assessed_severity": null,
+   "analysis_round": 0,
+   "review_round": 0,
+   "created_at": 1793764000000,
+   "updated_at": 1793764300000,
+   "details": {}
+  }
+ ],
+ "cases": [
+  {
+   "id": "cas_01a19f93-1150-7000-8000-000000000001",
+   "incident_id": "inc_01a19f93-1150-7000-8000-000000000001",
+   "title": "Case 1",
+   "summary": null,
+   "severity": 4,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.2",
+     "role": "src"
+    }
+   ],
+   "confirmed_by": "analyst-sample",
+   "confirmed_at": 1793764400000,
+   "status": "open",
+   "assignee": null,
+   "resolved_at": null,
+   "details": {}
+  }
+ ]
+}
