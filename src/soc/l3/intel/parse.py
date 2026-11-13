@@ -3,7 +3,7 @@
 import json
 import re
 import xml.etree.ElementTree as ET
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime
 from email.utils import parsedate_to_datetime
 from typing import Any
@@ -32,6 +32,31 @@ class Technique:
     technique_id: str
     name: str
     tactics: tuple[str, ...]
+    # 로컬 조회 도구용(#311). 설명은 정리한 평문, 탐지 데이터 소스는 data component 이름
+    # (중복 없이 이름순)
+    description: str = ""
+    detection_sources: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class KevEntry:
+    cve_id: str
+    vulnerability_name: str
+    short_description: str
+    vendor_project: str
+    product: str
+    date_added: date
+    due_date: date | None
+    known_ransomware_use: str
+    required_action: str
+
+
+@dataclass(frozen=True)
+class KevCatalog:
+    catalog_version: str
+    released_at: datetime | None
+    items: list[NewsItem]
+    entries: list[KevEntry]
 
 
 # --- RSS ---
@@ -128,13 +153,41 @@ def _str(record: dict[str, Any], key: str) -> str:
     return value
 
 
-def parse_kev(data: bytes, *, summary_max_chars: int) -> list[NewsItem]:
-    """KEV 카탈로그의 vulnerabilities[]. 항목마다 링크가 없고 dateAdded는 날짜만 있다(00:00 UTC)."""
+def _optional_date(value: Any) -> date | None:
+    if not isinstance(value, str) or not _DATE.fullmatch(value):
+        return None
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        return None
+
+
+def _released_at(value: Any) -> datetime | None:
+    """카탈로그 릴리스 시각. 읽지 못하면 None이다(수집 자체를 막지 않는다)."""
+    if not isinstance(value, str):
+        return None
+    try:
+        parsed = datetime.fromisoformat(value)
+    except ValueError:
+        return None
+    return parsed if parsed.tzinfo is not None else parsed.replace(tzinfo=UTC)
+
+
+def parse_kev_catalog(data: bytes, *, summary_max_chars: int) -> KevCatalog:
+    """KEV 카탈로그. 항목마다 링크가 없고 dateAdded는 날짜만 있다(00:00 UTC).
+
+    items는 threat_news에, entries와 카탈로그 정보는 kev_entries·intel_source_state에 저장한다
+    (#311).
+    """
     catalog = _load_json(data)
     if not isinstance(catalog, dict) or not isinstance(catalog.get("vulnerabilities"), list):
         raise IntelError("parse")
+    version = clean_text(_str(catalog, "catalogVersion"))
+    if not version:
+        raise IntelError("parse")
 
     items = []
+    entries = []
     for record in catalog["vulnerabilities"]:
         if not isinstance(record, dict):
             raise IntelError("parse")
@@ -143,31 +196,59 @@ def parse_kev(data: bytes, *, summary_max_chars: int) -> list[NewsItem]:
         if not _CVE_ID.fullmatch(cve_id) or not _DATE.fullmatch(added):
             raise IntelError("parse")
         try:
-            published = datetime.combine(date.fromisoformat(added), datetime.min.time(), UTC)
+            added_date = date.fromisoformat(added)
         except ValueError:
             raise IntelError("parse") from None
         title = clean_text(_str(record, "vulnerabilityName"))
-        if not title:
+        ransomware = clean_text(_str(record, "knownRansomwareCampaignUse"))
+        if not title or not ransomware:
             raise IntelError("parse")
+        summary = clean_text(_str(record, "shortDescription"), summary_max_chars)
         items.append(
             NewsItem(
                 source_ref=cve_id,
                 title=title,
-                summary=clean_text(_str(record, "shortDescription"), summary_max_chars),
+                summary=summary,
                 link=None,
-                published_at=published,
+                published_at=datetime.combine(added_date, datetime.min.time(), UTC),
             )
         )
-    return items
+        entries.append(
+            KevEntry(
+                cve_id=cve_id,
+                vulnerability_name=title,
+                short_description=summary,
+                vendor_project=clean_text(_str(record, "vendorProject")),
+                product=clean_text(_str(record, "product")),
+                date_added=added_date,
+                due_date=_optional_date(record.get("dueDate")),
+                known_ransomware_use=ransomware,
+                required_action=clean_text(_str(record, "requiredAction"), summary_max_chars),
+            )
+        )
+    return KevCatalog(
+        catalog_version=version,
+        released_at=_released_at(catalog.get("dateReleased")),
+        items=items,
+        entries=entries,
+    )
+
+
+def parse_kev(data: bytes, *, summary_max_chars: int) -> list[NewsItem]:
+    """KEV 카탈로그의 항목을 뉴스 항목으로만 돌려준다."""
+    return parse_kev_catalog(data, summary_max_chars=summary_max_chars).items
 
 
 # --- ATT&CK ---
 
 
-def parse_attack(data: bytes, *, version: str) -> list[Technique]:
+def parse_attack(
+    data: bytes, *, version: str, description_max_chars: int = 1000
+) -> list[Technique]:
     """STIX 번들에서 폐기(revoked)·대체(x_mitre_deprecated)되지 않은 attack-pattern만 꺼낸다.
 
     컬렉션의 x_mitre_version이 설정 버전과 다르면 version_mismatch다.
+    설명과 탐지 데이터 소스도 함께 꺼낸다(#311).
     """
     bundle = _load_json(data)
     if not isinstance(bundle, dict) or not isinstance(bundle.get("objects"), list):
@@ -183,19 +264,90 @@ def parse_attack(data: bytes, *, version: str) -> list[Technique]:
         raise IntelError("version_mismatch")
 
     techniques: dict[str, Technique] = {}
+    stix_ids: dict[str, str] = {}
     for obj in objects:
-        if obj.get("type") != "attack-pattern":
+        if obj.get("type") != "attack-pattern" or _is_dead(obj):
             continue
-        if obj.get("revoked") is True or obj.get("x_mitre_deprecated") is True:
-            continue
-        technique = _technique(obj)
+        technique = _technique(obj, description_max_chars)
         if technique.technique_id in techniques:
             raise IntelError("parse")
         techniques[technique.technique_id] = technique
-    return list(techniques.values())
+        stix_ids[str(obj.get("id"))] = technique.technique_id
+
+    sources = _detection_sources(objects, stix_ids)
+    return [
+        replace(t, detection_sources=tuple(sorted(sources.get(t.technique_id, ()))))
+        for t in techniques.values()
+    ]
 
 
-def _technique(obj: dict[str, Any]) -> Technique:
+def _is_dead(obj: dict[str, Any]) -> bool:
+    return obj.get("revoked") is True or obj.get("x_mitre_deprecated") is True
+
+
+def _refs(obj: dict[str, Any], key: str) -> list[Any]:
+    value = obj.get(key, [])
+    if not isinstance(value, list):
+        raise IntelError("parse")
+    return value
+
+
+def _detection_sources(
+    objects: list[dict[str, Any]], technique_ids: dict[str, str]
+) -> dict[str, set[str]]:
+    """기법 ← detects ← 탐지 전략 → analytic → data component 이름.
+
+    ATT&CK 20.0은 기법에 옛 x_mitre_data_sources가 없고 이 관계로 이어진다.
+    가리키는 객체가 없거나 폐기됐으면 건너뛴다.
+    """
+    components: dict[str, str] = {}
+    analytics: dict[str, list[str]] = {}
+    strategies: dict[str, list[str]] = {}
+    for obj in objects:
+        kind = obj.get("type")
+        if kind not in ("x-mitre-data-component", "x-mitre-analytic", "x-mitre-detection-strategy"):
+            continue
+        if _is_dead(obj):
+            continue
+        key = str(obj.get("id"))
+        if kind == "x-mitre-data-component":
+            name = obj.get("name")
+            if not isinstance(name, str):
+                raise IntelError("parse")
+            components[key] = clean_text(name)
+        elif kind == "x-mitre-analytic":
+            refs = []
+            for ref in _refs(obj, "x_mitre_log_source_references"):
+                target = ref.get("x_mitre_data_component_ref") if isinstance(ref, dict) else None
+                if not isinstance(target, str):
+                    raise IntelError("parse")
+                refs.append(target)
+            analytics[key] = refs
+        else:
+            refs = _refs(obj, "x_mitre_analytic_refs")
+            if not all(isinstance(r, str) for r in refs):
+                raise IntelError("parse")
+            strategies[key] = refs
+
+    found: dict[str, set[str]] = {}
+    for obj in objects:
+        if obj.get("type") != "relationship" or obj.get("relationship_type") != "detects":
+            continue
+        if _is_dead(obj):
+            continue
+        technique_id = technique_ids.get(str(obj.get("target_ref")))
+        strategy = strategies.get(str(obj.get("source_ref")))
+        if technique_id is None or strategy is None:
+            continue
+        for analytic in strategy:
+            for component in analytics.get(analytic, ()):
+                name = components.get(component)
+                if name:
+                    found.setdefault(technique_id, set()).add(name)
+    return found
+
+
+def _technique(obj: dict[str, Any], description_max_chars: int) -> Technique:
     references = obj.get("external_references")
     phases = obj.get("kill_chain_phases")
     if not isinstance(references, list) or not isinstance(phases, list):
@@ -220,4 +372,12 @@ def _technique(obj: dict[str, Any]) -> Technique:
         if not isinstance(tactic, str) or not tactic:
             raise IntelError("parse")
         tactics.append(tactic)
-    return Technique(technique_id=ids[0], name=clean_text(name), tactics=tuple(tactics))
+    description = obj.get("description", "")
+    if not isinstance(description, str):
+        raise IntelError("parse")
+    return Technique(
+        technique_id=ids[0],
+        name=clean_text(name),
+        tactics=tuple(tactics),
+        description=clean_text(description, description_max_chars),
+    )
