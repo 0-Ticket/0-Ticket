@@ -51,9 +51,9 @@ def insert_records(url: str, data: dict[str, list[dict[str, Any]]]) -> None:
             for record in data[f"{table}"]:
                 conn.execute(
                     "INSERT INTO raw_records"
-                    " (id, kind, siem_profile, siem_ref, fetched_at, original)"
+                    " (id, kind, siem_profile, siem_ref, fetched_at, original_text)"
                     " VALUES (%s, %s, 'test', %s, %s, %s) ON CONFLICT DO NOTHING",
-                    (record["raw_id"], kind, record["raw_id"], to_datetime(T0), Jsonb({})),
+                    (record["raw_id"], kind, record["raw_id"], to_datetime(T0), "{}"),
                 )
                 row = dict(record)
                 row["time"] = to_datetime(row["time"])

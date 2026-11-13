@@ -1,0 +1,127 @@
+[
+  {
+    "case": "alert_flat_destination",
+    "kind": "alert",
+    "original": {
+      "_id": "alert_flat_destination",
+      "_index": ".alerts-security.alerts-default",
+      "_source": {
+        "@timestamp": "2026-11-12T00:00:00Z",
+        "source.ip": "198.51.100.7",
+        "kibana.alert.rule.name": "Synthetic destination rule",
+        "destination.ip": "192.0.2.20"
+      }
+    },
+    "destination": "192.0.2.20"
+  },
+  {
+    "case": "alert_same_ip",
+    "kind": "alert",
+    "original": {
+      "_id": "alert_same_ip",
+      "_index": ".alerts-security.alerts-default",
+      "_source": {
+        "@timestamp": "2026-11-12T00:00:00Z",
+        "source.ip": "198.51.100.7",
+        "kibana.alert.rule.name": "Synthetic destination rule",
+        "destination.ip": "198.51.100.7"
+      }
+    },
+    "destination": "198.51.100.7"
+  },
+  {
+    "case": "alert_destination_only",
+    "kind": "alert",
+    "original": {
+      "_id": "alert_destination_only",
+      "_index": ".alerts-security.alerts-default",
+      "_source": {
+        "@timestamp": "2026-11-12T00:00:00Z",
+        "source.ip": null,
+        "kibana.alert.rule.name": "Synthetic destination rule",
+        "destination.ip": "192.0.2.21"
+      }
+    },
+    "destination": "192.0.2.21"
+  },
+  {
+    "case": "web_nested",
+    "kind": "event",
+    "original": {
+      "_id": "web_nested",
+      "_index": "logs-nginx.access-default",
+      "_source": {
+        "@timestamp": "2026-11-12T00:00:00Z",
+        "source.ip": "198.51.100.7",
+        "destination": {
+          "ip": "192.0.2.22"
+        },
+        "http.request.method": "GET"
+      }
+    },
+    "destination": "192.0.2.22"
+  },
+  {
+    "case": "cloud_ipv6",
+    "kind": "event",
+    "original": {
+      "_id": "cloud_ipv6",
+      "_index": "logs-aws.cloudtrail-default",
+      "_source": {
+        "@timestamp": "2026-11-12T00:00:00Z",
+        "source.ip": "198.51.100.7",
+        "destination.ip": "2001:0db8::0020",
+        "event.action": "GetObject",
+        "user.name": "synthetic-user"
+      }
+    },
+    "destination": "2001:0db8::0020"
+  },
+  {
+    "case": "web_flat_preferred",
+    "kind": "event",
+    "original": {
+      "_id": "web_flat_preferred",
+      "_index": "logs-apache.access-default",
+      "_source": {
+        "@timestamp": "2026-11-12T00:00:00Z",
+        "source.ip": "198.51.100.7",
+        "destination.ip": "192.0.2.23",
+        "destination": {
+          "ip": "192.0.2.99"
+        },
+        "http.request.method": "GET"
+      }
+    },
+    "destination": "192.0.2.23"
+  },
+  {
+    "case": "base_destination",
+    "kind": "event",
+    "original": {
+      "_id": "base_destination",
+      "_index": "logs-other-default",
+      "_source": {
+        "@timestamp": "2026-11-12T00:00:00Z",
+        "source.ip": "198.51.100.7",
+        "destination.ip": "192.0.2.24"
+      }
+    },
+    "destination": "192.0.2.24"
+  },
+  {
+    "case": "web_verbatim",
+    "kind": "event",
+    "original": {
+      "_id": "web_verbatim",
+      "_index": "logs-nginx.access-default",
+      "_source": {
+        "@timestamp": "2026-11-12T00:00:00Z",
+        "source.ip": "198.51.100.7",
+        "destination.ip": " example-value ",
+        "http.request.method": "GET"
+      }
+    },
+    "destination": " example-value "
+  }
+]

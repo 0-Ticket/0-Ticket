@@ -1,0 +1,10 @@
+{
+  "_index": ".ds-logs-web-default-2026.11.04-000001",
+  "_id": "nul-1",
+  "_source": {
+    "@timestamp": "2026-11-04T01:00:00.000Z",
+    "message": "before\u0000after",
+    "host": {"name": "web-01"}
+  },
+  "sort": [1793754000000, 21]
+}

@@ -9,7 +9,8 @@
       "started_at": 1793678570000,
       "finished_at": 1793678580000,
       "pages": 0,
-      "inserted": 0
+      "inserted": 0,
+      "quarantined": 0
     }
   },
   {
@@ -23,7 +24,8 @@
       "finished_at": 1793678580000,
       "outcome": "ok",
       "pages": 0,
-      "inserted": 0
+      "inserted": 0,
+      "quarantined": 0
     }
   },
   {
@@ -37,7 +39,8 @@
       "finished_at": 1793678580000,
       "outcome": "HTTP 401 Unauthorized: invalid token",
       "pages": 0,
-      "inserted": 0
+      "inserted": 0,
+      "quarantined": 0
     }
   },
   {
@@ -51,7 +54,8 @@
       "finished_at": 1793678580000,
       "outcome": "timeout\n",
       "pages": 0,
-      "inserted": 0
+      "inserted": 0,
+      "quarantined": 0
     }
   },
   {
@@ -65,7 +69,8 @@
       "finished_at": 1793678580000,
       "outcome": "ok",
       "pages": -1,
-      "inserted": 0
+      "inserted": 0,
+      "quarantined": 0
     }
   },
   {
@@ -79,7 +84,23 @@
       "finished_at": 1793678580000,
       "outcome": "ok",
       "pages": 0,
-      "inserted": -1
+      "inserted": -1,
+      "quarantined": 0
+    }
+  },
+  {
+    "case": "negative_quarantined",
+    "violations": [{"path": "quarantined", "rule": "minimum"}],
+    "data": {
+      "siem_profile": "elk-dev",
+      "source_kind": "alert",
+      "source_key": ".alerts-security.alerts-default",
+      "started_at": 1793678570000,
+      "finished_at": 1793678580000,
+      "outcome": "ok",
+      "pages": 0,
+      "inserted": 0,
+      "quarantined": -1
     }
   },
   {
@@ -93,7 +114,8 @@
       "finished_at": 1793678569999,
       "outcome": "ok",
       "pages": 0,
-      "inserted": 0
+      "inserted": 0,
+      "quarantined": 0
     }
   }
 ]

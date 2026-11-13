@@ -1,0 +1,17 @@
+{
+  "source_kind": "event",
+  "source_key": "logs-한글-*",
+  "hit": {
+    "_index": "logs-α\n",
+    "_id": "id-\u0000-\ud800",
+    "_score": 1.25,
+    "sort": [123, 42],
+    "_source": {
+      "message": "한글 \"문서\"",
+      "nonfinite": [NaN, Infinity, -Infinity],
+      "nested": {"value": "space"}
+    }
+  },
+  "expected_sha256": "ec96de6c4b75d1e3d72c97057f734597e0550ee51ad1467c6cd92605feaa2323",
+  "expected_siem_ref": "synthetic:v1:vImxvZ3MtXHUwM2IxXG4i:vImlkLVx1MDAwMC1cdWQ4MDAi:vMTIz:ec96de6c4b75d1e3d72c97057f734597e0550ee51ad1467c6cd92605feaa2323"
+}

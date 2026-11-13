@@ -261,7 +261,7 @@ top_k = 50
 
 # L2 Incident 분석(#261, #270). 연속 실패 3회에 held로 두고 1시간 뒤 재시도한다.
 [l2.analyze]
-lookback_ms = 86_400_000
+lookback_ms = 259_200_000
 max_failures = 3
 failure_retry_cooldown_ms = 3_600_000
 max_seed_entities = 10

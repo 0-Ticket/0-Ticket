@@ -1,5 +1,6 @@
 """개발 시드 확인 인자, 재실행·충돌·기존 시드 간 격리."""
 
+import json
 from copy import deepcopy
 
 import psycopg
@@ -72,15 +73,15 @@ def test_conflicting_row_rolls_back_all_new_rows(temp_database):
     migrate(temp_database)
     with psycopg.connect(temp_database) as conn:
         row = deepcopy(SEED["raw_records"][-1])
-        row["original"] = {"message": "existing"}
+        row["original_text"] = json.dumps({"message": "existing"}, ensure_ascii=True)
         insert_row(conn, "raw_records", row)
         conn.commit()
         with pytest.raises(dev_seed.SeedConflict):
             dev_seed.seed(conn)
         assert conn.execute("SELECT count(*) FROM raw_records").fetchone()[0] == 1
-        assert conn.execute("SELECT original FROM raw_records").fetchone()[0] == {
-            "message": "existing"
-        }
+        assert conn.execute("SELECT original_text FROM raw_records").fetchone()[0] == (
+            json.dumps({"message": "existing"}, ensure_ascii=True)
+        )
 
 
 @pytest.mark.db

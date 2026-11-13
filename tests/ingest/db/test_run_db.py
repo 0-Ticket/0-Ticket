@@ -9,6 +9,7 @@ from fake_elk import FakeElk, make_settings, respond
 from soc.contracts import to_epoch_ms
 from soc.db.migrate import migrate
 from soc.ingest.run import run
+from soc.ingest.store import load_checkpoint, save_page
 
 pytestmark = pytest.mark.db
 
@@ -42,26 +43,70 @@ def runs(conn: psycopg.Connection) -> list[tuple]:
     return conn.execute("SELECT outcome, pages, inserted FROM ingest_runs ORDER BY id").fetchall()
 
 
-def test_rejected_page_rolls_back_and_next_run_resumes(conn: psycopg.Connection) -> None:
-    failed = run_with(
-        conn, FakeElk({"logs-web-*": ["elk_events_page1.json", "elk_bad_record.json"]})
+def test_nul_page_is_stored_and_next_run_resumes(conn: psycopg.Connection) -> None:
+    """NUL이 든 문서가 있어도 페이지는 실패 없이 저장되고(#277), 다음 실행이 이어서 조회한다."""
+    first = run_with(
+        conn, FakeElk({"logs-web-*": ["elk_events_page1.json", "elk_nul_record.json"]})
     )
-    assert (failed.pages, failed.inserted, failed.failure) == (1, 2, "contract_rejected")
-    assert stored(conn) == [APACHE + "/dup-1", NGINX + "/dup-1"]  # 두 인덱스의 같은 _id
-    assert checkpoints(conn) == [{"time_ms": 1793754000000}]
-    assert runs(conn) == [("contract_rejected", 1, 2)]
+    assert (first.pages, first.inserted, first.failure) == (2, 3, None)
+    assert stored(conn) == [APACHE + "/dup-1", NGINX + "/dup-1", NGINX + "/nul-1"]
+    assert runs(conn) == [("ok", 2, 3)]
 
     fake = FakeElk({"logs-web-*": ["elk_events_page1.json", "elk_events_page2.json"]})
     resumed = run_with(conn, fake)
-    assert fake.search_bodies()[0]["query"]["range"]["@timestamp"]["gte"] == 1793754000000
+    assert fake.search_bodies()[0]["query"]["range"]["@timestamp"]["gte"] == 1793754360000
     assert (resumed.pages, resumed.inserted, resumed.failure) == (2, 1, None)
-    assert stored(conn) == [APACHE + "/dup-1", NGINX + "/dup-1", NGINX + "/evt-3"]
+    assert stored(conn) == [APACHE + "/dup-1", NGINX + "/dup-1", NGINX + "/evt-3", NGINX + "/nul-1"]
+    assert runs(conn) == [("ok", 2, 3), ("ok", 2, 1)]
+
+
+def test_db_error_on_page_rolls_back_and_next_run_resumes(conn: psycopg.Connection) -> None:
+    """페이지 중간의 원본 쓰기가 DB 오류로 실패하면 그 페이지만 롤백되고 다음 실행이 이어간다(#277).
+
+    계약 위반은 hit 데이터만으로 만들 수 없어(elk._read_page가 먼저 막는다), 특정 원본의 INSERT를
+    트리거로 실패시켜 롤백 경로를 본다. 실패 종류는 contract_rejected가 아니라 db_error다.
+    """
+    conn.execute(
+        "CREATE FUNCTION reject_page_row() RETURNS trigger LANGUAGE plpgsql"
+        " AS $$ BEGIN IF NEW.siem_ref LIKE '%/reject-1' THEN"
+        " RAISE EXCEPTION 'injected row failure'; END IF; RETURN NEW; END $$"
+    )
+    conn.execute(
+        "CREATE TRIGGER reject_page_row BEFORE INSERT ON raw_records"
+        " FOR EACH ROW EXECUTE FUNCTION reject_page_row()"
+    )
+
+    first = run_with(
+        conn,
+        FakeElk({"logs-web-*": ["elk_events_page1.json", "elk_events_page2_reject.json"]}),
+    )
+
+    # page2의 evt-3는 같은 트랜잭션이라 함께 롤백된다
+    assert (first.pages, first.inserted, first.failure) == (1, 2, "db_error")
+    assert stored(conn) == [APACHE + "/dup-1", NGINX + "/dup-1"]
+    assert checkpoints(conn) == [{"time_ms": 1793754000000}]
+    assert runs(conn) == [("db_error", 1, 2)]
+
+    conn.execute("DROP TRIGGER reject_page_row ON raw_records")
+    fake = FakeElk(
+        {"logs-web-*": ["elk_events_page1.json", "elk_events_page2_reject.json", "elk_empty.json"]}
+    )
+    resumed = run_with(conn, fake)
+
+    assert fake.search_bodies()[0]["query"]["range"]["@timestamp"]["gte"] == 1793754000000
+    assert (resumed.pages, resumed.inserted, resumed.failure) == (2, 2, None)
+    assert stored(conn) == [
+        APACHE + "/dup-1",
+        NGINX + "/dup-1",
+        NGINX + "/evt-3",
+        NGINX + "/reject-1",
+    ]
     assert checkpoints(conn) == [{"time_ms": 1793754300000}]
-    assert runs(conn) == [("contract_rejected", 1, 2), ("ok", 2, 1)]
+    assert runs(conn) == [("db_error", 1, 2), ("ok", 2, 2)]
 
 
 def test_first_page_failure_and_empty_run_leave_history_only(conn: psycopg.Connection) -> None:
-    failed = run_with(conn, FakeElk({"logs-web-*": [respond(500, {"error": "SECRET-BODY"})]}))
+    failed = run_with(conn, FakeElk({"logs-web-*": [respond(400, {"error": "SECRET-BODY"})]}))
     empty = run_with(conn, FakeElk({"logs-web-*": ["elk_empty.json"]}))
 
     assert (failed.failure, empty.failure) == ("http_status", None)
@@ -72,6 +117,45 @@ def test_first_page_failure_and_empty_run_leave_history_only(conn: psycopg.Conne
     ).fetchone()
     assert to_epoch_ms(started_at) == empty.started_at
     assert finished_at >= started_at
+
+
+def test_quarantined_count_is_recorded_for_committed_page(conn: psycopg.Connection) -> None:
+    result = run_with(conn, FakeElk({"logs-web-*": ["elk_quarantine_page.json", "elk_empty.json"]}))
+
+    assert (result.pages, result.inserted, result.quarantined, result.failure) == (1, 1, 1, None)
+    assert conn.execute("SELECT outcome, inserted, quarantined FROM ingest_runs").fetchall() == [
+        ("ok", 1, 1)
+    ]
+    assert conn.execute("SELECT reason_code FROM ingest_quarantine").fetchall() == [("non_finite",)]
+
+
+def test_last_bad_sort_commits_page_keeps_checkpoint_and_records_failure(
+    conn: psycopg.Connection,
+) -> None:
+    checkpoint = {
+        "siem_profile": "elk-test",
+        "source_kind": "event",
+        "source_key": "logs-web-*",
+        "cursor": {"time_ms": 1793753940000},
+        "updated_at": 1793753940000,
+    }
+    assert save_page(conn, [], checkpoint) == (0, 0)
+    fake = FakeElk({"logs-web-*": ["elk_bad_sort_last.json"] * 3})
+
+    result = run_with(conn, fake)
+
+    assert (result.pages, result.inserted, result.quarantined, result.failure) == (
+        1,
+        1,
+        1,
+        "sort_value",
+    )
+    assert conn.execute("SELECT count(*) FROM raw_records").fetchone() == (1,)
+    assert conn.execute("SELECT reason_code FROM ingest_quarantine").fetchall() == [("sort_value",)]
+    assert load_checkpoint(conn, "elk-test", "event", "logs-web-*") == checkpoint
+    assert conn.execute("SELECT outcome, inserted, quarantined FROM ingest_runs").fetchall() == [
+        ("sort_value", 1, 1)
+    ]
 
 
 def test_failed_run_record_keeps_saved_pages(conn: psycopg.Connection) -> None:

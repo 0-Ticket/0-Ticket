@@ -32,7 +32,7 @@ def page() -> dict:
 
 def raw_rows(conn: psycopg.Connection) -> list[dict]:
     rows = conn.execute(
-        "SELECT id, kind, siem_profile, siem_ref, fetched_at, original FROM raw_records"
+        "SELECT id, kind, siem_profile, siem_ref, fetched_at, original_text FROM raw_records"
         " ORDER BY siem_ref"
     ).fetchall()
     return [
@@ -42,9 +42,9 @@ def raw_rows(conn: psycopg.Connection) -> list[dict]:
             "siem_profile": profile,
             "siem_ref": ref,
             "fetched_at": to_epoch_ms(fetched_at),
-            "original": original,
+            "original_text": original_text,
         }
-        for id_, kind, profile, ref, fetched_at, original in rows
+        for id_, kind, profile, ref, fetched_at, original_text in rows
     ]
 
 
@@ -55,7 +55,7 @@ def next_checkpoint(page: dict, time_ms: int) -> dict:
 def test_page_and_checkpoint_are_saved(conn: psycopg.Connection, page: dict) -> None:
     assert load_checkpoint(conn, *TARGET) is None
 
-    assert save_page(conn, page["records"], page["checkpoint"]) == 2
+    assert save_page(conn, page["records"], page["checkpoint"]) == (2, 0)
 
     assert raw_rows(conn) == page["records"]
     assert load_checkpoint(conn, *TARGET) == page["checkpoint"]
@@ -63,7 +63,7 @@ def test_page_and_checkpoint_are_saved(conn: psycopg.Connection, page: dict) -> 
 
 def test_same_id_in_two_indexes_is_stored_twice(conn: psycopg.Connection, page: dict) -> None:
     """ELK _id는 인덱스 안에서만 유일하다. siem_ref(<_index>/<_id>)가 달라 둘 다 남는다."""
-    assert {r["original"]["_id"] for r in page["records"]} == {"a1b2c3"}
+    assert {json.loads(r["original_text"])["_id"] for r in page["records"]} == {"a1b2c3"}
 
     save_page(conn, page["records"], page["checkpoint"])
 
@@ -81,10 +81,12 @@ def test_saving_same_documents_again_keeps_originals(conn: psycopg.Connection, p
     again = copy.deepcopy(page["records"])
     for number, record in enumerate(again, start=301):
         record["id"] = f"raw_01a19f93-1150-7000-8000-000000000{number}"
-        record["original"]["_source"]["changed"] = True
+        hit = json.loads(record["original_text"])
+        hit["_source"]["changed"] = True
+        record["original_text"] = json.dumps(hit, ensure_ascii=True)
     later = next_checkpoint(page, 1793678600000)
 
-    assert save_page(conn, again, later) == 0
+    assert save_page(conn, again, later) == (0, 0)
     assert raw_rows(conn) == before
     assert load_checkpoint(conn, *TARGET) == later
 
@@ -131,7 +133,7 @@ def test_db_failure_on_checkpoint_rolls_back_records(conn: psycopg.Connection, p
 def run_rows(conn: psycopg.Connection) -> list[dict]:
     rows = conn.execute(
         "SELECT siem_profile, source_kind, source_key, started_at, finished_at, outcome, pages,"
-        " inserted FROM ingest_runs ORDER BY id"
+        " inserted, quarantined FROM ingest_runs ORDER BY id"
     ).fetchall()
     return [
         {
@@ -143,8 +145,19 @@ def run_rows(conn: psycopg.Connection) -> list[dict]:
             "outcome": outcome,
             "pages": pages,
             "inserted": inserted,
+            "quarantined": quarantined,
         }
-        for profile, kind, key, started_at, finished_at, outcome, pages, inserted in rows
+        for (
+            profile,
+            kind,
+            key,
+            started_at,
+            finished_at,
+            outcome,
+            pages,
+            inserted,
+            quarantined,
+        ) in rows
     ]
 
 
@@ -159,6 +172,7 @@ def run_of(outcome: str, pages: int, inserted: int, started_at: int) -> dict:
         "outcome": outcome,
         "pages": pages,
         "inserted": inserted,
+        "quarantined": 0,
     }
 
 
@@ -216,6 +230,7 @@ def test_checks_reject_broken_rows(conn: psycopg.Connection, values: dict) -> No
         {"outcome": "timeout\n"},
         {"pages": -1},
         {"inserted": -1},
+        {"quarantined": -1},
         {"finished_at": "2026-11-03T23:59:59Z"},
     ],
 )
@@ -236,3 +251,24 @@ def test_run_checks_reject_broken_rows(conn: psycopg.Connection, values: dict) -
         conn.execute(
             f"INSERT INTO ingest_runs ({columns}) VALUES ({placeholders})", list(row.values())
         )
+
+
+@pytest.mark.parametrize("name", ["nul_doc.json", "lone_surrogate_doc.json", "backslash_doc.json"])
+def test_special_characters_are_saved_and_restore_the_hit(
+    conn: psycopg.Connection, page: dict, name: str
+) -> None:
+    """NUL·짝 없는 서로게이트·백슬래시 문서도 저장이 실패하지 않고 원래 hit로 돌아온다(#277)."""
+    hit = json.loads((FIXTURES / name).read_text(encoding="utf-8"))
+    record = {
+        "id": "raw_01a19f93-1150-7000-8000-000000000401",
+        "kind": "event",
+        "siem_profile": "elk-dev",
+        "siem_ref": f"{hit['_index']}/{hit['_id']}",
+        "fetched_at": 1793678580000,
+        "original_text": json.dumps(hit, ensure_ascii=True),
+    }
+
+    assert save_page(conn, [record], next_checkpoint(page, 1793678600000)) == (1, 0)
+
+    (stored,) = raw_rows(conn)
+    assert json.loads(stored["original_text"]) == hit

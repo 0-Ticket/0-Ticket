@@ -8,9 +8,7 @@
       "siem_profile": "elk-dev",
       "siem_ref": "alerts/0001",
       "fetched_at": 1793678400000,
-      "original": {
-        "rule": "Web Shell Upload"
-      }
+      "original_text": "{\"rule\": \"Web Shell Upload\"}"
     },
     {
       "id": "raw_01a19f93-1150-7000-8000-000000000002",
@@ -18,9 +16,7 @@
       "siem_profile": "elk-dev",
       "siem_ref": "events/0001",
       "fetched_at": 1793678400000,
-      "original": {
-        "url": "/upload.php"
-      }
+      "original_text": "{\"url\": \"/upload.php\"}"
     }
   ],
   "alerts": [

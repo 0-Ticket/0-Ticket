@@ -1,0 +1,14 @@
+[
+  {
+    "case": "ok",
+    "data": {
+      "siem_profile": "elk-dev",
+      "source_kind": "event",
+      "source_key": "logs-web-*",
+      "siem_ref": "synthetic:v1:n:n:vMTIz:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "reason_code": "non_finite",
+      "original_text": "{\"_source\":{\"value\":NaN}}",
+      "seen_at": 1793678580000
+    }
+  }
+]

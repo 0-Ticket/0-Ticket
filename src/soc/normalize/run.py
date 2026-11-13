@@ -4,8 +4,10 @@ W02는 새 원본에 pending 상태를 만든 뒤 pending만 고르고, W03 재�
 한 건이 실패해도 나머지는 계속 처리한다.
 """
 
+import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from typing import Any
 
 import psycopg
 
@@ -110,11 +112,60 @@ def _normalize_and_save(
         저장했으면 True, 임대를 잃어 저장하지 않았으면 False.
     """
     mapped = normalize(raw)
-    validate_ocsf(mapped.row["ocsf"])
-    assets = lookup_assets(conn, mapped.row["entities"], settings.asset_statement_timeout_ms)
-    row = {**mapped.row, "assets": assets}
+    escaped = escape_unstorable(mapped.row)
+    validate_ocsf(escaped["ocsf"])
+    assets = lookup_assets(conn, escaped["entities"], settings.asset_statement_timeout_ms)
+    row = {**escaped, "assets": assets}
     validate_contract(mapped.kind, row)
     return save_success(conn, owner, raw.id, mapped.kind, row)
+
+
+# NUL과 짝 없는 서로게이트(U+D800..U+DFFF). jsonb는 NUL을, UTF-8은 서로게이트를 받지 않는다
+_UNSTORABLE = re.compile("[\x00\ud800-\udfff]")
+
+
+class EscapeCollisionError(NormalizeError):
+    """같은 dict 안에서 서로 다른 두 키가 이스케이프 뒤 같은 키가 됐다.
+
+    하나가 말없이 덮어쓰이지 않도록 원본을 실패(escape_collision)로 기록한다.
+    """
+
+    def __init__(self) -> None:
+        """실패 코드 escape_collision을 가진 예외를 만든다."""
+        super().__init__("escape_collision")
+
+
+def escape_unstorable(value: Any) -> Any:
+    """값 안의 NUL과 짝 없는 서로게이트를 6글자 이스케이프로 바꾼 새 값을 돌려준다(D-049).
+
+    NUL은 \\u0000, 서로게이트는 \\udXXX(소문자 16진수) 6글자가 된다. jsonb는 NUL을 받지 않고
+    서로게이트는 UTF-8로 쓸 수 없다. 저장 전에 문자열 값과 dict 키 모두에 적용한다.
+    dict·list는 안쪽까지 재귀로 바꾸고, 다른 타입은 그대로 둔다. 입력은 바꾸지 않는다.
+    이 치환 결과는 원본에 글자로 있던 \\u0000과 구분되지 않는다.
+    한 dict 안에서 두 키가 이스케이프 뒤 같아지면 값을 덮어쓰지 않고 EscapeCollisionError를 낸다.
+
+    Args:
+        value: 정규화 결과 행(또는 그 일부).
+
+    Returns:
+        같은 모양의 새 값.
+
+    Raises:
+        EscapeCollisionError: 한 dict 안에서 이스케이프 뒤 키가 겹쳤다.
+    """
+    if isinstance(value, str):
+        return _UNSTORABLE.sub(lambda match: f"\\u{ord(match.group()):04x}", value)
+    if isinstance(value, dict):
+        escaped: dict[Any, Any] = {}
+        for key, item in value.items():
+            new_key = escape_unstorable(key)
+            if new_key in escaped:
+                raise EscapeCollisionError
+            escaped[new_key] = escape_unstorable(item)
+        return escaped
+    if isinstance(value, list):
+        return [escape_unstorable(item) for item in value]
+    return value
 
 
 def _failure_code(error: Exception) -> str:

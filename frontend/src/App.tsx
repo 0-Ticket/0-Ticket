@@ -551,7 +551,10 @@ function DetailBody({ data }: { data: Detail }) {
           <h3>{data.record ? "정규화 결과 · OCSF" : "정규화 결과 없음"}</h3>
           {data.record && <JsonViewer value={data.record} />}
           <h3>수집 원본</h3>
-          <JsonViewer value={data.raw_record} />
+          <JsonViewer
+            value={data.raw_record}
+            rawText={data.raw_record.original_text}
+          />
         </>
       )}
       {"hunt" in data && (

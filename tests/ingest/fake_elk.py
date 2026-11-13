@@ -7,6 +7,7 @@ FakeStore는 soc.ingest.store의 load_checkpoint·save_page·record_run을 메�
 
 import copy
 import json
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -14,6 +15,8 @@ import httpx
 
 from soc.contracts import validate_contract
 from soc.ingest.config import Settings, Source
+
+SearchAnswer = str | httpx.Response | Callable[[httpx.Request], httpx.Response]
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "ingest"
 BASE_URL = "https://elk.example.com:9200"
@@ -56,7 +59,8 @@ def make_settings(
 
 def respond(status: int, body: Any) -> httpx.Response:
     """JSON 본문을 가진 응답을 만든다. 인자 status는 HTTP 상태 코드, body는 JSON으로 보낼 값."""
-    return httpx.Response(status, json=body)
+    content = json.dumps(body, ensure_ascii=True, allow_nan=True).encode("ascii")
+    return httpx.Response(status, content=content, headers={"Content-Type": "application/json"})
 
 
 class FakeElk:
@@ -69,11 +73,12 @@ class FakeElk:
         close_response: 지정하면 PIT 닫기 요청에 이 응답을 준다(실패 주입용).
     """
 
-    def __init__(self, searches: dict[str, list[httpx.Response | str]]) -> None:
+    def __init__(self, searches: dict[str, list[SearchAnswer]]) -> None:
         """인자 searches: 대상 키 → 검색 응답 목록(앞에서부터 하나씩 쓴다)."""
         self.searches = {key: list(responses) for key, responses in searches.items()}
         self.requests: list[httpx.Request] = []
         self.pit_response: httpx.Response | None = None
+        self.pit_responses: list[SearchAnswer] = []
         self.close_response: httpx.Response | None = None
         self._open: dict[str, str] = {}  # PIT ID → 키 패턴
 
@@ -86,8 +91,11 @@ class FakeElk:
         path = request.url.path
         if request.method == "POST" and path.endswith("/_pit"):
             key = path.removeprefix("/").removesuffix("/_pit")
-            if self.pit_response is not None:
-                return self.pit_response
+            answer = self.pit_responses.pop(0) if self.pit_responses else self.pit_response
+            if answer is not None:
+                response = answer(request) if callable(answer) else answer
+                self._remember_pit(response, key)
+                return response
             pit_id = f"pit-{key}"
             self._open[pit_id] = key
             return respond(200, {"id": pit_id})
@@ -95,16 +103,33 @@ class FakeElk:
             body = json.loads(request.content)
             key = self._open[body["pit"]["id"]]
             answer = self.searches[key].pop(0)
+            if callable(answer):
+                return answer(request)
             if isinstance(answer, str):
                 data = fixture(answer)
                 self._open[data["pit_id"]] = key  # ELK는 응답마다 PIT ID를 바꿀 수 있다
                 return respond(200, data)
+            self._remember_pit(answer, key)
             return answer
         if request.method == "DELETE" and path == "/_pit":
             if self.close_response is not None:
                 return self.close_response
             return respond(200, {"succeeded": True, "num_freed": 1})
         return respond(404, {"error": "unexpected request"})
+
+    def _remember_pit(self, response: httpx.Response, key: str) -> None:
+        """성공한 응답이 바꾼 PIT ID를 다음 검색 요청에 등록한다."""
+        if not 200 <= response.status_code < 300 or not response.is_stream_consumed:
+            return
+        try:
+            data = response.json()
+        except ValueError:
+            return
+        pit_id = data.get("id") if isinstance(data, dict) else None
+        if pit_id is None and isinstance(data, dict):
+            pit_id = data.get("pit_id")
+        if isinstance(pit_id, str):
+            self._open[pit_id] = key
 
     def client(self) -> httpx.Client:
         """이 가짜 ELK를 쓰는 httpx.Client를 돌려준다(기준 주소는 BASE_URL)."""
@@ -133,6 +158,7 @@ class FakeStore:
     def __init__(self) -> None:
         """빈 저장소를 만든다."""
         self.records: dict[tuple[str, str], dict[str, Any]] = {}
+        self.quarantines: dict[tuple[str, str], dict[str, Any]] = {}
         self.checkpoints: dict[tuple[str, str, str], dict[str, Any]] = {}
         self.runs: list[dict[str, Any]] = []
         self.save_error: Exception | None = None
@@ -143,15 +169,18 @@ class FakeStore:
         found = self.checkpoints.get((siem_profile, source_kind, source_key))
         return copy.deepcopy(found)
 
-    def save_page(self, conn, records, checkpoint):
-        """store.save_page와 같은 계약: 모두 검증한 뒤 원본은 새 것만 넣고 체크포인트를 덮어쓴다.
+    def save_page(self, conn, records, checkpoint, quarantines=()):
+        """store.save_page와 같은 계약: 페이지를 검증·저장하고 신규 원본·격리 수를 돌려준다.
 
-        반환: 새로 넣은 원본 수.
+        반환: (새 원본 수, 새 격리 행 수).
         """
         # 검증을 모두 통과해야 아무것이든 쓴다(한 트랜잭션).
         for record in records:
             validate_contract("raw_record", record)
-        validate_contract("ingest_checkpoint", checkpoint)
+        for quarantine in quarantines:
+            validate_contract("ingest_quarantine", quarantine)
+        if checkpoint is not None:
+            validate_contract("ingest_checkpoint", checkpoint)
         if self.save_error is not None:
             raise self.save_error
         inserted = 0
@@ -160,9 +189,20 @@ class FakeStore:
             if ref not in self.records:
                 self.records[ref] = copy.deepcopy(record)
                 inserted += 1
-        key = (checkpoint["siem_profile"], checkpoint["source_kind"], checkpoint["source_key"])
-        self.checkpoints[key] = copy.deepcopy(checkpoint)
-        return inserted
+        quarantined_count = 0
+        for quarantine in quarantines:
+            key = (quarantine["siem_profile"], quarantine["siem_ref"])
+            if key not in self.quarantines:
+                self.quarantines[key] = copy.deepcopy(quarantine)
+                quarantined_count += 1
+        if checkpoint is not None:
+            key = (
+                checkpoint["siem_profile"],
+                checkpoint["source_kind"],
+                checkpoint["source_key"],
+            )
+            self.checkpoints[key] = copy.deepcopy(checkpoint)
+        return inserted, quarantined_count
 
     def record_run(self, conn, run):
         """store.record_run과 같은 계약: 검사를 통과한 실행 이력을 runs 끝에 붙인다.

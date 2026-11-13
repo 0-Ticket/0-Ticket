@@ -1,6 +1,7 @@
 """L2 분류 입력을 PostgreSQL에서 읽는 경계를 확인한다(db 마커)."""
 
 import json
+from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -11,10 +12,14 @@ from psycopg import sql
 from psycopg.types.json import Jsonb
 
 from soc.agent import AgentResult
+from soc.agent.compose import compose_instructions
+from soc.agent.llm import input_chars
+from soc.agent.runner import wrap_data
 from soc.asset_lookup import AssetLookupError
 from soc.contracts import to_datetime
 from soc.db.migrate import MIGRATIONS_DIR, migrate
 from soc.l2.analyze import context as analyze_context
+from soc.l2.analyze.tasks import make_investigate_task
 from soc.l2.analyze.worker import L2AnalyzeWorker
 from soc.l2.branch import build_branch
 from soc.l2.branch.read import (
@@ -32,6 +37,7 @@ from soc.store import CollectionMissing, SearchHit, StoreError
 pytestmark = pytest.mark.db
 
 FIXTURE = Path(__file__).parent / "fixtures" / "l2" / "branch.json"
+RELATED_ENTITY_FIXTURE = Path(__file__).parent / "fixtures" / "l2" / "related_entity_normalize.json"
 SETTINGS = BranchSettings(
     candidate_window_ms=86_400_000,
     max_candidates=5,
@@ -39,7 +45,7 @@ SETTINGS = BranchSettings(
     top_k=50,
 )
 ANALYZE_SETTINGS = AnalyzeSettings(
-    lookback_ms=86_400_000,
+    lookback_ms=259_200_000,
     max_failures=3,
     failure_retry_cooldown_ms=3_600_000,
     max_seed_entities=10,
@@ -54,7 +60,6 @@ TIME_FIELDS = {
     "started_at",
 }
 JSON_FIELDS = {
-    "original",
     "entities",
     "assets",
     "triage",
@@ -805,6 +810,266 @@ def prepare_analyzing_incident(
             "VALUES ('20.0', 'T1059.001', 'PowerShell', ARRAY['execution'])"
         )
     return incident_id
+
+
+def test_analyze_context_reaches_older_related_event_and_first_call_fits_budget(
+    l2_database: tuple[str, dict[str, Any]],
+) -> None:
+    database_url, sample = l2_database
+    incident_id = prepare_analyzing_incident(database_url, sample)
+    old_alert_time = sample["now"] - 10 * 86_400_000
+    old_event_time = old_alert_time - 86_400_000
+    old_raw_id = "raw_01a19f93-1150-7000-8000-000000000267"
+    old_event_id = "evt_01a19f93-1150-7000-8000-000000000267"
+    with psycopg.connect(database_url) as conn:
+        conn.execute(
+            "UPDATE tickets SET created_at = %s WHERE id = %s",
+            (to_datetime(old_alert_time), sample["tickets"][0]["id"]),
+        )
+        conn.execute(
+            "UPDATE alerts SET time = %s, entities = %s WHERE id = %s",
+            (
+                to_datetime(old_alert_time),
+                Jsonb([{"type": "host", "value": "shared-proxy", "role": "target"}]),
+                sample["alerts"][0]["id"],
+            ),
+        )
+        insert(
+            conn,
+            "raw_records",
+            {**sample["raw_records"][1], "id": old_raw_id, "siem_ref": "related-267"},
+        )
+        insert(
+            conn,
+            "events",
+            {
+                **sample["events"][0],
+                "id": old_event_id,
+                "raw_id": old_raw_id,
+                "time": old_event_time,
+            },
+        )
+    with psycopg.connect(database_url) as conn:
+        context = analyze_context.read_context(
+            conn,
+            incident_id,
+            ANALYZE_SETTINGS,
+            now_ms=sample["now"],
+            max_range_days=7,
+            asset_statement_timeout_ms=5000,
+        )
+
+    assert context is not None
+    assert context.tickets[0]["created_at"] == old_alert_time
+    assert context.window == {
+        "from": old_alert_time - ANALYZE_SETTINGS.lookback_ms,
+        "to": sample["now"],
+    }
+    related = next(item for item in context.related if item["record"]["id"] == old_event_id)
+    assert related == {
+        "kind": "event",
+        "record": {
+            "id": old_event_id,
+            "time": old_event_time,
+            "summary": sample["events"][0]["summary"],
+            "entities": sample["events"][0]["entities"],
+        },
+    }
+    assert old_event_id in context.evidence_ids
+    assert context.investigate_data()["max_range_days"] == 7
+    alert = next(item for item in context.related if item["kind"] == "alert")
+    assert set(alert["record"]) == {"id", "time", "severity", "title", "entities"}
+    task = make_investigate_task(
+        incident_id,
+        attempt=1,
+        data=context.investigate_data(),
+        allowed_evidence_ids=context.evidence_ids,
+    )
+    chars = input_chars(
+        compose_instructions(task, max_turns=12),
+        [{"role": "user", "content": wrap_data(task.data)}],
+    )
+    assert chars <= 64_000
+
+
+def test_analyze_context_uses_ticket_time_when_l3_has_no_alert_or_event_rows(
+    l2_database: tuple[str, dict[str, Any]],
+) -> None:
+    database_url, sample = l2_database
+    incident_id = sample["incidents"][0]["id"]
+    ticket = sample["tickets"][1]
+    with psycopg.connect(database_url) as conn:
+        conn.execute("UPDATE tickets SET status = 'linked' WHERE id = %s", (ticket["id"],))
+        conn.execute(
+            "UPDATE hunts SET evidence_ids = %s WHERE id = %s",
+            ([sample["alerts"][0]["id"]], ticket["hunt_id"]),
+        )
+        conn.execute(
+            "UPDATE incidents SET ticket_ids = %s WHERE id = %s",
+            ([ticket["id"]], incident_id),
+        )
+    with psycopg.connect(database_url) as conn:
+        context = analyze_context.read_context(
+            conn,
+            incident_id,
+            ANALYZE_SETTINGS,
+            now_ms=sample["now"],
+            max_range_days=7,
+            asset_statement_timeout_ms=5000,
+        )
+
+    assert context is not None
+    assert context.alerts == context.events == ()
+    assert context.window == {
+        "from": ticket["created_at"] - ANALYZE_SETTINGS.lookback_ms,
+        "to": sample["now"],
+    }
+
+
+def test_analyze_context_caps_related_and_only_licenses_visible_ids(
+    l2_database: tuple[str, dict[str, Any]],
+) -> None:
+    database_url, sample = l2_database
+    incident_id = prepare_analyzing_incident(database_url, sample)
+    ticket_id = sample["tickets"][0]["id"]
+    entities = [
+        {"type": "host", "value": f"host-{number}.example.com", "role": "target"}
+        for number in range(5)
+    ]
+    generated_ids = set()
+    with psycopg.connect(database_url) as conn:
+        conn.execute("UPDATE tickets SET entities = %s WHERE id = %s", (Jsonb(entities), ticket_id))
+        conn.execute(
+            "UPDATE incidents SET entities = %s WHERE id = %s", (Jsonb(entities), incident_id)
+        )
+        for number in range(100):
+            suffix = f"01a19f93-1150-7000-8000-{300 + number:012d}"
+            raw_id, event_id = f"raw_{suffix}", f"evt_{suffix}"
+            generated_ids.add(event_id)
+            insert(
+                conn,
+                "raw_records",
+                {
+                    **sample["raw_records"][1],
+                    "id": raw_id,
+                    "siem_ref": f"related-267-{number}",
+                },
+            )
+            insert(
+                conn,
+                "events",
+                {
+                    **sample["events"][0],
+                    "id": event_id,
+                    "raw_id": raw_id,
+                    "time": sample["now"] - number * 1000,
+                    "entities": [entities[number // 20]],
+                },
+            )
+    with psycopg.connect(database_url) as conn:
+        context = analyze_context.read_context(
+            conn,
+            incident_id,
+            ANALYZE_SETTINGS,
+            now_ms=sample["now"],
+            max_range_days=7,
+            asset_statement_timeout_ms=5000,
+        )
+
+    assert context is not None
+    related_ids = {item["record"]["id"] for item in context.related}
+    assert len(related_ids) == 80
+    assert len(related_ids & generated_ids) == 80
+    assert related_ids <= set(context.evidence_ids)
+    assert not (generated_ids - related_ids) & set(context.evidence_ids)
+
+
+def test_related_sql_bucket_clamp_follows_bucket_count(
+    l2_database: tuple[str, dict[str, Any]], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    database_url, sample = l2_database
+    monkeypatch.setattr(analyze_context, "BUCKETS", 6)
+    start = 1_800_000_000_000
+    day = 86_400_000
+    entity = {"type": "host", "value": "bins.example.com", "role": "target"}
+    expected = set()
+    with psycopg.connect(database_url) as conn:
+        for number in range(12):
+            suffix = f"01a19f93-1150-7000-8000-{500 + number:012d}"
+            raw_id, event_id = f"raw_{suffix}", f"evt_{suffix}"
+            bucket = number if number < 6 else 5
+            if bucket == 4:
+                expected.add(event_id)
+            insert(
+                conn,
+                "raw_records",
+                {**sample["raw_records"][1], "id": raw_id, "siem_ref": f"bucket-267-{number}"},
+            )
+            insert(
+                conn,
+                "events",
+                {
+                    **sample["events"][0],
+                    "id": event_id,
+                    "raw_id": raw_id,
+                    "time": start + bucket * day + (number + 1) * 1000,
+                    "entities": [entity],
+                },
+            )
+        related = analyze_context._related(
+            conn,
+            [entity],
+            {"from": start, "to": start + 6 * day},
+            replace(ANALYZE_SETTINGS, max_related_per_entity=6),
+        )
+
+    assert expected <= {item["record"]["id"] for item in related}
+
+
+def test_related_matches_normalized_stored_entities(
+    l2_database: tuple[str, dict[str, Any]],
+) -> None:
+    database_url, sample = l2_database
+    fixture = json.loads(RELATED_ENTITY_FIXTURE.read_text(encoding="utf-8"))
+    ids = {}
+    with psycopg.connect(database_url) as conn:
+        for index, item in enumerate(fixture["records"]):
+            suffix = f"01a19f93-1150-7000-8000-{3050 + index:012d}"
+            kind = item["kind"]
+            raw_id = f"raw_{suffix}"
+            record_id = f"{'alt' if kind == 'alert' else 'evt'}_{suffix}"
+            ids[item["name"]] = record_id
+            insert(
+                conn,
+                "raw_records",
+                {
+                    **sample["raw_records"][0 if kind == "alert" else 1],
+                    "id": raw_id,
+                    "siem_ref": f"related-305-{index}",
+                },
+            )
+            insert(
+                conn,
+                "alerts" if kind == "alert" else "events",
+                {
+                    **(sample["alerts"][0] if kind == "alert" else sample["events"][0]),
+                    "id": record_id,
+                    "raw_id": raw_id,
+                    "time": sample["now"] - (index + 1) * 1000,
+                    "entities": [{"type": item["type"], "value": item["value"], "role": "target"}],
+                },
+            )
+    inserted_ids = set(ids.values())
+    with psycopg.connect(database_url) as conn:
+        for query in fixture["queries"]:
+            related = analyze_context._related(
+                conn,
+                [{"type": query["type"], "value": query["value"], "role": "target"}],
+                {"from": sample["now"] - 10_000, "to": sample["now"]},
+                ANALYZE_SETTINGS,
+            )
+            actual = {item["record"]["id"] for item in related} & inserted_ids
+            assert actual == {ids[name] for name in query["expected"]}
 
 
 def test_analyze_worker_saves_artifact_proposals_and_incident_atomically(

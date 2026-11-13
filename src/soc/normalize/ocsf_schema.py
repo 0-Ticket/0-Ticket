@@ -5,6 +5,7 @@
 """
 
 import json
+import math
 from functools import cache
 from pathlib import Path
 from typing import Any
@@ -69,10 +70,12 @@ def _value_is_valid(attribute: dict[str, Any], item: Any) -> bool:
 
     Args:
         attribute: 속성 정의(type, object_type, enum 중 있는 것).
-        item: 검사할 값 하나. 객체 정의가 ocsf/objects.json에 없으면 실패다.
+        item: 검사할 값 하나. generic object는 JSON 객체, 나머지는 등록된 정의로 검사한다.
     """
     kind = attribute["type"]
     if kind == "object_t":
+        if attribute.get("object_type") == "object":
+            return isinstance(item, dict) and _json_value_is_valid(item)
         nested = _object_definitions().get(attribute.get("object_type", ""))
         return isinstance(item, dict) and nested is not None and _object_is_valid(nested, item)
     if kind in _INTEGER_TYPES:
@@ -82,6 +85,23 @@ def _value_is_valid(attribute: dict[str, Any], item: Any) -> bool:
     else:
         matches = isinstance(item, str)
     return matches and ("enum" not in attribute or str(item) in attribute["enum"])
+
+
+def _json_value_is_valid(value: Any) -> bool:
+    """이름 없는 OCSF object의 값이 JSON으로 보존되는지 확인한다.
+
+    Args:
+        value: 문자열 키 객체, 목록, JSON 기본 값만 허용하는 중첩 값.
+    """
+    if isinstance(value, dict):
+        return all(
+            isinstance(key, str) and _json_value_is_valid(item) for key, item in value.items()
+        )
+    if isinstance(value, list):
+        return all(_json_value_is_valid(item) for item in value)
+    if isinstance(value, float):
+        return math.isfinite(value)
+    return value is None or isinstance(value, (str, bool, int))
 
 
 @cache

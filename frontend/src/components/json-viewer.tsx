@@ -1,7 +1,13 @@
 import { useId, useState } from "react";
 import { flatten } from "./json";
 
-export function JsonViewer({ value }: { value: unknown }) {
+export function JsonViewer({
+  value,
+  rawText,
+}: {
+  value: unknown;
+  rawText?: string;
+}) {
   const [raw, setRaw] = useState(false);
   const id = useId();
   return (
@@ -24,7 +30,12 @@ export function JsonViewer({ value }: { value: unknown }) {
       </div>
       <div id={id}>
         {raw ? (
-          <pre className="json">{JSON.stringify(value, null, 2)}</pre>
+          <pre className="json">
+            {rawText ??
+              (typeof value === "string"
+                ? value
+                : JSON.stringify(value, null, 2))}
+          </pre>
         ) : (
           <div className="field-table">
             <table aria-label="JSON 필드 테이블">

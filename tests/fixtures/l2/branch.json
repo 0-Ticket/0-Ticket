@@ -7,7 +7,7 @@
       "siem_profile": "test",
       "siem_ref": "alert-101",
       "fetched_at": 1793764000000,
-      "original": {"sample": true}
+      "original_text": "{\"sample\": true}"
     },
     {
       "id": "raw_01a19f93-1150-7000-8000-000000000102",
@@ -15,7 +15,7 @@
       "siem_profile": "test",
       "siem_ref": "event-101",
       "fetched_at": 1793764000000,
-      "original": {"sample": true}
+      "original_text": "{\"sample\": true}"
     },
     {
       "id": "raw_01a19f93-1150-7000-8000-000000000103",
@@ -23,7 +23,7 @@
       "siem_profile": "test",
       "siem_ref": "event-102",
       "fetched_at": 1793764000000,
-      "original": {"sample": true}
+      "original_text": "{\"sample\": true}"
     }
   ],
   "alerts": [
@@ -34,10 +34,20 @@
       "severity": 4,
       "title": "인공 분류 샘플",
       "rule_id": "test-rule",
-      "entities": [{"type": "host", "value": "Shared-Proxy", "role": "target"}],
+      "entities": [
+        {
+          "type": "host",
+          "value": "Shared-Proxy",
+          "role": "target"
+        }
+      ],
       "assets": [],
       "triage": null,
-      "ocsf": {"class_uid": 2004, "severity_id": 4, "time": 1793764100000},
+      "ocsf": {
+        "class_uid": 2004,
+        "severity_id": 4,
+        "time": 1793764100000
+      },
       "details": {}
     }
   ],
@@ -48,9 +58,18 @@
       "time": 1793764110000,
       "ocsf_class": 4002,
       "summary": "일반 Ticket 근거",
-      "entities": [{"type": "ip", "value": "2001:db8::1", "role": "src"}],
+      "entities": [
+        {
+          "type": "ip",
+          "value": "2001:db8::1",
+          "role": "src"
+        }
+      ],
       "assets": [],
-      "ocsf": {"class_uid": 4002, "time": 1793764110000},
+      "ocsf": {
+        "class_uid": 4002,
+        "time": 1793764110000
+      },
       "details": {}
     },
     {
@@ -59,9 +78,18 @@
       "time": 1793764120000,
       "ocsf_class": 4001,
       "summary": "L3 Hunt 근거",
-      "entities": [{"type": "domain", "value": "beacon.example", "role": "target"}],
+      "entities": [
+        {
+          "type": "domain",
+          "value": "beacon.example",
+          "role": "target"
+        }
+      ],
       "assets": [],
-      "ocsf": {"class_uid": 4001, "time": 1793764120000},
+      "ocsf": {
+        "class_uid": 4001,
+        "time": 1793764120000
+      },
       "details": {}
     }
   ],
@@ -71,7 +99,9 @@
       "hunt_run_id": "hrn_01a19f93-1150-7000-8000-000000000101",
       "status": "confirmed",
       "hypothesis": "인공 DNS 비콘 가설",
-      "attack_techniques": ["T1071.004"],
+      "attack_techniques": [
+        "T1071.004"
+      ],
       "confidence": 0.8,
       "reason": "인공 샘플에서 같은 도메인을 확인했다",
       "evidence_ids": [
@@ -80,8 +110,16 @@
         "alt_01a19f93-1150-7000-8000-0000000001ff"
       ],
       "entities": [
-        {"type": "domain", "value": "beacon.example", "role": "dst"},
-        {"type": "host", "value": "WS-07", "role": "src"}
+        {
+          "type": "domain",
+          "value": "beacon.example",
+          "role": "dst"
+        },
+        {
+          "type": "host",
+          "value": "WS-07",
+          "role": "src"
+        }
       ],
       "attempts": 1,
       "verified_at": 1793764200000,
@@ -95,16 +133,46 @@
       "id": "tkt_01a19f93-1150-7000-8000-000000000101",
       "origin": "auto",
       "status": "escalated",
-      "alert_ids": ["alt_01a19f93-1150-7000-8000-000000000101"],
+      "alert_ids": [
+        "alt_01a19f93-1150-7000-8000-000000000101"
+      ],
       "hunt_id": null,
       "entities": [
-        {"type": "file_hash", "value": " ABCDEF1234 ", "role": "target"},
-        {"type": "process", "value": "/Opt/Tool", "role": "actor"},
-        {"type": "url", "value": "https://Example.com/Path", "role": "target"},
-        {"type": "domain", "value": " Example.COM ", "role": "dst"},
-        {"type": "user", "value": " Admin ", "role": "actor"},
-        {"type": "ip", "value": "2001:0DB8:0:0:0:0:0:1", "role": "src"},
-        {"type": "host", "value": " Shared-Proxy ", "role": "dst"}
+        {
+          "type": "file_hash",
+          "value": " ABCDEF1234 ",
+          "role": "target"
+        },
+        {
+          "type": "process",
+          "value": "/Opt/Tool",
+          "role": "actor"
+        },
+        {
+          "type": "url",
+          "value": "https://Example.com/Path",
+          "role": "target"
+        },
+        {
+          "type": "domain",
+          "value": " Example.COM ",
+          "role": "dst"
+        },
+        {
+          "type": "user",
+          "value": " Admin ",
+          "role": "actor"
+        },
+        {
+          "type": "ip",
+          "value": "2001:0DB8:0:0:0:0:0:1",
+          "role": "src"
+        },
+        {
+          "type": "host",
+          "value": " Shared-Proxy ",
+          "role": "dst"
+        }
       ],
       "verdict": {
         "decision": "malicious",
@@ -128,7 +196,13 @@
       "status": "escalated",
       "alert_ids": [],
       "hunt_id": "hnt_01a19f93-1150-7000-8000-000000000101",
-      "entities": [{"type": "domain", "value": " Beacon.Example ", "role": "dst"}],
+      "entities": [
+        {
+          "type": "domain",
+          "value": " Beacon.Example ",
+          "role": "dst"
+        }
+      ],
       "verdict": null,
       "created_at": 1793764000000,
       "updated_at": 1793764300000,
@@ -179,12 +253,30 @@
       "title": "강한 신호 두 개",
       "summary": null,
       "status": "analyzing",
-      "ticket_ids": ["tkt_01a19f93-1150-7000-8000-000000000101"],
+      "ticket_ids": [
+        "tkt_01a19f93-1150-7000-8000-000000000101"
+      ],
       "entities": [
-        {"type": "file_hash", "value": "abcdef1234", "role": "target"},
-        {"type": "user", "value": "ADMIN", "role": "actor"},
-        {"type": "ip", "value": "2001:db8::1", "role": "src"},
-        {"type": "host", "value": "shared-proxy", "role": "dst"}
+        {
+          "type": "file_hash",
+          "value": "abcdef1234",
+          "role": "target"
+        },
+        {
+          "type": "user",
+          "value": "ADMIN",
+          "role": "actor"
+        },
+        {
+          "type": "ip",
+          "value": "2001:db8::1",
+          "role": "src"
+        },
+        {
+          "type": "host",
+          "value": "shared-proxy",
+          "role": "dst"
+        }
       ],
       "severity": 4,
       "assessed_severity": null,
@@ -199,11 +291,25 @@
       "title": "대소문자를 보존하는 신호",
       "summary": null,
       "status": "awaiting_review",
-      "ticket_ids": ["tkt_01a19f93-1150-7000-8000-000000000101"],
+      "ticket_ids": [
+        "tkt_01a19f93-1150-7000-8000-000000000101"
+      ],
       "entities": [
-        {"type": "url", "value": "https://Example.com/Path", "role": "target"},
-        {"type": "process", "value": "/opt/tool", "role": "actor"},
-        {"type": "ip", "value": "2001:db8::1", "role": "src"}
+        {
+          "type": "url",
+          "value": "https://Example.com/Path",
+          "role": "target"
+        },
+        {
+          "type": "process",
+          "value": "/opt/tool",
+          "role": "actor"
+        },
+        {
+          "type": "ip",
+          "value": "2001:db8::1",
+          "role": "src"
+        }
       ],
       "severity": 3,
       "assessed_severity": 3,
@@ -218,10 +324,20 @@
       "title": "보조 신호 하나",
       "summary": null,
       "status": "human_handling",
-      "ticket_ids": ["tkt_01a19f93-1150-7000-8000-000000000101"],
+      "ticket_ids": [
+        "tkt_01a19f93-1150-7000-8000-000000000101"
+      ],
       "entities": [
-        {"type": "ip", "value": "2001:db8::1", "role": "dst"},
-        {"type": "host", "value": "shared-proxy", "role": "target"}
+        {
+          "type": "ip",
+          "value": "2001:db8::1",
+          "role": "dst"
+        },
+        {
+          "type": "host",
+          "value": "shared-proxy",
+          "role": "target"
+        }
       ],
       "severity": 2,
       "assessed_severity": 2,
@@ -236,8 +352,16 @@
       "title": "종결 상태",
       "summary": "후보에서 빠져야 한다",
       "status": "confirmed",
-      "ticket_ids": ["tkt_01a19f93-1150-7000-8000-000000000101"],
-      "entities": [{"type": "file_hash", "value": "abcdef1234", "role": "target"}],
+      "ticket_ids": [
+        "tkt_01a19f93-1150-7000-8000-000000000101"
+      ],
+      "entities": [
+        {
+          "type": "file_hash",
+          "value": "abcdef1234",
+          "role": "target"
+        }
+      ],
       "severity": 5,
       "assessed_severity": 5,
       "analysis_round": 1,
@@ -251,8 +375,16 @@
       "title": "시간 창 밖",
       "summary": "후보에서 빠져야 한다",
       "status": "analyzing",
-      "ticket_ids": ["tkt_01a19f93-1150-7000-8000-000000000101"],
-      "entities": [{"type": "file_hash", "value": "abcdef1234", "role": "target"}],
+      "ticket_ids": [
+        "tkt_01a19f93-1150-7000-8000-000000000101"
+      ],
+      "entities": [
+        {
+          "type": "file_hash",
+          "value": "abcdef1234",
+          "role": "target"
+        }
+      ],
       "severity": 5,
       "assessed_severity": null,
       "analysis_round": 0,

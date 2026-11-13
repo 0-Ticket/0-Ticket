@@ -61,3 +61,11 @@ class IngestRun(BaseModel):
             le=2147483647,
         ),
     ]
+    quarantined: Annotated[
+        int,
+        Field(
+            description="이 실행에서 새로 저장한 격리 행 수. 중복 행은 세지 않는다",
+            ge=0,
+            le=2147483647,
+        ),
+    ]

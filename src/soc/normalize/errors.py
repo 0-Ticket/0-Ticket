@@ -1,6 +1,12 @@
 """정규화 실패 코드. 상태 테이블에는 코드만 남기고 원문 예외 메시지는 남기지 않는다."""
 
-FAILURES = ("validation_failed", "schema_failed", "asset_lookup_failed", "db_error")
+FAILURES = (
+    "validation_failed",
+    "schema_failed",
+    "asset_lookup_failed",
+    "db_error",
+    "escape_collision",
+)
 
 
 class NormalizeError(Exception):

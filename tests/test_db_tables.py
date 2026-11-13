@@ -119,7 +119,7 @@ def ensure_raw_record(conn: psycopg.Connection, raw_id: str, kind: str) -> None:
         "siem_profile": "test",
         "siem_ref": raw_id,
         "fetched_at": 1793678580000,
-        "original": {},
+        "original_text": "{}",
     }
     validate_contract("raw_record", raw)
     insert(conn, "raw_records", raw, skip_existing=True)
@@ -148,12 +148,15 @@ def test_migrate_creates_all_tables_on_empty_db(temp_database: str) -> None:
         "0003_agent_reader.sql",
         "0004_asset_lookup.sql",
         "0005_auth.sql",
+        "0006_related_time_indexes.sql",
         "0100_ingest_checkpoint.sql",
         "0101_ingest_runs.sql",
         "0102_raw_links.sql",
         "0103_normalize_status.sql",
         "0104_l1_ticketing.sql",
         "0105_l1_attempts.sql",
+        "0106_raw_original_text.sql",
+        "0107_ingest_quarantine.sql",
         "0200_incident_artifacts.sql",
         "0201_incident_held.sql",
         "0300_threat_intel.sql",
@@ -167,6 +170,7 @@ def test_migrate_creates_all_tables_on_empty_db(temp_database: str) -> None:
             "l1_attempts",
             "ingest_checkpoints",
             "ingest_runs",
+            "ingest_quarantine",
             "raw_links",
             "threat_news",
             "attack_techniques",
@@ -177,6 +181,13 @@ def test_migrate_creates_all_tables_on_empty_db(temp_database: str) -> None:
             "user_permissions",
         }
         assert table_names(conn) == {*TABLES.values(), *other_tables, "schema_migrations"}
+        indexes = {
+            row[0]
+            for row in conn.execute(
+                "SELECT indexname FROM pg_indexes WHERE tablename IN ('alerts', 'events')"
+            )
+        }
+        assert {"alerts_time_idx", "events_time_idx"} <= indexes
 
 
 def test_migrate_twice_does_not_reapply(temp_database: str) -> None:
@@ -186,7 +197,10 @@ def test_migrate_twice_does_not_reapply(temp_database: str) -> None:
 
     assert applied == []
     with psycopg.connect(temp_database) as conn:
-        assert conn.execute("SELECT count(*) FROM schema_migrations").fetchone() == (14,)
+        migration_count = len(find_migrations())
+        assert conn.execute("SELECT count(*) FROM schema_migrations").fetchone() == (
+            migration_count,
+        )
 
 
 def test_failed_migration_rolls_back_only_that_file(temp_database: str, tmp_path: Path) -> None:
@@ -553,7 +567,7 @@ def test_jsonb_columns_reject_json_null(migrated: str) -> None:
                     insert(conn, table, data, raw={column: Jsonb(None)})
                 checked.append(f"{table}.{column}")
 
-    assert len(checked) == 21, checked  # jsonb 컬럼 22개 중 agent_logs.input만 뺀다
+    assert len(checked) == 20, checked  # jsonb 컬럼 21개 중 agent_logs.input만 뺀다
 
 
 @pytest.mark.parametrize(
@@ -586,7 +600,7 @@ def test_agent_log_input_keeps_json_null(migrated: str) -> None:
 
 
 # jsonb 칸이 가져야 할 모양. DB는 모양만 보고, 안쪽 필드는 validate_contract()가 검사한다.
-OBJECT_COLUMNS = {"original", "ocsf", "details", "verdict"}
+OBJECT_COLUMNS = {"ocsf", "details", "verdict"}
 ARRAY_COLUMNS = {"entities", "assets"}
 ANY_JSON_COLUMNS = {("agent_logs", "input"), ("agent_logs", "output")}
 
@@ -615,14 +629,17 @@ def test_emoji_text_is_stored_and_read_back(migrated: str) -> None:
 
 
 def test_value_at_depth_limit_is_stored_and_read_back(migrated: str) -> None:
-    """깊이 한도(100)에 딱 맞는 값은 validate_contract()를 통과하고, 그 dict 그대로 들어간다."""
-    data = with_depth("raw_record", "original", 100)
-    validate_contract("raw_record", data)
+    """깊이 한도(100)에 딱 맞는 값은 validate_contract()를 통과하고, 그 dict 그대로 들어간다.
+
+    raw_records 원본은 JSON 글자라 깊이를 세지 않으므로(D-049) 자유 객체가 있는 alert로 본다.
+    """
+    data = validate_contract("alert", with_depth("alert", "details", 100)).model_dump(mode="json")
 
     with psycopg.connect(migrated) as conn:
-        insert(conn, "raw_records", data)
+        ensure_parents(conn, "alert", data)
+        insert(conn, "alerts", data)
 
-        assert select(conn, "raw_records", data["id"]) == data
+        assert select(conn, "alerts", data["id"]) == data
 
 
 @pytest.mark.parametrize(
@@ -673,7 +690,7 @@ def test_jsonb_columns_reject_wrong_shape(migrated: str) -> None:
                         insert(conn, table, data, raw={column: Jsonb(value)})
                     checked.append(f"{table}.{column}={value!r}")
 
-    assert len(checked) == 38, checked  # 객체·목록 칸 19개 × 잘못된 값 2개
+    assert len(checked) == 36, checked  # 객체·목록 칸 18개 × 잘못된 값 2개
 
 
 @pytest.mark.parametrize("value", [{}, [], "text", 1, True], ids=repr)

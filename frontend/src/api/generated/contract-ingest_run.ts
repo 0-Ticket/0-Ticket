@@ -33,4 +33,8 @@ export interface IngestRun {
    * 이 실행에서 새로 저장한 원본 수. 이미 있던 문서는 세지 않는다
    */
   inserted: number;
+  /**
+   * 이 실행에서 새로 저장한 격리 행 수. 중복 행은 세지 않는다
+   */
+  quarantined: number;
 }

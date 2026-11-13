@@ -1,4 +1,4 @@
-# 수집(ingest) 테스트 (#218)
+# 수집(ingest) 테스트 (#218, #294)
 
 ELK 수집 명령(`soc.ingest`)의 테스트를 계층별로 모았다. 계층은 "외부 연결이 있는가"로 나눈다.
 
@@ -32,7 +32,16 @@ fixture 파일은 저장소 관례대로 `tests/fixtures/ingest/`에 있다.
   - `test_oversized_response_is_too_large`: 크기 상한 초과.
   - `test_request_timeout_and_network_error`: 제한 시간과 연결 오류.
   - `test_slow_response_stops_at_deadline`: 응답 마감 시간 초과.
-  - `test_malformed_search_response_is_response_shape`, `test_fixture_without_sort_is_response_shape`, `test_malformed_pit_response_is_response_shape`: 응답 모양이 틀리면 `response_shape`.
+  - `test_malformed_search_response_is_response_shape`, `test_malformed_pit_response_is_response_shape`: 응답 전체 모양이 틀리면 `response_shape`.
+  - `test_fixture_without_sort_is_sort_value`: 정렬 값이 없으면 페이지 경계를 다시 조회하고 지속되면 `sort_value`.
+  - `test_pit_open_retries_and_injects_fixed_delay`, `test_search_retries_*`, `test_search_exhaustion_preserves_http_status_kind`: 네트워크·시간 초과·408·429·5xx는 요청별 3회까지 재시도하고, 그 밖의 응답 오류는 재시도하지 않는다.
+
+### 격리 테스트 (`test_quarantine.py`, `test_quarantine_run.py`, `test_quarantine_elk.py`, #294)
+- `quarantine_hash_golden.json`과 합성 응답 fixture로 키 토큰·해시, NaN/±Infinity, 깊은 중첩, 원문 보존을 고정한다.
+- 모든 격리 행은 전용 합성 `siem_ref`를 쓰며, sort 값은 타입을 보존한 canonical JSON 바이트로 인코딩한다.
+- 잘못된 hit은 행 단위로 격리한다. 비-dict hit은 `hit_ref`, 지속되는 정렬 값 문제는 `sort_value`다.
+- 정렬 재조회와 요청 재시도는 각각 3회 예산이다. 마지막 hit의 sort가 끝내 유효하지 않으면 페이지의 원본·격리를 커밋하고 체크포인트를 유지한 뒤 실패한다.
+- 잘못된 체크포인트와 페이지 경계, 실행별 신규 격리 수 및 중복 제거를 테스트한다.
 
 ### `test_run.py`: 실행 루프, 종료 코드, 명령 진입점 (`soc.ingest.run`, `__main__`)
 - 저장과 재개
@@ -75,9 +84,11 @@ fixture 파일은 저장소 관례대로 `tests/fixtures/ingest/`에 있다.
 - `test_rejected_run_writes_nothing`: 계약에 맞지 않는 이력(원문 outcome)은 쓰지 않는다.
 - `test_checks_reject_broken_rows`: `ingest_checkpoints`의 CHECK 제약이 잘못된 행을 막는다.
 - `test_run_checks_reject_broken_rows`: `ingest_runs`의 CHECK 제약(코드 모양 outcome, 음수 건수, 시작보다 이른 종료 등)이 잘못된 행을 막는다.
+- `test_quarantine_db.py`: 원본·격리·체크포인트의 페이지 단위 원자성, 중복 제거, 긴 필드 토큰과 원문의 유일 인덱스 저장, 격리 행 CHECK 제약, 기존 실행 행의 `quarantined=0` 기본값을 확인한다.
 
 ### `test_run_db.py`: 실행 전체를 실제 DB로
-- `test_rejected_page_rolls_back_and_next_run_resumes`: 거부된 페이지는 롤백되고, 다음 실행이 같은 위치에서 이어간다. 이력에 `contract_rejected`, `ok`가 차례로 쌓인다.
+- `test_nul_page_is_stored_and_next_run_resumes`: NUL이 든 문서는 실패 없이 저장되고(#277), 다음 실행이 이어서 조회한다.
+- `test_db_error_on_page_rolls_back_and_next_run_resumes`: 페이지 중간의 원본 INSERT를 트리거로 실패시키면 그 페이지는 롤백되고(같은 페이지의 앞 문서도 함께), 체크포인트는 이전 페이지에 남으며, 다음 실행이 거기서 이어간다. 실패 종류는 `contract_rejected`가 아니라 `db_error`다(#277). 이력은 `db_error`, `ok`가 차례로 쌓인다.
 - `test_first_page_failure_and_empty_run_leave_history_only`: 첫 페이지 실패와 0건 성공은 체크포인트 없이 이력 행만 남긴다.
 - `test_failed_run_record_keeps_saved_pages`: 이력 쓰기가 DB 오류로 실패해도 실행은 성공이고 원본·체크포인트는 커밋돼 있다.
 
