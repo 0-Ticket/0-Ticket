@@ -41,7 +41,7 @@ L1·L2 에이전트가 `search_similar_cases`로 판정이 끝난 과거 Ticket 
 - `python -m soc.agent` 프로세스에 약 2.27GB 모델이 올라간다. 도구를 허용했고 Qdrant 환경변수가 있을 때만 만든다.
 
 **4. 읽기 권한**
-- 마이그레이션 `0007_agent_reader_tickets.sql`(공통 대역): `soc_agent_reader`에 열 단위 SELECT만 준다. `tickets`(id, status, verdict, entities, created_at), `incidents`(id, ticket_ids, status), `cases`(id, incident_id). `tickets.details`와 쓰기는 주지 않는다. 0003 헤더의 "권한을 주지 않는다"는 고치지 않고 D-053에 갱신 범위를 적는다.
+- 마이그레이션 `0007_agent_reader_tickets.sql`(공통 대역): `soc_agent_reader`에 열 단위 SELECT만 준다. `tickets`(id, status, verdict, entities, alert_ids, created_at), `incidents`(id, ticket_ids, status), `cases`(id, incident_id). `tickets.details`와 쓰기는 주지 않는다. 0003 헤더의 "권한을 주지 않는다"는 고치지 않고 D-053에 갱신 범위를 적는다.
 - 도구는 열 이름을 직접 적어 읽는다(`SELECT *` 금지).
 
 **5. 프롬프트·결정 목록·문서**
@@ -118,3 +118,5 @@ L1·L2 에이전트가 `search_similar_cases`로 판정이 끝난 과거 Ticket 
 - 결정 목록: D-053 추가, D-013 메모 보완. `decisions.md`의 기존 충돌 표식과 D-049/D-050 중복은 건드리지 않는다.
 
 ## 바뀐 점
+
+- 2026-11-13 · 읽기 권한 `tickets` 열에 `alert_ids`를 더했다. `ticket_id` 검색이 Ticket의 Alert 제목으로 질의 텍스트를 만들어야 하는데 Ticket과 Alert의 연결이 이 열뿐이다. D-053의 열 목록도 같이 고쳤다.
