@@ -204,6 +204,32 @@ def migrate(
     return applied
 
 
+def unapplied_migrations(database_url: str, directory: Path = MIGRATIONS_DIR) -> list[str]:
+    """아직 적용하지 않은 마이그레이션 이름을 읽기만 해서 돌려준다(활성화 파이프 점검, #316).
+
+    migrate()와 같은 기준(번호·이름·내용 해시)으로 기록과 파일을 비교한다. 기록이 파일과 다르면
+    MigrationError다. 아무것도 만들거나 적용하지 않고 잠금도 잡지 않는다.
+    """
+    migrations = find_migrations(directory)
+    contents = {m.version: _read_sql(m) for m in migrations}
+    try:
+        with psycopg.connect(database_url, autocommit=True) as conn:
+            if conn.execute("SELECT to_regclass('schema_migrations')").fetchone()[0] is None:
+                done: dict[int, tuple[str, str]] = {}
+            else:
+                rows = conn.execute("SELECT version, name, checksum FROM schema_migrations")
+                done = {version: (name, checksum) for version, name, checksum in rows.fetchall()}
+    except psycopg.Error:
+        # 원래 예외 메시지에는 접속 대상 주소와 계정이 들어 있어 감춘다.
+        raise MigrationError("DB에 연결하지 못했거나 schema_migrations를 읽지 못했다") from None
+    known = {m.version: m for m in migrations}
+    for version, (name, checksum) in sorted(done.items()):
+        migration = known.get(version)
+        if migration is None or migration.name != name or contents[version][1] != checksum:
+            raise MigrationError(f"{version:04d}번 적용 기록이 파일과 다르다")
+    return [m.name for m in migrations if m.version not in done]
+
+
 def _lock(conn: psycopg.Connection, wait_seconds: float) -> None:
     """실행기 잠금(세션 단위 advisory lock)을 잡는다. 한도를 넘게 기다리면 MigrationError."""
     # 한도는 PostgreSQL lock_timeout으로 건다. 잠금이 풀리면 서버가 바로 깨우고, 한도도 서버가 잰다.
