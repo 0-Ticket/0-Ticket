@@ -91,6 +91,19 @@ interval_seconds = 0
 poll_limit = 10
 workers = ["soc.l3.hunt.generate:build_worker", "soc.l3.hunt.verify:build_worker"]
 
+# 활성화 파이프(#316). 실행: uv run python -m soc.pipeline (Ctrl+C·SIGTERM으로 끝낸다)
+# 정규화·Ticket 생성·L1·L2를 한 프로세스에서 주기 실행한다. 수집은 사람이 따로 실행하고, L3는
+# [executor.l3] 값과 관계없이 이 명령에서 항상 꺼져 있다. L1·L2 간격은 [executor.l1|l2]를 그대로 쓴다.
+# 이 값은 파이프에서만 쓰이며 `python -m soc.agent`는 바뀌지 않는다.
+# 종료 코드: 0 정상, 1 종료 대기 시간 초과, 2 설정 오류, 3 단계 스레드가 죽음, 4 준비 점검 실패
+[pipeline]
+# 정규화·Ticket 생성 한 라운드 뒤 쉬는 시간(초). 처리할 건이 없으면 아무것도 하지 않는다
+normalize_interval_seconds = 3
+ticketing_interval_seconds = 3
+# 종료할 때 진행 중인 run이 cancelled로 끝나기를 기다리는 시간(초). [executor]의 같은 키를 대신한다.
+# 정규화·Ticket 생성 배치는 중간에 멈추지 못하므로 이 시간 안에 끝나지 않으면 프로세스가 내려간다
+shutdown_timeout_seconds = 30
+
 [tools]
 # 도구 레지스트리(도구 구현 방식, D-023, #211). 내부 데이터·Web 도구는 환경변수 AGENT_DATABASE_URL
 # (읽기 역할 soc_agent_reader의 멤버 계정)로 alerts·events만 읽는다.
