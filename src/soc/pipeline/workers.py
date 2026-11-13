@@ -32,7 +32,7 @@ SELECT EXISTS (
     WHERE status = 'pending' AND (lease_expires_at IS NULL OR lease_expires_at < now())
 )
 """
-_TICKET_PENDING = f"SELECT EXISTS (SELECT 1 FROM ({_CANDIDATE_IDS}) AS candidates)"  # noqa: S608
+_TICKET_PENDING = f"SELECT EXISTS (SELECT 1 FROM ({_CANDIDATE_IDS}) AS candidates)"
 
 
 def _any(database_url: str, query: str) -> list[str]:
