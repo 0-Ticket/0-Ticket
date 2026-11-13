@@ -39,6 +39,7 @@ from agents import set_tracing_disabled
 
 from soc.agent.config import load_full_config
 from soc.agent.types import STAGES, AgentWorker
+from soc.similar.runtime import install_service
 
 logger = logging.getLogger("soc.agent.executor")
 
@@ -309,7 +310,9 @@ def main(
         print(line, file=sys.stderr)
 
     try:
-        executor = Executor(load_full_config(config_dir), resolve=resolve)
+        config = load_full_config(config_dir)
+        install_service(config)  # 워커가 만들어지기 전에: L1 워커가 색인 함수를 받아 간다(#313)
+        executor = Executor(config, resolve=resolve)
     except ExecutorConfigError as exc:
         err(f"실행기 설정 오류: {exc}")
         return 2

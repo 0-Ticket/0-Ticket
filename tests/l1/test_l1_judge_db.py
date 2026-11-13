@@ -7,20 +7,27 @@ from typing import Any
 
 import psycopg
 import pytest
+from fake_embedder import FakeEmbedder
 from fake_model import FakeModel
 from psycopg.types.json import Jsonb
+from qdrant_client import QdrantClient
 from test_agent_core import CONFIG, REGISTRY, no_sleep
 from test_l1_judge import CASES
 from test_ticketing_db import NOW_MS, insert_ticket, seed_cases
 
 from soc.agent import AgentResult, AgentTask
 from soc.agent.agent_log import PostgresLogSink
+from soc.agent.config import load_full_config
 from soc.agent.runner import run_task
 from soc.contracts import to_datetime
 from soc.db.migrate import migrate
 from soc.ids import new_id
-from soc.l1.judge import L1Worker
+from soc.l1.judge import L1Worker, build_worker
 from soc.l2.branch.read import read_branch_data
+from soc.similar.runtime import SERVICE_NAME, SimilarService
+from soc.store import VectorStore
+from soc.store.config import EmbedderSettings, QdrantSettings, StoreSettings
+from soc.tools import services
 
 pytestmark = pytest.mark.db
 NOW = to_datetime(NOW_MS + 1000)
@@ -354,3 +361,113 @@ def test_requeued_held_alert_fails_without_check_violation(
     assert conn.execute(
         "SELECT failures FROM l1_attempts WHERE subject_id = %s", (subject_id,)
     ).fetchone() == (4,)
+
+
+# 유사 사례 색인(#313, D-053)
+
+
+def new_ticket(conn: psycopg.Connection) -> tuple[str, str]:
+    alert_id = auto_alert(conn)
+    ticket_id = new_id("tkt")
+    insert_ticket(conn, ticket_id=ticket_id, origin="auto", alert_ids=[alert_id])
+    return ticket_id, alert_id
+
+
+def with_indexer(db: str, run: Any, indexer: Any) -> L1Worker:
+    return L1Worker(db, 0.8, run=run, clock=lambda: NOW, indexer=indexer)
+
+
+@pytest.mark.parametrize(
+    ("decision", "confidence", "status"),
+    [("benign", 0.9, "closed"), ("malicious", 0.9, "escalated"), ("malicious", 0.5, "held")],
+)
+def test_ticket_with_a_verdict_is_indexed_after_the_decision_is_saved(
+    db: str, conn: psycopg.Connection, decision: str, confidence: float, status: str
+) -> None:
+    ticket_id, alert_id = new_ticket(conn)
+    seen: list[tuple[str, str]] = []
+
+    def indexer(connection: psycopg.Connection, subject_id: str) -> None:
+        # 색인 시점에는 판정이 이미 저장돼 있다
+        row = connection.execute(
+            "SELECT status FROM tickets WHERE id = %s", (subject_id,)
+        ).fetchone()
+        seen.append((subject_id, row["status"]))  # handle의 연결은 dict_row다
+
+    runner = with_indexer(
+        db, lambda task: success(verdict(alert_id, decision, confidence)), indexer
+    )
+    runner.handle(ticket_id)
+
+    assert seen == [(ticket_id, status)]
+
+
+def test_alert_decisions_and_failed_runs_are_not_indexed(db: str, conn: psycopg.Connection) -> None:
+    ticket_id, alert_id = new_ticket(conn)
+    calls: list[str] = []
+    indexer = lambda connection, subject_id: calls.append(subject_id)  # noqa: E731
+
+    with_indexer(db, lambda task: success(verdict(pending_alert(conn))), indexer).handle(
+        pending_alert(conn)
+    )
+    with_indexer(db, lambda task: failure("provider_error"), indexer).handle(ticket_id)
+
+    assert calls == []
+
+
+def test_an_indexer_error_never_changes_the_saved_verdict_or_counts_as_a_failure(
+    db: str, conn: psycopg.Connection
+) -> None:
+    ticket_id, alert_id = new_ticket(conn)
+
+    def broken(connection: psycopg.Connection, subject_id: str) -> None:
+        raise RuntimeError("색인 실패")
+
+    with_indexer(db, lambda task: success(verdict(alert_id, "benign", 0.9)), broken).handle(
+        ticket_id
+    )
+
+    status = conn.execute("SELECT status FROM tickets WHERE id = %s", (ticket_id,)).fetchone()[0]
+    attempts = conn.execute(
+        "SELECT count(*) FROM l1_attempts WHERE subject_id = %s", (ticket_id,)
+    ).fetchone()[0]
+    assert (status, attempts) == ("closed", 0)
+
+
+def test_worker_without_an_indexer_works_as_before(db: str, conn: psycopg.Connection) -> None:
+    ticket_id, alert_id = new_ticket(conn)
+
+    worker(db, lambda task: success(verdict(alert_id, "benign", 0.9))).handle(ticket_id)
+
+    assert conn.execute("SELECT status FROM tickets WHERE id = %s", (ticket_id,)).fetchone() == (
+        "closed",
+    )
+
+
+def test_real_indexer_writes_the_point_and_build_worker_picks_up_the_service(
+    db: str, conn: psycopg.Connection, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    settings = StoreSettings(
+        qdrant=QdrantSettings(url_env="QDRANT_URL"),
+        embedder=EmbedderSettings(model_id="BAAI/bge-m3", revision="r" * 8),
+    )
+    embedder = FakeEmbedder()
+    store = VectorStore("ticket_verdicts", embedder, settings, client=QdrantClient(":memory:"))
+    services.install(SERVICE_NAME, SimilarService(embedder, store))
+    monkeypatch.setenv("DATABASE_URL", db)
+    built = build_worker(load_full_config())
+    ticket_id, alert_id = new_ticket(conn)
+    built._run = lambda task: success(verdict(alert_id, "benign", 0.9))  # 가짜 에이전트로 바꾼다
+
+    built.handle(ticket_id)
+
+    title = conn.execute("SELECT title FROM alerts WHERE id = %s", (alert_id,)).fetchone()[0]
+    hits = store.search(embedder.embed(title), top_k=3)
+    assert [hit.point_id for hit in hits] == [ticket_id.removeprefix("tkt_")]
+
+
+def test_build_worker_has_no_indexer_without_the_service(
+    db: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("DATABASE_URL", db)
+    assert build_worker(load_full_config())._indexer is None

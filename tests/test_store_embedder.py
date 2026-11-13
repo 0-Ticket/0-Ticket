@@ -5,6 +5,7 @@
 """
 
 import math
+import pathlib
 
 import pytest
 from fake_embedder import FakeEmbedder
@@ -15,6 +16,7 @@ from soc.store.embedder import (
     MAX_TOKENS,
     BgeM3Embedder,
     Embedder,
+    OnnxOutput,
     collection_name,
 )
 
@@ -162,3 +164,106 @@ def test_tokenizer_truncates_to_max_tokens() -> None:
 
     assert embedder.token_count(long_text) == MAX_TOKENS
     assert embedder.token_count("짧은 문장") <= MAX_TOKENS
+
+
+def test_embedder_loads_the_model_once_even_when_threads_call_together(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """여러 단계 스레드가 첫 호출을 겹쳐도 모델을 한 번만 올린다(#313)."""
+    import sys
+    import threading
+    import time
+    import types
+
+    sessions: list[object] = []
+
+    class FakeSession:
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
+            time.sleep(0.05)  # 다른 스레드가 끼어들 틈
+            sessions.append(self)
+
+    class FakeTokenizer:
+        @staticmethod
+        def from_file(_path: str) -> "FakeTokenizer":
+            return FakeTokenizer()
+
+        def enable_truncation(self, **_kwargs: object) -> None:
+            pass
+
+    modules = {
+        "onnxruntime": types.SimpleNamespace(InferenceSession=FakeSession),
+        "huggingface_hub": types.SimpleNamespace(hf_hub_download=lambda *a, **k: "x"),
+        "tokenizers": types.SimpleNamespace(Tokenizer=FakeTokenizer),
+    }
+    for name, module in modules.items():
+        monkeypatch.setitem(sys.modules, name, module)
+    monkeypatch.setattr(
+        "soc.store.embedder._pick_output", lambda _s: OnnxOutput("o", (1, 1024), False)
+    )
+
+    embedder = BgeM3Embedder(
+        EmbedderSettings(
+            model_id="BAAI/bge-m3", revision="5617a9f61b028005a4858fdac845db406aefb181"
+        )
+    )
+    start = threading.Barrier(6)
+
+    def call() -> None:
+        start.wait()
+        assert embedder.dimension == DIMENSION
+
+    threads = [threading.Thread(target=call) for _ in range(6)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    assert len(sessions) == 1
+
+
+def test_model_files_are_downloaded_as_real_files_into_one_directory(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: "pathlib.Path"
+) -> None:
+    """심링크 캐시로는 onnxruntime이 외부 데이터(model.onnx_data)를 거부한다(macOS, #313).
+
+    세 파일을 같은 local_dir에 실제 파일로 받아야 한다. 폴더는 HF_HOME 아래라 설정 키가 없다.
+    """
+    import sys
+    import types
+
+    calls: list[dict[str, object]] = []
+
+    def fake_download(repo: str, name: str, **kwargs: object) -> str:
+        calls.append({"repo": repo, "name": name, **kwargs})
+        return str(tmp_path / "wherever" / name)
+
+    class FakeTokenizer:
+        @staticmethod
+        def from_file(_path: str) -> "FakeTokenizer":
+            return FakeTokenizer()
+
+        def enable_truncation(self, **_kwargs: object) -> None:
+            pass
+
+    modules = {
+        "onnxruntime": types.SimpleNamespace(InferenceSession=lambda *a, **k: object()),
+        "huggingface_hub": types.SimpleNamespace(hf_hub_download=fake_download),
+        "tokenizers": types.SimpleNamespace(Tokenizer=FakeTokenizer),
+    }
+    for name, module in modules.items():
+        monkeypatch.setitem(sys.modules, name, module)
+    monkeypatch.setattr(
+        "soc.store.embedder._pick_output", lambda _s: OnnxOutput("o", (1, 1024), False)
+    )
+    monkeypatch.setenv("HF_HOME", str(tmp_path / "hf"))
+
+    BgeM3Embedder(SETTINGS)._load()
+
+    expected = str(tmp_path / "hf" / "soc-onnx" / "BAAI--bge-m3" / REVISION)
+    assert [c["name"] for c in calls] == [
+        "onnx/model.onnx",
+        "onnx/model.onnx_data",
+        "onnx/tokenizer.json",
+    ]
+    assert {c["local_dir"] for c in calls} == {expected}
+    assert {c["revision"] for c in calls} == {REVISION}

@@ -72,3 +72,13 @@ def other_temp_database(database_url: HiddenUrl) -> Iterator[HiddenUrl]:
     """같은 서버의 두 번째 임시 DB. DB끼리 서로 영향을 주지 않는지 볼 때 쓴다."""
     with created_database(database_url) as url:
         yield url
+
+
+@pytest.fixture(autouse=True)
+def _clear_tool_services():
+    """실행기가 등록하는 도구 공유 객체(#313)가 테스트 사이에 새지 않게 한다."""
+    from soc.tools import services
+
+    services.clear()
+    yield
+    services.clear()
