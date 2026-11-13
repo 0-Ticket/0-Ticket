@@ -6,9 +6,11 @@ onnx/model.onnx_data 약 2.27GB를 내려받는다.
 """
 
 import hashlib
+import os
 import re
 import threading
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
 
 import numpy as np
@@ -156,8 +158,17 @@ class BgeM3Embedder:
         from huggingface_hub import hf_hub_download
         from tokenizers import Tokenizer
 
+        # 기본 캐시는 심링크라 onnxruntime이 외부 데이터(model.onnx_data)를 모델 폴더 밖 경로로 보고
+        # 거부한다(macOS·Linux, #313). 실제 파일을 한 폴더에 받는다. 이미 받았으면 다시 받지 않는다.
+        model_dir = str(_model_dir(self._settings))
+
         def download(name: str) -> str:
-            return hf_hub_download(self._settings.model_id, name, revision=self._settings.revision)
+            return hf_hub_download(
+                self._settings.model_id,
+                name,
+                revision=self._settings.revision,
+                local_dir=model_dir,
+            )
 
         model_path = download(ONNX_FILE)
         # model.onnx가 외부 데이터로 참조하는 파일. 같은 폴더에 있어야 세션이 열린다.
@@ -171,6 +182,16 @@ class BgeM3Embedder:
         self._tokenizer = tokenizer
         # 잠금 밖의 빠른 확인(_session)이 나머지 값이 준비된 뒤에만 참이 되게 마지막에 쓴다
         self._session = session
+
+
+def _model_dir(settings: EmbedderSettings) -> Path:
+    """모델 파일을 받을 폴더: <HF_HOME>/soc-onnx/<모델 ID>/<revision>. 설정 키는 따로 없다."""
+    home = os.environ.get("HF_HOME")
+    if not home:
+        cache = os.environ.get("XDG_CACHE_HOME") or str(Path.home() / ".cache")
+        home = str(Path(cache) / "huggingface")
+    slug = re.sub(r"[^A-Za-z0-9._-]", "--", settings.model_id)
+    return Path(home) / "soc-onnx" / slug / settings.revision
 
 
 def _pick_output(session: Any) -> OnnxOutput:
