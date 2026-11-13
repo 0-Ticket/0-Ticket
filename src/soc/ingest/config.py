@@ -8,6 +8,7 @@ config/default.toml(커밋함) 위에 config/local.toml(커밋 안 함)을 덮�
 import re
 import tomllib
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -61,6 +62,9 @@ class Settings:
         sources: 조회 대상 목록. 설정 파일에 적은 순서대로 처리한다.
         ca_cert_path: 자체 서명 HTTPS ELK의 CA 인증서 파일(PEM) 경로. 빈 값이면 httpx 기본 신뢰
             저장소를 쓴다(#264). 비밀이 아니라 설정 값이다.
+        initial_lookback_seconds: 체크포인트도 --since도 없을 때 거슬러 가져오는 범위(초, #317).
+        overlap_seconds: 체크포인트보다 이만큼 앞에서 다시 읽는다(초, 0이면 겹치지 않음, #317).
+            늦게 색인된 문서를 줄이는 완화책이고, 겹친 문서는 저장할 때 건너뛴다.
     """
 
     siem_profile: str
@@ -74,6 +78,8 @@ class Settings:
     deadline_seconds: float
     sources: tuple[Source, ...]
     ca_cert_path: str = ""
+    initial_lookback_seconds: int = 86_400
+    overlap_seconds: int = 60
 
 
 def load_config(directory: Path | None = None) -> dict[str, Any]:
@@ -193,6 +199,12 @@ def read_settings(ingest: dict[str, Any]) -> Settings:
     if not isinstance(ca_cert_path, str):
         raise ConfigError(f"{where}.ca_cert_path는 문자열이어야 한다")
 
+    lookback = ingest.get("initial_lookback_seconds", 86_400)
+    if isinstance(lookback, bool) or not isinstance(lookback, int) or lookback <= 0:
+        raise ConfigError(f"{where}.initial_lookback_seconds는 0보다 큰 정수여야 한다")
+    overlap = ingest.get("overlap_seconds", 60)
+    if isinstance(overlap, bool) or not isinstance(overlap, int) or overlap < 0:
+        raise ConfigError(f"{where}.overlap_seconds는 0 이상의 정수여야 한다")
     return Settings(
         siem_profile=_text(ingest, "siem_profile", where),
         url_env=_text(ingest, "url_env", where),
@@ -204,4 +216,43 @@ def read_settings(ingest: dict[str, Any]) -> Settings:
         deadline_seconds=float(_positive(ingest, "deadline_seconds", where)),
         sources=tuple(sources),
         ca_cert_path=ca_cert_path,
+        initial_lookback_seconds=lookback,
+        overlap_seconds=overlap,
     )
+
+
+_RELATIVE = re.compile(r"([0-9]+)([mhd])")
+_UNIT_MS = {"m": 60_000, "h": 3_600_000, "d": 86_400_000}
+
+
+def parse_since(text: str, *, now_ms: int) -> int:
+    """--since 값을 epoch ms 시각으로 바꾼다(#317).
+
+    인자:
+        text: 상대 값(30m, 24h, 7d) 또는 시간대가 있는 ISO 8601 시각.
+        now_ms: 상대 값과 미래 검사의 기준 "지금"(epoch ms).
+
+    반환:
+        조회를 시작할 시각(epoch ms).
+
+    발생:
+        ConfigError: 형식이 틀리거나 0 이하, 시간대 없는 시각, 미래 시각일 때.
+    """
+    relative = _RELATIVE.fullmatch(text)
+    if relative:
+        amount = int(relative.group(1))
+        if amount == 0:
+            raise ConfigError("--since는 0보다 큰 값이어야 한다")
+        return now_ms - amount * _UNIT_MS[relative.group(2)]
+    try:
+        moment = datetime.fromisoformat(text)
+    except ValueError:
+        raise ConfigError(
+            "--since는 30m·24h·7d 또는 시간대가 있는 ISO 8601 시각이어야 한다"
+        ) from None
+    if moment.tzinfo is None:
+        raise ConfigError("--since 시각에는 시간대가 있어야 한다(예: 2026-11-04T09:00:00Z)")
+    since_ms = round(moment.astimezone(UTC).timestamp() * 1000)
+    if since_ms > now_ms:
+        raise ConfigError("--since는 미래 시각일 수 없다")
+    return since_ms

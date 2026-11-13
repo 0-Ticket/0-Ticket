@@ -35,13 +35,20 @@ def fixture(name: str) -> dict[str, Any]:
 
 
 def make_settings(
-    *sources: Source, page_size: int = 2, max_bytes: int = 1_000_000, ca_cert_path: str = ""
+    *sources: Source,
+    page_size: int = 2,
+    max_bytes: int = 1_000_000,
+    ca_cert_path: str = "",
+    initial_lookback_seconds: int = 86_400,
+    overlap_seconds: int = 0,
 ) -> Settings:
     """테스트용 Settings. 인자:
     sources: 조회 대상. 없으면 EVENTS 하나.
     page_size: 한 번에 받는 문서 수. 기본 2라 적은 문서로도 여러 페이지가 된다.
     max_bytes: 응답 하나의 크기 상한.
     ca_cert_path: CA 인증서 파일 경로. 빈 값이면 기본 신뢰 저장소(#264).
+    initial_lookback_seconds: 체크포인트도 --since도 없을 때 가져오는 범위(#317).
+    overlap_seconds: 체크포인트보다 앞에서 다시 읽는 초. 기본 0이라 기존 테스트의 gte가 그대로다.
     """
     return Settings(
         siem_profile="elk-test",
@@ -54,6 +61,8 @@ def make_settings(
         deadline_seconds=30,
         sources=sources or (EVENTS,),
         ca_cert_path=ca_cert_path,
+        initial_lookback_seconds=initial_lookback_seconds,
+        overlap_seconds=overlap_seconds,
     )
 
 
@@ -163,6 +172,11 @@ class FakeStore:
         self.runs: list[dict[str, Any]] = []
         self.save_error: Exception | None = None
         self.run_error: Exception | None = None
+        self.lock_free = True  # False면 다른 수집이 잠금을 잡고 있는 것처럼 답한다(#317)
+
+    def acquire_run_lock(self, conn) -> bool:
+        """store.acquire_run_lock의 대역. lock_free가 False면 잠금을 못 잡는다."""
+        return self.lock_free
 
     def load_checkpoint(self, conn, siem_profile, source_kind, source_key):
         """인자는 store.load_checkpoint와 같다(conn은 쓰지 않는다). 복사본을 돌려준다."""
@@ -201,7 +215,11 @@ class FakeStore:
                 checkpoint["source_kind"],
                 checkpoint["source_key"],
             )
-            self.checkpoints[key] = copy.deepcopy(checkpoint)
+            # store.save_page와 같다: 저장된 시각보다 클 때만 갱신한다(#317)
+            old = self.checkpoints.get(key)
+            old_ms = old["cursor"].get("time_ms", -1) if old else -1
+            if checkpoint["cursor"]["time_ms"] > old_ms:
+                self.checkpoints[key] = copy.deepcopy(checkpoint)
         return inserted, quarantined_count
 
     def record_run(self, conn, run):

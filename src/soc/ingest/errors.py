@@ -7,6 +7,7 @@ FAILURES = (
     "too_large",
     "http_status",
     "network",
+    "tls",
     "auth",
     "response_shape",
     "sort_value",
