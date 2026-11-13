@@ -31,10 +31,16 @@ def new_recorder(stage: str = "l1") -> LogRecorder:
 class Caller:
     """세션 하나와 기록기 하나로 도구를 부른다."""
 
-    def __init__(self, registry: ToolRegistry, config: dict[str, Any], stage: str = "l1") -> None:
+    def __init__(
+        self,
+        registry: ToolRegistry,
+        config: dict[str, Any],
+        stage: str = "l1",
+        services: dict[str, Any] | None = None,
+    ) -> None:
         self.recorder = new_recorder(stage)
         self.session: ToolSession = registry.session(
-            stage=stage, config=config, recorder=self.recorder
+            stage=stage, config=config, recorder=self.recorder, services=services
         )
         self._n = 0
 

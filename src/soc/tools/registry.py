@@ -16,12 +16,13 @@ import asyncio
 import inspect
 import json
 import logging
+import math
 import re
 import threading
 import time
 from collections.abc import Callable, Iterable, Mapping
 from concurrent.futures import Future
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Literal, Protocol
 
 from agents import FunctionTool
@@ -30,7 +31,7 @@ from agents import FunctionTool
 logger = logging.getLogger("soc.agent.executor")
 
 ResultKind = Literal["records", "text", "aggregate"]
-ArgType = Literal["string", "integer"]
+ArgType = Literal["string", "integer", "number"]
 ErrorCode = Literal["not_allowed", "invalid_argument", "unavailable", "timeout", "failed"]
 
 ERROR_CODES: tuple[str, ...] = (
@@ -79,8 +80,8 @@ class Arg:
     type: ArgType
     required: bool = False
     enum: tuple[str, ...] | None = None
-    minimum: int | None = None
-    maximum: int | None = None
+    minimum: float | None = None  # integer·number 인자의 범위(양 끝 포함)
+    maximum: float | None = None
     min_length: int | None = None
     max_length: int | None = None
     pattern: str | None = None  # 문자열 전체가 맞아야 한다(fullmatch)
@@ -95,6 +96,8 @@ class CallContext:
     tools_config: Mapping[str, Any]  # 설정의 [tools]
     max_result_chars: int
     fits: Callable[[dict[str, Any]], bool]  # aggregate 결과가 한도 안인지(call_id 포함해 셈)
+    # 실행기가 시작 때 한 번 만든 공유 객체(예: 임베더). 핸들러는 전역 대신 여기서 꺼낸다
+    services: Mapping[str, Any] = field(default_factory=dict)
 
 
 # 핸들러는 결과를 돌려주거나, 결과를 내는 awaitable(async def)을 돌려준다(#213)
@@ -121,6 +124,7 @@ class ToolSpec:
     configure: 설정의 [tools]로 이 실행에서 쓸 ToolSpec을 만든다(#213). check_config 다음에 부른다.
       설정 값(예: 호스트 이름)을 인자 enum·설명에 넣을 때 쓴다. 이름은 바꿀 수 없다.
       None을 돌려주면 허용 목록에 있어도 이 실행에서는 등록하지 않는다(모델에게 보이지 않음).
+    requires_service: 이름을 주면 session(services=…)에 그 이름의 객체가 있을 때만 등록한다(#313).
     handler가 awaitable을 돌려주면 레지스트리가 await한다(#213). `async def`가 아닌 핸들러는
     호출마다 전용 데몬 스레드에서 돈다(D-049). 핸들러는 ctx와 자기 인자만 쓴다.
     """
@@ -136,6 +140,7 @@ class ToolSpec:
     check: Check | None = None
     check_config: CheckConfig | None = None
     configure: Configure | None = None
+    requires_service: str | None = None
 
 
 class ToolRecorder(Protocol):
@@ -176,7 +181,12 @@ class ToolRegistry:
         return self._specs.get(name)
 
     def session(
-        self, *, stage: str, config: Mapping[str, Any], recorder: ToolRecorder
+        self,
+        *,
+        stage: str,
+        config: Mapping[str, Any],
+        recorder: ToolRecorder,
+        services: Mapping[str, Any] | None = None,
     ) -> "ToolSession":
         """stage의 허용 목록으로 실행 하나의 도구 묶음을 만든다. 설정이 잘못되면 ToolConfigError."""
         tools = config.get("tools", {})
@@ -189,7 +199,13 @@ class ToolRegistry:
             strict = bool(config["llm"]["strict_mode"])
         except (KeyError, TypeError, ValueError):
             raise ToolConfigError("도구 결과 한도나 strict_mode 설정이 없다") from None
-        specs = [self._specs[name] for name in dict.fromkeys(allowed)]
+        services = dict(services or {})
+        # 필요한 공유 객체가 없는 도구는 이 실행에서 모델에게 보이지 않는다(설정 검사도 하지 않는다)
+        specs = [
+            self._specs[name]
+            for name in dict.fromkeys(allowed)
+            if self._specs[name].requires_service in (None, *services)
+        ]
         for spec in specs:
             if spec.check_config is None:
                 continue
@@ -206,6 +222,7 @@ class ToolRegistry:
             max_chars=max_chars,
             strict=strict,
             recorder=recorder,
+            services=services,
         )
 
 
@@ -220,8 +237,10 @@ class ToolSession:
         max_chars: int,
         strict: bool,
         recorder: ToolRecorder,
+        services: Mapping[str, Any] | None = None,
     ) -> None:
         self._specs = {spec.name: spec for spec in specs}
+        self._services: Mapping[str, Any] = services or {}
         self._tools_config = tools_config
         self._max_chars = max_chars
         self._strict = strict
@@ -268,6 +287,7 @@ class ToolSession:
             tools_config=self._tools_config,
             max_result_chars=self._max_chars,
             fits=lambda body: self._fits({"call_id": call_id, **body}),
+            services=self._services,
         )
         try:
             raw = await _call_handler(spec, args, ctx)
@@ -569,8 +589,11 @@ def _parse_arguments(
 
 
 def _check_value(arg: Arg, value: Any) -> None:
-    if arg.type == "integer":
-        if type(value) is not int:  # bool·float·문자열 숫자는 받지 않는다
+    if arg.type in ("integer", "number"):
+        # bool·문자열 숫자는 받지 않는다. integer는 float도, number는 NaN·무한대도 받지 않는다
+        if arg.type == "integer" and type(value) is not int:
+            raise ToolError("invalid_argument")
+        if arg.type == "number" and (type(value) not in (int, float) or not math.isfinite(value)):
             raise ToolError("invalid_argument")
         if arg.minimum is not None and value < arg.minimum:
             raise ToolError("invalid_argument")
