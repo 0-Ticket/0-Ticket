@@ -134,7 +134,8 @@ def test_reader_role_can_read_alerts_and_events(reader_url: str) -> None:
     [
         "SELECT count(*) FROM raw_records",
         "SELECT count(*) FROM agent_logs",
-        "SELECT count(*) FROM tickets",
+        # tickets는 0007(#313)부터 지정 열만 읽는다. 열 권한이면 count(*)는 허용돼 details로 본다
+        "SELECT details FROM tickets",
         "SELECT count(*) FROM hunts",
         "SELECT count(*) FROM threat_news",
         "SELECT count(*) FROM schema_migrations",

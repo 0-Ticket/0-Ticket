@@ -149,6 +149,7 @@ def test_migrate_creates_all_tables_on_empty_db(temp_database: str) -> None:
         "0004_asset_lookup.sql",
         "0005_auth.sql",
         "0006_related_time_indexes.sql",
+        "0007_agent_reader_tickets.sql",
         "0100_ingest_checkpoint.sql",
         "0101_ingest_runs.sql",
         "0102_raw_links.sql",
