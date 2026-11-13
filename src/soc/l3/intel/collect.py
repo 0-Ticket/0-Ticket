@@ -171,8 +171,14 @@ def collect(
                 deadline_seconds=limit.deadline_seconds,
                 clock=clock,
             )
-            reader = parse.parse_rss if source.kind == "rss" else parse.parse_kev
-            items = reader(data, summary_max_chars=settings.summary_max_chars)
+            catalog = None
+            if source.kind == "rss":
+                items = parse.parse_rss(data, summary_max_chars=settings.summary_max_chars)
+            else:
+                catalog = parse.parse_kev_catalog(
+                    data, summary_max_chars=settings.summary_max_chars
+                )
+                items = catalog.items
         except IntelError as exc:
             result.failure = exc.kind
         else:
@@ -181,17 +187,21 @@ def collect(
                 result.inserted, result.updated = store.save_news(
                     conn, source=source.name, kind=source.kind, items=items, now=now
                 )
+                if catalog is not None:
+                    store.save_kev(conn, source=source.name, catalog=catalog, now=now)
         results.append(result)
-    results.append(_collect_attack(settings.attack, conn, client, clock))
+    results.append(_collect_attack(settings, conn, client, clock, now))
     return results
 
 
 def _collect_attack(
-    attack: Attack,
+    settings: Settings,
     conn: psycopg.Connection,
     client: httpx.Client,
     clock: Callable[[], float],
+    now: datetime,
 ) -> SourceResult:
+    attack = settings.attack
     result = SourceResult(name=ATTACK_NAME, version=attack.version)
     if store.has_attack_version(conn, attack.version):
         result.skipped = True
@@ -204,13 +214,17 @@ def _collect_attack(
             deadline_seconds=attack.limit.deadline_seconds,
             clock=clock,
         )
-        techniques = parse.parse_attack(data, version=attack.version)
+        techniques = parse.parse_attack(
+            data, version=attack.version, description_max_chars=settings.summary_max_chars
+        )
     except IntelError as exc:
         result.failure = exc.kind
         return result
     result.fetched = len(techniques)
     with conn.transaction():
-        result.inserted = store.save_attack(conn, attack.version, techniques)
+        result.inserted, result.updated = store.save_attack(
+            conn, attack.version, techniques, now=now
+        )
     return result
 
 

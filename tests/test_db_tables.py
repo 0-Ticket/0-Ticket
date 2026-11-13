@@ -160,6 +160,8 @@ def test_migrate_creates_all_tables_on_empty_db(temp_database: str) -> None:
         "0200_incident_artifacts.sql",
         "0201_incident_held.sql",
         "0300_threat_intel.sql",
+        "0301_intel_local_lookup.sql",
+        "0302_agent_reader_intel.sql",
     ]
     with psycopg.connect(temp_database) as conn:
         other_tables = {
@@ -174,6 +176,8 @@ def test_migrate_creates_all_tables_on_empty_db(temp_database: str) -> None:
             "raw_links",
             "threat_news",
             "attack_techniques",
+            "kev_entries",
+            "intel_source_state",
             "incident_artifacts",
             "incident_proposals",
             "users",
