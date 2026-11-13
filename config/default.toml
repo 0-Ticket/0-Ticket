@@ -65,6 +65,8 @@ max_tool_result_chars = 8000
 # 단계마다 스레드 하나, 단계 안에서는 한 번에 1건. 한 라운드에 등록 순서대로 워커마다
 # poll(poll_limit) → 받은 ID마다 handle을 하고, 라운드가 끝나면 interval_seconds만큼 쉰다.
 # 워커가 없거나 interval_seconds = 0인 단계는 돌지 않는다.
+# 종료 코드: 0 정상, 1 종료 대기 시간 초과, 2 설정 오류, 3 단계 스레드가 죽음(D-050). 죽은 스레드는
+# 다시 시작하지 않는다. 받은 건이 있는 라운드는 워커마다 지표 한 줄(INFO, soc.agent.executor)을 남긴다.
 # workers: "soc.<모듈>:build_worker" 목록. build_worker(config)는 설정 전체를 받아 AgentWorker를
 # 돌려준다(soc.agent.AgentWorker, docs/plans/215-executor-l1-e2e.md). soc. 밖의 모듈은 받지 않는다.
 [executor]

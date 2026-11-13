@@ -1,4 +1,5 @@
 """실행기(#215): 단계별 스레드, 단계 안 순차, 예외 격리, interval 0, 종료 시 cancelled.
+종료 코드: 0 정상, 1 종료 대기 초과, 2 설정 오류, 3 단계 스레드가 죽음(#280).
 
 DB 없이 본다.
 
@@ -495,3 +496,51 @@ def test_main_with_bad_config_exits_two(tmp_path: Path, capsys: pytest.CaptureFi
     )
     assert main([], config_dir=tmp_path) == 2
     assert "설정" in capsys.readouterr().err
+
+
+# 종료 코드 3: 단계 스레드가 죽음(#280, D-050)
+
+
+def write_two_stage_config(tmp_path: Path) -> None:
+    (tmp_path / "default.toml").write_text(
+        "[executor]\nshutdown_timeout_seconds = 5\n"
+        "[executor.l1]\ninterval_seconds = 0.01\npoll_limit = 1\nworkers = ['soc.test:a']\n"
+        "[executor.l2]\ninterval_seconds = 0.01\npoll_limit = 1\nworkers = ['soc.test:b']\n"
+        "[executor.l3]\ninterval_seconds = 0\npoll_limit = 1\nworkers = []\n",
+        encoding="utf-8",
+    )
+
+
+def test_main_exits_three_and_stops_the_other_stages_when_a_stage_dies(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(threading, "excepthook", lambda args: None)
+    write_two_stage_config(tmp_path)
+
+    def die(subject_id: str) -> None:
+        raise KeyboardInterrupt("공격자가 쓴 문장일 수 있는 메시지")
+
+    dying = FakeWorker("l1", "a", ["a1"], on_handle=die)
+    other = FakeWorker("l2", "b", [f"b{i}" for i in range(1000)])
+    stop = threading.Event()  # 밖에서는 멈추라고 하지 않는다
+    started = time.monotonic()
+    code = main(
+        [], config_dir=tmp_path, stop_event=stop, resolve=resolver({"a": dying, "b": other})
+    )
+    assert code == 3
+    assert time.monotonic() - started < WAIT
+    err = capsys.readouterr().err
+    assert "단계 스레드가 죽었다: l1(KeyboardInterrupt)" in err
+    assert "공격자가 쓴 문장일 수 있는 메시지" not in err
+    handled = len(other.handled)
+    time.sleep(0.1)
+    assert len(other.handled) == handled  # 다른 단계도 정리됐다(더 처리하지 않는다)
+    assert 0 < handled < 1000
+
+
+def test_main_still_exits_zero_when_every_stage_stops_normally(tmp_path: Path) -> None:
+    write_two_stage_config(tmp_path)
+    workers = {"a": FakeWorker("l1", "a", ["a1"]), "b": FakeWorker("l2", "b", ["b1"])}
+    stop = threading.Event()
+    threading.Timer(0.2, stop.set).start()
+    assert main([], config_dir=tmp_path, stop_event=stop, resolve=resolver(workers)) == 0

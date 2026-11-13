@@ -3,8 +3,16 @@
 - 단계(l1·l2·l3)마다 스레드 하나. 단계 안 동시 실행은 1건이고, 한 라운드에 등록 순서대로 워커마다
   poll(poll_limit) → 받은 ID마다 handle을 한다. 라운드가 끝나면 interval_seconds만큼 쉰다.
 - 워커가 없거나 interval_seconds = 0인 단계는 스레드를 띄우지 않는다(poll도 부르지 않는다).
-- poll·handle의 예외는 잡아서 워커 이름·subject ID·예외 종류만 로그에 남긴다. 예외 메시지는
-  밖에서 온 문자열일 수 있어 남기지 않는다(docs/security.md).
+- poll·handle의 Exception·CancelledError·SystemExit은 잡아서 워커 이름·subject ID·예외 종류만
+  로그에 남기고 다음 건으로 간다. 예외 메시지는 밖에서 온 문자열일 수 있어 남기지 않는다
+  (docs/security.md).
+- 그 밖의 BaseException(KeyboardInterrupt 등)이나 스레드 자체의 오류는 종류만 로그에 남기고
+  그 단계를 죽은 것으로 표시한다(스레드 밖으로 올리지 않는다). main이 이를 보고 다른 단계를
+  정리한 뒤 종료
+  코드 3으로 끝낸다. 재시작하지 않는다(D-050).
+- 받은 건이 있는 라운드는 워커마다 지표 한 줄(INFO)을 남긴다: round stage=… worker=… polled=…
+  limit=… handled=…(성공) failed=… total_ms=…(handle 합) max_ms=…(건당 최대). polled가 limit이면
+  밀리고 있다는 신호다. subject ID·예외 메시지는 넣지 않는다.
 - 스레드는 asyncio 이벤트 루프를 하나 만들어 그 스레드의 기본 루프로 등록한다. run_agent 안의
   Runner.run_sync는 스레드의 기본 루프를 그대로 쓰므로(openai-agents 0.24.0), 종료할 때 이 루프의
   작업을 취소하면 진행 중인 run이 failure="cancelled"로 끝난다(에이전트 구조, D-024).
@@ -37,6 +45,9 @@ logger = logging.getLogger("soc.agent.executor")
 # 종료할 때 진행 중인 run에 취소를 다시 보내는 간격(초). 형식 오류 재요청처럼 handle 안에서
 # run이 이어지면, 앞 run이 끝난 뒤 새로 시작한 run도 취소해야 하기 때문이다.
 CANCEL_INTERVAL = 0.2
+
+# 한 건의 실패로 보고 다음 건으로 가는 예외. 그 밖의 BaseException은 단계를 죽은 것으로 본다(D-050)
+_ISOLATED = (Exception, asyncio.CancelledError, SystemExit)
 
 _FACTORY_PATH = re.compile(r"soc(\.[A-Za-z_][A-Za-z0-9_]*)*:[A-Za-z_][A-Za-z0-9_]*\Z")
 
@@ -142,6 +153,7 @@ class _StageThread:
         self._stop = stop
         self._loop: asyncio.AbstractEventLoop | None = None
         self._lock = threading.Lock()
+        self.died: str | None = None  # 스레드를 끝낸 예외 종류
         self.thread = threading.Thread(
             target=self._run, name=f"soc-agent-{self.stage}", daemon=True
         )
@@ -161,6 +173,9 @@ class _StageThread:
             while not self._stop.is_set():
                 self._round()
                 self._stop.wait(self._settings.interval_seconds)
+        except BaseException as exc:  # 다시 올리지 않는다. 메시지가 든 트레이스백이 stderr에 찍힌다
+            self.died = type(exc).__name__
+            logger.error("%s 단계 스레드가 죽었다(%s)", self.stage, self.died)
         finally:
             with self._lock:
                 self._loop = None  # 닫힌 루프에 취소를 보내지 않게 닫기 전에 비운다
@@ -173,15 +188,25 @@ class _StageThread:
                 return
             try:
                 subject_ids = list(worker.poll(self._settings.poll_limit))
-            except Exception as exc:
+            except _ISOLATED as exc:
                 logger.warning("%s %s poll 실패(%s)", self.stage, worker.name, type(exc).__name__)
                 continue
+            if subject_ids:
+                self._handle_all(worker, subject_ids)
+
+    def _handle_all(self, worker: AgentWorker, subject_ids: list[str]) -> None:
+        handled = failed = 0
+        total = longest = 0.0
+        try:
             for subject_id in subject_ids:
                 if self._stop.is_set():
                     return
+                started = time.perf_counter()
                 try:
                     worker.handle(subject_id)
-                except (Exception, asyncio.CancelledError) as exc:
+                    handled += 1
+                except _ISOLATED as exc:
+                    failed += 1
                     logger.warning(
                         "%s %s handle 실패 subject=%r (%s)",
                         self.stage,
@@ -189,6 +214,23 @@ class _StageThread:
                         subject_id,
                         type(exc).__name__,
                     )
+                finally:
+                    took = time.perf_counter() - started
+                    total += took
+                    longest = max(longest, took)
+        finally:  # 종료로 일찍 끝나거나 단계가 죽어도 그때까지의 값을 남긴다
+            logger.info(
+                "round stage=%s worker=%s polled=%d limit=%d handled=%d failed=%d"
+                " total_ms=%d max_ms=%d",
+                self.stage,
+                worker.name,
+                len(subject_ids),
+                self._settings.poll_limit,
+                handled,
+                failed,
+                total * 1000,
+                longest * 1000,
+            )
 
 
 class Executor:
@@ -211,6 +253,10 @@ class Executor:
     def stages(self) -> list[str]:
         """스레드를 띄우는 단계."""
         return [t.stage for t in self._threads]
+
+    def dead_stages(self) -> dict[str, str]:
+        """예외로 스레드가 끝난 단계와 그 예외 종류(D-050)."""
+        return {t.stage: t.died for t in self._threads if t.died is not None}
 
     def start(self) -> None:
         for t in self._threads:
@@ -253,7 +299,8 @@ def main(
     stop_event: threading.Event | None = None,
     resolve: Resolve = resolve_factory,
 ) -> int:
-    """uv run python -m soc.agent. 종료 코드: 0 정상, 1 종료 대기 시간 초과, 2 설정 오류."""
+    """uv run python -m soc.agent. 종료 코드: 0 정상, 1 종료 대기 시간 초과, 2 설정 오류,
+    3 단계 스레드가 죽음(D-050)."""
     build_parser().parse_args(argv)
     set_tracing_disabled(True)  # 진입점에서 끈다(D-022). run_agent도 다시 끈다
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
@@ -279,6 +326,13 @@ def main(
     executor.start()
     err(f"실행 중: {', '.join(executor.stages)}. 끝내려면 Ctrl+C")
     while not stop.wait(0.5):
-        pass
+        if executor.dead_stages():
+            break
+    dead = executor.dead_stages()
+    if dead:
+        err("단계 스레드가 죽었다: " + ", ".join(f"{s}({name})" for s, name in dead.items()))
     err("종료 중: 진행 중인 run을 취소한다")
-    return 1 if executor.stop() else 0
+    unfinished = executor.stop()
+    if executor.dead_stages():
+        return 3
+    return 1 if unfinished else 0

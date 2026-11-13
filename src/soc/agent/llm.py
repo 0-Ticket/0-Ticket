@@ -30,14 +30,15 @@ class LLMConfigError(Exception):
     """연결 설정이 없거나 키 환경변수가 없다. 메시지에 주소·키를 넣지 않는다."""
 
 
-def build_model(
+def build_client(
     config: Mapping[str, Any],
     environ: Mapping[str, str] | None = None,
     http_client: httpx2.AsyncClient | None = None,
-) -> tuple[Model, str]:
-    """설정의 [llm]으로 운영 모델을 만든다. (모델, Agent Log에 쓸 모델 이름)을 돌려준다.
+) -> tuple[openai.AsyncOpenAI, str]:
+    """설정의 [llm]으로 openai 클라이언트를 만든다. (클라이언트, 모델 이름)을 돌려준다.
 
-    http_client는 테스트가 가짜 전송 계층을 넣는 자리다. 만들 때 네트워크에 접속하지 않는다.
+    run_agent는 run마다 이것을 만들고 끝날 때 닫는다(#280). http_client는 테스트가 가짜 전송
+    계층을 넣는 자리다. 만들 때 네트워크에 접속하지 않는다.
     """
     environ = os.environ if environ is None else environ
     llm = config["llm"]
@@ -59,6 +60,16 @@ def build_model(
         max_retries=0,
         http_client=http_client,
     )
+    return client, model_name
+
+
+def build_model(
+    config: Mapping[str, Any],
+    environ: Mapping[str, str] | None = None,
+    http_client: httpx2.AsyncClient | None = None,
+) -> tuple[Model, str]:
+    """설정의 [llm]으로 운영 모델을 만든다. (모델, Agent Log에 쓸 모델 이름)을 돌려준다."""
+    client, model_name = build_client(config, environ, http_client)
     return OpenAIChatCompletionsModel(model=model_name, openai_client=client), model_name
 
 

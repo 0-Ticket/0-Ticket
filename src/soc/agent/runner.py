@@ -15,6 +15,7 @@ import json
 import logging
 import os
 import time
+import warnings
 from collections.abc import Callable
 from typing import Any
 
@@ -24,6 +25,7 @@ from agents import (
     MaxTurnsExceeded,
     ModelBehaviorError,
     ModelSettings,
+    OpenAIChatCompletionsModel,
     RunConfig,
     Runner,
     set_tracing_disabled,
@@ -42,7 +44,7 @@ from soc.agent.agent_log import (
 )
 from soc.agent.compose import compose_instructions, has_top_level_field
 from soc.agent.config import load_config
-from soc.agent.llm import LLMConfigError, RetryingModel, Sleep, build_model, input_chars
+from soc.agent.llm import LLMConfigError, RetryingModel, Sleep, build_client, input_chars
 from soc.agent.redact import build_redactor
 from soc.agent.types import AgentResult, AgentTask
 from soc.contracts import ContractError, validate_contract
@@ -80,20 +82,47 @@ def run_agent(task: AgentTask) -> AgentResult:
         )
     sink = _postgres_sink(database_url, config)
     try:
-        model, model_name = build_model(config)
+        client, model_name = build_client(config)
     except LLMConfigError as exc:
         return _before_start(task, run_id, sink, config, "provider_error", str(exc))  # 주소·키 없음
     except Exception as exc:
         detail = f"LLM 연결을 만들지 못했다({type(exc).__name__})"
         return _before_start(task, run_id, sink, config, "provider_error", detail)
-    return run_task(
-        task,
-        model=model,
-        model_name=model_name,
-        log_sink=sink,
-        config=config,
-        run_id=run_id,
-    )
+    model = OpenAIChatCompletionsModel(model=model_name, openai_client=client)
+    try:
+        return run_task(
+            task,
+            model=model,
+            model_name=model_name,
+            log_sink=sink,
+            config=config,
+            run_id=run_id,
+        )
+    finally:  # 어떻게 끝나든(시작 전 실패·취소 포함) 클라이언트를 닫는다(#280)
+        _close_client(client)
+
+
+def _close_client(client: Any) -> None:
+    """클라이언트를 닫는다. Runner.run_sync가 쓴 스레드의 기본 이벤트 루프로 닫아야 한다.
+
+    다른 루프(asyncio.run)로 닫으면 쓰던 연결을 닫지 못한다. run_agent는 예외를 내지 않으므로
+    닫기 실패(종료 중 취소 포함)는 종류만 남기고 삼킨다.
+    """
+    try:
+        policy = asyncio.get_event_loop_policy()
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            try:
+                loop = policy.get_event_loop()
+            except RuntimeError:
+                loop = policy.new_event_loop()
+                policy.set_event_loop(loop)
+        if loop.is_closed():
+            loop = policy.new_event_loop()
+            policy.set_event_loop(loop)
+        loop.run_until_complete(client.close())
+    except (Exception, asyncio.CancelledError) as exc:
+        logger.warning("LLM 클라이언트를 닫지 못했다(%s)", type(exc).__name__)
 
 
 def run_task(

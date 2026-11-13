@@ -55,6 +55,8 @@
 | D-024 | 에이전트 구조는 에이전트 하나 + L1·L2·L3 프롬프트 오버라이딩 + 단계별 스레드다. 파이프는 `run_agent(AgentTask) -> AgentResult`(동기) 하나로 부른다 | 단계별 스레드는 "스레드마다 실행 루프"다. `run_agent`가 안에서 `Runner.run_sync`를 쓴다(#209 계획). 실행기(`soc.agent.executor`)는 단계 스레드마다 asyncio 이벤트 루프를 하나 만들어 그 스레드의 기본 루프로 등록하고, `run_sync`가 그 루프를 쓰게 한다. 루프에서 직접 비동기 코드를 돌리지는 않고, 종료할 때 진행 중인 run을 취소(`cancelled`)하는 데만 쓴다(#215) |
 | D-025 | L1 판정 결과 조건. 확신도 임계값은 `[agent.l1]`의 `confidence_threshold = 0.8`이다. `pending` Alert는 `benign`이면 확신도와 관계없이 `held`(Ticket 없음), `malicious`이고 임계값 이상이면 `promoted`와 `origin=l1` Ticket 생성, 그 밖에는 `held`다. `new` Ticket은 `benign`이고 임계값 이상이면 `closed`, `malicious`이고 임계값 이상이면 `escalated`, 그 밖에는 `held`다. 실패한 작업은 최초 실행을 포함해 총 3회까지 시도하고, 마지막에도 실패하면 `held`로 둔다. `cancelled`는 실패 횟수에 넣지 않는다 | `undetermined`, 임계값 미만, 형식·근거·최종 실행 오류는 보류한다. Alert 승격과 Ticket 생성은 한 트랜잭션으로 처리하며, 현재 상태가 `pending`/`new`일 때만 결과를 적용해 재실행으로 중복 생성하지 않는다. 실패 횟수는 워커 재시작 뒤에도 유지한다. 정확한 저장 위치는 구현 이슈에서 정한다(#251) |
 | D-048 | 외부 LLM으로 보내는 모델 입력(입력 데이터·도구 결과·형식 오류 재요청)은 보내기 직전에 SDK 입력 필터 한 곳에서 비밀 값을 `[REDACTED]`로 가린다. 규칙은 Agent Log 쓰기 직전 가림과 같고 같은 가림 함수를 쓴다. 가림 중 예외가 나거나 JSON 값이 아닌 타입을 만나면 원문을 보내지 않고 run을 `provider_error`로 끝낸다. 근거 ID 모양 값(접두사 + UUIDv7)은 환경변수 값 치환에서만 건너뛴다. 도구 쪽에서 비밀이 나올 자리를 미리 빼지는 않는다 | 규칙: 설정 `*_env`가 가리키는 환경변수 값(8자 이상), DB 비밀번호, `password`·`passwd`·`pwd`(값이 `/`로 시작하는 두 단계 이상 경로면 제외)·`api_key`·`token`·`secret` 계열의 `=`·`:` 값, `Bearer`, `Authorization: Basic\|ApiKey`, 비밀 키 이름의 객체 값(숫자·배열·객체 값 포함. 페이지 이동 표지 `next_token` 등은 제외). 입력 데이터와 도구 결과(`<태그>`로 감싼 JSON)는 JSON으로 풀어 객체 키 규칙을 적용하고 바뀐 것이 없으면 원문 그대로 둔다. 환경변수 값은 JSON 이스케이프 모양도 가린다. 모양을 모르는 비밀, 8자 미만 비밀, 명령줄(`--password 값`)·이름·값 쌍 헤더는 못 가린다. 한계는 `docs/security.md`. SSH `processes`의 명령줄 위험은 #213 그대로다. 필터는 같은 입력 이력이면 항상 같은 결과를 낸다(D-036 `input_from` 접두 비교). Agent Log의 model 줄 `input`과 `records` 도구 줄 `output`은 모델이 받은 입력과 같아진다(`text`·`aggregate` 도구 줄은 자르기 전 원본이다). 표시(`details.redacted`)는 만들지 않는다(#279) |
+| D-049 | 도구의 동기 핸들러(DB·SIEM)는 호출마다 전용 데몬 스레드에서 돌리고 레지스트리가 `asyncio.wrap_future`로 기다린다. `async def` 핸들러(SSH)는 이벤트 루프에서 그대로 await한다. 취소하면 기다림만 끊고 진행 중인 DB 문장·HTTP 요청은 끝까지 두며 결과는 버린다. 취소로 버려진 스레드가 생기면 `soc.agent.executor` 로그에 도구 이름과 경과 시간만 WARNING으로 남긴다. `asyncio.to_thread`와 async 클라이언트(psycopg async, `httpx.AsyncClient`)는 쓰지 않는다 | `to_thread`의 기본 실행기 스레드는 프로세스 종료 때 합류돼 종료가 도구 시간만큼 붙잡히고(#278), psycopg async는 Windows 기본 이벤트 루프(`ProactorEventLoop`)에서 동작하지 않는다. 핸들러는 별도 스레드에서 돌므로 `ctx`와 자기 인자 밖의 스레드 로컬·`contextvars`에 기대지 않는다. 한계: 버려진 스레드는 DB는 접속·문장 시간 제한 안에, SIEM은 `deadline_seconds` 안에 끝나지만 DB 서버가 얼면 제한이 없다. 서버 쪽 문장 취소와 DB 정지 동작은 실제 PostgreSQL로 확인하지 못했다(#280) |
+| D-050 | 실행기 단계 스레드의 예외 처리와 종료 코드. `poll`·`handle`의 `Exception`·`CancelledError`·`SystemExit`은 예외 종류만 로그에 남기고 다음 건으로 간다. 그 밖의 `BaseException`과 단계 스레드 자체의 오류는 그 단계를 죽은 것으로 표시하고, 메인 루프가 감지해 다른 단계를 정리한 뒤 종료 코드 3으로 끝난다. 죽은 스레드를 재시작하지 않는다. 종료 코드는 0 정상, 1 종료 대기 시간 초과, 2 설정 오류, 3 단계 스레드가 죽음이다 | 예외 메시지는 밖에서 온 문자열일 수 있어 남기지 않고, 스레드 밖으로 다시 올리지 않는다(`threading.excepthook`이 메시지가 든 트레이스백을 찍는다). `SystemExit`을 치명으로 두면 한 건이 프로세스를 죽이고 재시작 뒤에도 같은 건이 다시 나온다. 재시작은 `BaseException` 뒤 상태를 믿을 수 없어 하지 않고, 프로세스 재시작은 프로세스 관리자의 몫이다. 실행기는 라운드마다 워커별 받은 건수·처리 건수·처리 시간을 `soc.agent.executor`에 INFO로 남긴다. 대기 시간·DB·화면 지표는 새 이슈(#295)에서 각 담당과 정한다(#280) |
 
 ### L2
 
@@ -147,12 +149,16 @@
 
 새 기록을 맨 위에 쓴다.
 
+<<<<<<< HEAD
+- #280 · 동기 도구 핸들러를 호출마다 전용 데몬 스레드에서 돌리는 방식(D-049)과 실행기 단계 스레드의 예외 처리·종료 코드 3(D-050)을 추가했다. 팀 합의(#280). 사용자가 계획을 확정함.
+=======
 - #294 · PostgreSQL 유일 인덱스의 키 길이 한계를 막도록 Base64url 페이로드가 128자를 넘으면 `h` + JSON 바이트 SHA-256 hex로 축약하기로 정했다. 원문은 계속 `original_text`에 보존한다.
 - #294 · 수집 불가 hit 격리·재시도 정책(D-050)을 확정했다. 격리 전용 키·페이지 원자 저장·별도 재시도 예산·실행별 격리 건수를 정했다. 계획 218의 문서 단위 정지 원칙을 대체하며 기존 계획 파일은 수정하지 않는다.
 - #277 · D-049 결정 반영(사람이 정함). 에이전트에게 보이는 `siem_ref`는 저장 키(`siem_ref_key`, 이스케이프된 값)다. `link_by_refs`는 저장 키 쌍(`SiemRefKey`)을 받고 안에서 이스케이프하지 않는다. 한 dict 안에서 키가 이스케이프 뒤 겹치면 값을 덮어쓰지 않고 `escape_collision` 실패로 기록한다(마이그레이션 없음, `error_code`에 CHECK가 없다).
 - #277 · 원본 보관 형식(D-049)을 추가했다. `raw_records` 원본을 jsonb 대신 JSON 글자(`original_text`, `ensure_ascii=True`)로 보관하고, 정규화 결과의 NUL·짝 없는 서로게이트를 값과 키 모두 6글자 이스케이프로 치환한다. 계약 필드 `original` → `original_text`. 사용자가 계획을 확정함.
 - #277 · 알려진 한계 두 가지(깨진 원본이 claim에서 배치를 멈춤, 치환 결과의 구별 불가와 키 충돌)는 `docs/notes/277-raw-original-text.md`에 문서화했다. 코드는 바꾸지 않았다.
 
+>>>>>>> 48f1e73b744abff09a9a08bb75b08e3dc2abc896
 - #279 · 모델 입력 비밀 값 가림(D-048)을 추가했다. 외부 LLM으로 보내는 입력을 SDK 입력 필터 한 곳에서 가리고, 가림 실패는 `provider_error`로 끝낸다. 환경변수 값 가림 최소 길이를 4에서 8로 올리고 `token`·`secret`·`Authorization: Basic|ApiKey` 모양을 더했다. D-036 메모의 복원 설명을 "모델에게 보낸 가림 적용 후 입력"으로 맞췄다. 팀 공유가 필요하다. 사용자가 계획을 확정함.
 
 - #278 · Agent Log 저장 방식(D-036)을 고쳤다. 호출이 끝날 때마다 줄을 바로 쓰고, model 줄 입력은 새로 더해진 항목만, `records` 도구 줄 출력은 모델에게 보인 결과만 저장한다. 복원 방법과 "끝난 run" 읽는 규칙을 메모에 적었다. #211 기록의 "자르기 전 전체 결과 저장"을 바꾼다. 팀 공유가 필요하다. 사용자가 계획을 확정함.

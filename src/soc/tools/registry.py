@@ -12,14 +12,22 @@
 도구 결과는 밖에서 온 문자열이다(docs/security.md). 예외 메시지·SQL·DB 주소는 모델에 보내지 않는다.
 """
 
+import asyncio
 import inspect
 import json
+import logging
 import re
+import threading
+import time
 from collections.abc import Callable, Iterable, Mapping
+from concurrent.futures import Future
 from dataclasses import dataclass
 from typing import Any, Literal, Protocol
 
 from agents import FunctionTool
+
+# 취소로 버려진 도구 스레드 경고는 운영자가 보는 실행기 로그 한 곳에 모은다(#280)
+logger = logging.getLogger("soc.agent.executor")
 
 ResultKind = Literal["records", "text", "aggregate"]
 ArgType = Literal["string", "integer"]
@@ -113,7 +121,8 @@ class ToolSpec:
     configure: 설정의 [tools]로 이 실행에서 쓸 ToolSpec을 만든다(#213). check_config 다음에 부른다.
       설정 값(예: 호스트 이름)을 인자 enum·설명에 넣을 때 쓴다. 이름은 바꿀 수 없다.
       None을 돌려주면 허용 목록에 있어도 이 실행에서는 등록하지 않는다(모델에게 보이지 않음).
-    handler가 awaitable을 돌려주면 레지스트리가 await한다(#213). 동기 핸들러는 그대로다.
+    handler가 awaitable을 돌려주면 레지스트리가 await한다(#213). `async def`가 아닌 핸들러는
+    호출마다 전용 데몬 스레드에서 돈다(D-049). 핸들러는 ctx와 자기 인자만 쓴다.
     """
 
     name: str
@@ -261,9 +270,7 @@ class ToolSession:
             fits=lambda body: self._fits({"call_id": call_id, **body}),
         )
         try:
-            raw = spec.handler(args, ctx)
-            if inspect.isawaitable(raw):
-                raw = await raw
+            raw = await _call_handler(spec, args, ctx)
             body, shown_ids = self._shape(spec, call_id, raw)
         except ToolError as exc:
             return self._fail(name, tool_call_id, exc.code, reason=exc.reason)
@@ -364,6 +371,45 @@ class ToolSession:
                 high = mid - 1
         body["text"] = text[:low] + CUT_MARK
         return body
+
+
+async def _call_handler(spec: ToolSpec, args: dict[str, Any], ctx: CallContext) -> Any:
+    """async def 핸들러는 루프에서 await하고, 나머지는 전용 데몬 스레드에서 부른다(D-049)."""
+    if inspect.iscoroutinefunction(spec.handler):
+        return await spec.handler(args, ctx)
+    raw = await _in_daemon_thread(spec.name, lambda: spec.handler(args, ctx))
+    return await raw if inspect.isawaitable(raw) else raw
+
+
+async def _in_daemon_thread(name: str, call: Callable[[], Any]) -> Any:
+    """call을 새 데몬 스레드에서 돌리고 기다린다(agent_log.RowWriter._spawn과 같은 방식).
+
+    취소는 기다림만 끊는다. 스레드는 끝까지 돌고 결과는 버려진다. 데몬이라 프로세스 종료를
+    막지 않는다. asyncio.to_thread는 기본 실행기 스레드가 종료 때 합류돼 쓰지 않는다(#278).
+    shortcut: 버려진 스레드는 못 멈춘다(DB·SIEM 자체 시간 제한까지 돎), 서버 쪽 취소는 필요할 때.
+    """
+    future: Future[Any] = Future()
+
+    def work() -> None:
+        if not future.set_running_or_notify_cancel():
+            return
+        try:
+            result = call()
+        except BaseException as exc:  # 루프 쪽에서 다시 낸다
+            future.set_exception(exc)
+        else:
+            future.set_result(result)
+
+    started = time.monotonic()
+    threading.Thread(target=work, name=f"soc-tool-{name}", daemon=True).start()
+    try:
+        return await asyncio.wrap_future(future)
+    except asyncio.CancelledError:
+        if not future.done():  # 도구 이름과 경과 시간만 남긴다(인자·예외 메시지 없음)
+            logger.warning(
+                "취소로 버려진 도구 스레드: tool=%s elapsed=%.1fs", name, time.monotonic() - started
+            )
+        raise
 
 
 def _configured(spec: ToolSpec, tools: Mapping[str, Any]) -> ToolSpec | None:
