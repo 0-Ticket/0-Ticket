@@ -27,5 +27,5 @@ supersedes: [250-l2-ticket-incident.md, 267-l2-related-window.md]
 
 ## 확인 방법
 
-- 통과: `uv run ruff format --check .`, `uv run ruff check .`, 관련 파이썬 단위 테스트 62개, `pnpm contracts:check`, 프론트엔드 테스트 80개, `pnpm build`, 수정한 UI 파일 Prettier/ESLint.
-- 실행 불가: `db` 테스트는 `DATABASE_URL` 부재로 실행하지 못했다. 전체 `uv run pytest`는 기존 DB 연결 실패 테스트 대기 중 중단했다. 전체 `pnpm lint`는 수정하지 않은 프론트 파일 35개의 Prettier 체크에서 실패했지만 바뀐 UI 파일은 별도로 통과했다.
+- 통과: `uv run ruff format .`(변경 없음), `uv run ruff check .`, 관련 파이썬 단위 테스트 62개, `pnpm contracts:check`, 프론트엔드 테스트 80개, `pnpm build`, 수정 UI 파일 Prettier/ESLint.
+- 미통과/미확인: 전체 `uv run pytest`는 Windows에서 파일명에 개행 문자를 붙이는 `test_name_ending_in_newline_is_not_a_migration`이 `OSError` 로 실패하고, 이어진 접속 오류 테스트 대기 중 중단했다. 전체 `pnpm lint`는 수정하지 않은 32개 프론트 파일에서 Prettier 체크가 실패했다. 프론트 ESLint는 오류 없이 경고 1건이다. `db` 테스트는 `DATABASE_URL` 부재로 실행하지 못했다.
