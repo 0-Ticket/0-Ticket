@@ -116,12 +116,29 @@ export type Body = string;
  */
 export type CreatedAt2 = number;
 export type Proposals = IncidentProposal[];
+export type TicketId1 = string;
+export type Coverage = "complete" | "incomplete" | "legacy" | "unknown";
+export type Reason = string | null;
+export type IncidentId1 = string;
+export type TicketId2 = string;
+export type Id4 = string;
+export type Kind1 = "ticket" | "alert" | "hunt" | "entity" | "incident";
+export type Type1 = string | null;
+export type Value1 = string | null;
+export type Nodes = GraphNode[];
+export type From = string;
+export type To = string;
+export type Kind2 = string;
+export type Edges = GraphEdge[];
+export type Paths = GraphPath[];
+export type TicketGraphs = IncidentTicketGraph[];
 export type SeedSource = string | null;
 
 export interface IncidentDetail {
   incident: Incident;
   artifacts: Artifacts;
   proposals: Proposals;
+  ticket_graphs?: TicketGraphs;
   seed_source: SeedSource;
 }
 export interface Incident {
@@ -185,4 +202,27 @@ export interface IncidentProposal {
   seq: Seq;
   body: Body;
   created_at: CreatedAt2;
+}
+export interface IncidentTicketGraph {
+  ticket_id: TicketId1;
+  coverage: Coverage;
+  reason: Reason;
+  paths: Paths;
+}
+export interface GraphPath {
+  incident_id: IncidentId1;
+  ticket_id: TicketId2;
+  nodes: Nodes;
+  edges: Edges;
+}
+export interface GraphNode {
+  id: Id4;
+  kind: Kind1;
+  type?: Type1;
+  value?: Value1;
+}
+export interface GraphEdge {
+  from: From;
+  to: To;
+  kind: Kind2;
 }

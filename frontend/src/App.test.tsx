@@ -504,6 +504,43 @@ test("Incident reports and response proposals remain text and link to source Tic
             body: sample.original.message,
           },
         ],
+        ticket_graphs: [
+          {
+            ticket_id: incident.ticket_ids[0],
+            coverage: "complete",
+            reason: "paths_found",
+            paths: [
+              {
+                incident_id: incident.id,
+                ticket_id: incident.ticket_ids[0],
+                nodes: [
+                  {
+                    id: incident.ticket_ids[0],
+                    kind: "ticket",
+                    type: null,
+                    value: null,
+                  },
+                  { id: "alt_sample", kind: "alert", type: null, value: null },
+                  {
+                    id: "host:ws-07",
+                    kind: "entity",
+                    type: "host",
+                    value: "ws-07",
+                  },
+                  { id: "alt_peer", kind: "alert", type: null, value: null },
+                  { id: "tkt_peer", kind: "ticket", type: null, value: null },
+                  {
+                    id: incident.id,
+                    kind: "incident",
+                    type: null,
+                    value: null,
+                  },
+                ],
+                edges: [],
+              },
+            ],
+          },
+        ],
         seed_source: "dev-seed-ui",
       }),
     ),
@@ -511,6 +548,10 @@ test("Incident reports and response proposals remain text and link to source Tic
   show(`/incidents?selected=${incident.id}`);
   const dialog = await screen.findByRole("dialog");
   expect(await within(dialog).findByText("대응 방안 제안")).toBeInTheDocument();
+  expect(
+    within(dialog).getByRole("heading", { name: "Ticket 연결 그래프" }),
+  ).toBeInTheDocument();
+  expect(within(dialog).getByText("ws-07")).toBeInTheDocument();
   expect(within(dialog).getByText(sample.original.message)).toBeInTheDocument();
   expect(dialog.querySelector("img, script")).toBeNull();
   expect(

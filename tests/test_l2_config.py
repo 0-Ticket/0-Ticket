@@ -17,8 +17,6 @@ def test_default_config_reads_into_branch_settings() -> None:
     assert set(config) == {"l2"}
     assert settings.candidate_window_ms == 86_400_000
     assert settings.max_candidates == 5
-    assert settings.candidate_source == "vector"
-    assert settings.top_k == 50
 
 
 def test_default_config_reads_into_analyze_settings() -> None:
@@ -27,8 +25,6 @@ def test_default_config_reads_into_analyze_settings() -> None:
     assert settings.lookback_ms == 259_200_000
     assert settings.max_failures == 3
     assert settings.failure_retry_cooldown_ms == 3_600_000
-    assert settings.max_seed_entities == 10
-    assert settings.max_related_per_entity == 20
 
 
 @pytest.mark.parametrize(
@@ -38,8 +34,6 @@ def test_default_config_reads_into_analyze_settings() -> None:
         lambda c: c["analyze"].update(lookback_ms=0),
         lambda c: c["analyze"].update(max_failures=True),
         lambda c: c["analyze"].update(failure_retry_cooldown_ms=0),
-        lambda c: c["analyze"].update(max_seed_entities="10"),
-        lambda c: c["analyze"].update(max_related_per_entity=0),
         lambda c: c["analyze"].update(extra=1),
     ],
 )
@@ -53,12 +47,7 @@ def test_bad_analyze_settings_are_rejected(change) -> None:
 
 def test_local_overrides_default_and_only_l2_is_returned(tmp_path: Path) -> None:
     (tmp_path / "default.toml").write_text(
-        "[l2.branch]\n"
-        "candidate_window_ms = 1000\n"
-        "max_candidates = 5\n"
-        'candidate_source = "vector"\n'
-        "top_k = 50\n"
-        "[other]\nx = 1\n",
+        "[l2.branch]\ncandidate_window_ms = 1000\nmax_candidates = 5\n[other]\nx = 1\n",
         encoding="utf-8",
     )
     (tmp_path / "local.toml").write_text(
@@ -72,8 +61,6 @@ def test_local_overrides_default_and_only_l2_is_returned(tmp_path: Path) -> None
             "branch": {
                 "candidate_window_ms": 1000,
                 "max_candidates": 2,
-                "candidate_source": "vector",
-                "top_k": 50,
             }
         }
     }
@@ -87,10 +74,7 @@ def test_local_overrides_default_and_only_l2_is_returned(tmp_path: Path) -> None
         lambda c: c["branch"].update(candidate_window_ms=True),
         lambda c: c["branch"].update(max_candidates=0),
         lambda c: c["branch"].update(max_candidates="5"),
-        lambda c: c["branch"].update(candidate_source="direct"),
-        lambda c: c["branch"].update(candidate_source=1),
-        lambda c: c["branch"].update(top_k=0),
-        lambda c: c["branch"].update(top_k=True),
+        lambda c: c["branch"].update(candidate_source="vector"),
         lambda c: c["branch"].update(strong_signal_types=[]),
     ],
 )

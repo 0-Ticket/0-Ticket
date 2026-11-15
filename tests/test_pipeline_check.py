@@ -100,7 +100,6 @@ def test_stage_without_workers_fails(config: dict[str, Any]) -> None:
 
 
 def test_qdrant_and_embedder_are_skipped_when_unused(config: dict[str, Any]) -> None:
-    config["l2"]["branch"]["candidate_source"] = "recent"
     for stage in ("l1", "l2"):
         config["tools"]["allowed"][stage] = [
             t for t in config["tools"]["allowed"][stage] if t != "search_similar_cases"
@@ -111,7 +110,6 @@ def test_qdrant_and_embedder_are_skipped_when_unused(config: dict[str, Any]) -> 
 
 
 def test_qdrant_is_checked_when_only_the_similar_tool_needs_it(config: dict[str, Any]) -> None:
-    config["l2"]["branch"]["candidate_source"] = "recent"
     checks = by_name(run_checks(config, replace(OK_PROBES, qdrant=boom), ENV))
     assert checks["qdrant"].status == "FAIL"
 

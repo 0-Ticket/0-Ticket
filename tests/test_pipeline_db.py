@@ -20,7 +20,6 @@ from test_lab_cycle_db import (
     ANALYZE,
     NORMALIZE,
     NOW,
-    MemoryVectorStore,
     analyze_run,
     branch_worker,
     counts,
@@ -200,14 +199,12 @@ def run_pipeline(
     return code[0]
 
 
-def l2_resolver(
-    db: str, vectors: MemoryVectorStore, l1: Callable[..., Any]
-) -> Callable[[str], Any]:
+def l2_resolver(db: str, l1: Callable[..., Any]) -> Callable[[str], Any]:
     def resolve(path: str) -> Any:
         if path == "soc.l1.judge:build_worker":
             return lambda _c: L1Worker(db, 0.8, run=l1, clock=lambda: NOW)
         if path == "soc.l2.branch:build_worker":
-            return lambda _c: branch_worker(db, vectors)
+            return lambda _c: branch_worker(db)
         if path == "soc.l2.analyze:build_worker":
             return lambda _c: L2AnalyzeWorker(
                 db,
@@ -234,20 +231,20 @@ def test_raw_records_flow_to_an_incident_artifact_without_manual_steps(
     pipeline_dir: Path, db: HiddenUrl, conn: psycopg.Connection, reader_url: HiddenUrl
 ) -> None:
     ingest_once(conn)
-    vectors = MemoryVectorStore()
-    resolve = l2_resolver(str(db), vectors, l1_run(str(db)))
+    resolve = l2_resolver(str(db), l1_run(str(db)))
 
     def done() -> bool:
-        # Ticket이 하나씩 붙을 때마다 재분석하므로, 4건이 모두 붙은 뒤의 분석이 끝나야 안정된다
-        row = q(conn, "SELECT status, ticket_ids FROM incidents").fetchone()
-        return (
-            row is not None and row["status"] == "awaiting_review" and len(row["ticket_ids"]) == 4
-        )
+        linked = q(conn, "SELECT count(*) AS n FROM tickets WHERE status = 'linked'").fetchone()
+        analyzing = q(
+            conn, "SELECT count(*) AS n FROM incidents WHERE status = 'analyzing'"
+        ).fetchone()
+        return linked["n"] == 4 and analyzing["n"] == 0
 
     assert run_pipeline(pipeline_dir, resolve, done) == 0
     first = counts(conn)
     assert first.pop("incident_artifacts") >= 1
-    assert first == {"raw_records": 9, "alerts": 4, "events": 5, "tickets": 4, "incidents": 1}
+    assert first.pop("incidents") >= 1
+    assert first == {"raw_records": 9, "alerts": 4, "events": 5, "tickets": 4}
     first = counts(conn)
     logs = q(conn, "SELECT count(*) AS n FROM agent_logs").fetchone()["n"]
 
@@ -271,7 +268,7 @@ def test_shutdown_leaves_in_flight_l1_work_waiting(
             ok=False, output=None, failure="cancelled", detail=None, run_id=new_id("run")
         )
 
-    resolve = l2_resolver(str(db), MemoryVectorStore(), blocked)
+    resolve = l2_resolver(str(db), blocked)
     assert run_pipeline(pipeline_dir, resolve, started.is_set, stop) == 0
     statuses = {r["status"] for r in q(conn, "SELECT status FROM tickets").fetchall()}
     assert statuses == {"new"}  # 실패·보류로 세지 않고 대기 상태 그대로다

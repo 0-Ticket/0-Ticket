@@ -324,24 +324,18 @@ reason_max_chars = 300
 # 결과 하나에 담는 대표 엔티티 수 상한
 entities_max = 5
 
-# L2 Ticket 분류 후보 만들기(#226, Incident 분류 방법 D-027).
+# L2 Ticket 엔티티 그래프 분류(#319, Incident 분류 방법 D-027).
 [l2.branch]
-# 후보로 볼 열린 Incident의 updated_at 시간 창(밀리초)
+# 그래프 후보를 볼 열린 Incident의 updated_at 시간 창(밀리초)
 candidate_window_ms = 86_400_000
-# 다음 단계에 보여 줄 후보 수 상한
+# 그래프 후보 Incident 수 상한. 초과하면 탐색 미완료로 처리한다.
 max_candidates = 5
-# 후보 조회 경로. vector | recent
-candidate_source = "vector"
-# Qdrant에서 가져올 비슷한 Ticket 수
-top_k = 50
 
-# L2 Incident 분석(#261, #270). 연속 실패 3회에 held로 두고 1시간 뒤 재시도한다.
+# L2 Incident 분석(#261, #270, #319). 연속 실패 3회에 held로 두고 1시간 뒤 재시도한다.
 [l2.analyze]
 lookback_ms = 259_200_000
 max_failures = 3
 failure_retry_cooldown_ms = 3_600_000
-max_seed_entities = 10
-max_related_per_entity = 20
 
 # 벡터 저장소와 임베딩(#257, Qdrant D-013, 임베딩 모델 D-031, 실행 라이브러리 D-044).
 # L2·L3가 함께 쓰는 공통 계층이다. 컬렉션 이름은 용도·모델 ID·revision·ONNX 파일에서 코드가 만든다.
