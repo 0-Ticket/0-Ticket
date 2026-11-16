@@ -498,7 +498,7 @@ def test_main_with_bad_config_exits_two(tmp_path: Path, capsys: pytest.CaptureFi
     assert "설정" in capsys.readouterr().err
 
 
-# 종료 코드 3: 단계 스레드가 죽음(#280, D-050)
+# 종료 코드 3: 단계 스레드가 죽음(#280, D-056)
 
 
 def write_two_stage_config(tmp_path: Path) -> None:

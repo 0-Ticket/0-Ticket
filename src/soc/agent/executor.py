@@ -9,7 +9,7 @@
 - 그 밖의 BaseException(KeyboardInterrupt 등)이나 스레드 자체의 오류는 종류만 로그에 남기고
   그 단계를 죽은 것으로 표시한다(스레드 밖으로 올리지 않는다). main이 이를 보고 다른 단계를
   정리한 뒤 종료
-  코드 3으로 끝낸다. 재시작하지 않는다(D-050).
+  코드 3으로 끝낸다. 재시작하지 않는다(D-056).
 - 받은 건이 있는 라운드는 워커마다 지표 한 줄(INFO)을 남긴다: round stage=… worker=… polled=…
   limit=… handled=…(성공) failed=… total_ms=…(handle 합) max_ms=…(건당 최대). polled가 limit이면
   밀리고 있다는 신호다. subject ID·예외 메시지는 넣지 않는다.
@@ -50,7 +50,7 @@ logger = logging.getLogger("soc.agent.executor")
 # run이 이어지면, 앞 run이 끝난 뒤 새로 시작한 run도 취소해야 하기 때문이다.
 CANCEL_INTERVAL = 0.2
 
-# 한 건의 실패로 보고 다음 건으로 가는 예외. 그 밖의 BaseException은 단계를 죽은 것으로 본다(D-050)
+# 한 건의 실패로 보고 다음 건으로 가는 예외. 그 밖의 BaseException은 단계를 죽은 것으로 본다(D-056)
 _ISOLATED = (Exception, asyncio.CancelledError, SystemExit)
 
 # 실행기가 아는 단계. 앞의 둘은 활성화 파이프(soc.pipeline)가 켠다(#316)
@@ -262,7 +262,7 @@ class Executor:
         return [t.stage for t in self._threads]
 
     def dead_stages(self) -> dict[str, str]:
-        """예외로 스레드가 끝난 단계와 그 예외 종류(D-050)."""
+        """예외로 스레드가 끝난 단계와 그 예외 종류(D-056)."""
         return {t.stage: t.died for t in self._threads if t.died is not None}
 
     def start(self) -> None:
@@ -307,7 +307,7 @@ def main(
     resolve: Resolve = resolve_factory,
 ) -> int:
     """uv run python -m soc.agent. 종료 코드: 0 정상, 1 종료 대기 시간 초과, 2 설정 오류,
-    3 단계 스레드가 죽음(D-050)."""
+    3 단계 스레드가 죽음(D-056)."""
     build_parser().parse_args(argv)
     set_tracing_disabled(True)  # 진입점에서 끈다(D-022). run_agent도 다시 끈다
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")

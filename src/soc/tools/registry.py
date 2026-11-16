@@ -126,7 +126,7 @@ class ToolSpec:
       None을 돌려주면 허용 목록에 있어도 이 실행에서는 등록하지 않는다(모델에게 보이지 않음).
     requires_service: 이름을 주면 session(services=…)에 그 이름의 객체가 있을 때만 등록한다(#313).
     handler가 awaitable을 돌려주면 레지스트리가 await한다(#213). `async def`가 아닌 핸들러는
-    호출마다 전용 데몬 스레드에서 돈다(D-049). 핸들러는 ctx와 자기 인자만 쓴다.
+    호출마다 전용 데몬 스레드에서 돈다(D-055). 핸들러는 ctx와 자기 인자만 쓴다.
     """
 
     name: str
@@ -394,7 +394,7 @@ class ToolSession:
 
 
 async def _call_handler(spec: ToolSpec, args: dict[str, Any], ctx: CallContext) -> Any:
-    """async def 핸들러는 루프에서 await하고, 나머지는 전용 데몬 스레드에서 부른다(D-049)."""
+    """async def 핸들러는 루프에서 await하고, 나머지는 전용 데몬 스레드에서 부른다(D-055)."""
     if inspect.iscoroutinefunction(spec.handler):
         return await spec.handler(args, ctx)
     raw = await _in_daemon_thread(spec.name, lambda: spec.handler(args, ctx))
