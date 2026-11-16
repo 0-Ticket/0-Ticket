@@ -62,6 +62,22 @@ flowchart LR
 
 필드는 `contracts/`의 JSON Schema가 기준이다.
 
+### SIEM 결과 되짚기 (D-058)
+
+에이전트가 SIEM 조회 도구(`query_siem`)의 결과를 근거로 삼으면, 판정(Verdict)의 `evidence_ids`에는 그 호출의 `agl_` ID(호출 전체)만 들어간다. SIEM 문서 하나를 가리키는 `siem_ref`는 근거 ID가 아니라서 인용하면 계약 검사에서 거부된다. 어느 SIEM 문서를 근거로 삼았는지는 아래 순서로 되짚는다.
+
+1. Verdict의 `agl_` ID로 Agent Log의 tool 줄을 찾는다. 줄 `id`가 그 ID다. 줄 `input`은 조회 인자이고 `output`은 모델에게 보인 결과다.
+2. `output.hits[].siem_ref`를 읽는다. 값이 길어서 줄였으면 히트의 `truncated_fields`에 줄인 필드 경로가 있고, 히트가 너무 커서 값을 보일 수 없었으면 `fields_omitted: true`와 `siem_ref`만 있다. 이때 문서는 있었지만 모델은 내용을 보지 못했다.
+3. 원본 문서를 찾는다. `siem_ref`는 `<_index>/<_id>`를 JSON 문자열로 이스케이프한 저장 키다(D-049).
+   - 수집된 문서면 `raw_records.siem_ref`가 같은 값이다. 그대로 찾는다.
+   - ELK에서 찾으려면 이스케이프를 되돌린다. 파이썬이면 `json.loads('"' + siem_ref + '"')`가 `<_index>/<_id>`를 준다. ES 색인 이름에는 `/`가 들어갈 수 없으니 첫 `/`에서 나눠 `_index`와 `_id`로 쓴다. (코드는 이 분리를 가정하지 않는다. 사람이 읽는 방법이다.)
+
+한계
+
+- 결과가 한도를 넘어 뒤에서 빠진 히트(`omitted`)의 `siem_ref`는 Agent Log에도 남지 않는다. 같은 tool 줄의 `input`으로 조회를 다시 해서 찾는다. 그 사이 결과가 달라질 수 있다.
+- `fields_omitted` 히트와 `truncated_fields`로 줄인 값은 Agent Log에도 줄인 채로 남는다. 전체 값은 원본 문서에서 읽는다.
+- 모델이 `reason` 같은 글에 `siem_ref`를 적을 수는 있지만 검증된 근거가 아니다.
+
 ## 만들지 않는 것
 
 - 사람 승인 없이 대응 조치를 실행하는 기능
@@ -74,5 +90,6 @@ flowchart LR
 
 <!-- 구조를 바꾸면 한 줄씩 추가한다. 형식: - YYYY-MM-DD · 무엇을 왜 바꿨는지 -->
 
+- 2026-11-16 · SIEM 결과를 `agl_`로만 인용하고 원본 문서를 Agent Log의 `siem_ref`로 되짚는 방법과 한계를 데이터 절에 추가함(#281, D-058)
 - 2026-11-06 · L2 분석 결과를 사람 검토 단계로 넘기는 Incident Artifact와 Proposal을 데이터 표에 추가함(#261)
 - 2026-11-03 · 원본(RawRecord)을 데이터 표에 추가하고 필드 기준을 `contracts/`로 둠, L1 Ticket 생성 모드를 적음, L2와 사람이 위협이 아닌 Incident를 종결할 수 있게 흐름을 고침(#192). 원칙 1의 "사고 확정"은 Case 확정을 뜻하므로 그대로 둠
