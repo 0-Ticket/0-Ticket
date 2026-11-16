@@ -961,60 +961,183 @@ td {
 .proposal pre {
   margin: 8px 0 0;
 }
-.ticket-graphs {
-  display: grid;
-  gap: 12px;
+.incident-graph {
+  margin: 12px 0 28px;
+  padding: 16px;
+  border: 1px solid #dce5f0;
+  border-radius: 12px;
+  background: #fff;
 }
-.ticket-graphs > section {
-  border: 1px solid #e5ebf4;
-  border-radius: 10px;
-  padding: 14px;
-}
-.ticket-graphs h4,
-.ticket-graphs p {
-  margin: 0 0 10px;
-}
-.graph-path {
+.incident-graph-heading {
   display: flex;
-  align-items: stretch;
-  gap: 22px;
-  overflow-x: auto;
-  list-style: none;
-  margin: 12px 0;
-  padding: 0 0 8px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px 16px;
+  font-size: 12px;
 }
-.graph-node {
-  position: relative;
+.incident-graph-heading > div {
   display: grid;
-  align-content: center;
-  gap: 4px;
-  min-width: 120px;
-  max-width: 220px;
-  border: 1px solid #dbe4f0;
-  border-radius: 8px;
-  padding: 9px;
-  background: #f7f9fc;
+  gap: 3px;
+  min-width: 0;
+}
+.incident-graph-heading strong {
+  color: #1d365e;
+  font-size: 14px;
+}
+.incident-graph-heading span,
+.incident-graph-note,
+.incident-graph-scroll-hint {
+  color: #63738b;
+}
+.incident-graph-heading span,
+.incident-graph-routes li,
+.incident-graph-statuses span {
+  overflow-wrap: anywhere;
+}
+.incident-graph-note {
+  margin-top: 12px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.incident-graph-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin-top: 12px;
+  font-size: 11px;
+  color: #465772;
+}
+.incident-graph-legend span::before {
+  content: "";
+  display: inline-block;
+  width: 22px;
+  margin-right: 6px;
+  vertical-align: middle;
+  border-top: 2px solid #a8b3c5;
+}
+.incident-graph-legend .path::before {
+  border-color: #25a16c;
+}
+.incident-graph-scroll-hint {
+  margin: 10px 0 6px;
   font-size: 11px;
 }
-.graph-node:not(:last-child)::after {
-  content: "→";
-  position: absolute;
-  left: calc(100% + 7px);
-  top: 50%;
-  color: #718198;
-  transform: translateY(-50%);
+.incident-graph-viewport {
+  max-width: 100%;
+  overflow: auto;
+  border: 1px solid #e5ebf4;
+  border-radius: 9px;
+  background: #f8fafc;
 }
-.graph-node strong {
+.incident-graph-viewport:focus-visible,
+.incident-graph-node:focus-visible {
+  outline: 2px solid #447ee3;
+  outline-offset: 2px;
+}
+.incident-graph-canvas {
+  position: relative;
+}
+.incident-graph-lines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.incident-graph-lines line {
+  stroke-width: 2;
+  stroke: #25a16c;
+}
+.incident-graph-lines line[data-relation="membership"] {
+  stroke: #a8b3c5;
+  stroke-width: 1.5;
+}
+/* 선 위에 올라가는 공유 엔티티 이름. 바탕색 테두리를 먼저 깔아 선과 겹쳐도 읽힌다 */
+.incident-graph-lines .incident-graph-edge-label {
+  fill: #1b7a50;
+  font-size: 11px;
+  font-weight: 600;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  paint-order: stroke;
+  stroke: #f8fafc;
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
+.incident-graph-node {
+  position: absolute;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 200px;
+  height: 92px;
+  padding: 10px 12px;
+  overflow: auto;
+  border: 1px solid #cfd9e8;
+  border-radius: 9px;
+  background: #fff;
+  box-shadow: 0 2px 5px #1e31500d;
+  font-size: 10px;
+  line-height: 1.4;
+}
+.incident-graph-node strong {
   color: #526277;
+  font-size: 10px;
   text-transform: uppercase;
 }
-.graph-node span {
+.incident-graph-node span {
+  font-family: "Roboto Mono", monospace;
   overflow-wrap: anywhere;
+}
+.incident-graph-node.incident {
+  border-color: #315d9f;
+  background: #eaf1fc;
+}
+.incident-graph-node.incident strong {
+  color: #234b87;
+}
+.incident-graph-node.entity {
+  border-color: #73b99b;
+  background: #edf8f2;
+}
+.incident-graph-node.entity strong {
+  color: #247b54;
+}
+.incident-graph h4 {
+  margin: 18px 0 8px;
+  color: #344661;
+  font-size: 12px;
+  font-weight: 600;
+}
+.incident-graph-empty {
+  margin-top: 12px;
+  color: #66758c;
+  font-size: 12px;
+}
+.incident-graph-routes,
+.incident-graph-statuses {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 22px;
+  font-size: 11px;
+  line-height: 1.6;
+}
+.incident-graph-routes li {
+  padding-left: 3px;
   font-family: "Roboto Mono", monospace;
 }
-.graph-node.entity {
-  border-color: #b9d8ce;
-  background: #f0f8f5;
+.incident-graph-statuses li {
+  padding-left: 3px;
+}
+.incident-graph-statuses span {
+  font-family: "Roboto Mono", monospace;
+}
+.incident-graph-statuses strong {
+  display: inline-block;
+  margin-left: 8px;
+  color: #4e6482;
+  font-weight: 500;
 }
 .review-actions {
   border-top: 1px solid #edf0f6;
