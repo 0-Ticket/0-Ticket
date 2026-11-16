@@ -8,6 +8,7 @@ violations에 남기고, elk 픽스처가 테스트 끝에 그것이 비었는�
 import asyncio
 import itertools
 import json
+import re
 import tomllib
 from pathlib import Path
 from typing import Any
@@ -30,6 +31,7 @@ from soc.tools import (
     default_registry,
     tool_error_text,
 )
+from soc.tools import siem as siem_mod
 from soc.tools.siem import (
     FILTERS,
     TARGET_FIELDS,
@@ -175,8 +177,9 @@ def test_query_web_access_builds_the_query_and_shapes_hits(elk: FakeElk) -> None
     # 반환 필드 밖의 값(event.original, source.geo)은 버린다
     assert "event.original" not in first["fields"]
     assert not any(key.startswith("source.geo") for key in first["fields"])
-    # 300자에서 자르고 경로를 적는다
-    assert len(first["fields"]["url.query"]) == 301 and first["fields"]["url.query"].endswith("…")
+    # 직렬화 길이(… 포함)가 FIELD_MAX_CHARS 이하가 되게 자르고 경로를 적는다
+    assert dlen(first["fields"]["url.query"]) <= siem_mod.FIELD_MAX_CHARS
+    assert first["fields"]["url.query"].endswith("…")
     assert first["truncated_fields"] == ["url.query"]
     # 점이 든 키와 중첩된 키를 모두 읽는다
     assert second["fields"]["url.path"] == "/admin"
@@ -298,10 +301,194 @@ def test_query_drops_hits_from_the_end_to_fit(elk: FakeElk) -> None:
 
 
 def test_query_with_no_room_for_one_hit_returns_zero_hits(elk: FakeElk) -> None:
+    # 300자는 빈 본문(197자)에 siem_ref만 있는 히트(116자)를 더한 313자보다 작다. 그때만 0건이다
     elk.add(ok("search_large.json"))
     c = caller(elk, config(chars=300))
     body = parse(call(c, "query_siem", query()))
     assert body["hits"] == [] and body["truncated"] is True and body["omitted"] == 40
+
+
+def test_query_with_room_only_for_a_siem_ref_shows_that_one_hit(elk: FakeElk) -> None:
+    elk.add(ok("search_large.json"))
+    c = caller(elk, config(chars=320))
+    out = call(c, "query_siem", query())
+    body = parse(out)
+    assert body_chars(out) <= 320
+    assert body["total"] == 40 and body["truncated"] is True and body["omitted"] == 39
+    assert body["hits"] == [
+        {"siem_ref": f"{STORED_INDEX}/large-doc-0000", "fields": {}, "fields_omitted": True}
+    ]
+
+
+# 한도보다 큰 히트(#281): 0건으로 숨기지 않고 줄이거나 siem_ref만 보인다
+
+# 실측(docs/notes/281): 한도 350~1,500자에서 wide 히트는 siem_ref만 보이고 3,000자부터 줄여서 보인다
+SIEM_REF_ONLY_CHARS = 500
+
+NASTY = '"<' * 150  # 300자. 직렬화하면 큰따옴표 2자, <는 6자가 된다
+STORED_INDEX = ".ds-logs-nginx.access-default-2026.11.04-000001"
+FIELD_PATH = re.compile(r"[A-Za-z0-9@_.]+(\[\d+\])?")  # 경로 이름만. 값은 들어가지 않는다
+
+
+def dlen(value: Any) -> int:
+    """모델에게 가는 직렬화 길이(registry.dumped_len)."""
+    from soc.tools.registry import dumped_len
+
+    return dumped_len(value)
+
+
+def one_hit(source: dict[str, Any], doc_id: str = "one-doc-0001") -> dict[str, Any]:
+    hit = {"_index": STORED_INDEX, "_id": doc_id, "_score": None, "_source": source}
+    return {
+        "took": 1,
+        "timed_out": False,
+        "hits": {"total": {"value": 1, "relation": "eq"}, "hits": [hit]},
+    }
+
+
+def respond(elk: FakeElk, data: dict[str, Any]) -> None:
+    elk.add(httpx.Response(200, json=data))
+
+
+def walk_values(value: Any):
+    if isinstance(value, dict):
+        for item in value.values():
+            yield from walk_values(item)
+    elif isinstance(value, list):
+        for item in value:
+            yield from walk_values(item)
+    else:
+        yield value
+
+
+def test_oversized_hit_is_shown_not_hidden(elk: FakeElk) -> None:
+    elk.add(ok("search_oversized_hit.json"))
+    c = caller(elk)  # L1 한도 6,000자
+    out = call(c, "query_siem", query())
+    body = parse(out)
+    assert body["total"] == 1 and len(body["hits"]) == 1 and body["omitted"] == 0
+    hit = body["hits"][0]
+    assert hit["siem_ref"] == f"{STORED_INDEX}/oversized-doc-0001"
+    assert body_chars(out) <= 6_000
+    # 값 하나의 직렬화 길이(… 포함)가 FIELD_MAX_CHARS 이하다
+    assert all(dlen(v) <= siem_mod.FIELD_MAX_CHARS for v in walk_values(hit["fields"]))
+    assert hit["truncated_fields"] == [
+        "url.path",
+        "url.query",
+        "user_agent.original",
+        "user.name[0]",
+        "user.name[1]",
+        "user.name[2]",
+        "host.name",
+    ]
+    assert "fields_omitted" not in hit
+    assert c.session.evidence_ids == {body["call_id"]}
+    # Agent Log tool 줄에는 모델에게 보인 히트가 남는다(원본 찾기용)
+    assert c.rows[0]["output"]["hits"][0]["siem_ref"] == hit["siem_ref"]
+
+
+@pytest.mark.parametrize(
+    "unit",
+    ['"<', ">", "가나다", "😀", "\x01", "x", '\\"'],
+    ids=["quote-lt", "gt", "hangul", "emoji", "control", "ascii", "backslash-quote"],
+)
+def test_cut_value_fits_field_max_chars_including_the_cut_mark(elk: FakeElk, unit: str) -> None:
+    original = unit * 1_000
+    respond(elk, one_hit({"url": {"query": original}, "source": {"ip": "203.0.113.9"}}))
+    hit = parse(call(caller(elk), "query_siem", query()))["hits"][0]
+    value = hit["fields"]["url.query"]
+    assert value.endswith("…") and dlen(value) <= siem_mod.FIELD_MAX_CHARS
+    kept = value[:-1]
+    assert original.startswith(kept)
+    # 가장 긴 앞부분이다: 한 글자 더 남기면 한도를 넘는다
+    assert dlen(original[: len(kept) + 1] + "…") > siem_mod.FIELD_MAX_CHARS
+    assert hit["truncated_fields"] == ["url.query"]
+
+
+def test_short_non_ascii_value_is_not_cut(elk: FakeElk) -> None:
+    value = "가나다😀" * 20
+    respond(elk, one_hit({"url": {"query": value}}))
+    hit = parse(call(caller(elk), "query_siem", query()))["hits"][0]
+    assert hit["fields"]["url.query"] == value
+    assert "truncated_fields" not in hit
+
+
+def test_long_list_is_cut_to_field_max_items(elk: FakeElk) -> None:
+    respond(elk, one_hit({"user": {"name": [f"u{i}" for i in range(5_000)]}}))
+    hit = parse(call(caller(elk), "query_siem", query()))["hits"][0]
+    names = hit["fields"]["user.name"]
+    assert names == [f"u{i}" for i in range(siem_mod.FIELD_MAX_ITEMS)]
+    assert hit["truncated_fields"] == ["user.name"]
+
+
+def test_list_of_exactly_field_max_items_is_kept(elk: FakeElk) -> None:
+    respond(elk, one_hit({"user": {"name": [f"u{i}" for i in range(siem_mod.FIELD_MAX_ITEMS)]}}))
+    hit = parse(call(caller(elk), "query_siem", query()))["hits"][0]
+    assert len(hit["fields"]["user.name"]) == siem_mod.FIELD_MAX_ITEMS
+    assert "truncated_fields" not in hit
+
+
+def test_hit_over_its_share_is_shortened_and_keeps_short_fields(elk: FakeElk) -> None:
+    elk.add(ok("search_oversized_hit_wide.json"))
+    c = caller(elk, config(chars=3_000))
+    out = call(c, "query_siem", query())
+    body = parse(out)
+    assert body_chars(out) <= 3_000
+    assert body["truncated"] is True and body["omitted"] == 0 and len(body["hits"]) == 1
+    hit = body["hits"][0]
+    assert "fields_omitted" not in hit
+    # 짧은 값(시각, IP, 메서드, 상태 코드)은 그대로다
+    assert hit["fields"]["@timestamp"] == "2026-11-04T04:00:00.000Z"
+    assert hit["fields"]["source.ip"] == "203.0.113.9"
+    assert hit["fields"]["http.request.method"] == "GET"
+    assert hit["fields"]["http.response.status_code"] == 200
+    # 줄인 경로만 적는다(값은 없다). 줄이기 전 자르기 경로도 합쳐진다
+    assert hit["truncated_fields"] and all(FIELD_PATH.fullmatch(p) for p in hit["truncated_fields"])
+    assert len(hit["truncated_fields"]) == len(set(hit["truncated_fields"]))
+    assert "url.query" in hit["truncated_fields"]
+
+
+def test_hit_that_cannot_be_shortened_keeps_only_its_siem_ref(elk: FakeElk) -> None:
+    elk.add(ok("search_oversized_hit_wide.json"))
+    c = caller(elk, config(chars=SIEM_REF_ONLY_CHARS))
+    out = call(c, "query_siem", query())
+    body = parse(out)
+    assert body_chars(out) <= SIEM_REF_ONLY_CHARS
+    assert body["total"] == 1 and body["truncated"] is True and body["omitted"] == 0
+    # 문서는 있었지만 내용을 볼 수 없다. 필드 값은 하나도 없다
+    assert body["hits"] == [
+        {"siem_ref": f"{STORED_INDEX}/wide-doc-0001", "fields": {}, "fields_omitted": True}
+    ]
+
+
+def test_big_hit_first_does_not_hide_the_small_hits_behind_it(elk: FakeElk) -> None:
+    elk.add(ok("search_oversized_then_small.json"))
+    c = caller(elk)
+    out = call(c, "query_siem", query(limit=100))
+    body = parse(out)
+    assert body_chars(out) <= 6_000
+    refs = [h["siem_ref"].split("/")[1] for h in body["hits"]]
+    assert refs == ["big-doc-0000"] + [f"small-doc-{i:04d}" for i in range(1, 9)]
+    assert body["total"] == 9 and body["omitted"] == 0 and body["truncated"] is True
+    big, *small = body["hits"]
+    assert big.get("fields_omitted") is True or big["truncated_fields"]
+    assert all("truncated_fields" not in h and "fields_omitted" not in h for h in small)
+    assert small[0]["fields"]["source.ip"] == "203.0.113.11"
+
+
+def test_shortened_hit_can_be_cited_by_call_id(elk: FakeElk) -> None:
+    elk.add(ok("search_oversized_hit.json"))
+
+    def cite(outputs: list[str]) -> dict[str, Any]:
+        return verdict(ALERT_ID, parse(outputs[0])["call_id"])
+
+    result, model, sink = run(elk, [siem_call(query()), {"final_fn": cite}])
+    assert result.ok is True, result.detail
+    out = parse(tool_outputs(model.calls[-1]["input"])[0])
+    assert len(out["hits"]) == 1
+    row = next(r for r in sink.rows if r["kind"] == "tool")
+    assert row["output"]["hits"][0]["siem_ref"] == out["hits"][0]["siem_ref"]
+    assert out["call_id"] in result.cited_evidence_ids
 
 
 def test_result_body_cannot_close_the_delimiter(elk: FakeElk) -> None:
