@@ -1,7 +1,7 @@
 """도구가 함께 쓰는 공유 객체(#313). 실행기가 시작할 때 한 번 만들어 둔다.
 
 임베더처럼 만드는 데 비싼 객체를 호출마다 만들지 않기 위한 자리다. 핸들러는 이 모듈을 직접
-부르지 않고 CallContext.services로만 받는다(D-049). run_task가 실행마다 snapshot()을 세션에 넘긴다.
+부르지 않고 CallContext.services로만 받는다(D-055). run_task가 실행마다 snapshot()을 세션에 넘긴다.
 """
 
 from typing import Any

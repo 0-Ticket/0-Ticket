@@ -3,7 +3,7 @@
 판정이 끝난 Ticket을 담은 Qdrant 컬렉션(`ticket_verdicts`)에서 비슷한 Ticket을 찾고, 상태·판정·시각·
 엔티티는 PostgreSQL에서 읽는다(권위 원본, D-013). 읽기 역할 soc_agent_reader가 읽을 수 있는 열
 (마이그레이션 0007)만 쓰고 열 이름을 직접 적는다. 임베더와 저장소는 실행기가 시작할 때 만든 공유
-객체(ctx.services)로 받는다(D-049). 결과는 aggregate이고 call_id로 인용한다.
+객체(ctx.services)로 받는다(D-055). 결과는 aggregate이고 call_id로 인용한다.
 
 과거 판정은 참고 증거이고 정답이 아니다. decided_by가 agent인 판정은 L1·L2 에이전트만 본 것이라
 틀렸을 수 있다. 판정 이유와 엔티티 문자열은 밖에서 온 데이터라 길이를 자른다.

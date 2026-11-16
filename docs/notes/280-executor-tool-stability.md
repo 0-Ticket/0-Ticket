@@ -3,7 +3,7 @@ issue: 280
 date: 2026-11-11
 owner: Interludeal
 plan: 280-executor-tool-stability.md
-supersedes: ["215-executor-l1-e2e.md"]  # "취소가 동작하는 방식과 한계"(86·88행)가 낡았다
+supersedes: ["215-executor-l1-e2e.md", "212-siem-tools.md", "213-ssh-tool.md"]  # 215 "취소가 동작하는 방식과 한계"(86·88행), 212 기록 39행·213 기록 35행의 "동기 도구가 이벤트 루프를 막는다"가 낡았다
 ---
 
 # 동기 도구를 별도 스레드로 돌리고, 죽은 단계를 알아채고, 라운드 지표를 남기고, LLM 클라이언트를 닫는다
@@ -22,7 +22,7 @@ supersedes: ["215-executor-l1-e2e.md"]  # "취소가 동작하는 방식과 한�
 | 0 | 정상 종료(Ctrl+C·SIGTERM으로 끝냈고 모든 단계가 시간 안에 끝남). 등록된 워커가 없을 때도 0 |
 | 1 | 종료 대기 시간(`[executor] shutdown_timeout_seconds`) 안에 끝나지 않은 단계가 있음 |
 | 2 | 설정 오류(워커 등록 실패 포함) |
-| 3 | 단계 스레드가 죽음(D-050). 죽은 단계와 종료 대기 초과가 겹쳐도 3 |
+| 3 | 단계 스레드가 죽음(D-056). 죽은 단계와 종료 대기 초과가 겹쳐도 3 |
 
 레포 안에서 실행기 종료 코드에 기대는 곳(`.github`, `scripts`, compose·Docker 파일, README·CONTRIBUTING, `docs/*.md`, `prompts/`, `.claude/skills`, `.agents`)은 없었다. `executor.main` docstring과 `tests/test_agent_executor.py`의 `main` 테스트, `config/default.toml` 주석을 고쳤다.
 
@@ -40,8 +40,8 @@ round stage=l1 worker=<워커 이름> polled=10 limit=10 handled=9 failed=1 tota
 
 ### 결정
 
-- **D-049** 동기 도구 핸들러(DB·SIEM)는 호출마다 전용 데몬 스레드에서 돌리고 `asyncio.wrap_future`로 기다린다. `async def` 핸들러(SSH)는 루프에서 그대로 await한다. 취소는 기다림만 끊는다. `asyncio.to_thread`와 async 클라이언트는 쓰지 않는다.
-- **D-050** 단계 스레드의 예외 처리와 종료 코드(위). 죽은 스레드는 재시작하지 않는다.
+- **D-055** 동기 도구 핸들러(DB·SIEM)는 호출마다 전용 데몬 스레드에서 돌리고 `asyncio.wrap_future`로 기다린다. `async def` 핸들러(SSH)는 루프에서 그대로 await한다. 취소는 기다림만 끊는다. `asyncio.to_thread`와 async 클라이언트는 쓰지 않는다.
+- **D-056** 단계 스레드의 예외 처리와 종료 코드(위). 죽은 스레드는 재시작하지 않는다.
 
 ## 계획과 달라진 점
 
