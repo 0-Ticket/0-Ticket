@@ -471,7 +471,13 @@ def test_big_hit_first_does_not_hide_the_small_hits_behind_it(elk: FakeElk) -> N
     assert refs == ["big-doc-0000"] + [f"small-doc-{i:04d}" for i in range(1, 9)]
     assert body["total"] == 9 and body["omitted"] == 0 and body["truncated"] is True
     big, *small = body["hits"]
-    assert big.get("fields_omitted") is True or big["truncated_fields"]
+    # 큰따옴표·<로 채운 큰 히트도 L1에서 siem_ref만 남지 않고 줄여서 보인다. 짧은 값은 그대로다
+    assert "fields_omitted" not in big and big["truncated_fields"]
+    assert big["fields"]["source.ip"] == "203.0.113.9"
+    assert big["fields"]["@timestamp"] == "2026-11-04T05:00:00.000Z"
+    assert big["fields"]["http.request.method"] == "GET"
+    assert big["fields"]["http.response.status_code"] == 200
+    assert all(FIELD_PATH.fullmatch(p) for p in big["truncated_fields"])
     assert all("truncated_fields" not in h and "fields_omitted" not in h for h in small)
     assert small[0]["fields"]["source.ip"] == "203.0.113.11"
 
