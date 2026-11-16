@@ -30,7 +30,16 @@ import httpx
 
 from soc.ids import siem_ref_key
 from soc.tools.internal import SORT_ARG, TIME_RANGE_ARGS, check_time_range
-from soc.tools.registry import CUT_MARK, Arg, CallContext, ToolConfigError, ToolError, ToolSpec
+from soc.tools.registry import (
+    CUT_MARK,
+    Arg,
+    CallContext,
+    ToolConfigError,
+    ToolError,
+    ToolSpec,
+    dumped_len,
+    shorten_record,
+)
 
 TARGET_NAMES = ("alerts", "web_access", "cloudtrail")
 # 필터 인자 이름 → ELK 필드. keyword·숫자·ip 타입 필드만 둔다(term·terms가 그대로 맞는다).
@@ -108,7 +117,11 @@ TARGET_FIELDS: dict[str, tuple[str, ...]] = {
 }
 MAX_FILTERS = 5
 TOP_N = 10
-FIELD_MAX_CHARS = 300  # query_siem 결과의 문자열 값 하나
+# query_siem 결과의 문자열 값 하나. 모델에게 가는 직렬화 길이(양쪽 따옴표와 자른 표시 포함)다(#281)
+FIELD_MAX_CHARS = 300
+FIELD_MAX_ITEMS = 10  # query_siem 결과의 목록 값 하나의 원소 수
+# 히트 하나의 몫 = (결과 한도 - 빈 본문) / min(히트 수, HIT_SHARE_MAX). 몫을 넘는 히트는 먼저 줄인다
+HIT_SHARE_MAX = 3
 VALUE_MAX_CHARS = 120  # count_siem 결과의 값 하나(#211 summarize_http_flow와 같다)
 TRACK_TOTAL_HITS = 10_000
 SOURCE_NAME = "siem"
@@ -411,15 +424,34 @@ def _lookup(source: Any, parts: list[str]) -> Any:
     return _MISSING
 
 
+def _cut_string(value: str) -> str:
+    """직렬화 길이(자른 표시 포함)가 FIELD_MAX_CHARS 이하인 가장 긴 앞부분에 표시를 붙인다."""
+    low, high = 0, min(len(value), FIELD_MAX_CHARS)  # 한 글자는 직렬화해도 1자 이상이다
+    while low < high:
+        mid = (low + high + 1) // 2
+        if dumped_len(value[:mid] + CUT_MARK) <= FIELD_MAX_CHARS:
+            low = mid
+        else:
+            high = mid - 1
+    return value[:low] + CUT_MARK
+
+
 def _cap(value: Any, path: str, cut: list[str]) -> Any:
-    """문자열을 FIELD_MAX_CHARS에서 자르고 자른 경로를 cut에 적는다."""
+    """문자열은 직렬화 길이 FIELD_MAX_CHARS, 목록은 FIELD_MAX_ITEMS개로 자르고 경로를 cut에 적는다.
+
+    글자 수가 아니라 dumped_len으로 잰다. 큰따옴표·<·>·제어 문자의 이스케이프가 늘리는 길이를
+    여기서 막는다. 경로만 적고 값은 적지 않는다.
+    """
     if isinstance(value, str):
-        if len(value) > FIELD_MAX_CHARS:
-            cut.append(path)
-            return value[:FIELD_MAX_CHARS] + CUT_MARK
-        return value
+        # 글자 수가 한도를 넘으면 따옴표 2자를 더해 항상 넘으므로 긴 값은 직렬화하지 않는다
+        if len(value) <= FIELD_MAX_CHARS and dumped_len(value) <= FIELD_MAX_CHARS:
+            return value
+        cut.append(path)
+        return _cut_string(value)
     if isinstance(value, list):
-        return [_cap(item, f"{path}[{i}]", cut) for i, item in enumerate(value)]
+        if len(value) > FIELD_MAX_ITEMS:
+            cut.append(path)
+        return [_cap(item, f"{path}[{i}]", cut) for i, item in enumerate(value[:FIELD_MAX_ITEMS])]
     if isinstance(value, dict):
         return {k: _cap(v, f"{path}.{k}", cut) for k, v in value.items()}
     return value
@@ -465,7 +497,7 @@ def _query_siem(
     if not isinstance(raw_hits, list):
         raise _shape_error()
     hits = [_hit(hit, fields) for hit in raw_hits]
-    shown = list(hits)
+    shown: list[dict[str, Any]] = []
     body: dict[str, Any] = {
         "source": SOURCE_NAME,
         "schema": SCHEMA_NAME,
@@ -476,12 +508,60 @@ def _query_siem(
         "truncated": False,
         "omitted": 0,
     }
-    # JSON 중간은 자르지 않는다. 뒤 히트부터 뺀다.
+    if not hits:
+        return body
+    # 1. 몫을 넘는 히트는 뒤에서 빼기 전에 줄인다. 긴 히트 하나 때문에 한도에 들어갈 다른 히트가
+    #    빠지지 않게 한다. 줄이지 못하면 siem_ref만 남긴다(문서가 있었음을 알린다).
+    budget = _hit_budget(ctx, body, len(hits))
+    for hit in hits:
+        fitted, changed = _fit_to_share(hit, budget)
+        shown.append(fitted)
+        body["truncated"] = body["truncated"] or changed
+    # 2. JSON 중간은 자르지 않는다. 뒤 히트부터 뺀다.
     while shown and not ctx.fits(body):
         shown.pop()
         body["truncated"] = True
         body["omitted"] = len(hits) - len(shown)
+    # 3. 하나도 못 남았으면 첫 히트의 siem_ref만이라도 보인다. 그것도 안 들어가면 0건이다.
+    if not shown:
+        shown.append(_siem_ref_only(hits[0]))
+        body["omitted"] = len(hits) - 1
+        if not ctx.fits(body):
+            shown.clear()
+            body["omitted"] = len(hits)
     return body
+
+
+def _hit_budget(ctx: CallContext, body: dict[str, Any], count: int) -> int:
+    """히트 하나가 쓸 수 있는 직렬화 길이. (한도 - 빈 본문) / min(히트 수, HIT_SHARE_MAX)다.
+
+    빈 본문은 call_id와 머리 칸, hits: [], truncated: true, omitted: <히트 수>다. 히트 사이
+    쉼표 한 자를 뺀다. 히트가 하나면 한도 전체가 몫이다.
+    """
+    empty = {"call_id": ctx.call_id, **body, "hits": [], "truncated": True, "omitted": count}
+    return (ctx.max_result_chars - dumped_len(empty)) // min(count, HIT_SHARE_MAX) - 1
+
+
+def _siem_ref_only(hit: dict[str, Any]) -> dict[str, Any]:
+    """내용을 볼 수 없는 히트. 값은 하나도 없고 siem_ref와 fields_omitted 표시만 있다."""
+    return {"siem_ref": hit["siem_ref"], "fields": {}, "fields_omitted": True}
+
+
+def _fit_to_share(hit: dict[str, Any], budget: int) -> tuple[dict[str, Any], bool]:
+    """(몫 안에 든 히트, 몫 때문에 바꿨는지). 긴 문자열부터 줄이고 안 되면 siem_ref만 남긴다."""
+    if dumped_len(hit) <= budget:
+        return hit, False
+    already = hit.get("truncated_fields", [])
+
+    def fits(fields: dict[str, Any], paths: list[str]) -> bool:
+        merged = already + [p for p in paths if p not in already]
+        return dumped_len({**hit, "fields": fields, "truncated_fields": merged}) <= budget
+
+    shortened, paths = shorten_record(hit["fields"], (), fits)
+    if shortened is None:
+        return _siem_ref_only(hit), True
+    merged = already + [p for p in paths if p not in already]
+    return {**hit, "fields": shortened, "truncated_fields": merged}, True
 
 
 def _bucket(bucket: Any) -> dict[str, Any]:
@@ -553,6 +633,9 @@ def siem_tools(
         description=(
             "SIEM(ELK)에서 시간 범위 안의 문서를 찾는다. 대상마다 정해진 필드만 돌려준다. "
             "히트마다 siem_ref(저장 키: <_index>/<_id>를 JSON 이스케이프한 값)와 fields가 있다. "
+            "긴 값은 줄이고 줄인 필드 경로를 truncated_fields에 적는다. 히트가 너무 커서 값을 "
+            "보일 수 없으면 siem_ref와 fields_omitted: true만 있다. 문서는 있었지만 내용을 "
+            "볼 수 없었다는 뜻이다. omitted는 한도 때문에 빠진 히트 수다. "
             + _COMMON_DESCRIPTION
             + _target_lines()
         ),
