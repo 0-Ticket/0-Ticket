@@ -1,6 +1,6 @@
 """설정의 조회 대상을 차례로 수집한다.
 
-조회 시작 시각은 체크포인트·--since·기본 범위로 정한다(resolve_start_ms, D-055).
+조회 시작 시각은 체크포인트·--since·기본 범위로 정한다(resolve_start_ms, D-057).
 
 대상마다 체크포인트를 읽고, 정상 RawRecord·격리 행·필요한 다음 체크포인트를 페이지 단위 트랜잭션으로
 함께 저장한다(store.save_page). 일시적인 요청 실패는 요청마다 최대 3회 시도한다.
@@ -101,7 +101,7 @@ def run(
 def resolve_start_ms(
     checkpoint_ms: int | None, since_ms: int | None, settings: Settings, now_ms: int
 ) -> int:
-    """조회를 시작할 시각(epoch ms)을 정한다(D-055).
+    """조회를 시작할 시각(epoch ms)을 정한다(D-057).
 
     체크포인트가 없으면 --since, 그것도 없으면 지금 - initial_lookback_seconds다.
     있으면 체크포인트 - overlap_seconds이고, --since가 더 이르면 그것을 쓴다. --since가 더 늦으면

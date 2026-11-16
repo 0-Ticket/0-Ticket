@@ -10,7 +10,7 @@ supersedes: []
 
 ## 한 일
 
-- `uv run python -m soc.ingest [--since 24h]`가 조회 시작 시각을 규칙으로 정한다(D-055). 체크포인트가 없으면 `--since` 또는 `[ingest] initial_lookback_seconds`(86400)부터, 있으면 `체크포인트 − overlap_seconds`(60)부터 읽는다. `--since`가 더 이르면 그것을 쓰고, 더 늦으면 무시한다. 이전에는 체크포인트가 없으면 인덱스 전체를 가져왔다.
+- `uv run python -m soc.ingest [--since 24h]`가 조회 시작 시각을 규칙으로 정한다(D-057). 체크포인트가 없으면 `--since` 또는 `[ingest] initial_lookback_seconds`(86400)부터, 있으면 `체크포인트 − overlap_seconds`(60)부터 읽는다. `--since`가 더 이르면 그것을 쓰고, 더 늦으면 무시한다. 이전에는 체크포인트가 없으면 인덱스 전체를 가져왔다.
 - `store.save_page`는 체크포인트를 저장된 `time_ms`보다 클 때만 갱신한다(같거나 작으면 `updated_at`도 그대로). `--since`로 과거를 다시 읽어도 되돌아가지 않는다.
 - 수집은 `pg_try_advisory_lock`(`store.RUN_LOCK_KEY`)으로 동시에 하나만 돈다. 못 잡으면 "다른 수집이 실행 중이다"를 stderr에 쓰고 종료 코드 3으로 끝나며, ELK에 붙지 않고 아무것도 쓰지 않는다. 종료 코드는 0 성공, 1 실패한 소스·DB 오류, 2 설정·인자 오류, 3 잠금.
 - 소스마다 요약 한 줄을 낸다: 구간(UTC), 가져옴, 새로 저장, 건너뜀(= 가져옴 − 새로 저장 − 격리), 격리, 페이지, 소요 초, 실패 종류와 이유. 끝에 전체 소요 시간과 "결과 확인: DB의 ingest_runs 테이블(상태 조회 명령은 아직 없다)"를 낸다. 이유 문구는 환경변수 이름·설정 키 이름만 담는다.

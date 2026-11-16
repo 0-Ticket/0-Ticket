@@ -75,7 +75,7 @@ overlap_seconds = 60               # 매 실행이 체크포인트보다 이만�
 - `tests/ingest/fake_elk.py`: `FakeStore` 체크포인트 규칙
 - `tests/ingest/unit/test_run.py`, `test_config.py`, `test_elk.py`와 새 `test_since.py`·`test_lock`·`test_summary`, `tests/ingest/db/test_run_db.py`·`test_store_db.py`: 새 테스트와 출력 단언 수정. 샘플은 `tests/fixtures/`의 손 샘플과 `fake_elk.py`를 재사용하고 필요하면 `tests/fixtures/ingest/`에 더한다
 - `.env.example`: 변경 없음(새 환경변수 없음)
-- `docs/decisions.md`: D-055와 기록(이 계획 커밋에서 추가)
+- `docs/decisions.md`: D-057와 기록(이 계획 커밋에서 추가)
 - `docs/plans/317-manual-ingest.md`, `docs/notes/317-manual-ingest.md`
 
 ## 다른 코드와 맞물리는 곳
@@ -122,7 +122,7 @@ overlap_seconds = 60               # 매 실행이 체크포인트보다 이만�
 - **`--only` 옵션은 만들지 않는다(질문 5 A).** 설정의 소스 목록과 가짜 ES로 충분하다.
 - **요약 건수는 DB에 남기지 않는다(질문 6 A).** 메모리에서 세어 출력만 한다. 상태 조회 이슈가 필요하면 그때 더한다.
 - **#232는 읽었다(질문 7).** #232는 이슈가 아니라 #218을 닫은 머지된 PR이었다. 번호가 #191보다 크므로 읽었다.
-- **결정 목록.** D-055를 확정으로 추가했다.
+- **결정 목록.** D-057를 확정으로 추가했다.
 - 기본안으로 정한 것: 첫 실행 기본 범위 24시간(`initial_lookback_seconds = 86400`), `--since` 형식(상대 값·시간대 있는 ISO 8601), 구간 정의(시작 ~ 마지막으로 가져온 문서 시각, 0건이면 시작만), 안내 줄 임시 문구("결과 확인: DB의 `ingest_runs`"), 이유 문구에 환경변수 이름·설정 키 이름만 허용.
 
 ## 바뀐 점
