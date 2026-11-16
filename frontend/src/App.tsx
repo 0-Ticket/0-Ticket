@@ -48,6 +48,7 @@ import {
 import { useCan, useLoginTarget, useLogout, useMe } from "./auth/session";
 import { UsersPage } from "./users/users-page";
 import { PolicyPage } from "./policy-page";
+import { IncidentGraph } from "./incident-graph";
 import { FlowChart } from "./flow-chart";
 import type { TicketingPolicyResponse } from "./api/generated/TicketingPolicyResponse";
 
@@ -502,49 +503,10 @@ function DetailBody({ data }: { data: Detail }) {
             )}
           </div>
           <h3>Ticket 연결 그래프</h3>
-          <div className="ticket-graphs">
-            {(data.ticket_graphs ?? []).map((graph) => (
-              <section key={graph.ticket_id}>
-                <h4>{link(graph.ticket_id, "tickets", graph.ticket_id)}</h4>
-                <p>
-                  탐색:{" "}
-                  {graph.coverage === "complete"
-                    ? "완료"
-                    : graph.coverage === "incomplete"
-                      ? "미완료"
-                      : graph.coverage === "legacy"
-                        ? "과거 분류 기록 없음"
-                        : "확인 불가"}
-                  {graph.reason === "public_ip_only" && " · 공용 IP만 일치"}
-                  {graph.reason === "no_path" && " · 연결 경로 없음"}
-                  {graph.reason === "candidate_limit" && " · 후보 한도 도달"}
-                </p>
-                {graph.paths.map((path, pathIndex) => (
-                  <ol
-                    className="graph-path"
-                    key={`${path.ticket_id}-${pathIndex}`}
-                  >
-                    {path.nodes.map((node, nodeIndex) => (
-                      <li
-                        className={`graph-node ${node.kind}`}
-                        key={`${node.id}-${nodeIndex}`}
-                      >
-                        <strong>
-                          {node.kind === "entity" ? node.type : node.kind}
-                        </strong>
-                        <span>
-                          {node.kind === "entity" ? node.value : node.id}
-                        </span>
-                      </li>
-                    ))}
-                  </ol>
-                ))}
-                {graph.coverage === "complete" && graph.paths.length === 0 && (
-                  <p>표시할 연결 경로가 없습니다.</p>
-                )}
-              </section>
-            ))}
-          </div>
+          <IncidentGraph
+            incident={data.incident}
+            ticketGraphs={data.ticket_graphs}
+          />
           <h3>Incident</h3>
           <JsonViewer value={data.incident} />
           <h3>라운드별 분석 보고서</h3>

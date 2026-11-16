@@ -3,6 +3,7 @@ import { screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import seed from "../../tests/fixtures/api/ui_seed.json";
 import sample from "../../tests/fixtures/frontend/json_viewer.json";
+import graphFixture from "../../tests/fixtures/frontend/incident_graph.json";
 import { adminMe, server, requests, show, dashboard } from "./test-utils";
 
 test("unknown-only ticket risk shows no count text", async () => {
@@ -495,7 +496,7 @@ test("Incident reports and response proposals remain text and link to source Tic
     ),
     http.get("*/api/incidents/:id", () =>
       HttpResponse.json({
-        incident,
+        incident: { ...incident, ticket_ids: graphFixture.ticket_ids },
         artifacts: [artifact],
         proposals: [
           {
@@ -504,43 +505,7 @@ test("Incident reports and response proposals remain text and link to source Tic
             body: sample.original.message,
           },
         ],
-        ticket_graphs: [
-          {
-            ticket_id: incident.ticket_ids[0],
-            coverage: "complete",
-            reason: "paths_found",
-            paths: [
-              {
-                incident_id: incident.id,
-                ticket_id: incident.ticket_ids[0],
-                nodes: [
-                  {
-                    id: incident.ticket_ids[0],
-                    kind: "ticket",
-                    type: null,
-                    value: null,
-                  },
-                  { id: "alt_sample", kind: "alert", type: null, value: null },
-                  {
-                    id: "host:ws-07",
-                    kind: "entity",
-                    type: "host",
-                    value: "ws-07",
-                  },
-                  { id: "alt_peer", kind: "alert", type: null, value: null },
-                  { id: "tkt_peer", kind: "ticket", type: null, value: null },
-                  {
-                    id: incident.id,
-                    kind: "incident",
-                    type: null,
-                    value: null,
-                  },
-                ],
-                edges: [],
-              },
-            ],
-          },
-        ],
+        ticket_graphs: graphFixture.ticket_graphs,
         seed_source: "dev-seed-ui",
       }),
     ),
@@ -551,7 +516,24 @@ test("Incident reports and response proposals remain text and link to source Tic
   expect(
     within(dialog).getByRole("heading", { name: "Ticket 연결 그래프" }),
   ).toBeInTheDocument();
-  expect(within(dialog).getByText("ws-07")).toBeInTheDocument();
+  expect(
+    await within(dialog).findByRole("region", { name: "Incident 관계도" }),
+  ).toBeInTheDocument();
+  expect(dialog.querySelectorAll(".incident-graph-node.entity")).toHaveLength(
+    1,
+  );
+  expect(within(dialog).getAllByText("lab-7").length).toBeGreaterThan(0);
+  expect(
+    within(dialog).queryByText("other.example.com"),
+  ).not.toBeInTheDocument();
+  expect(
+    dialog.querySelectorAll(".incident-graph-lines line[data-relation='path']"),
+  ).toHaveLength(6);
+  expect(
+    dialog.querySelectorAll(
+      ".incident-graph-lines line[data-relation='membership']",
+    ),
+  ).toHaveLength(7);
   expect(within(dialog).getByText(sample.original.message)).toBeInTheDocument();
   expect(dialog.querySelector("img, script")).toBeNull();
   expect(
@@ -560,6 +542,39 @@ test("Incident reports and response proposals remain text and link to source Tic
   expect(
     within(dialog).getByRole("heading", { name: "분석 라운드 1" }),
   ).toBeInTheDocument();
+});
+
+test("Incident graph shows Ticket names without offering links when ticket.read is absent", async () => {
+  server.use(
+    http.get("*/api/auth/me", () =>
+      HttpResponse.json({
+        ...adminMe,
+        role: "analyst",
+        permissions: ["incident.read"],
+      }),
+    ),
+    http.get("*/api/incidents", () =>
+      HttpResponse.json({ items: [], next_cursor: null }),
+    ),
+    http.get("*/api/incidents/:id", () =>
+      HttpResponse.json({
+        incident: { ...seed.incidents[1], ticket_ids: graphFixture.ticket_ids },
+        artifacts: [],
+        proposals: [],
+        ticket_graphs: graphFixture.ticket_graphs,
+        seed_source: "dev-seed-ui",
+      }),
+    ),
+  );
+  show(`/incidents?selected=${seed.incidents[1].id}`);
+  const dialog = await screen.findByRole("dialog");
+  expect(
+    await within(dialog).findByRole("region", { name: "Incident 관계도" }),
+  ).toBeInTheDocument();
+  expect(
+    within(dialog).queryByRole("link", { name: /원본 Ticket/ }),
+  ).toBeNull();
+  expect(dialog.textContent).toContain(graphFixture.ticket_ids[0]);
 });
 
 test("Case detail links to the Incident and status chips filter requests", async () => {

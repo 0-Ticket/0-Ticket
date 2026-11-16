@@ -1,0 +1,95 @@
+{
+  "incident_id": "inc_01a19f93-1266-7000-8000-000000000002",
+  "ticket_ids": [
+    "tkt_01a19f93-1266-7000-8000-000000000006",
+    "tkt_01a19f93-1266-7000-8000-000000000007",
+    "tkt_01a19f93-1266-7000-8000-000000000008",
+    "tkt_01a19f93-1266-7000-8000-000000000009",
+    "tkt_01a19f93-1266-7000-8000-00000000000a",
+    "tkt_01a19f93-1266-7000-8000-00000000000b",
+    "tkt_01a19f93-1266-7000-8000-00000000000c"
+  ],
+  "ticket_graphs": [
+    {
+      "ticket_id": "tkt_01a19f93-1266-7000-8000-000000000006",
+      "coverage": "complete",
+      "reason": "no_path",
+      "paths": []
+    },
+    {
+      "ticket_id": "tkt_01a19f93-1266-7000-8000-000000000007",
+      "coverage": "complete",
+      "reason": "paths_found",
+      "paths": [
+        {
+          "incident_id": "inc_01a19f93-1266-7000-8000-000000000002",
+          "ticket_id": "tkt_01a19f93-1266-7000-8000-000000000006",
+          "nodes": [
+            { "id": "tkt_01a19f93-1266-7000-8000-000000000007", "kind": "ticket" },
+            { "id": "alt_01a19f93-1266-7000-8000-000000000101", "kind": "alert" },
+            { "id": "host:lab-7", "kind": "entity", "type": "host", "value": "lab-7" },
+            { "id": "alt_01a19f93-1266-7000-8000-000000000100", "kind": "alert" },
+            { "id": "tkt_01a19f93-1266-7000-8000-000000000006", "kind": "ticket" },
+            { "id": "inc_01a19f93-1266-7000-8000-000000000002", "kind": "incident" }
+          ],
+          "edges": [
+            { "from": "tkt_01a19f93-1266-7000-8000-000000000007", "to": "alt_01a19f93-1266-7000-8000-000000000101", "kind": "has_alert" },
+            { "from": "alt_01a19f93-1266-7000-8000-000000000101", "to": "host:lab-7", "kind": "contains_entity" },
+            { "from": "host:lab-7", "to": "alt_01a19f93-1266-7000-8000-000000000100", "kind": "shares_entity" },
+            { "from": "alt_01a19f93-1266-7000-8000-000000000100", "to": "tkt_01a19f93-1266-7000-8000-000000000006", "kind": "has_alert" },
+            { "from": "tkt_01a19f93-1266-7000-8000-000000000006", "to": "inc_01a19f93-1266-7000-8000-000000000002", "kind": "belongs_to" }
+          ]
+        },
+        {
+          "incident_id": "inc_01a19f93-1266-7000-8000-000000000003",
+          "ticket_id": "tkt_01a19f93-1266-7000-8000-00000000000d",
+          "nodes": [
+            { "id": "tkt_01a19f93-1266-7000-8000-000000000007", "kind": "ticket" },
+            { "id": "alt_01a19f93-1266-7000-8000-000000000101", "kind": "alert" },
+            { "id": "domain:other.example.com", "kind": "entity", "type": "domain", "value": "other.example.com" },
+            { "id": "alt_01a19f93-1266-7000-8000-000000000104", "kind": "alert" },
+            { "id": "tkt_01a19f93-1266-7000-8000-00000000000d", "kind": "ticket" },
+            { "id": "inc_01a19f93-1266-7000-8000-000000000003", "kind": "incident" }
+          ],
+          "edges": [
+            { "from": "tkt_01a19f93-1266-7000-8000-000000000007", "to": "alt_01a19f93-1266-7000-8000-000000000101", "kind": "has_alert" },
+            { "from": "alt_01a19f93-1266-7000-8000-000000000101", "to": "domain:other.example.com", "kind": "contains_entity" },
+            { "from": "domain:other.example.com", "to": "alt_01a19f93-1266-7000-8000-000000000104", "kind": "shares_entity" },
+            { "from": "alt_01a19f93-1266-7000-8000-000000000104", "to": "tkt_01a19f93-1266-7000-8000-00000000000d", "kind": "has_alert" },
+            { "from": "tkt_01a19f93-1266-7000-8000-00000000000d", "to": "inc_01a19f93-1266-7000-8000-000000000003", "kind": "belongs_to" }
+          ]
+        }
+      ]
+    },
+    {
+      "ticket_id": "tkt_01a19f93-1266-7000-8000-000000000008",
+      "coverage": "complete",
+      "reason": "paths_found",
+      "paths": [
+        {
+          "incident_id": "inc_01a19f93-1266-7000-8000-000000000002",
+          "ticket_id": "tkt_01a19f93-1266-7000-8000-000000000006",
+          "nodes": [
+            { "id": "tkt_01a19f93-1266-7000-8000-000000000008", "kind": "ticket" },
+            { "id": "hnt_01a19f93-1266-7000-8000-000000000102", "kind": "hunt" },
+            { "id": "host:lab-7", "kind": "entity", "type": "host", "value": "lab-7" },
+            { "id": "alt_01a19f93-1266-7000-8000-000000000100", "kind": "alert" },
+            { "id": "tkt_01a19f93-1266-7000-8000-000000000006", "kind": "ticket" },
+            { "id": "inc_01a19f93-1266-7000-8000-000000000002", "kind": "incident" }
+          ],
+          "edges": [
+            { "from": "tkt_01a19f93-1266-7000-8000-000000000008", "to": "hnt_01a19f93-1266-7000-8000-000000000102", "kind": "has_hunt" },
+            { "from": "hnt_01a19f93-1266-7000-8000-000000000102", "to": "host:lab-7", "kind": "contains_entity" },
+            { "from": "host:lab-7", "to": "alt_01a19f93-1266-7000-8000-000000000100", "kind": "shares_entity" },
+            { "from": "alt_01a19f93-1266-7000-8000-000000000100", "to": "tkt_01a19f93-1266-7000-8000-000000000006", "kind": "has_alert" },
+            { "from": "tkt_01a19f93-1266-7000-8000-000000000006", "to": "inc_01a19f93-1266-7000-8000-000000000002", "kind": "belongs_to" }
+          ]
+        }
+      ]
+    },
+    { "ticket_id": "tkt_01a19f93-1266-7000-8000-000000000009", "coverage": "incomplete", "reason": "candidate_limit", "paths": [] },
+    { "ticket_id": "tkt_01a19f93-1266-7000-8000-00000000000a", "coverage": "legacy", "reason": null, "paths": [] },
+    { "ticket_id": "tkt_01a19f93-1266-7000-8000-00000000000b", "coverage": "unknown", "reason": null, "paths": [] },
+    { "ticket_id": "tkt_01a19f93-1266-7000-8000-00000000000c", "coverage": "complete", "reason": "public_ip_only", "paths": [] }
+  ]
+}
