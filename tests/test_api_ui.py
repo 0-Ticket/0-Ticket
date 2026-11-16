@@ -148,12 +148,31 @@ def test_ticket_filters_and_full_detail(ui_client):
 
 
 @pytest.mark.db
-def test_review_is_incident_and_artifacts_are_preserved(ui_client):
+def test_review_is_incident_and_artifacts_are_preserved(ui_client, ui_db):
     items = ui_client.get("/api/incidents", params={"status": "awaiting_review"}).json()["items"]
     assert len(items) == 1
+    incident_id = items[0]["id"]
+    incident = next(row for row in SEED["incidents"] if row["id"] == incident_id)
+    ticket_id = incident["ticket_ids"][0]
+    graph = {
+        "coverage": "incomplete",
+        "reason": "candidate_limit",
+        "paths": [],
+    }
+    with psycopg.connect(ui_db) as conn:
+        conn.execute(
+            "UPDATE tickets SET details = jsonb_set(details, '{l2_branch}', %s) WHERE id = %s",
+            (Jsonb(graph), ticket_id),
+        )
     body = ui_client.get("/api/incidents/" + items[0]["id"]).json()
     validate_contract("incident", body["incident"])
     assert body["artifacts"] and body["proposals"]
+    assert body["ticket_graphs"] == [
+        {
+            "ticket_id": ticket_id,
+            **graph,
+        }
+    ]
     for row in body["artifacts"]:
         validate_contract("incident_artifact", row)
     for row in body["proposals"]:

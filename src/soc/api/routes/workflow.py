@@ -100,10 +100,26 @@ def incident(request: Request, incident_id: str):
             "ORDER BY a.analysis_round DESC,p.kind,p.seq",
             (incident_id,),
         ).fetchall()
+        ticket_rows = conn.execute(
+            "SELECT id, details FROM tickets WHERE id = ANY(%s)", (row["ticket_ids"],)
+        ).fetchall()
+    by_ticket = {item["id"]: item["details"].get("l2_branch") for item in ticket_rows}
+    ticket_graphs = []
+    for ticket_id in row["ticket_ids"]:
+        graph = by_ticket.get(ticket_id)
+        ticket_graphs.append(
+            {
+                "ticket_id": ticket_id,
+                "coverage": "legacy" if graph is None else graph.get("coverage", "unknown"),
+                "reason": None if graph is None else graph.get("reason"),
+                "paths": [] if graph is None else graph.get("paths", []),
+            }
+        )
     return dict(
         incident=row,
         artifacts=[read.times(x) for x in artifacts],
         proposals=[read.times(x) for x in proposals],
+        ticket_graphs=ticket_graphs,
         seed_source=row["details"].get("seed_source"),
     )
 

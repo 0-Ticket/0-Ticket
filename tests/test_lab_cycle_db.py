@@ -22,7 +22,6 @@ import psycopg
 import pytest
 from conftest import HiddenUrl
 from fake_elk import FakeElk, make_settings, respond
-from fake_embedder import FakeEmbedder
 from fake_model import FakeModel
 from psycopg import sql
 from psycopg.conninfo import make_conninfo
@@ -65,15 +64,11 @@ NORMALIZE = NormalizeSettings(
     batch_size=200, lease_seconds=600, connect_timeout_seconds=5, asset_statement_timeout_ms=5000
 )
 AUTO = TicketingPolicy(mode="auto", scenario_rule_ids=())
-BRANCH = BranchSettings(
-    candidate_window_ms=86_400_000, max_candidates=5, candidate_source="recent", top_k=50
-)
+BRANCH = BranchSettings(candidate_window_ms=86_400_000, max_candidates=5)
 ANALYZE = AnalyzeSettings(
     lookback_ms=86_400_000,
     max_failures=3,
     failure_retry_cooldown_ms=3_600_000,
-    max_seed_entities=10,
-    max_related_per_entity=20,
 )
 L1_CONFIG = {**CONFIG, "tools": {**CONFIG["tools"], "allowed": {"l1": ["get_alert"]}}}
 READER = "soc_agent_reader"
@@ -86,16 +81,6 @@ WAF_RULE = "Lab WAF repeated block"
 def search_response(name: str) -> httpx.Response:
     """tests/fixtures/lab_cycle/의 검색 응답 하나. 인자 name은 파일 이름이다."""
     return respond(200, json.loads((FIXTURES / name).read_text(encoding="utf-8")))
-
-
-class MemoryVectorStore:
-    """L2 분류 워커의 벡터 저장소 대역. recent 경로라 upsert만 받는다."""
-
-    def __init__(self) -> None:
-        self.upserts: list[tuple[str, list[float], dict[str, str]]] = []
-
-    def upsert(self, point_id: str, vector: list[float], payload: dict[str, str]) -> None:
-        self.upserts.append((point_id, vector, payload))
 
 
 def ok(output: dict[str, Any]) -> AgentResult:
@@ -241,8 +226,8 @@ def analyze_run(task: AgentTask) -> AgentResult:
     )
 
 
-def branch_worker(db: str, store: MemoryVectorStore) -> L2BranchWorker:
-    return L2BranchWorker(db, BRANCH, FakeEmbedder(), store, run=branch_run, clock=lambda: NOW)
+def branch_worker(db: str) -> L2BranchWorker:
+    return L2BranchWorker(db, BRANCH, run=branch_run, clock=lambda: NOW)
 
 
 def drain(worker: Any) -> int:
@@ -312,15 +297,14 @@ def test_lab_shaped_alert_flows_to_incident_artifact_and_rerun_adds_nothing(
     ).fetchone()
     assert tool_rows["n"] == 4
 
-    # 5 L2 분류: 첫 Ticket이 새 Incident, 나머지는 그 Incident를 고른다
-    vectors = MemoryVectorStore()
-    assert drain(branch_worker(db, vectors)) == 4
+    # 5 L2 분류: 공유 엔티티 경로가 없으므로 Ticket별로 Incident를 만든다
+    assert drain(branch_worker(db)) == 4
     incidents = q(conn, "SELECT * FROM incidents").fetchall()
-    assert len(incidents) == 1 and len(incidents[0]["ticket_ids"]) == 4
-    assert incidents[0]["status"] == "analyzing"
-    assert len(vectors.upserts) == 4
+    assert len(incidents) == 4
+    assert all(len(incident["ticket_ids"]) == 1 for incident in incidents)
+    assert all(incident["status"] == "analyzing" for incident in incidents)
 
-    # 6 L2 분석: Artifact 한 행, 사람 검토 대기
+    # 6 L2 분석: Incident별로 Artifact 하나씩 생성한다
     analyzer = L2AnalyzeWorker(
         db,
         ANALYZE,
@@ -330,11 +314,11 @@ def test_lab_shaped_alert_flows_to_incident_artifact_and_rerun_adds_nothing(
         run=analyze_run,
         clock=lambda: NOW,
     )
-    assert drain(analyzer) == 1
-    incident = q(conn, "SELECT * FROM incidents").fetchone()
-    assert incident["status"] == "awaiting_review"
+    assert drain(analyzer) == 4
+    reviewed = q(conn, "SELECT status FROM incidents").fetchall()
+    assert all(incident["status"] == "awaiting_review" for incident in reviewed)
     artifacts = q(conn, "SELECT * FROM incident_artifacts").fetchall()
-    assert len(artifacts) == 1 and artifacts[0]["verdict"] == "attempted"
+    assert len(artifacts) == 4 and all(row["verdict"] == "attempted" for row in artifacts)
 
     first = counts(conn)
     assert first == {
@@ -342,8 +326,8 @@ def test_lab_shaped_alert_flows_to_incident_artifact_and_rerun_adds_nothing(
         "alerts": 4,
         "events": 5,
         "tickets": 4,
-        "incidents": 1,
-        "incident_artifacts": 1,
+        "incidents": 4,
+        "incident_artifacts": 4,
     }
 
     # 2회차: 같은 명령을 다시 돌려도 늘지 않는다
@@ -352,7 +336,7 @@ def test_lab_shaped_alert_flows_to_incident_artifact_and_rerun_adds_nothing(
     assert normalize_run(NORMALIZE, conn, "lab-cycle").claimed == 0
     assert ticketing_run(conn, AUTO, clock=lambda: NOW_MS).created == 0
     assert drain(L1Worker(db, 0.8, run=l1_run(db), clock=lambda: NOW)) == 0
-    assert drain(branch_worker(db, vectors)) == 0
+    assert drain(branch_worker(db)) == 0
     assert drain(analyzer) == 0
     assert counts(conn) == first
 
@@ -398,8 +382,7 @@ def test_l3_ticket_from_lab_records_enters_l2_branch(
     ticket = q(conn, "SELECT * FROM tickets WHERE hunt_id = %s", (hunt["id"],)).fetchone()
     assert (ticket["origin"], ticket["status"]) == ("l3", "escalated")
 
-    vectors = MemoryVectorStore()
-    assert drain(branch_worker(db, vectors)) == 1
+    assert drain(branch_worker(db)) == 1
     ticket = q(conn, "SELECT * FROM tickets WHERE id = %s", (ticket["id"],)).fetchone()
     assert ticket["status"] == "linked"
     incident = q(conn, "SELECT * FROM incidents").fetchone()

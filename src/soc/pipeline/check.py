@@ -115,10 +115,7 @@ def run_checks(
     allowed = [n for s in ("l1", "l2") for n in cfg.get("tools", {}).get("allowed", {}).get(s, [])]
     registry = default_registry()
     bundles = {registry.get(n).bundle for n in allowed if registry.get(n) is not None}
-    needs_vector = (
-        cfg.get("l2", {}).get("branch", {}).get("candidate_source") == "vector"
-        or SIMILAR_TOOL in allowed
-    )
+    needs_vector = SIMILAR_TOOL in allowed
 
     def probed(name: str, probe: Probe, env: str | None = None, *, needed: bool = True) -> Check:
         if not needed:

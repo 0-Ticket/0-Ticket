@@ -1,7 +1,5 @@
-"""L2 vector 후보와 에이전트 분류 결과를 순수 계산으로 확인한다."""
+"""L2 그래프 후보와 에이전트 분류 결과를 확인한다."""
 
-import json
-from pathlib import Path
 from typing import Any
 
 import pytest
@@ -13,106 +11,45 @@ from soc.agent.agent_log import MemoryLogSink
 from soc.agent.runner import run_task
 from soc.agent.types import contains_forbidden
 from soc.l2.branch.context import BranchContext
-from soc.l2.branch.decide import (
-    final_candidates,
-    make_task,
-    parse_hits,
-    provisional_candidates,
-    resolve_decision,
-)
-from soc.store import SearchHit
+from soc.l2.branch.decide import Candidate, make_task, resolve_decision
 
-FIXTURE = Path(__file__).parent / "fixtures" / "l2" / "candidates.json"
+INCIDENT = "inc_01a19f93-1150-7000-8000-000000000102"
+PEER = "tkt_01a19f93-1150-7000-8000-000000000203"
 
 
-@pytest.fixture(scope="module")
-def sample() -> dict[str, Any]:
-    return json.loads(FIXTURE.read_text(encoding="utf-8"))
-
-
-def search_hits(sample: dict[str, Any]) -> tuple[SearchHit, ...]:
-    return tuple(SearchHit(**hit) for hit in sample["hits"])
-
-
-def test_invalid_hit_shapes_are_dropped(sample: dict[str, Any]) -> None:
-    parsed = parse_hits(search_hits(sample))
-
-    assert parsed.invalid_count == 2
-    assert len(parsed.hits) == 4
-
-
-def test_relationship_check_reselects_and_resorts_without_refill(sample: dict[str, Any]) -> None:
-    parsed = parse_hits(search_hits(sample))
-    incidents = {row["id"]: row for row in sample["incidents"]}
-    tickets = {row["id"]: row for row in sample["tickets"]}
-
-    provisional = provisional_candidates(parsed.hits, incidents, max_candidates=2)
-    selected = final_candidates(provisional, tickets, invalid_count=parsed.invalid_count)
-
-    actual = [(item.incident["id"], item.score, item.similar_ticket_id) for item in selected.items]
-    assert actual == [
-        (
-            "inc_01a19f93-1150-7000-8000-000000000102",
-            0.90,
-            "tkt_01a19f93-1150-7000-8000-000000000203",
-        ),
-        (
-            "inc_01a19f93-1150-7000-8000-000000000101",
-            0.80,
-            "tkt_01a19f93-1150-7000-8000-000000000202",
-        ),
-    ]
-    assert selected.invalid_hit_count == 3
-    assert all(item.incident["id"] != sample["incidents"][2]["id"] for item in selected.items)
-
-
-def test_all_invalid_relations_leave_no_candidates(sample: dict[str, Any]) -> None:
-    parsed = parse_hits(search_hits(sample))
-    incidents = {row["id"]: row for row in sample["incidents"]}
-    tickets = {row["id"]: {**row, "status": "escalated"} for row in sample["tickets"]}
-
-    selected = final_candidates(
-        provisional_candidates(parsed.hits, incidents, max_candidates=2),
-        tickets,
-        invalid_count=parsed.invalid_count,
-    )
-
-    assert selected.items == ()
-    assert selected.invalid_hit_count == 5
+def candidates() -> tuple[Candidate, ...]:
+    path = {
+        "incident_id": INCIDENT,
+        "ticket_id": PEER,
+        "nodes": [
+            {"id": "tkt_01a19f93-1150-7000-8000-000000000301", "kind": "ticket"},
+            {"id": "alt_01a19f93-1150-7000-8000-000000000301", "kind": "alert"},
+            {"id": "host:ws-07", "kind": "entity", "type": "host", "value": "ws-07"},
+            {"id": "alt_01a19f93-1150-7000-8000-000000000203", "kind": "alert"},
+            {"id": PEER, "kind": "ticket"},
+            {"id": INCIDENT, "kind": "incident"},
+        ],
+        "edges": [],
+    }
+    incident = {
+        "id": INCIDENT,
+        "title": "연결된 Incident",
+        "ticket_ids": [PEER],
+        "created_at": 1793764000000,
+        "updated_at": 1793764600000,
+    }
+    return (Candidate(incident, (path,)),)
 
 
 def candidate_context() -> BranchContext:
-    ticket_id = "tkt_01a19f93-1150-7000-8000-000000000301"
     return BranchContext(
-        ticket={"id": ticket_id, "verdict": None},
+        ticket={"id": "tkt_01a19f93-1150-7000-8000-000000000301", "verdict": None},
         alerts=(),
         events=(),
         hunt=None,
         evidence_ids=(),
         missing_evidence_count=0,
     )
-
-
-def test_task_contains_duration_and_contract_without_forbidden_prompt(
-    sample: dict[str, Any],
-) -> None:
-    parsed = parse_hits(search_hits(sample))
-    selected = final_candidates(
-        provisional_candidates(
-            parsed.hits, {row["id"]: row for row in sample["incidents"]}, max_candidates=2
-        ),
-        {row["id"]: row for row in sample["tickets"]},
-    )
-
-    task = make_task(candidate_context(), selected.items, "vector")
-
-    assert task.output_contract == "branch_decision"
-    assert task.allowed_evidence_ids == ()
-    assert task.data["candidate_source"] == "vector"
-    assert task.data["candidates"][0]["duration_ms"] == 600_000
-    assert "created_at" not in task.data["candidates"][0]
-    assert "updated_at" not in task.data["candidates"][0]
-    assert not contains_forbidden(task.prompt.text)
 
 
 def result(output: dict[str, Any] | None = None, failure: str | None = None) -> AgentResult:
@@ -125,43 +62,49 @@ def result(output: dict[str, Any] | None = None, failure: str | None = None) -> 
     )
 
 
-def test_result_accepts_shown_candidate_and_similar_ticket(sample: dict[str, Any]) -> None:
-    parsed = parse_hits(search_hits(sample))
-    candidates = final_candidates(
-        provisional_candidates(
-            parsed.hits, {row["id"]: row for row in sample["incidents"]}, max_candidates=2
-        ),
-        {row["id"]: row for row in sample["tickets"]},
-    ).items
+def test_task_passes_graph_paths_and_candidate_summary() -> None:
+    found = candidates()
+    graph = {"coverage": "complete", "reason": "paths_found", "paths": list(found[0].paths)}
+
+    task = make_task(candidate_context(), found, graph)
+
+    assert task.output_contract == "branch_decision"
+    assert task.data["graph"] == graph
+    assert task.data["candidates"][0]["paths"] == list(found[0].paths)
+    assert task.data["candidates"][0]["duration_ms"] == 600_000
+    assert not contains_forbidden(task.prompt.text)
+
+
+def test_result_accepts_ticket_shown_in_graph_path() -> None:
+    found = candidates()
 
     decision = resolve_decision(
         result(
             {
                 "decision": "existing",
-                "incident_id": candidates[0].incident["id"],
+                "incident_id": INCIDENT,
                 "confidence": 0.9,
-                "reason": "같은 활동이다",
-                "similar_ticket_ids": [candidates[0].similar_ticket_id],
+                "reason": "엔티티 경로가 이어진다",
+                "similar_ticket_ids": [PEER],
             }
         ),
-        candidates,
+        found,
     )
 
-    assert decision.incident_id == candidates[0].incident["id"]
+    assert decision.incident_id == INCIDENT
     assert decision.source == "agent"
     assert decision.fallback is None
 
 
-def test_fake_model_output_passes_contract_and_candidate_checks(sample: dict[str, Any]) -> None:
-    parsed = parse_hits(search_hits(sample))
-    candidates = final_candidates(
-        provisional_candidates(
-            parsed.hits, {row["id"]: row for row in sample["incidents"]}, max_candidates=2
-        ),
-        {row["id"]: row for row in sample["tickets"]},
-    ).items
+def test_fake_model_output_passes_contract_and_candidate_checks() -> None:
+    found = candidates()
+    task = make_task(
+        candidate_context(),
+        found,
+        {"coverage": "complete", "reason": "paths_found", "paths": list(found[0].paths)},
+    )
     agent_result = run_task(
-        make_task(candidate_context(), candidates, "vector"),
+        task,
         model=FakeModel("l2_classify_existing"),
         model_name="fake-model",
         log_sink=MemoryLogSink(),
@@ -169,10 +112,7 @@ def test_fake_model_output_passes_contract_and_candidate_checks(sample: dict[str
         registry=REGISTRY,
     )
 
-    decision = resolve_decision(agent_result, candidates)
-
-    assert decision.incident_id == candidates[0].incident["id"]
-    assert decision.source == "agent"
+    assert resolve_decision(agent_result, found).incident_id == INCIDENT
 
 
 @pytest.mark.parametrize(
@@ -195,7 +135,7 @@ def test_fake_model_output_passes_contract_and_candidate_checks(sample: dict[str
         (
             {
                 "decision": "existing",
-                "incident_id": "inc_01a19f93-1150-7000-8000-000000000102",
+                "incident_id": INCIDENT,
                 "similar_ticket_ids": ["tkt_01a19f93-1150-7000-8000-000000000299"],
             },
             None,
@@ -205,17 +145,9 @@ def test_fake_model_output_passes_contract_and_candidate_checks(sample: dict[str
     ],
 )
 def test_bad_result_falls_back_to_new(
-    sample: dict[str, Any], output: dict[str, Any] | None, failure: str | None, expected: str
+    output: dict[str, Any] | None, failure: str | None, expected: str
 ) -> None:
-    parsed = parse_hits(search_hits(sample))
-    candidates = final_candidates(
-        provisional_candidates(
-            parsed.hits, {row["id"]: row for row in sample["incidents"]}, max_candidates=2
-        ),
-        {row["id"]: row for row in sample["tickets"]},
-    ).items
-
-    decision = resolve_decision(result(output, failure), candidates)
+    decision = resolve_decision(result(output, failure), candidates())
 
     assert decision.incident_id is None
     assert decision.source == "rule_default"

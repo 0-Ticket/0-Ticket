@@ -9,15 +9,11 @@ CONFIG_DIR = Path(__file__).resolve().parents[3] / "config"
 _BRANCH_KEYS = {
     "candidate_window_ms",
     "max_candidates",
-    "candidate_source",
-    "top_k",
 }
 _ANALYZE_KEYS = (
     "lookback_ms",
     "max_failures",
     "failure_retry_cooldown_ms",
-    "max_seed_entities",
-    "max_related_per_entity",
 )
 
 
@@ -29,8 +25,6 @@ class ConfigError(ValueError):
 class BranchSettings:
     candidate_window_ms: int
     max_candidates: int
-    candidate_source: str
-    top_k: int
 
 
 @dataclass(frozen=True)
@@ -38,8 +32,6 @@ class AnalyzeSettings:
     lookback_ms: int
     max_failures: int
     failure_retry_cooldown_ms: int
-    max_seed_entities: int
-    max_related_per_entity: int
 
 
 def load_config(directory: Path | None = None) -> dict[str, Any]:
@@ -60,14 +52,10 @@ def read_settings(l2: dict[str, Any]) -> BranchSettings:
             raise ConfigError("L2 branch 설정 키가 올바르지 않다")
         candidate_window_ms = _positive_int(branch["candidate_window_ms"])
         max_candidates = _positive_int(branch["max_candidates"])
-        candidate_source = branch["candidate_source"]
-        top_k = _positive_int(branch["top_k"])
     except (KeyError, TypeError):
         raise ConfigError("L2 branch 설정이 올바르지 않다") from None
 
-    if candidate_source not in ("vector", "recent"):
-        raise ConfigError("L2 branch candidate_source는 vector 또는 recent여야 한다")
-    return BranchSettings(candidate_window_ms, max_candidates, candidate_source, top_k)
+    return BranchSettings(candidate_window_ms, max_candidates)
 
 
 def read_analyze_settings(l2: dict[str, Any]) -> AnalyzeSettings:

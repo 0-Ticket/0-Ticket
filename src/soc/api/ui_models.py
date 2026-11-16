@@ -85,10 +85,38 @@ class IncidentPage(_Model):
     next_cursor: str | None
 
 
+class GraphNode(_Model):
+    id: str
+    kind: Literal["ticket", "alert", "hunt", "entity", "incident"]
+    type: str | None = None
+    value: str | None = None
+
+
+class GraphEdge(_Model):
+    from_: str = Field(alias="from")
+    to: str
+    kind: str
+
+
+class GraphPath(_Model):
+    incident_id: str
+    ticket_id: str
+    nodes: list[GraphNode]
+    edges: list[GraphEdge]
+
+
+class IncidentTicketGraph(_Model):
+    ticket_id: str
+    coverage: Literal["complete", "incomplete", "legacy", "unknown"]
+    reason: str | None
+    paths: list[GraphPath]
+
+
 class IncidentDetail(_Model):
     incident: Incident
     artifacts: list[IncidentArtifact]
     proposals: list[IncidentProposal]
+    ticket_graphs: list[IncidentTicketGraph] = Field(default_factory=list)
     seed_source: str | None
 
 

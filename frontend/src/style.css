@@ -961,6 +961,61 @@ td {
 .proposal pre {
   margin: 8px 0 0;
 }
+.ticket-graphs {
+  display: grid;
+  gap: 12px;
+}
+.ticket-graphs > section {
+  border: 1px solid #e5ebf4;
+  border-radius: 10px;
+  padding: 14px;
+}
+.ticket-graphs h4,
+.ticket-graphs p {
+  margin: 0 0 10px;
+}
+.graph-path {
+  display: flex;
+  align-items: stretch;
+  gap: 22px;
+  overflow-x: auto;
+  list-style: none;
+  margin: 12px 0;
+  padding: 0 0 8px;
+}
+.graph-node {
+  position: relative;
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  min-width: 120px;
+  max-width: 220px;
+  border: 1px solid #dbe4f0;
+  border-radius: 8px;
+  padding: 9px;
+  background: #f7f9fc;
+  font-size: 11px;
+}
+.graph-node:not(:last-child)::after {
+  content: "→";
+  position: absolute;
+  left: calc(100% + 7px);
+  top: 50%;
+  color: #718198;
+  transform: translateY(-50%);
+}
+.graph-node strong {
+  color: #526277;
+  text-transform: uppercase;
+}
+.graph-node span {
+  overflow-wrap: anywhere;
+  font-family: "Roboto Mono", monospace;
+}
+.graph-node.entity {
+  border-color: #b9d8ce;
+  background: #f0f8f5;
+}
 .review-actions {
   border-top: 1px solid #edf0f6;
   margin-top: 25px;
