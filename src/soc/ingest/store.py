@@ -26,6 +26,12 @@ VALUES (%(siem_profile)s, %(source_kind)s, %(source_key)s, %(cursor)s, %(updated
 ON CONFLICT (siem_profile, source_kind, source_key) DO UPDATE SET
     cursor = EXCLUDED.cursor,
     updated_at = EXCLUDED.updated_at
+-- 체크포인트는 앞으로만 간다. --since로 과거를 다시 읽어도 되돌리지 않는다(#317).
+-- 예전 빈 커서({})나 숫자가 아닌 값은 가장 낮은 값으로 본다
+WHERE COALESCE(
+        CASE WHEN jsonb_typeof(ingest_checkpoints.cursor -> 'time_ms') = 'number'
+             THEN (ingest_checkpoints.cursor ->> 'time_ms')::bigint END, -1
+    ) < (EXCLUDED.cursor ->> 'time_ms')::bigint
 """
 
 _INSERT_QUARANTINE = """
@@ -43,6 +49,24 @@ INSERT INTO ingest_runs
 VALUES (%(siem_profile)s, %(source_kind)s, %(source_key)s, %(started_at)s, %(finished_at)s,
         %(outcome)s, %(pages)s, %(inserted)s, %(quarantined)s)
 """
+
+
+# 수집 명령끼리 동시 실행을 막는 advisory lock의 키. "soc.ingest"의 SHA-256 앞 8바이트를 부호 있는
+# 64비트 정수(big-endian)로 읽은 값이다. soc.db.migrate의 LOCK_KEY와 겹치지 않는다(#317).
+RUN_LOCK_KEY = 1011913814884865258
+
+
+def acquire_run_lock(conn: psycopg.Connection) -> bool:
+    """수집 실행 잠금(세션 advisory lock)을 기다리지 않고 잡는다.
+
+    인자:
+        conn: 수집 내내 열어 두는 연결. 잠금은 이 연결이 닫히면 풀린다.
+
+    반환:
+        잡았으면 True, 다른 수집이 쥐고 있으면 False.
+    """
+    row = conn.execute("SELECT pg_try_advisory_lock(%s)", (RUN_LOCK_KEY,)).fetchone()
+    return bool(row and row[0])
 
 
 def load_checkpoint(
@@ -90,6 +114,7 @@ def save_page(
         conn: autocommit 연결. 이 함수가 트랜잭션을 연다.
         records: 한 페이지의 RawRecord dict 목록. 비어 있을 수 있다.
         checkpoint: 이 페이지를 끝낸 뒤의 ingest_checkpoint dict. None이면 기존 값을 유지한다.
+            저장된 시각(time_ms)보다 클 때만 갱신한다. 같거나 작으면 기존 값과 updated_at을 둔다.
         quarantines: 이 페이지에서 격리할 ingest_quarantine dict 목록.
 
     반환:

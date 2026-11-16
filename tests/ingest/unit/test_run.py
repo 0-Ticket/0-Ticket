@@ -24,6 +24,7 @@ EVENT_CP = (PROFILE, "event", "logs-web-*")
 def store(monkeypatch: pytest.MonkeyPatch) -> FakeStore:
     fake = FakeStore()
     monkeypatch.setattr(run, "store", fake)
+    monkeypatch.setattr(main_module, "store", fake)
     return fake
 
 
@@ -198,14 +199,18 @@ def test_failure_prints_name_and_kind_only(
 
 def test_format_results_has_counts_only() -> None:
     results = [
-        run.SourceResult(name="event:logs-web-*", started_at=0, pages=2, inserted=3, quarantined=2),
+        run.SourceResult(
+            name="event:logs-web-*", started_at=0, pages=2, inserted=3, quarantined=2, fetched=6
+        ),
         run.SourceResult(
             name="alert:.alerts-security.alerts-default", started_at=0, failure="auth"
         ),
     ]
     assert format_results(results) == [
-        "event:logs-web-*: 페이지 2, 새로 저장 3, 격리 2, 실패 없음",
-        "alert:.alerts-security.alerts-default: 페이지 0, 새로 저장 0, 격리 0, 실패 auth",
+        "event:logs-web-*: 구간 - ~ -, 가져옴 6, 새로 저장 3, 건너뜀 1, 격리 2, 페이지 2, 0.0초, "
+        "실패 없음",
+        "alert:.alerts-security.alerts-default: 구간 - ~ -, 가져옴 0, 새로 저장 0, 건너뜀 0, "
+        "격리 0, 페이지 0, 0.0초, 실패 auth",
     ]
     assert exit_code(results[:1]) == 0
 
@@ -279,10 +284,13 @@ def test_main_runs_sources_and_never_prints_secrets(
     assert connected == [{"autocommit": True}]
     assert fake.requests[0].headers["Authorization"] == f"ApiKey {API_KEY}"
     captured = capsys.readouterr()
-    assert captured.out.splitlines() == [
-        "event:logs-web-*: 페이지 1, 새로 저장 1, 격리 0, 실패 없음",
-        "alert:.alerts-security.alerts-default: 페이지 0, 새로 저장 0, 격리 0, 실패 http_status",
-    ]
+    lines = captured.out.splitlines()
+    assert lines[0].startswith("event:logs-web-*: 구간 ")
+    assert ", 가져옴 1, 새로 저장 1, 건너뜀 0, 격리 0, 페이지 1, " in lines[0]
+    assert lines[0].endswith("초, 실패 없음")
+    assert lines[1].startswith("alert:.alerts-security.alerts-default: 구간 ")
+    assert "초, 실패 http_status - ELK가 오류 응답을 줬다" in lines[1]
+    assert lines[2].startswith("전체 소요 ") and lines[3].startswith("결과 확인:")
     assert captured.err == "alert:.alerts-security.alerts-default: 실패 http_status\n"
     output = captured.out + captured.err
     for secret in (API_KEY, "DB-SECRET", BASE_URL, "SECRET-BODY", "192.0.2.15"):

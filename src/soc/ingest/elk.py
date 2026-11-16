@@ -171,6 +171,17 @@ def _read_page(data: Any) -> tuple[str, list[Any]]:
     return data["pit_id"], hits
 
 
+def _is_cert_failure(exc: BaseException) -> bool:
+    """예외의 원인 사슬에 인증서 검증 실패(ssl.SSLCertVerificationError)가 있으면 True."""
+    seen: set[int] = set()
+    while exc is not None and id(exc) not in seen:
+        if isinstance(exc, ssl.SSLCertVerificationError):
+            return True
+        seen.add(id(exc))
+        exc = exc.__cause__ or exc.__context__
+    return False
+
+
 def _is_text(value: Any) -> bool:
     """인자 value가 비어 있지 않은 문자열이면 True."""
     return isinstance(value, str) and value != ""
@@ -224,10 +235,15 @@ def _call(
                         raise IngestError("timeout", retryable=True)
         except httpx.TimeoutException:
             error = IngestError("timeout", retryable=True)
-        except httpx.HTTPError:
+        except httpx.HTTPError as exc:
             # 연결 실패, 프로토콜 오류, 압축 해제 오류 등.
             # 예외 메시지에 주소가 들어 있을 수 있어 남기지 않는다.
-            error = IngestError("network", retryable=True)
+            # 인증서 검증 실패는 다시 해도 같으므로 재시도하지 않고 따로 알린다(#317).
+            error = (
+                IngestError("tls")
+                if _is_cert_failure(exc)
+                else IngestError("network", retryable=True)
+            )
         except IngestError as exc:
             error = exc
         else:

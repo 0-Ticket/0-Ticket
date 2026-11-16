@@ -201,7 +201,8 @@ def test_duplicate_quarantine_does_not_increment_new_count(store: FakeStore) -> 
     assert [row["quarantined"] for row in store.runs] == [1, 0]
 
 
-def test_empty_checkpoint_cursor_starts_from_beginning(store: FakeStore) -> None:
+def test_empty_checkpoint_cursor_counts_as_no_checkpoint(store: FakeStore) -> None:
+    """빈 커서는 체크포인트가 없는 것으로 보고 기본 범위(#317)부터 조회한다."""
     store.checkpoints[EVENT_CP] = {
         "siem_profile": "elk-test",
         "source_kind": "event",
@@ -214,7 +215,8 @@ def test_empty_checkpoint_cursor_starts_from_beginning(store: FakeStore) -> None
     run_with(store, fake)
 
     (body,) = fake.search_bodies()
-    assert body["query"] == {"exists": {"field": "@timestamp"}}
+    assert "exists" not in body["query"]
+    assert body["query"]["range"]["@timestamp"]["gte"] > 0
 
 
 @pytest.mark.parametrize(
