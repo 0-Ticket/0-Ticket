@@ -110,13 +110,15 @@ max_limit = 100
 [tools.allowed]
 # SIEM 도구(#212): query_siem은 l1·l2·l3, count_siem은 l2·l3
 # SSH 점검 도구(#213): run_host_check는 l2·l3. [[tools.ssh.hosts]]가 비어 있으면 등록되지 않는다
+# 위협 인텔 조회(#309): lookup_indicator는 l1·l2. l3에 넣지 않는다(무료 키 분당 4건을 헌팅이 쓰지 않게).
+# 환경변수 VT_API_KEY가 없으면 등록되지 않는다
 l1 = [
     "get_alert", "get_event", "query_records", "query_http_flow", "summarize_http_flow",
-    "query_siem",
+    "query_siem", "lookup_indicator",
 ]
 l2 = [
     "get_alert", "get_event", "query_records", "query_http_flow", "summarize_http_flow",
-    "query_siem", "count_siem", "run_host_check",
+    "query_siem", "count_siem", "run_host_check", "lookup_indicator",
 ]
 l3 = [
     "get_alert", "get_event", "query_records", "query_http_flow", "summarize_http_flow",
@@ -247,6 +249,32 @@ max_stderr_chars = 2000
 #   host_key = "ssh-ed25519 AAAA…" # 공개 호스트 키 한 줄(ssh-keyscan 결과에서 호스트 이름을 뺀 것)
 #   checks = ["processes", "listening_ports", "recent_logins", "auth_log_tail", "file_hash"]
 hosts = []
+
+# 위협 인텔 조회 도구 lookup_indicator(#309, D-051). VirusTotal API v3(무료 키)에 지표 값
+# (IP·도메인·해시)만 보낸다. 주소·경로는 코드 상수이고, 사설·예약 대역과 비공개 이름
+# (.local, .internal 등)은 코드가 막는다. 아래 제외 목록은 거기에 더하는 값이다.
+# 캐시와 호출 한도는 프로세스 메모리에 있다. 재시작하거나 프로세스가 여럿이면 따로 센다.
+# 무료 키 약관은 상업 이용을 제한한다.
+[tools.threat_intel]
+# VirusTotal API 키를 담은 환경변수 이름. 값은 .env에만 둔다. 환경변수가 없으면 도구가 등록되지 않는다
+api_key_env = "VT_API_KEY"
+# 요청 단위 제한 시간(초)과 호출 한 번의 전체 마감 시간(초, D-039)
+connect_timeout_seconds = 5
+read_timeout_seconds = 10
+deadline_seconds = 15
+# 응답 크기 상한(압축을 푼 바이트)
+max_bytes = 1_048_576  # 1MB
+# 무료 키 한도. 넘으면 호출하지 않고 status=rate_limited. 일 한도는 UTC 날짜로 센다
+per_minute = 4
+per_day = 500
+# 같은 지표를 캐시에서 돌려주는 시간(초)과 캐시 최대 항목 수(넘으면 오래된 것부터 버린다)
+cache_ttl_seconds = 86_400
+cache_max_entries = 1000
+# 외부로 보내지 않을 값을 더한다. exclude_cidrs는 CIDR, exclude_domains는 도메인 접미사
+# (corp.example.com이면 그 아래 이름 전부). 회사의 공개 도메인은 여기에 적지 않으면 나간다.
+# 실제 값은 config/local.toml(커밋 안 함)에 적는다
+exclude_cidrs = []
+exclude_domains = []
 
 # L2 Ticket 분류 후보 만들기(#226, Incident 분류 방법 D-027).
 [l2.branch]

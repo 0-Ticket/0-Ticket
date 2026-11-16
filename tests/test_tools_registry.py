@@ -550,9 +550,15 @@ def production_config() -> dict[str, Any]:
 
 
 def test_default_registry_has_the_five_tools() -> None:
-    # #212에서 SIEM 도구 2개, #213에서 SSH 점검 도구 1개가 늘었다
+    # #212에서 SIEM 도구 2개, #213에서 SSH 점검 도구 1개, #309에서 위협 인텔 조회 1개가 늘었다
     names = default_registry().names()
-    assert names == [*PRODUCTION_TOOLS, "query_siem", "count_siem", "run_host_check"]
+    assert names == [
+        *PRODUCTION_TOOLS,
+        "query_siem",
+        "count_siem",
+        "run_host_check",
+        "lookup_indicator",
+    ]
 
 
 def test_missing_agent_database_url_is_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:

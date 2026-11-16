@@ -35,7 +35,7 @@ def test_default_llm_and_budget_values(default_config_dir: Path) -> None:
 def test_default_tools_config(default_config_dir: Path) -> None:
     """도구 설정과 단계별 허용 목록(#211, #212, #213).
 
-    비밀 값은 없고, 환경변수 이름은 [tools.siem]·[tools.ssh]에만 있다.
+    비밀 값은 없고, 환경변수 이름은 [tools.siem]·[tools.ssh]·[tools.threat_intel]에만 있다.
     """
     tools = load_config(default_config_dir)["tools"]
     assert tools["statement_timeout_ms"] == 5000
@@ -51,9 +51,16 @@ def test_default_tools_config(default_config_dir: Path) -> None:
         "summarize_http_flow",
     ]
     # SIEM 도구(#212): query_siem은 l1·l2·l3, count_siem은 l2·l3. SSH 점검(#213)은 l2·l3
-    assert tools["allowed"]["l1"] == [*expected, "query_siem"]
-    for stage in ("l2", "l3"):
-        assert tools["allowed"][stage] == [*expected, "query_siem", "count_siem", "run_host_check"]
+    # 위협 인텔 조회(#309)는 l1·l2
+    assert tools["allowed"]["l1"] == [*expected, "query_siem", "lookup_indicator"]
+    assert tools["allowed"]["l2"] == [
+        *expected,
+        "query_siem",
+        "count_siem",
+        "run_host_check",
+        "lookup_indicator",
+    ]
+    assert tools["allowed"]["l3"] == [*expected, "query_siem", "count_siem", "run_host_check"]
 
 
 def test_default_config_has_provider_examples_only_as_comments() -> None:

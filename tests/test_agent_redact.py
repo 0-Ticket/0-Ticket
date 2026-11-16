@@ -78,6 +78,15 @@ def test_siem_tool_env_values_are_redacted() -> None:
     assert out == {"output": f"ApiKey {REDACTED} at {REDACTED}/logs/_search"}
 
 
+def test_threat_intel_key_is_redacted() -> None:
+    # 위협 인텔 조회 도구(#309)의 [tools.threat_intel] api_key_env. redact.py를 고치지 않고 잡힌다
+    config = {"tools": {"threat_intel": {"api_key_env": "VT_API_KEY"}}}
+    out = build_redactor(config, {"VT_API_KEY": "fake-vt-key-0123456789"})(
+        {"output": "x-apikey: fake-vt-key-0123456789"}
+    )
+    assert out == {"output": f"x-apikey: {REDACTED}"}
+
+
 MULTILINE_KEY = (
     "-----BEGIN OPENSSH PRIVATE KEY-----\n"
     "ZmFrZS1rZXktbGluZS0xLWZvci10ZXN0cy1vbmx5LWFhYWFhYWFhYWFhYWFhYWFhYWFh\n"
