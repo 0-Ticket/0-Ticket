@@ -322,7 +322,7 @@ class ToolSession:
         return text
 
     def _fits(self, body: dict[str, Any]) -> bool:
-        return len(_dump(body)) <= self._max_chars
+        return dumped_len(body) <= self._max_chars
 
     def _shape(self, spec: ToolSpec, call_id: str, raw: Any) -> tuple[dict[str, Any], list[str]]:
         """(모델에게 보낼 본문, 장부에 넣을 레코드 ID)."""
@@ -354,7 +354,9 @@ class ToolSession:
             body["truncated"] = True
             body["omitted"] = total - len(shown)
         if not shown and total:
-            first, paths = _shorten(records[0], spec.id_fields, self._fits_record(call_id, total))
+            first, paths = shorten_record(
+                records[0], spec.id_fields, self._fits_record(call_id, total)
+            )
             if first is not None:
                 shown.append(first)
                 body["omitted"] = total - 1
@@ -454,7 +456,16 @@ def tool_error_text(name: str, code: str) -> str:
     return f"TOOL_ERROR tool={name} code={code}\n다른 도구를 쓰거나 지금까지의 근거로 답하라"
 
 
-def _dump(body: dict[str, Any]) -> str:
+def dumped_len(value: Any) -> int:
+    """value를 모델에게 보내는 JSON으로 직렬화한 길이(max_tool_result_chars로 세는 값, #281).
+
+    글자 수가 아니다. 큰따옴표·역슬래시·제어 문자·'<'·'>'는 이스케이프로 늘어난다. 문자열이면
+    양쪽 따옴표를 포함한다.
+    """
+    return len(_dump(value))
+
+
+def _dump(body: Any) -> str:
     """모델에게 보낼 JSON 본문. '<'·'>'를 바꿔 구분자를 닫지 못하게 한다(wrap_data와 같다)."""
     text = json.dumps(body, ensure_ascii=False)
     return text.replace("<", "\\u003c").replace(">", "\\u003e")
@@ -464,7 +475,7 @@ def _wrap(body: str) -> str:
     return f"{RESULT_OPEN}\n{body}\n{RESULT_CLOSE}"
 
 
-def _shorten(
+def shorten_record(
     record: dict[str, Any],
     id_fields: tuple[str, ...],
     fits: Callable[[dict[str, Any], list[str]], bool],
