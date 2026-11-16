@@ -297,13 +297,14 @@ def test_lab_shaped_alert_flows_to_incident_artifact_and_rerun_adds_nothing(
     ).fetchone()
     assert tool_rows["n"] == 4
 
-    # 5 L2 분류: 첫 Ticket이 새 Incident, 나머지는 그 Incident를 고른다
+    # 5 L2 분류: 공유 엔티티 경로가 없으므로 Ticket별로 Incident를 만든다
     assert drain(branch_worker(db)) == 4
     incidents = q(conn, "SELECT * FROM incidents").fetchall()
-    assert len(incidents) == 1 and len(incidents[0]["ticket_ids"]) == 4
-    assert incidents[0]["status"] == "analyzing"
+    assert len(incidents) == 4
+    assert all(len(incident["ticket_ids"]) == 1 for incident in incidents)
+    assert all(incident["status"] == "analyzing" for incident in incidents)
 
-    # 6 L2 분석: Artifact 한 행, 사람 검토 대기
+    # 6 L2 분석: Incident별로 Artifact 하나씩 생성한다
     analyzer = L2AnalyzeWorker(
         db,
         ANALYZE,
@@ -313,11 +314,11 @@ def test_lab_shaped_alert_flows_to_incident_artifact_and_rerun_adds_nothing(
         run=analyze_run,
         clock=lambda: NOW,
     )
-    assert drain(analyzer) == 1
-    incident = q(conn, "SELECT * FROM incidents").fetchone()
-    assert incident["status"] == "awaiting_review"
+    assert drain(analyzer) == 4
+    reviewed = q(conn, "SELECT status FROM incidents").fetchall()
+    assert all(incident["status"] == "awaiting_review" for incident in reviewed)
     artifacts = q(conn, "SELECT * FROM incident_artifacts").fetchall()
-    assert len(artifacts) == 1 and artifacts[0]["verdict"] == "attempted"
+    assert len(artifacts) == 4 and all(row["verdict"] == "attempted" for row in artifacts)
 
     first = counts(conn)
     assert first == {
@@ -325,8 +326,8 @@ def test_lab_shaped_alert_flows_to_incident_artifact_and_rerun_adds_nothing(
         "alerts": 4,
         "events": 5,
         "tickets": 4,
-        "incidents": 1,
-        "incident_artifacts": 1,
+        "incidents": 4,
+        "incident_artifacts": 4,
     }
 
     # 2회차: 같은 명령을 다시 돌려도 늘지 않는다

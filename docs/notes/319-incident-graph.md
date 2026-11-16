@@ -14,6 +14,7 @@ supersedes: [250-l2-ticket-incident.md, 267-l2-related-window.md]
 - 분류 결과의 경로/탐색 상태를 L2 분석 입력에 넣고 `related` 주변 기록 수집을 제거했다. Incident 상세 API와 UI에 Ticket별 경로 노드, 연결선, 탐색 상태를 노출했다.
 - D-027과 L2 분류 프롬프트를 갱신했고 D-053 `ticket_verdicts` 유사 사례 경로는 남겨둡다. 유사 사례 검색 설정이 없을 때 파이프 그래프 분류 준비 검사가 Qdrant를 요구하지 않게 조정했다.
 - 그래프 fixture와 단위/기존 DB 통합 테스트 수정을 더했다. 파이프 DB 통합 테스트는 삭제된 벡터 테스트 도우미를 사용하지 않도록 갱신했다.
+- CI DB 검증 후 랩 fixture에서 Alert들은 공유 Entity가 없어 각각 새 Incident로 분류되는 것이 맞음을 확인했다. 그 기대에 맞게 랩 사이클 통합 테스트를 바꾸고, API seed 테스트가 조회하는 Incident와 수정하는 Ticket이 같은 픽스처에서 오도록 수정했다. 현재 로컬에 `DATABASE_URL`이 없어 수정 후 DB 테스트는 재실행하지 못했다.
 
 ## 계획과 달라진 점
 
