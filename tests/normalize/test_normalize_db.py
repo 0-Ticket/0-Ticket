@@ -151,10 +151,8 @@ def test_results_point_back_and_carry_assets(conn: psycopg.Connection) -> None:
     alert_id, assets = conn.execute(
         "SELECT id, assets FROM alerts WHERE raw_id = %s", (raw_id,)
     ).fetchone()
-    assert [asset["entity"] for asset in assets] == [
-        {"type": "ip", "value": "198.51.100.7"},
-        {"type": "host", "value": "web-01"},
-    ]
+    # Alert는 센서 필드(host.name)를 엔티티로 만들지 않아 host 자산은 붙지 않는다(#326)
+    assert [asset["entity"] for asset in assets] == [{"type": "ip", "value": "198.51.100.7"}]
     assert conn.execute(
         "SELECT result_kind, result_id FROM normalize_status WHERE raw_id = %s", (raw_id,)
     ).fetchone() == ("alert", alert_id)
@@ -202,15 +200,17 @@ def test_retry_run_retries_only_failures_and_adds_no_duplicates(conn: psycopg.Co
 def test_retry_succeeds_after_mapping_is_corrected(
     conn: psycopg.Connection, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    failing = next(c for c in CASES if c["case"] == "alert_without_title")
-    raw_id = add_raw_records(conn, [failing])["alert_without_title"]
+    failing = next(c for c in CASES if c["case"] == "event_without_source")
+    raw_id = add_raw_records(conn, [failing])["event_without_source"]
     before = originals_hash(conn)
     run(SETTINGS, conn, owner())
 
     def corrected_mapping(raw: RawRow):
-        original = dict(raw.original)
-        source = {**original["_source"], "kibana.alert.rule.name": "Recovered rule"}
-        original["_source"] = source
+        original = {
+            **raw.original,
+            "_index": "logs-other-default",
+            "_source": {"@timestamp": "2026-11-04T01:00:00.000Z"},
+        }
         return map_normalize(RawRow(raw.id, raw.kind, original))
 
     monkeypatch.setattr(run_module, "normalize", corrected_mapping)
@@ -221,16 +221,16 @@ def test_retry_succeeds_after_mapping_is_corrected(
         "SELECT status, attempts, result_kind, result_id FROM normalize_status WHERE raw_id = %s",
         (raw_id,),
     ).fetchone()
-    assert status[:3] == ("succeeded", 2, "alert")
+    assert status[:3] == ("succeeded", 2, "event")
     assert status[3] is not None
-    assert conn.execute("SELECT count(*) FROM alerts WHERE raw_id = %s", (raw_id,)).fetchone() == (
+    assert conn.execute("SELECT count(*) FROM events WHERE raw_id = %s", (raw_id,)).fetchone() == (
         1,
     )
     assert originals_hash(conn) == before
 
     second = run_failed(SETTINGS, conn, owner())
     assert second.claimed == 0
-    assert conn.execute("SELECT count(*) FROM alerts WHERE raw_id = %s", (raw_id,)).fetchone() == (
+    assert conn.execute("SELECT count(*) FROM events WHERE raw_id = %s", (raw_id,)).fetchone() == (
         1,
     )
 
@@ -245,8 +245,8 @@ def test_run_does_not_modify_originals(conn: psycopg.Connection) -> None:
 
 
 def test_normalize_processes_pending_while_failed_waits_for_retry(conn: psycopg.Connection) -> None:
-    failing = [c for c in CASES if c["case"] == "alert_without_title"]
-    failed_id = add_raw_records(conn, failing)["alert_without_title"]
+    failing = [c for c in CASES if c["case"] == "event_without_source"]
+    failed_id = add_raw_records(conn, failing)["event_without_source"]
     run(SETTINGS, conn, owner())
     ok = [c for c in CASES if c["case"] == "alert_flat_keys"]
     add_raw_records(conn, ok)
@@ -314,8 +314,8 @@ def test_late_worker_cannot_write_after_losing_its_lease(conn: psycopg.Connectio
 def test_late_retry_worker_cannot_write_after_losing_its_lease(
     conn: psycopg.Connection,
 ) -> None:
-    failing = [c for c in CASES if c["case"] == "alert_without_title"]
-    raw_id = add_raw_records(conn, failing)["alert_without_title"]
+    failing = [c for c in CASES if c["case"] == "event_without_source"]
+    raw_id = add_raw_records(conn, failing)["event_without_source"]
     run(SETTINGS, conn, owner())
     late, current = owner(), owner()
     assert [raw.id for raw in claim_failed_batch(conn, late, 200, 600)] == [raw_id]

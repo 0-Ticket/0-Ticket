@@ -15,7 +15,7 @@ from soc.asset_lookup import AssetLookupError, lookup_assets
 from soc.contracts import ContractError, validate_contract
 from soc.normalize.config import Settings
 from soc.normalize.errors import NormalizeError
-from soc.normalize.mapping import RawRow, normalize
+from soc.normalize.mapping import RawRow, Result, fallback_alert, normalize
 from soc.normalize.ocsf_schema import validate_ocsf
 from soc.normalize.store import claim_failed_batch, claim_pending_batch, save_failure, save_success
 
@@ -112,12 +112,35 @@ def _normalize_and_save(
         저장했으면 True, 임대를 잃어 저장하지 않았으면 False.
     """
     mapped = normalize(raw)
+    try:
+        row = _checked_row(settings, conn, mapped)
+    except (NormalizeError, ContractError) as error:
+        # 우리 매핑 결과가 검증에서 떨어지면 재시도해도 같으므로 Alert는 폴백으로 남긴다(#326)
+        if (
+            mapped.kind != "alert"
+            or mapped.outcome == "fallback"
+            or _failure_code(error) not in ("schema_failed", "validation_failed")
+        ):
+            raise
+        mapped = fallback_alert(raw, "validation_failed")
+        row = _checked_row(settings, conn, mapped)
+    return save_success(conn, owner, raw.id, mapped.kind, row, mapped)
+
+
+def _checked_row(settings: Settings, conn: psycopg.Connection, mapped: Result) -> dict[str, Any]:
+    """결과를 저장 가능한 모양으로 이스케이프하고 OCSF·계약 검증과 자산 조회를 거친다.
+
+    Args:
+        settings: 정규화 설정.
+        conn: DB 연결.
+        mapped: 정규화 결과.
+    """
     escaped = escape_unstorable(mapped.row)
     validate_ocsf(escaped["ocsf"])
     assets = lookup_assets(conn, escaped["entities"], settings.asset_statement_timeout_ms)
     row = {**escaped, "assets": assets}
     validate_contract(mapped.kind, row)
-    return save_success(conn, owner, raw.id, mapped.kind, row)
+    return row
 
 
 # NUL과 짝 없는 서로게이트(U+D800..U+DFFF). jsonb는 NUL을, UTF-8은 서로게이트를 받지 않는다
