@@ -123,3 +123,5 @@ supersedes: [302-destination-ip.md]
 - 결정 대장에 D-059를 추가한다.
 
 ## 바뀐 점
+
+- 2026-11-17 · 사용자가 질문 5의 답을 추가했다. `destination.domain` 값이 IP 형식이면 `type=domain`이 아니라 `type=ip`, `role=dst`로 분류한다. 값의 형태로 판별하고(`ipaddress`), IP 형식이 아니면 `domain`/`dst`다. 방법 6의 `url.domain` 행도 같은 규칙을 따른다. 같은 `(type, value, role)`은 한 번만 넣는다. 읽는 domain 후보 필드는 `url.domain`과 `destination.domain`이다(`destination.domain`을 후보에 넣은 것은 계획 작성자의 해석이고, 샘플 3·4에서 두 필드가 같은 값이다).
