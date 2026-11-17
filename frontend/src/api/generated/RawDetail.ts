@@ -95,7 +95,10 @@ export type EvidenceIds = EvidenceId[];
  * UTC epoch 밀리초. 상한은 9999-12-30T23:59:59.999Z(+14시간 시간대로 읽어도 9999년 안)
  */
 export type DecidedAt = number;
-export type ClassUid = 2004;
+/**
+ * 2004 Detection Finding. 해석할 수 없는 원본의 폴백 Alert만 0(Base Event)
+ */
+export type ClassUid = 2004 | 0;
 export type Id2 = string;
 export type RawId1 = string;
 /**

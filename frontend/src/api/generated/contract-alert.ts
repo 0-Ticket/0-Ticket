@@ -37,7 +37,10 @@ export interface Alert {
    * OCSF Detection Finding 전체
    */
   ocsf: {
-    class_uid: 2004;
+    /**
+     * 2004 Detection Finding. 해석할 수 없는 원본의 폴백 Alert만 0(Base Event)
+     */
+    class_uid: 2004 | 0;
     [k: string]: unknown;
   };
   /**
