@@ -125,3 +125,6 @@ supersedes: [302-destination-ip.md]
 ## 바뀐 점
 
 - 2026-11-17 · 사용자가 질문 5의 답을 추가했다. `destination.domain` 값이 IP 형식이면 `type=domain`이 아니라 `type=ip`, `role=dst`로 분류한다. 값의 형태로 판별하고(`ipaddress`), IP 형식이 아니면 `domain`/`dst`다. 방법 6의 `url.domain` 행도 같은 규칙을 따른다. 같은 `(type, value, role)`은 한 번만 넣는다. 읽는 domain 후보 필드는 `url.domain`과 `destination.domain`이다(`destination.domain`을 후보에 넣은 것은 계획 작성자의 해석이고, 샘플 3·4에서 두 필드가 같은 값이다).
+- 2026-11-17 · 사용자가 ATT&CK 출처와 domain 후보 처리를 정했다.
+  - `finding_info.attacks`는 룰 태그의 `attack.T####`와 ECS `threat.technique.id`(배열)를 모두 읽는다. 각 값을 `normalize_technique_id`로 검증하고 합쳐 중복을 뺀다. 형식이 틀린 값은 버린다(샘플 4는 룰 태그가 비어 있고 `threat.technique.id`에 T1190이 있다).
+  - domain 후보는 `url.domain`을 먼저, `destination.domain`을 나중에 읽고 같은 `(type, value, role)`은 한 번만 넣는다. 값 끝에 포트가 붙어 있으면(`host:port`, `[v6]:port`) 도메인으로 두지 않고 포트를 뗀 값으로 IP 여부를 판별하며, 엔티티 값은 포트를 뗀 값이다. 포트가 붙은 값의 케이스를 단위 테스트에 넣는다.
