@@ -14,7 +14,12 @@ class Ocsf(BaseModel):
     model_config = ConfigDict(
         extra="allow",
     )
-    class_uid: Literal[2004]
+    class_uid: Annotated[
+        Literal[2004, 0],
+        Field(
+            description="2004 Detection Finding. 해석할 수 없는 원본의 폴백 Alert만 0(Base Event)"
+        ),
+    ]
 
 
 class Triage(BaseModel):

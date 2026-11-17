@@ -152,5 +152,29 @@
       "ocsf": {"class_uid": 2004, "severity_id": 1, "time": 1793678578600},
       "details": {"source_rule_type": "machine_learning"}
     }
+  },
+  {
+    "case": "normalize_fallback_class_zero",
+    "data": {
+      "id": "alt_01a19f93-1150-7000-8000-000000000009",
+      "raw_id": "raw_01a19f93-1150-7000-8000-000000000009",
+      "time": 1793678578300,
+      "severity": 0,
+      "title": "정규화 실패: missing_title",
+      "rule_id": null,
+      "entities": [],
+      "assets": [],
+      "triage": null,
+      "ocsf": {
+        "class_uid": 0,
+        "category_uid": 0,
+        "activity_id": 0,
+        "type_uid": 0,
+        "severity_id": 0,
+        "time": 1793678578300,
+        "message": "정규화 실패: missing_title"
+      },
+      "details": {"fallback": {"reason": "missing_title"}}
+    }
   }
 ]

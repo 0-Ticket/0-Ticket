@@ -1,6 +1,7 @@
 """정규화를 한 번 실행하고 끝낸다. 주기 실행은 cron이 한다.
 
     uv run python -m soc.normalize
+    uv run python -m soc.normalize report   # 소스별 채움률(읽기 전용, 건수만)
 
 종료 코드: 0 실패 없음, 1 실패한 건이 있거나 DB에 접속·조회하지 못함, 2 설정·환경변수 오류.
 """
@@ -15,12 +16,38 @@ import psycopg
 
 from soc.api.db import DATABASE_URL_ENV
 from soc.normalize.config import ConfigError, Settings, load_settings
+from soc.normalize.report import report_lines
 from soc.normalize.run import RunResult, exit_code, run
 
 
-def main() -> int:
-    """설정을 읽고 연결을 열어 정규화를 한 번 실행한다."""
+def main(argv: list[str] | None = None) -> int:
+    """설정을 읽고 연결을 열어 정규화를 한 번 실행한다. `report`면 채움률만 낸다.
+
+    Args:
+        argv: 명령 인자. 없으면 정규화를 실행한다.
+    """
+    if argv == ["report"]:
+        return _report_command()
+    if argv:
+        print("사용법: python -m soc.normalize [report]", file=sys.stderr)
+        return 2
     return _run_command(run)
+
+
+def _report_command() -> int:
+    """소스별 채움률을 읽어 출력한다."""
+    url = os.environ.get(DATABASE_URL_ENV)
+    if not url:
+        print(f"환경변수 {DATABASE_URL_ENV}가 필요하다", file=sys.stderr)
+        return 2
+    try:
+        with psycopg.connect(url, autocommit=True, connect_timeout=5) as conn:
+            lines = report_lines(conn)
+    except psycopg.Error:
+        print("DB에 접속하지 못했거나 조회에 실패했다", file=sys.stderr)
+        return 1
+    print("\n".join(lines))
+    return 0
 
 
 def _run_command(
@@ -63,4 +90,4 @@ def _format(result: RunResult) -> str:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main(sys.argv[1:]))

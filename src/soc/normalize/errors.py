@@ -8,6 +8,16 @@ FAILURES = (
     "escape_collision",
 )
 
+# 결과는 저장하되 품질이 낮을 때의 사유. 상태(status)가 아니라 outcome이 구분 기준이다(#326)
+PARTIAL_REASONS = ("unknown_source",)
+FALLBACK_REASONS = (
+    "invalid_source",
+    "missing_uid",
+    "missing_title",
+    "bad_time",
+    "validation_failed",
+)
+
 
 class NormalizeError(Exception):
     """원본 한 건의 정규화가 실패했다.

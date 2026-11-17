@@ -11,8 +11,8 @@ import psycopg
 from psycopg import sql
 from psycopg.types.json import Jsonb
 
-from soc.contracts import to_datetime
-from soc.normalize.mapping import RawRow
+from soc.contracts import to_datetime, to_epoch_ms
+from soc.normalize.mapping import RawRow, Result
 
 _TABLES = {"alert": "alerts", "event": "events"}
 _COLUMNS = {
@@ -73,8 +73,9 @@ FOR UPDATE
 
 _MARK_SUCCEEDED = """
 UPDATE normalize_status
-SET status = 'succeeded', error_code = NULL, attempts = attempts + 1, last_attempt_at = now(),
-    result_kind = %s, result_id = %s, lease_owner = NULL, lease_expires_at = NULL
+SET status = 'succeeded', error_code = %s, attempts = attempts + 1, last_attempt_at = now(),
+    result_kind = %s, result_id = %s, outcome = %s, missing_fields = %s, source = %s,
+    lease_owner = NULL, lease_expires_at = NULL
 WHERE raw_id = %s
 """
 
@@ -132,14 +133,24 @@ def _claim_batch(
     claimed = conn.execute(_LEASE, (owner, lease_seconds, status, batch_size)).fetchall()
     ids = [row[0] for row in claimed]
     rows = conn.execute(
-        "SELECT id, kind, original_text FROM raw_records WHERE id = ANY(%s) ORDER BY id", (ids,)
+        "SELECT id, kind, original_text, fetched_at FROM raw_records"
+        " WHERE id = ANY(%s) ORDER BY id",
+        (ids,),
     ).fetchall()
     # 원본은 저장된 JSON 글자를 그대로 되살린다(D-049). 매핑 코드는 dict를 받는다
-    return [RawRow(id=row[0], kind=row[1], original=json.loads(row[2])) for row in rows]
+    return [
+        RawRow(id=row[0], kind=row[1], original=json.loads(row[2]), fetched_at=to_epoch_ms(row[3]))
+        for row in rows
+    ]
 
 
 def save_success(
-    conn: psycopg.Connection, owner: str, raw_id: str, kind: str, row: dict[str, Any]
+    conn: psycopg.Connection,
+    owner: str,
+    raw_id: str,
+    kind: str,
+    row: dict[str, Any],
+    result: Result | None = None,
 ) -> bool:
     """결과 행을 저장하고 상태를 성공으로 바꾼다. 한 트랜잭션이다.
 
@@ -151,6 +162,8 @@ def save_success(
         raw_id: 정규화한 원본의 raw_records.id.
         kind: 결과 종류. "alert" 또는 "event".
         row: 계약 검증을 통과한 alerts 또는 events 행.
+        result: 결과 품질(outcome, error_code, missing_fields, source)을 가진 정규화 결과.
+            없으면 모두 비운다.
 
     Returns:
         저장했으면 True, 임대를 잃어 저장하지 않았으면 False.
@@ -159,7 +172,19 @@ def save_success(
         if conn.execute(_LOCK_HELD, (raw_id, owner)).fetchone() is None:
             return False
         _insert_result(conn, kind, row)
-        conn.execute(_MARK_SUCCEEDED, (kind, row["id"], raw_id))
+        quality = result or Result(kind, row)
+        conn.execute(
+            _MARK_SUCCEEDED,
+            (
+                quality.error_code,
+                kind,
+                row["id"],
+                quality.outcome,
+                list(quality.missing_fields),
+                quality.source,
+                raw_id,
+            ),
+        )
     return True
 
 

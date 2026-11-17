@@ -158,6 +158,7 @@ def test_migrate_creates_all_tables_on_empty_db(temp_database: str) -> None:
         "0105_l1_attempts.sql",
         "0106_raw_original_text.sql",
         "0107_ingest_quarantine.sql",
+        "0108_normalize_outcome.sql",
         "0200_incident_artifacts.sql",
         "0201_incident_held.sql",
         "0300_threat_intel.sql",
