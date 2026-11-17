@@ -34,11 +34,6 @@
           "src"
         ],
         [
-          "host",
-          "web-01",
-          null
-        ],
-        [
           "user",
           "alice",
           "actor"
@@ -78,7 +73,13 @@
       }
     },
     "expect": {
-      "error": "validation_failed"
+      "kind": "alert",
+      "class_uid": 0,
+      "activity_id": 0,
+      "severity": 0,
+      "title": "정규화 실패: missing_title",
+      "rule_id": null,
+      "entities": []
     }
   },
   {

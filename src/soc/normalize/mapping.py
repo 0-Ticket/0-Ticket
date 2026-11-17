@@ -4,6 +4,8 @@
 _value가 평평한 키를 먼저, 없으면 중첩 경로를 읽는다.
 """
 
+import ipaddress
+import math
 import re
 from dataclasses import dataclass
 from datetime import datetime
@@ -12,6 +14,8 @@ from typing import Any
 from soc.contracts import to_epoch_ms
 from soc.ids import new_id
 from soc.normalize.errors import NormalizeError
+from soc.normalize.mask import mask_headers
+from soc.tools.local_intel import normalize_technique_id
 
 OCSF_VERSION = "1.9.0"
 
@@ -56,6 +60,20 @@ ENTITY_FIELDS = (
 UNKNOWN_ID = 0
 OTHER_ID = 99
 MAX_DIGITS = 9
+ALERT_SOURCES = ("suricata", "modsecurity")
+# OCSF observable type_id(1.9.0): Hostname 1, IP Address 2, User Name 4, URL String 6, Hash 8,
+# Process Name 9
+OBSERVABLE_TYPE_IDS = {
+    "ip": 2,
+    "host": 1,
+    "domain": 1,
+    "user": 4,
+    "url": 6,
+    "file_hash": 8,
+    "process": 9,
+}
+ANALYTIC_RULE = 1
+_HOST_PORT = re.compile(r"\[([^\]]+)\](?::\d{1,5})?|([^:\[\]]+):\d{1,5}")
 
 
 @dataclass(frozen=True)
@@ -66,11 +84,13 @@ class RawRow:
         id: raw_records.id.
         kind: 원본 종류. "alert" 또는 "event".
         original: ELK 검색 응답의 hit 객체 그대로(_index, _id, _source를 가진다).
+        fetched_at: 원본을 가져온 시각(epoch 밀리초). 폴백 Alert의 시각 대체에만 쓴다.
     """
 
     id: str
     kind: str
     original: dict[str, Any]
+    fetched_at: int | None = None
 
 
 @dataclass(frozen=True)
@@ -80,10 +100,27 @@ class Result:
     Attributes:
         kind: 결과 종류. "alert"이면 alerts, "event"이면 events 테이블에 저장한다.
         row: 계약 모양의 dict. assets는 빈 목록이며 자산 조회 뒤에 채운다.
+        outcome: 결과 품질. Alert만 "ok"·"partial"·"fallback"이고 Event는 None이다.
+        error_code: partial·fallback의 사유 코드(errors.PARTIAL_REASONS, FALLBACK_REASONS).
+        missing_fields: 얻지 못한 OCSF 경로 목록.
+        source: 알럿 소스 이름. suricata·modsecurity·guardduty·unknown. Event는 None이다.
     """
 
     kind: str
     row: dict[str, Any]
+    outcome: str | None = None
+    error_code: str | None = None
+    missing_fields: tuple[str, ...] = ()
+    source: str | None = None
+
+
+class _Fallback(Exception):
+    """Kibana 알럿으로 읽을 수 없다. reason은 errors.FALLBACK_REASONS 중 하나."""
+
+    def __init__(self, reason: str) -> None:
+        """폴백 사유를 가진 예외를 만든다."""
+        super().__init__(reason)
+        self.reason = reason
 
 
 def normalize(raw: RawRow) -> Result:
@@ -107,36 +144,282 @@ def normalize(raw: RawRow) -> Result:
 
 
 def _alert(raw: RawRow) -> Result:
-    """kind=alert 원본을 Detection Finding(2004)과 alerts 행으로 바꾼다.
+    """kind=alert 원본을 Detection Finding(2004)과 alerts 행으로 바꾼다. 읽을 수 없으면 폴백이다.
 
     Args:
         raw: kind가 alert인 원본.
     """
-    source = _source(raw)
-    time_ms = _time_ms(source, "kibana.alert.original_time", "@timestamp")
-    uid = raw.original.get("_id")
-    title = _text(source, "kibana.alert.rule.name")
-    if not isinstance(uid, str) or title is None:
-        raise NormalizeError("validation_failed")
-    severity = SEVERITY_IDS.get(_text(source, "kibana.alert.severity"), UNKNOWN_ID)
-    ocsf = _ocsf(2004, 2, 1, time_ms, severity, {"finding_info": {"uid": uid, "title": title}})
-    destination = _text(source, "destination.ip")
-    if destination is not None:
-        ocsf["evidences"] = [{"dst_endpoint": {"ip": destination}}]
+    try:
+        return _finding(raw)
+    except _Fallback as fallback:
+        return fallback_alert(raw, fallback.reason)
+
+
+def fallback_alert(raw: RawRow, reason: str) -> Result:
+    """해석할 수 없는 알럿을 class 0 Base Event 모양의 Alert로 남긴다. 값을 지어내지 않는다.
+
+    Args:
+        raw: kind가 alert인 원본.
+        reason: errors.FALLBACK_REASONS 중 하나.
+
+    Raises:
+        NormalizeError: 원본 @timestamp도 fetched_at도 없다(validation_failed).
+    """
+    source = raw.original.get("_source")
+    time_ms = None
+    if isinstance(source, dict):
+        try:
+            time_ms = _time_ms(source, "@timestamp")
+        except NormalizeError:
+            pass
+    details = {"reason": reason}
+    if time_ms is None:
+        if raw.fetched_at is None:
+            raise NormalizeError("validation_failed")
+        time_ms = raw.fetched_at
+        details["time_from"] = "fetched_at"
+    message = f"정규화 실패: {reason}"
     row = {
         "id": new_id("alt"),
         "raw_id": raw.id,
         "time": time_ms,
+        "severity": UNKNOWN_ID,
+        "title": message,
+        "rule_id": None,
+        "entities": [],
+        "assets": [],
+        "triage": None,
+        "ocsf": _ocsf(0, 0, UNKNOWN_ID, time_ms, UNKNOWN_ID, {"message": message}),
+        "details": {"fallback": details},
+    }
+    return Result("alert", row, "fallback", reason, (), "unknown")
+
+
+def _finding(raw: RawRow) -> Result:
+    """Kibana 알럿 원본을 2004 Result로 바꾼다.
+
+    Raises:
+        _Fallback: _source·uid·룰 이름·생성 시각을 읽을 수 없다.
+    """
+    source = raw.original.get("_source")
+    if not isinstance(source, dict):
+        raise _Fallback("invalid_source")
+    uid = _text(source, "kibana.alert.uuid") or _text(raw.original, "_id")
+    if uid is None:
+        raise _Fallback("missing_uid")
+    title = _text(source, "kibana.alert.rule.name")
+    if title is None:
+        raise _Fallback("missing_title")
+    try:
+        time_ms = _time_ms(source, "kibana.alert.start", "@timestamp")
+    except NormalizeError:
+        raise _Fallback("bad_time") from None
+    original_ms = _optional_time_ms(source, "kibana.alert.original_time")
+    start_ms = time_ms if original_ms is None else original_ms
+    severity_name = _text(source, "kibana.alert.severity")
+    severity = SEVERITY_IDS.get(severity_name, UNKNOWN_ID)
+    rule_id = _text(source, "kibana.alert.rule.rule_id")
+    alert_source = _detect_source(source)
+    incomplete = [
+        path
+        for path, found in (
+            ("finding_info.analytic.uid", rule_id is not None),
+            ("severity_id", severity_name in SEVERITY_IDS),
+            ("start_time", original_ms is not None),
+        )
+        if not found
+    ]
+    entities, bad_ips = _alert_entities(source)
+    description = _text(source, "kibana.alert.rule.description")
+    destination = _text(source, "destination.ip")
+    extra = {
+        "finding_info": {
+            "uid": uid,
+            "title": title,
+            "desc": description,
+            "created_time": time_ms,
+            "analytic": {"name": title, "uid": rule_id, "type_id": ANALYTIC_RULE},
+            "attacks": _attacks(source) or None,
+        },
+        "is_alert": True,
+        "status_id": 1,
+        "start_time": start_ms,
+        "end_time": start_ms,
+        "message": description or title,
+        "risk_score": _rounded(_value(source, "kibana.alert.risk_score")),
+        "observables": _observables(entities) or None,
+        "evidences": [{"dst_endpoint": {"ip": destination}}]
+        if destination is not None and _is_ip(destination)
+        else None,
+    }
+    ocsf = _ocsf(2004, 2, 1, time_ms, severity, extra)
+    row = {
+        "id": new_id("alt"),
+        "raw_id": raw.id,
+        "time": start_ms,
         "severity": severity,
         "title": title,
-        "rule_id": _text(source, "kibana.alert.rule.rule_id"),
-        "entities": _entities(source),
+        "rule_id": rule_id,
+        "entities": entities,
         "assets": [],
         "triage": None,
         "ocsf": ocsf,
         "details": {},
     }
-    return Result("alert", row)
+    # 소스별 매퍼가 값을 더해도 마지막에 한 번 가려 빠뜨리지 못하게 한다
+    row["ocsf"], row["details"] = mask_headers(row["ocsf"]), mask_headers(row["details"])
+    unknown = alert_source == "unknown"
+    outcome = "partial" if unknown or incomplete else "ok"
+    return Result(
+        "alert",
+        row,
+        outcome,
+        "unknown_source" if unknown else None,
+        (*incomplete, *bad_ips),
+        alert_source,
+    )
+
+
+def _detect_source(source: dict[str, Any]) -> str:
+    """알럿 소스를 고른다. event.module, 없으면 kibana.alert.original_event.module, 그것도 없으면
+    최상위 guardduty 키로 판별한다.
+
+    Args:
+        source: raw.original["_source"].
+    """
+    module = _text(source, "event.module") or _text(source, "kibana.alert.original_event.module")
+    if module in ALERT_SOURCES:
+        return module
+    return "guardduty" if isinstance(source.get("guardduty"), dict) else "unknown"
+
+
+def _alert_entities(source: dict[str, Any]) -> tuple[list[dict[str, Any]], list[str]]:
+    """ECS 표준 필드에서 Alert 엔티티를 만든다. 센서 필드(host.name, agent.*)는 읽지 않는다.
+
+    Args:
+        source: raw.original["_source"].
+
+    Returns:
+        (엔티티 목록, 틀린 IP라서 얻지 못한 OCSF 경로 목록).
+    """
+    entities: list[dict[str, Any]] = []
+    missing: list[str] = []
+
+    def add(entity_type: str, value: str, role: str) -> None:
+        entity = {"type": entity_type, "value": value, "role": role}
+        if entity not in entities:
+            entities.append(entity)
+
+    for path, role, gap in (
+        ("source.ip", "src", "evidences[].src_endpoint.ip"),
+        ("destination.ip", "dst", "evidences[].dst_endpoint.ip"),
+    ):
+        value = _text(source, path)
+        if value is None:
+            continue
+        if _is_ip(value):
+            add("ip", value, role)
+        else:
+            missing.append(gap)
+    user = _text(source, "user.name")
+    if user is not None:
+        add("user", user, "actor")
+    for path in ("url.domain", "destination.domain"):
+        value = _text(source, path)
+        if value is not None:
+            host = _strip_port(value)
+            add("ip" if _is_ip(host) else "domain", host, "dst")
+    url = _text(source, "url.original")
+    if url is not None:
+        add("url", url, "dst")
+    return entities, missing
+
+
+def _strip_port(value: str) -> str:
+    """host:port, [v6]:port, [v6]에서 포트와 대괄호를 뗀다. 맨 IPv6(콜론 여러 개)는 그대로 둔다.
+
+    Args:
+        value: domain 후보 값.
+    """
+    match = _HOST_PORT.fullmatch(value)
+    return (match.group(1) or match.group(2)) if match else value
+
+
+def _is_ip(value: str) -> bool:
+    """IPv4·IPv6 형식이면 True.
+
+    Args:
+        value: 검사할 문자열.
+    """
+    try:
+        ipaddress.ip_address(value)
+    except ValueError:
+        return False
+    return True
+
+
+def _attacks(source: dict[str, Any]) -> list[dict[str, Any]]:
+    """룰 태그의 attack.T####와 threat.technique.id를 합쳐 중복 없이 OCSF attack 객체로 만든다.
+
+    형식이 틀린 값은 버린다.
+
+    Args:
+        source: raw.original["_source"].
+    """
+    ids: list[str] = []
+    for path in ("kibana.alert.rule.tags", "threat.technique.id"):
+        value = _value(source, path)
+        for item in [value] if isinstance(value, str) else value if isinstance(value, list) else []:
+            try:
+                technique = normalize_technique_id(item) if isinstance(item, str) else None
+            except ValueError:
+                continue
+            if technique is not None and technique not in ids:
+                ids.append(technique)
+    return [
+        {
+            "technique": {"uid": uid.partition(".")[0]},
+            **({"sub_technique": {"uid": uid}} if "." in uid else {}),
+        }
+        for uid in ids
+    ]
+
+
+def _observables(entities: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """엔티티 목록에서 OCSF observable을 만든다. 같은 type·값은 한 번만 넣는다.
+
+    Args:
+        entities: Alert 엔티티 목록.
+    """
+    seen: dict[tuple[int, str], dict[str, Any]] = {}
+    for entity in entities:
+        type_id = OBSERVABLE_TYPE_IDS[entity["type"]]
+        seen.setdefault((type_id, entity["value"]), {"type_id": type_id, "value": entity["value"]})
+    return list(seen.values())
+
+
+def _rounded(value: Any) -> int | None:
+    """유한한 숫자를 반올림한 정수로 바꾼다. 그 밖은 None.
+
+    Args:
+        value: kibana.alert.risk_score 값.
+    """
+    if isinstance(value, bool) or not isinstance(value, int | float) or not math.isfinite(value):
+        return None
+    return round(value)
+
+
+def _optional_time_ms(source: dict[str, Any], path: str) -> int | None:
+    """시각 필드를 epoch 밀리초로 바꾼다. 없거나 읽을 수 없으면 None.
+
+    Args:
+        source: raw.original["_source"].
+        path: 시각 필드 이름.
+    """
+    try:
+        return _time_ms(source, path)
+    except NormalizeError:
+        return None
 
 
 def _web_event(raw: RawRow) -> Result:

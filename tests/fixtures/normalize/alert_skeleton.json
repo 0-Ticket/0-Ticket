@@ -1,0 +1,459 @@
+[
+  {
+    "case": "suricata_lfi",
+    "original": {
+      "_id": "33c3d5379aaf4806966025d9a222293100b39ed4f47649720ab9c955479cf05b",
+      "_index": ".internal.alerts-security.alerts-default-000001",
+      "_source": {
+        "@timestamp": "2026-11-13T11:35:16.728Z",
+        "event": {"module": "suricata", "dataset": "suricata.eve"},
+        "host": {"name": "26d0b29d0b9a"},
+        "agent": {"name": "26d0b29d0b9a", "hostname": "26d0b29d0b9a", "type": "filebeat"},
+        "source": {"ip": "203.0.113.2", "port": 46842},
+        "destination": {"ip": "192.0.2.3", "domain": "198.51.100.1", "port": 8080},
+        "url": {"domain": "198.51.100.1", "original": "/..%2F..%2Fetc%2Fpasswd"},
+        "kibana.alert.uuid": "33c3d5379aaf4806966025d9a222293100b39ed4f47649720ab9c955479cf05b",
+        "kibana.alert.start": "2026-11-13T11:35:16.744Z",
+        "kibana.alert.original_time": "2026-11-13T11:34:50.503Z",
+        "kibana.alert.severity": "medium",
+        "kibana.alert.risk_score": 47,
+        "kibana.alert.reason": "event with sensor 26d0b29d0b9a created medium alert",
+        "kibana.alert.rule.name": "IRLAB IDS 로컬룰 탐지",
+        "kibana.alert.rule.description": "IR-Lab 로컬 Suricata 룰 발생",
+        "kibana.alert.rule.rule_id": "73995cf7-ab6b-5c7c-8eab-e257330866b8",
+        "kibana.alert.rule.tags": ["IR-Lab", "ids"],
+        "kibana.alert.original_event.module": "suricata"
+      }
+    },
+    "expect": {
+      "source": "suricata",
+      "outcome": "ok",
+      "error_code": null,
+      "missing_fields": [],
+      "class_uid": 2004,
+      "time": "2026-11-13T11:35:16.744Z",
+      "start_time": "2026-11-13T11:34:50.503Z",
+      "severity": 3,
+      "rule_id": "73995cf7-ab6b-5c7c-8eab-e257330866b8",
+      "title": "IRLAB IDS 로컬룰 탐지",
+      "message": "IR-Lab 로컬 Suricata 룰 발생",
+      "risk_score": 47,
+      "attacks": [],
+      "entities": [
+        ["ip", "203.0.113.2", "src"],
+        ["ip", "192.0.2.3", "dst"],
+        ["ip", "198.51.100.1", "dst"],
+        ["url", "/..%2F..%2Fetc%2Fpasswd", "dst"]
+      ]
+    }
+  },
+  {
+    "case": "suricata_react2shell_flat_and_nested",
+    "original": {
+      "_id": "3ebb0af7729bc14c0b0e6e36c023dd3efacbc70b1280a45e29d3bd27b1849a84",
+      "_index": ".internal.alerts-security.alerts-default-000001",
+      "_source": {
+        "@timestamp": "2026-11-06T10:55:26.444Z",
+        "event": {"module": "suricata"},
+        "host": {"name": "26d0b29d0b9a"},
+        "source": {"ip": "198.51.100.3"},
+        "destination.ip": "192.0.2.3",
+        "url": {"domain": "198.51.100.1", "original": "/"},
+        "threat": {"technique": {"id": ["T1190"]}},
+        "kibana.alert.uuid": "3ebb0af7729bc14c0b0e6e36c023dd3efacbc70b1280a45e29d3bd27b1849a84",
+        "kibana.alert.start": "2026-11-06T10:55:26.464Z",
+        "kibana.alert.original_time": "2026-11-06T09:36:25.280Z",
+        "kibana.alert.severity": "high",
+        "kibana.alert.risk_score": 73,
+        "kibana.alert.rule.name": "IRLAB - React2Shell Attack Attempt",
+        "kibana.alert.rule.description": "IRLAB - React2Shell Attack Attempt",
+        "kibana.alert.rule.rule_id": "3550ce5a-10e5-4324-afe6-1be2a598bedd",
+        "kibana.alert.rule.tags": [],
+        "kibana.alert.original_event.module": "suricata"
+      }
+    },
+    "expect": {
+      "source": "suricata",
+      "outcome": "ok",
+      "error_code": null,
+      "missing_fields": [],
+      "class_uid": 2004,
+      "time": "2026-11-06T10:55:26.464Z",
+      "start_time": "2026-11-06T09:36:25.280Z",
+      "severity": 4,
+      "rule_id": "3550ce5a-10e5-4324-afe6-1be2a598bedd",
+      "title": "IRLAB - React2Shell Attack Attempt",
+      "message": "IRLAB - React2Shell Attack Attempt",
+      "risk_score": 73,
+      "attacks": ["T1190"],
+      "entities": [
+        ["ip", "198.51.100.3", "src"],
+        ["ip", "192.0.2.3", "dst"],
+        ["ip", "198.51.100.1", "dst"],
+        ["url", "/", "dst"]
+      ]
+    }
+  },
+  {
+    "case": "modsecurity_sqli_keeps_cookie_out",
+    "original": {
+      "_id": "8790bdc08eeae783b95b4bed8a4f68543384c1fcd0226ece8d27a058186ba601",
+      "_index": ".internal.alerts-security.alerts-default-000001",
+      "_source": {
+        "@timestamp": "2026-11-14T12:48:03.237Z",
+        "event": {"module": "modsecurity", "dataset": "modsecurity"},
+        "host": {"name": "26d0b29d0b9a"},
+        "source": {"ip": "192.0.2.4"},
+        "transaction": {
+          "host_ip": "192.0.2.3",
+          "request": {"headers": {"Host": "198.51.100.1:8080", "Cookie": "session=SYNTHETIC-COOKIE-VALUE"}}
+        },
+        "kibana.alert.uuid": "8790bdc08eeae783b95b4bed8a4f68543384c1fcd0226ece8d27a058186ba601",
+        "kibana.alert.start": "2026-11-14T12:48:03.252Z",
+        "kibana.alert.original_time": "2026-11-14T12:46:59.748Z",
+        "kibana.alert.severity": "high",
+        "kibana.alert.risk_score": 73,
+        "kibana.alert.rule.name": "IRLAB WAF SQLi 차단",
+        "kibana.alert.rule.description": "ModSecurity가 SQLi를 탐지하고 403으로 차단",
+        "kibana.alert.rule.rule_id": "598375c2-3306-5d8b-b568-b8222cfdaaf4",
+        "kibana.alert.rule.tags": ["IR-Lab", "waf", "sqli", "attack.T1190"],
+        "kibana.alert.original_event.module": "modsecurity"
+      }
+    },
+    "expect": {
+      "source": "modsecurity",
+      "outcome": "ok",
+      "error_code": null,
+      "missing_fields": [],
+      "class_uid": 2004,
+      "time": "2026-11-14T12:48:03.252Z",
+      "start_time": "2026-11-14T12:46:59.748Z",
+      "severity": 4,
+      "rule_id": "598375c2-3306-5d8b-b568-b8222cfdaaf4",
+      "title": "IRLAB WAF SQLi 차단",
+      "message": "ModSecurity가 SQLi를 탐지하고 403으로 차단",
+      "risk_score": 73,
+      "attacks": ["T1190"],
+      "entities": [["ip", "192.0.2.4", "src"]]
+    }
+  },
+  {
+    "case": "modsecurity_xss_attack_tags_dedupe",
+    "original": {
+      "_id": "79f1243a2b79199ec2e95817e5fcf894228d5a9fba27ee8811dba7206b79d278",
+      "_index": ".internal.alerts-security.alerts-default-000001",
+      "_source": {
+        "@timestamp": "2026-11-06T08:41:15.355Z",
+        "event": {"module": "modsecurity"},
+        "source": {"ip": "203.0.113.4"},
+        "kibana.alert.uuid": "79f1243a2b79199ec2e95817e5fcf894228d5a9fba27ee8811dba7206b79d278",
+        "kibana.alert.start": "2026-11-06T08:41:15.367Z",
+        "kibana.alert.original_time": "2026-11-06T08:40:22.328Z",
+        "kibana.alert.severity": "high",
+        "kibana.alert.risk_score": 72.6,
+        "kibana.alert.rule.name": "IRLAB WAF XSS 차단",
+        "kibana.alert.rule.rule_id": "87e685e3-e724-5e75-ba3c-aa1bc695618b",
+        "kibana.alert.rule.tags": ["IR-Lab", "attack.T1190", "attack.t1190", "attack.Tbad", "attack.T1059.007"],
+        "threat": {"technique": {"id": ["T1190", "not-a-technique"]}},
+        "kibana.alert.original_event.module": "modsecurity"
+      }
+    },
+    "expect": {
+      "source": "modsecurity",
+      "outcome": "ok",
+      "error_code": null,
+      "missing_fields": [],
+      "class_uid": 2004,
+      "time": "2026-11-06T08:41:15.367Z",
+      "start_time": "2026-11-06T08:40:22.328Z",
+      "severity": 4,
+      "rule_id": "87e685e3-e724-5e75-ba3c-aa1bc695618b",
+      "title": "IRLAB WAF XSS 차단",
+      "message": "IRLAB WAF XSS 차단",
+      "risk_score": 73,
+      "attacks": ["T1190", "T1059.007"],
+      "entities": [["ip", "203.0.113.4", "src"]]
+    }
+  },
+  {
+    "case": "guardduty_without_ecs_fields",
+    "original": {
+      "_id": "7cb4f41d71b5c49f08a1df8fdeeb7cb184e13d0d170e32108943f65e59de885a",
+      "_index": ".internal.alerts-security.alerts-default-000001",
+      "_source": {
+        "@timestamp": "2026-11-13T12:04:38.639Z",
+        "event": {"dataset": "aws.guardduty", "provider": "guardduty.amazonaws.com"},
+        "guardduty": {
+          "type": "Policy:IAMUser/RootCredentialUsage",
+          "service": {"action": {"awsApiCallAction": {"remoteIpDetails": {"ipAddressV4": "192.0.2.1"}}}}
+        },
+        "kibana.alert.uuid": "7cb4f41d71b5c49f08a1df8fdeeb7cb184e13d0d170e32108943f65e59de885a",
+        "kibana.alert.start": "2026-11-13T12:04:38.644Z",
+        "kibana.alert.original_time": "2026-11-13T12:04:31.000Z",
+        "kibana.alert.severity": "medium",
+        "kibana.alert.risk_score": 47,
+        "kibana.alert.rule.name": "GuardDuty All Findings",
+        "kibana.alert.rule.description": "GuardDuty All Findings",
+        "kibana.alert.rule.rule_id": "9bc2b7b3-6b2e-4e56-a2d9-b572f42dfd0a",
+        "kibana.alert.rule.tags": []
+      }
+    },
+    "expect": {
+      "source": "guardduty",
+      "outcome": "ok",
+      "error_code": null,
+      "missing_fields": [],
+      "class_uid": 2004,
+      "time": "2026-11-13T12:04:38.644Z",
+      "start_time": "2026-11-13T12:04:31.000Z",
+      "severity": 3,
+      "rule_id": "9bc2b7b3-6b2e-4e56-a2d9-b572f42dfd0a",
+      "title": "GuardDuty All Findings",
+      "message": "GuardDuty All Findings",
+      "risk_score": 47,
+      "attacks": [],
+      "entities": []
+    }
+  },
+  {
+    "case": "unknown_source_is_partial",
+    "original": {
+      "_id": "unknown-source-1",
+      "_index": ".internal.alerts-security.alerts-default-000001",
+      "_source": {
+        "@timestamp": "2026-11-13T00:00:00.000Z",
+        "event": {"module": "nginx"},
+        "source": {"ip": "198.51.100.7"},
+        "kibana.alert.uuid": "unknown-source-1",
+        "kibana.alert.start": "2026-11-13T00:00:01.000Z",
+        "kibana.alert.original_time": "2026-11-13T00:00:00.000Z",
+        "kibana.alert.severity": "low",
+        "kibana.alert.rule.name": "Some rule",
+        "kibana.alert.rule.rule_id": "rule-unknown-1"
+      }
+    },
+    "expect": {
+      "source": "unknown",
+      "outcome": "partial",
+      "error_code": "unknown_source",
+      "missing_fields": [],
+      "class_uid": 2004,
+      "time": "2026-11-13T00:00:01.000Z",
+      "start_time": "2026-11-13T00:00:00.000Z",
+      "severity": 2,
+      "rule_id": "rule-unknown-1",
+      "title": "Some rule",
+      "message": "Some rule",
+      "attacks": [],
+      "entities": [["ip", "198.51.100.7", "src"]]
+    }
+  },
+  {
+    "case": "known_source_missing_fields_is_partial",
+    "original": {
+      "_id": "missing-fields-1",
+      "_index": ".internal.alerts-security.alerts-default-000001",
+      "_source": {
+        "@timestamp": "2026-11-13T00:00:05.000Z",
+        "event": {"module": "suricata"},
+        "kibana.alert.rule.name": "Rule without extras"
+      }
+    },
+    "expect": {
+      "source": "suricata",
+      "outcome": "partial",
+      "error_code": null,
+      "missing_fields": ["finding_info.analytic.uid", "severity_id", "start_time"],
+      "class_uid": 2004,
+      "time": "2026-11-13T00:00:05.000Z",
+      "start_time": "2026-11-13T00:00:05.000Z",
+      "severity": 0,
+      "rule_id": null,
+      "title": "Rule without extras",
+      "message": "Rule without extras",
+      "attacks": [],
+      "entities": []
+    }
+  },
+  {
+    "case": "unreadable_original_time_is_partial_not_fallback",
+    "original": {
+      "_id": "bad-original-time-1",
+      "_index": ".internal.alerts-security.alerts-default-000001",
+      "_source": {
+        "@timestamp": "2026-11-13T00:00:05.000Z",
+        "event": {"module": "suricata"},
+        "kibana.alert.original_time": "yesterday",
+        "kibana.alert.severity": "critical",
+        "kibana.alert.rule.name": "Rule",
+        "kibana.alert.rule.rule_id": "rule-1"
+      }
+    },
+    "expect": {
+      "source": "suricata",
+      "outcome": "partial",
+      "error_code": null,
+      "missing_fields": ["start_time"],
+      "class_uid": 2004,
+      "time": "2026-11-13T00:00:05.000Z",
+      "start_time": "2026-11-13T00:00:05.000Z",
+      "severity": 5,
+      "rule_id": "rule-1",
+      "title": "Rule",
+      "message": "Rule",
+      "attacks": [],
+      "entities": []
+    }
+  },
+  {
+    "case": "uuid_and_start_fall_back_to_hit_id_and_timestamp",
+    "original": {
+      "_id": "hit-id-1",
+      "_index": ".internal.alerts-security.alerts-default-000001",
+      "_source": {
+        "@timestamp": "2026-11-13T00:00:09.000Z",
+        "event": {"module": "suricata"},
+        "kibana.alert.original_time": "2026-11-13T00:00:03.000Z",
+        "kibana.alert.severity": "low",
+        "kibana.alert.rule.name": "Rule",
+        "kibana.alert.rule.rule_id": "rule-1"
+      }
+    },
+    "expect": {
+      "source": "suricata",
+      "outcome": "ok",
+      "error_code": null,
+      "missing_fields": [],
+      "class_uid": 2004,
+      "finding_uid": "hit-id-1",
+      "time": "2026-11-13T00:00:09.000Z",
+      "start_time": "2026-11-13T00:00:03.000Z",
+      "severity": 2,
+      "rule_id": "rule-1",
+      "title": "Rule",
+      "message": "Rule",
+      "attacks": [],
+      "entities": []
+    }
+  },
+  {
+    "case": "invalid_ips_and_domain_ports",
+    "original": {
+      "_id": "ip-forms-1",
+      "_index": ".internal.alerts-security.alerts-default-000001",
+      "_source": {
+        "@timestamp": "2026-11-13T00:00:00.000Z",
+        "event": {"module": "suricata"},
+        "source": {"ip": "999.1.1.1"},
+        "destination": {"ip": "not-an-ip", "domain": "[2001:db8::1]:8443"},
+        "url": {"domain": "www.example.com:8443", "original": "/login"},
+        "user": {"name": "alice"},
+        "kibana.alert.uuid": "ip-forms-1",
+        "kibana.alert.original_time": "2026-11-13T00:00:00.000Z",
+        "kibana.alert.severity": "low",
+        "kibana.alert.rule.name": "Rule",
+        "kibana.alert.rule.rule_id": "rule-1"
+      }
+    },
+    "expect": {
+      "source": "suricata",
+      "outcome": "ok",
+      "error_code": null,
+      "missing_fields": ["evidences[].src_endpoint.ip", "evidences[].dst_endpoint.ip"],
+      "class_uid": 2004,
+      "time": "2026-11-13T00:00:00.000Z",
+      "start_time": "2026-11-13T00:00:00.000Z",
+      "severity": 2,
+      "rule_id": "rule-1",
+      "title": "Rule",
+      "message": "Rule",
+      "attacks": [],
+      "entities": [
+        ["user", "alice", "actor"],
+        ["domain", "www.example.com", "dst"],
+        ["ip", "2001:db8::1", "dst"],
+        ["url", "/login", "dst"]
+      ]
+    }
+  },
+  {
+    "case": "fallback_invalid_source",
+    "fetched_at": "2026-11-13T01:00:00.000Z",
+    "original": {"_id": "no-source-1", "_index": ".internal.alerts-security.alerts-default-000001"},
+    "expect": {
+      "source": "unknown",
+      "outcome": "fallback",
+      "error_code": "invalid_source",
+      "time": "2026-11-13T01:00:00.000Z",
+      "time_from": "fetched_at"
+    }
+  },
+  {
+    "case": "fallback_missing_uid",
+    "original": {
+      "_index": ".internal.alerts-security.alerts-default-000001",
+      "_source": {
+        "@timestamp": "2026-11-13T00:00:00.000Z",
+        "kibana.alert.rule.name": "Rule"
+      }
+    },
+    "expect": {
+      "source": "unknown",
+      "outcome": "fallback",
+      "error_code": "missing_uid",
+      "time": "2026-11-13T00:00:00.000Z",
+      "time_from": null
+    }
+  },
+  {
+    "case": "fallback_missing_title",
+    "original": {
+      "_id": "no-title-1",
+      "_index": ".internal.alerts-security.alerts-default-000001",
+      "_source": {"@timestamp": "2026-11-13T00:00:00.000Z"}
+    },
+    "expect": {
+      "source": "unknown",
+      "outcome": "fallback",
+      "error_code": "missing_title",
+      "time": "2026-11-13T00:00:00.000Z",
+      "time_from": null
+    }
+  },
+  {
+    "case": "fallback_bad_time_keeps_readable_timestamp",
+    "fetched_at": "2026-11-13T01:00:00.000Z",
+    "original": {
+      "_id": "bad-time-1",
+      "_index": ".internal.alerts-security.alerts-default-000001",
+      "_source": {
+        "@timestamp": "2026-11-13T00:00:00.000Z",
+        "kibana.alert.start": "not-a-time",
+        "kibana.alert.rule.name": "Rule"
+      }
+    },
+    "expect": {
+      "source": "unknown",
+      "outcome": "fallback",
+      "error_code": "bad_time",
+      "time": "2026-11-13T00:00:00.000Z",
+      "time_from": null
+    }
+  },
+  {
+    "case": "fallback_bad_time_uses_fetched_at_when_timestamp_is_unreadable",
+    "fetched_at": "2026-11-13T01:00:00.000Z",
+    "original": {
+      "_id": "bad-time-2",
+      "_index": ".internal.alerts-security.alerts-default-000001",
+      "_source": {"@timestamp": "garbage", "kibana.alert.rule.name": "Rule"}
+    },
+    "expect": {
+      "source": "unknown",
+      "outcome": "fallback",
+      "error_code": "bad_time",
+      "time": "2026-11-13T01:00:00.000Z",
+      "time_from": "fetched_at"
+    }
+  }
+]

@@ -23,3 +23,9 @@ OCSF가 클래스별 JSON Schema 파일을 따로 배포하지 않아, 이 정�
   `https://schema.ocsf.io/api/1.9.0/objects/object?profiles=`의 generic object 정의
   (2026-11-12 확인)를 따른다. 이 객체에만 문자열 키와 JSON 값(유한 실수 포함)을
   재귀로 허용하고, 이름 있는 객체와 클래스 최상위 속성은 기존 정의로 엄격히 검사한다.
+
+- Alert 공통 구성 객체(#326, 2026-11-17 확인): `analytic`, `attack`, `technique`, `tactic`, `sub_technique`,
+  `observable`. 받은 곳은 `https://schema.ocsf.io/api/1.9.0/objects/<이름>?profiles=`이고 같은 방식으로 줄였다.
+  `finding_info.analytic`, `finding_info.attacks`, `observables`에 쓴다. 정의 안에서 이 목록 밖 객체를 가리키는
+  속성(`related_analytics`, `sensor_info_list`, `mitigation`, `tactics`, `reputation`)은 정규화가 내보내지 않으므로
+  그 객체의 정의는 담지 않았다. 내보내면 검사에서 실패한다.

@@ -64,6 +64,95 @@
   },
   "name": "actor"
  },
+ "analytic": {
+  "attributes": {
+   "algorithm": {
+    "requirement": "optional",
+    "type": "string_t"
+   },
+   "category": {
+    "requirement": "optional",
+    "type": "string_t"
+   },
+   "desc": {
+    "requirement": "optional",
+    "type": "string_t"
+   },
+   "name": {
+    "requirement": "recommended",
+    "type": "string_t"
+   },
+   "related_analytics": {
+    "is_array": true,
+    "object_type": "analytic",
+    "requirement": "optional",
+    "type": "object_t"
+   },
+   "sensor_info_list": {
+    "is_array": true,
+    "object_type": "sensor_info",
+    "requirement": "optional",
+    "type": "object_t"
+   },
+   "state": {
+    "requirement": "optional",
+    "type": "string_t"
+   },
+   "state_id": {
+    "enum": [
+     "3",
+     "0",
+     "1",
+     "2",
+     "99"
+    ],
+    "requirement": "optional",
+    "type": "integer_t"
+   },
+   "type": {
+    "requirement": "optional",
+    "type": "string_t"
+   },
+   "type_id": {
+    "enum": [
+     "3",
+     "6",
+     "0",
+     "1",
+     "2",
+     "99",
+     "4",
+     "5",
+     "7",
+     "8",
+     "9",
+     "10",
+     "11"
+    ],
+    "requirement": "required",
+    "type": "integer_t"
+   },
+   "uid": {
+    "requirement": "recommended",
+    "type": "string_t"
+   },
+   "uid_numeric": {
+    "requirement": "optional",
+    "type": "long_t"
+   },
+   "version": {
+    "requirement": "optional",
+    "type": "string_t"
+   }
+  },
+  "constraints": {
+   "at_least_one": [
+    "name",
+    "uid"
+   ]
+  },
+  "name": "analytic"
+ },
  "api": {
   "attributes": {
    "group": {
@@ -101,6 +190,48 @@
    }
   },
   "name": "api"
+ },
+ "attack": {
+  "attributes": {
+   "mitigation": {
+    "object_type": "mitigation",
+    "requirement": "optional",
+    "type": "object_t"
+   },
+   "sub_technique": {
+    "object_type": "sub_technique",
+    "requirement": "recommended",
+    "type": "object_t"
+   },
+   "tactic": {
+    "object_type": "tactic",
+    "requirement": "recommended",
+    "type": "object_t"
+   },
+   "tactics": {
+    "is_array": true,
+    "object_type": "tactic",
+    "requirement": "optional",
+    "type": "object_t"
+   },
+   "technique": {
+    "object_type": "technique",
+    "requirement": "recommended",
+    "type": "object_t"
+   },
+   "version": {
+    "requirement": "recommended",
+    "type": "string_t"
+   }
+  },
+  "constraints": {
+   "at_least_one": [
+    "tactic",
+    "technique",
+    "sub_technique"
+   ]
+  },
+  "name": "attack"
  },
  "evidences": {
   "attributes": {
@@ -884,6 +1015,94 @@
   },
   "name": "network_endpoint"
  },
+ "observable": {
+  "attributes": {
+   "event_uid": {
+    "requirement": "optional",
+    "type": "string_t"
+   },
+   "name": {
+    "requirement": "recommended",
+    "type": "string_t"
+   },
+   "reputation": {
+    "object_type": "reputation",
+    "requirement": "optional",
+    "type": "object_t"
+   },
+   "type": {
+    "requirement": "optional",
+    "type": "string_t"
+   },
+   "type_id": {
+    "enum": [
+     "25",
+     "31",
+     "39",
+     "38",
+     "24",
+     "41",
+     "18",
+     "5",
+     "30",
+     "15",
+     "27",
+     "21",
+     "99",
+     "36",
+     "10",
+     "50",
+     "22",
+     "17",
+     "1",
+     "13",
+     "32",
+     "42",
+     "44",
+     "45",
+     "37",
+     "16",
+     "11",
+     "12",
+     "49",
+     "40",
+     "4",
+     "8",
+     "33",
+     "6",
+     "28",
+     "35",
+     "3",
+     "20",
+     "43",
+     "23",
+     "19",
+     "0",
+     "46",
+     "29",
+     "2",
+     "47",
+     "34",
+     "14",
+     "9",
+     "7",
+     "48",
+     "26"
+    ],
+    "requirement": "required",
+    "type": "integer_t"
+   },
+   "type_uid": {
+    "requirement": "optional",
+    "type": "long_t"
+   },
+   "value": {
+    "requirement": "optional",
+    "type": "string_t"
+   }
+  },
+  "name": "observable"
+ },
  "product": {
   "attributes": {
    "cpe_name": {
@@ -973,6 +1192,87 @@
    ]
   },
   "name": "service"
+ },
+ "sub_technique": {
+  "attributes": {
+   "name": {
+    "requirement": "recommended",
+    "type": "string_t"
+   },
+   "src_url": {
+    "requirement": "optional",
+    "type": "url_t"
+   },
+   "uid": {
+    "requirement": "recommended",
+    "type": "string_t"
+   },
+   "uid_numeric": {
+    "requirement": "optional",
+    "type": "long_t"
+   }
+  },
+  "constraints": {
+   "at_least_one": [
+    "name",
+    "uid"
+   ]
+  },
+  "name": "sub_technique"
+ },
+ "tactic": {
+  "attributes": {
+   "name": {
+    "requirement": "recommended",
+    "type": "string_t"
+   },
+   "src_url": {
+    "requirement": "optional",
+    "type": "url_t"
+   },
+   "uid": {
+    "requirement": "recommended",
+    "type": "string_t"
+   },
+   "uid_numeric": {
+    "requirement": "optional",
+    "type": "long_t"
+   }
+  },
+  "constraints": {
+   "at_least_one": [
+    "name",
+    "uid"
+   ]
+  },
+  "name": "tactic"
+ },
+ "technique": {
+  "attributes": {
+   "name": {
+    "requirement": "recommended",
+    "type": "string_t"
+   },
+   "src_url": {
+    "requirement": "optional",
+    "type": "url_t"
+   },
+   "uid": {
+    "requirement": "recommended",
+    "type": "string_t"
+   },
+   "uid_numeric": {
+    "requirement": "optional",
+    "type": "long_t"
+   }
+  },
+  "constraints": {
+   "at_least_one": [
+    "name",
+    "uid"
+   ]
+  },
+  "name": "technique"
  },
  "url": {
   "attributes": {
