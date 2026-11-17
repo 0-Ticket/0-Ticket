@@ -45,6 +45,7 @@ def save_branch(
     branch_details: dict[str, Any],
     *,
     now_ms: int,
+    max_incident_tickets: int,
 ) -> SaveResult:
     """Ticket을 잠가 아직 escalated일 때만 Incident와 함께 저장한다."""
     with conn.transaction():
@@ -56,13 +57,21 @@ def save_branch(
         incident = None
         if decision.incident_id is not None:
             incident_row = _fetch_locked(conn, "incidents", decision.incident_id)
-            if incident_row is not None and incident_row["status"] in _OPEN_STATUSES:
+            if (
+                incident_row is not None
+                and incident_row["status"] in _OPEN_STATUSES
+                and len(incident_row["ticket_ids"]) < max_incident_tickets
+            ):
                 incident = _contract_row("incident", incident_row)
             else:
                 branch_details = {
                     **branch_details,
                     "decision_source": "rule_default",
-                    "decision_fallback": "incident_closed",
+                    "decision_fallback": (
+                        "incident_full"
+                        if incident_row is not None and incident_row["status"] in _OPEN_STATUSES
+                        else "incident_closed"
+                    ),
                 }
 
         if incident is None:

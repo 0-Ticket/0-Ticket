@@ -17,6 +17,7 @@ def test_default_config_reads_into_branch_settings() -> None:
     assert set(config) == {"l2"}
     assert settings.candidate_window_ms == 86_400_000
     assert settings.max_candidates == 5
+    assert settings.max_incident_tickets == 10
 
 
 def test_default_config_reads_into_analyze_settings() -> None:
@@ -47,7 +48,8 @@ def test_bad_analyze_settings_are_rejected(change) -> None:
 
 def test_local_overrides_default_and_only_l2_is_returned(tmp_path: Path) -> None:
     (tmp_path / "default.toml").write_text(
-        "[l2.branch]\ncandidate_window_ms = 1000\nmax_candidates = 5\n[other]\nx = 1\n",
+        "[l2.branch]\ncandidate_window_ms = 1000\nmax_candidates = 5\n"
+        "max_incident_tickets = 10\n[other]\nx = 1\n",
         encoding="utf-8",
     )
     (tmp_path / "local.toml").write_text(
@@ -61,6 +63,7 @@ def test_local_overrides_default_and_only_l2_is_returned(tmp_path: Path) -> None
             "branch": {
                 "candidate_window_ms": 1000,
                 "max_candidates": 2,
+                "max_incident_tickets": 10,
             }
         }
     }
@@ -74,6 +77,8 @@ def test_local_overrides_default_and_only_l2_is_returned(tmp_path: Path) -> None
         lambda c: c["branch"].update(candidate_window_ms=True),
         lambda c: c["branch"].update(max_candidates=0),
         lambda c: c["branch"].update(max_candidates="5"),
+        lambda c: c["branch"].update(max_incident_tickets=0),
+        lambda c: c["branch"].update(max_incident_tickets=True),
         lambda c: c["branch"].update(candidate_source="vector"),
         lambda c: c["branch"].update(strong_signal_types=[]),
     ],

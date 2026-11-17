@@ -17,6 +17,7 @@ from soc.agent.runner import wrap_data
 from soc.asset_lookup import AssetLookupError
 from soc.contracts import to_datetime
 from soc.db.migrate import MIGRATIONS_DIR, migrate
+from soc.ids import new_id
 from soc.l2.analyze import context as analyze_context
 from soc.l2.analyze.tasks import make_investigate_task
 from soc.l2.analyze.worker import L2AnalyzeWorker
@@ -31,6 +32,7 @@ FIXTURE = Path(__file__).parent / "fixtures" / "l2" / "branch.json"
 SETTINGS = BranchSettings(
     candidate_window_ms=86_400_000,
     max_candidates=5,
+    max_incident_tickets=10,
 )
 ANALYZE_SETTINGS = AnalyzeSettings(
     lookback_ms=259_200_000,
@@ -165,6 +167,7 @@ def recent_settings(**overrides: Any) -> BranchSettings:
     values = {
         "candidate_window_ms": 86_400_000,
         "max_candidates": 5,
+        "max_incident_tickets": 10,
     }
     values.update(overrides)
     return BranchSettings(**values)
@@ -281,6 +284,28 @@ def prepare_graph_candidate(
     return target_id
 
 
+def fill_incident(
+    database_url: str, sample: dict[str, Any], incident_id: str, *, count: int = 10
+) -> None:
+    peer = sample["tickets"][0]
+    ticket_ids = [peer["id"]]
+    with psycopg.connect(database_url) as conn:
+        for _ in range(count - 1):
+            alert = {**sample["alerts"][0], "id": new_id("alt")}
+            insert(conn, "alerts", alert)
+            clone = {
+                **peer,
+                "id": new_id("tkt"),
+                "status": "linked",
+                "alert_ids": [alert["id"]],
+            }
+            insert(conn, "tickets", clone)
+            ticket_ids.append(clone["id"])
+        conn.execute(
+            "UPDATE incidents SET ticket_ids = %s WHERE id = %s", (ticket_ids, incident_id)
+        )
+
+
 def test_worker_without_graph_path_creates_new_incident_and_saves_coverage(
     l2_database: tuple[str, dict[str, Any]],
 ) -> None:
@@ -350,15 +375,11 @@ def test_worker_links_incident_using_hunt_to_alert_entity_path(
     assert ticket["details"]["l2_branch"]["paths"][0]["nodes"][1]["kind"] == "hunt"
 
 
-def test_public_ip_only_path_creates_new_incident(
-    l2_database: tuple[str, dict[str, Any]], monkeypatch: pytest.MonkeyPatch
-) -> None:
-    import soc.l2.branch.graph as graph
-
+def test_src_ip_path_links_existing_incident(l2_database: tuple[str, dict[str, Any]]) -> None:
     database_url, sample = l2_database
     target_id = prepare_graph_candidate(database_url, sample)
     current_id = sample["tickets"][1]["id"]
-    ip_entity = {"type": "ip", "value": "192.0.2.7", "role": "target"}
+    ip_entity = {"type": "ip", "value": "192.0.2.7", "role": "src"}
     with psycopg.connect(database_url) as conn:
         conn.execute(
             "UPDATE hunts SET entities = %s WHERE id = %s",
@@ -368,15 +389,207 @@ def test_public_ip_only_path_creates_new_incident(
             "UPDATE alerts SET entities = %s WHERE id = %s",
             (Jsonb([ip_entity]), sample["alerts"][0]["id"]),
         )
-    monkeypatch.setattr(graph, "_is_public_ip", lambda _: True)
-
-    worker(database_url, run=lambda _: pytest.fail("?? IP? ??? ??? ??? ???")).handle(current_id)
+    worker(
+        database_url,
+        run=lambda _: ok(
+            {
+                "decision": "existing",
+                "incident_id": target_id,
+                "confidence": 0.9,
+                "reason": "같은 출발지",
+                "similar_ticket_ids": [sample["tickets"][0]["id"]],
+            }
+        ),
+    ).handle(current_id)
 
     with psycopg.connect(database_url, row_factory=psycopg.rows.dict_row) as conn:
         ticket = conn.execute("SELECT * FROM tickets WHERE id = %s", (current_id,)).fetchone()
         target = conn.execute("SELECT * FROM incidents WHERE id = %s", (target_id,)).fetchone()
-    assert ticket["details"]["l2_branch"]["reason"] == "public_ip_only"
+    assert ticket["details"]["l2_branch"]["reason"] == "paths_found"
+    assert current_id in target["ticket_ids"]
+
+
+def test_shared_non_src_host_does_not_link_but_remains_in_incident(
+    l2_database: tuple[str, dict[str, Any]],
+) -> None:
+    database_url, sample = l2_database
+    target_id = prepare_graph_candidate(
+        database_url, sample, current_index=0, peer_index=1, target_index=2
+    )
+    host = {"type": "host", "value": "Shared-Proxy", "role": None}
+    with psycopg.connect(database_url) as conn:
+        conn.execute(
+            "UPDATE hunts SET entities = %s WHERE id = %s",
+            (Jsonb([host]), sample["hunts"][0]["id"]),
+        )
+        conn.execute(
+            "UPDATE alerts SET entities = %s WHERE id = %s",
+            (Jsonb([host]), sample["alerts"][0]["id"]),
+        )
+
+    current_id = sample["tickets"][0]["id"]
+    worker(
+        database_url, run=lambda _: pytest.fail("공유 수집기만으로 모델을 부르면 안 된다")
+    ).handle(current_id)
+
+    with psycopg.connect(database_url, row_factory=psycopg.rows.dict_row) as conn:
+        incident = conn.execute(
+            "SELECT * FROM incidents WHERE %s = ANY(ticket_ids)", (current_id,)
+        ).fetchone()
+        target = conn.execute(
+            "SELECT ticket_ids FROM incidents WHERE id = %s", (target_id,)
+        ).fetchone()
+    assert incident["id"] != target_id
+    assert incident["ticket_ids"] == [current_id]
+    assert any(entity["type"] == "host" for entity in incident["entities"])
     assert current_id not in target["ticket_ids"]
+
+
+def test_full_incident_is_excluded_before_candidate_limit(
+    l2_database: tuple[str, dict[str, Any]],
+) -> None:
+    database_url, sample = l2_database
+    full_id = prepare_graph_candidate(database_url, sample, duplicate_candidate=True)
+    available_id = sample["incidents"][1]["id"]
+    fill_incident(database_url, sample, full_id)
+    current_id = sample["tickets"][1]["id"]
+
+    def choose(task: Any) -> AgentResult:
+        assert [item["incident_id"] for item in task.data["candidates"]] == [available_id]
+        return ok(
+            {
+                "decision": "existing",
+                "incident_id": available_id,
+                "confidence": 0.9,
+                "reason": "남은 후보",
+                "similar_ticket_ids": [sample["tickets"][0]["id"]],
+            }
+        )
+
+    worker(database_url, run=choose, settings=recent_settings(max_candidates=1)).handle(current_id)
+
+    with psycopg.connect(database_url) as conn:
+        full = conn.execute(
+            "SELECT ticket_ids FROM incidents WHERE id = %s", (full_id,)
+        ).fetchone()[0]
+        available = conn.execute(
+            "SELECT ticket_ids FROM incidents WHERE id = %s", (available_id,)
+        ).fetchone()[0]
+    assert len(full) == 10
+    assert current_id in available
+
+
+def test_tenth_ticket_can_join_incident(l2_database: tuple[str, dict[str, Any]]) -> None:
+    database_url, sample = l2_database
+    target_id = prepare_graph_candidate(database_url, sample)
+    fill_incident(database_url, sample, target_id, count=9)
+    current_id = sample["tickets"][1]["id"]
+
+    worker(
+        database_url,
+        run=lambda _: ok(
+            {
+                "decision": "existing",
+                "incident_id": target_id,
+                "confidence": 0.9,
+                "reason": "열 번째 연결",
+                "similar_ticket_ids": [sample["tickets"][0]["id"]],
+            }
+        ),
+    ).handle(current_id)
+
+    with psycopg.connect(database_url) as conn:
+        ticket_ids = conn.execute(
+            "SELECT ticket_ids FROM incidents WHERE id = %s", (target_id,)
+        ).fetchone()[0]
+    assert len(ticket_ids) == 10
+    assert current_id in ticket_ids
+
+
+def test_non_src_match_is_excluded_before_candidate_limit(
+    l2_database: tuple[str, dict[str, Any]],
+) -> None:
+    database_url, sample = l2_database
+    valid_id = prepare_graph_candidate(database_url, sample, duplicate_candidate=True)
+    invalid_id = sample["incidents"][1]["id"]
+    bad_alert = {
+        **sample["alerts"][0],
+        "id": new_id("alt"),
+        "entities": [{"type": "host", "value": "WS-07", "role": None}],
+    }
+    bad_ticket = {
+        **sample["tickets"][0],
+        "id": new_id("tkt"),
+        "status": "linked",
+        "alert_ids": [bad_alert["id"]],
+    }
+    with psycopg.connect(database_url) as conn:
+        insert(conn, "alerts", bad_alert)
+        insert(conn, "tickets", bad_ticket)
+        conn.execute(
+            "UPDATE incidents SET ticket_ids = %s WHERE id = %s",
+            ([bad_ticket["id"]], invalid_id),
+        )
+
+    current_id = sample["tickets"][1]["id"]
+
+    def choose(task: Any) -> AgentResult:
+        assert [item["incident_id"] for item in task.data["candidates"]] == [valid_id]
+        return ok(
+            {
+                "decision": "existing",
+                "incident_id": valid_id,
+                "confidence": 0.9,
+                "reason": "출발지 역할만 일치",
+                "similar_ticket_ids": [sample["tickets"][0]["id"]],
+            }
+        )
+
+    worker(database_url, run=choose, settings=recent_settings(max_candidates=1)).handle(current_id)
+
+    with psycopg.connect(database_url) as conn:
+        valid = conn.execute(
+            "SELECT ticket_ids FROM incidents WHERE id = %s", (valid_id,)
+        ).fetchone()[0]
+        invalid = conn.execute(
+            "SELECT ticket_ids FROM incidents WHERE id = %s", (invalid_id,)
+        ).fetchone()[0]
+    assert current_id in valid
+    assert current_id not in invalid
+
+
+def test_save_rechecks_incident_ticket_limit_after_model_run(
+    l2_database: tuple[str, dict[str, Any]],
+) -> None:
+    database_url, sample = l2_database
+    target_id = prepare_graph_candidate(database_url, sample)
+    current_id = sample["tickets"][1]["id"]
+
+    def fill_after_query(_: Any) -> AgentResult:
+        fill_incident(database_url, sample, target_id)
+        return ok(
+            {
+                "decision": "existing",
+                "incident_id": target_id,
+                "confidence": 0.9,
+                "reason": "후보 조회 뒤 증가",
+                "similar_ticket_ids": [sample["tickets"][0]["id"]],
+            }
+        )
+
+    worker(database_url, run=fill_after_query).handle(current_id)
+
+    with psycopg.connect(database_url, row_factory=psycopg.rows.dict_row) as conn:
+        target = conn.execute(
+            "SELECT ticket_ids FROM incidents WHERE id = %s", (target_id,)
+        ).fetchone()
+        ticket = conn.execute("SELECT details FROM tickets WHERE id = %s", (current_id,)).fetchone()
+        created = conn.execute(
+            "SELECT ticket_ids FROM incidents WHERE %s = ANY(ticket_ids)", (current_id,)
+        ).fetchone()
+    assert len(target["ticket_ids"]) == 10
+    assert created["ticket_ids"] == [current_id]
+    assert ticket["details"]["l2_branch"]["decision_fallback"] == "incident_full"
 
 
 def test_candidate_limit_is_saved_as_incomplete_and_creates_new_incident(
@@ -384,7 +597,9 @@ def test_candidate_limit_is_saved_as_incomplete_and_creates_new_incident(
 ) -> None:
     database_url, sample = l2_database
     prepare_graph_candidate(database_url, sample, duplicate_candidate=True)
-    settings = BranchSettings(candidate_window_ms=86_400_000, max_candidates=1)
+    settings = BranchSettings(
+        candidate_window_ms=86_400_000, max_candidates=1, max_incident_tickets=10
+    )
     current_id = sample["tickets"][1]["id"]
 
     worker(

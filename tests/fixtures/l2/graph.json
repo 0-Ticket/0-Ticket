@@ -4,8 +4,9 @@
     "kind": "alert",
     "id": "alt_01a19f93-1150-7000-8000-000000000201",
     "entities": [
-      {"type": "host", "value": " WS-07 "},
-      {"type": "ip", "value": "192.0.2.7"}
+      {"type": "host", "value": " Shared-Collector ", "role": null},
+      {"type": "ip", "value": "192.0.2.7", "role": "src"},
+      {"type": "ip", "value": "192.0.2.10", "role": "dst"}
     ]
   },
   "matches": [
@@ -15,8 +16,9 @@
       "kind": "alert",
       "id": "alt_01a19f93-1150-7000-8000-000000000202",
       "entities": [
-        {"type": "host", "value": "ws-07"},
-        {"type": "ip", "value": "192.0.2.7"}
+        {"type": "host", "value": "shared-collector", "role": null},
+        {"type": "ip", "value": "192.0.2.7", "role": "src"},
+        {"type": "ip", "value": "192.0.2.10", "role": "dst"}
       ]
     },
     {
@@ -24,7 +26,7 @@
       "ticket_id": "tkt_01a19f93-1150-7000-8000-000000000204",
       "kind": "event",
       "id": "evt_01a19f93-1150-7000-8000-000000000204",
-      "entities": [{"type": "host", "value": "ws-07"}]
+      "entities": [{"type": "host", "value": "shared-collector", "role": null}]
     }
   ]
 }

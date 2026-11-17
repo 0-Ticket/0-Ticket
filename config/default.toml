@@ -335,6 +335,8 @@ entities_max = 5
 candidate_window_ms = 86_400_000
 # 그래프 후보 Incident 수 상한. 초과하면 탐색 미완료로 처리한다.
 max_candidates = 5
+# Incident 하나에 연결할 Ticket 수 상한.
+max_incident_tickets = 10
 
 # L2 Incident 분석(#261, #270, #319). 연속 실패 3회에 held로 두고 1시간 뒤 재시도한다.
 [l2.analyze]

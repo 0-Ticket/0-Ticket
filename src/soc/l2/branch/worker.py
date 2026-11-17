@@ -66,6 +66,7 @@ class L2BranchWorker:
                 now,
                 candidate_window_ms=self.settings.candidate_window_ms,
                 max_candidates=self.settings.max_candidates,
+                max_incident_tickets=self.settings.max_incident_tickets,
             )
             candidates = tuple(
                 Candidate(candidate.incident, candidate.paths) for candidate in graph.candidates
@@ -88,6 +89,7 @@ class L2BranchWorker:
                 decision,
                 details,
                 now_ms=int(now.timestamp() * 1000),
+                max_incident_tickets=self.settings.max_incident_tickets,
             )
 
 
