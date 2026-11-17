@@ -64,7 +64,7 @@ NORMALIZE = NormalizeSettings(
     batch_size=200, lease_seconds=600, connect_timeout_seconds=5, asset_statement_timeout_ms=5000
 )
 AUTO = TicketingPolicy(mode="auto", scenario_rule_ids=())
-BRANCH = BranchSettings(candidate_window_ms=86_400_000, max_candidates=5)
+BRANCH = BranchSettings(candidate_window_ms=86_400_000, max_candidates=5, max_incident_tickets=10)
 ANALYZE = AnalyzeSettings(
     lookback_ms=86_400_000,
     max_failures=3,

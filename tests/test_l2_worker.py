@@ -14,6 +14,7 @@ def config() -> dict[str, Any]:
             "branch": {
                 "candidate_window_ms": 1000,
                 "max_candidates": 5,
+                "max_incident_tickets": 10,
             }
         },
     }

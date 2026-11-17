@@ -1,9 +1,11 @@
 """L2 Ticket 그래프 연결 규칙을 작은 손 작성 fixture로 확인한다."""
 
+import ipaddress
 import json
 from pathlib import Path
 
-import soc.l2.branch.graph as graph
+import pytest
+
 from soc.l2.branch.graph import classify_graph
 
 FIXTURE = Path(__file__).parent / "fixtures" / "l2" / "graph.json"
@@ -31,7 +33,8 @@ def test_graph_links_tickets_through_normalized_alert_entity() -> None:
         "ticket",
         "incident",
     ]
-    assert path["nodes"][2]["value"] == "ws-07"
+    assert path["nodes"][2]["value"] == "192.0.2.7"
+    assert len(result.paths) == 1
 
 
 def test_event_nodes_do_not_connect_ticket_graph() -> None:
@@ -70,18 +73,73 @@ def test_candidate_limit_makes_coverage_incomplete() -> None:
     assert result.candidates == ()
 
 
-def test_public_ip_only_path_does_not_match_incident(monkeypatch) -> None:
+def test_public_src_ip_alone_connects_tickets() -> None:
     data = sample()
-    source = {**data["source"], "entities": [data["source"]["entities"][1]]}
-    match = {**data["matches"][0], "entities": [data["matches"][0]["entities"][1]]}
-    monkeypatch.setattr(graph, "_is_public_ip", lambda _: True)
+    public_ip = "8.8.8.8"
+    assert ipaddress.ip_address(public_ip).is_global
+    source = {
+        **data["source"],
+        "entities": [{**data["source"]["entities"][1], "value": public_ip}],
+    }
+    match = {
+        **data["matches"][0],
+        "entities": [{**data["matches"][0]["entities"][1], "value": public_ip}],
+    }
 
     result = classify_graph(data["ticket_id"], source, [match], max_candidates=5)
 
     assert result.coverage == "complete"
-    assert result.reason == "public_ip_only"
+    assert result.reason == "paths_found"
+    assert len(result.candidates) == 1
+    assert result.paths[0]["nodes"][2]["value"] == public_ip
+
+
+@pytest.mark.parametrize("role", [None, "dst", "target", "actor"])
+def test_non_src_entities_do_not_connect_tickets(role: str | None) -> None:
+    data = sample()
+    entity = {"type": "host", "value": "shared-collector", "role": role}
+    source = {**data["source"], "entities": [entity]}
+    match = {**data["matches"][0], "entities": [entity]}
+
+    result = classify_graph(data["ticket_id"], source, [match], max_candidates=5)
+
+    assert result.reason == "no_path"
     assert result.candidates == ()
-    assert result.paths == ()
+
+
+@pytest.mark.parametrize("source_role, peer_role", [("src", "dst"), ("dst", "src")])
+def test_both_sides_must_be_src(source_role: str, peer_role: str) -> None:
+    data = sample()
+    source = {
+        **data["source"],
+        "entities": [{"type": "ip", "value": "192.0.2.7", "role": source_role}],
+    }
+    match = {
+        **data["matches"][0],
+        "entities": [{"type": "ip", "value": "192.0.2.7", "role": peer_role}],
+    }
+
+    result = classify_graph(data["ticket_id"], source, [match], max_candidates=5)
+
+    assert result.reason == "no_path"
+    assert result.candidates == ()
+
+
+def test_other_role_does_not_overwrite_src_for_same_value() -> None:
+    data = sample()
+    source = {
+        **data["source"],
+        "entities": [
+            {"type": "ip", "value": "192.0.2.7", "role": "src"},
+            {"type": "ip", "value": "192.0.2.7", "role": "dst"},
+        ],
+    }
+    match = {**data["matches"][0], "entities": [data["matches"][0]["entities"][1]]}
+
+    result = classify_graph(data["ticket_id"], source, [match], max_candidates=5)
+
+    assert result.reason == "paths_found"
+    assert len(result.paths) == 1
 
 
 def test_l3_hunt_is_the_graph_start_node() -> None:
@@ -94,3 +152,17 @@ def test_l3_hunt_is_the_graph_start_node() -> None:
         "id": source["id"],
         "kind": "hunt",
     }
+
+
+def test_l3_hunt_non_src_entity_does_not_connect() -> None:
+    data = sample()
+    source = {
+        **data["source"],
+        "kind": "hunt",
+        "entities": [{"type": "host", "value": "shared-collector", "role": "target"}],
+    }
+    match = {**data["matches"][0], "entities": [data["matches"][0]["entities"][0]]}
+
+    result = classify_graph(data["ticket_id"], source, [match], max_candidates=5)
+
+    assert result.candidates == ()

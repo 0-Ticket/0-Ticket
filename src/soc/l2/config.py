@@ -9,6 +9,7 @@ CONFIG_DIR = Path(__file__).resolve().parents[3] / "config"
 _BRANCH_KEYS = {
     "candidate_window_ms",
     "max_candidates",
+    "max_incident_tickets",
 }
 _ANALYZE_KEYS = (
     "lookback_ms",
@@ -25,6 +26,7 @@ class ConfigError(ValueError):
 class BranchSettings:
     candidate_window_ms: int
     max_candidates: int
+    max_incident_tickets: int
 
 
 @dataclass(frozen=True)
@@ -52,10 +54,11 @@ def read_settings(l2: dict[str, Any]) -> BranchSettings:
             raise ConfigError("L2 branch 설정 키가 올바르지 않다")
         candidate_window_ms = _positive_int(branch["candidate_window_ms"])
         max_candidates = _positive_int(branch["max_candidates"])
+        max_incident_tickets = _positive_int(branch["max_incident_tickets"])
     except (KeyError, TypeError):
         raise ConfigError("L2 branch 설정이 올바르지 않다") from None
 
-    return BranchSettings(candidate_window_ms, max_candidates)
+    return BranchSettings(candidate_window_ms, max_candidates, max_incident_tickets)
 
 
 def read_analyze_settings(l2: dict[str, Any]) -> AnalyzeSettings:

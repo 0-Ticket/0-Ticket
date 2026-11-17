@@ -1,6 +1,5 @@
 """L2 Ticket 사이 엔티티 경로를 그래프 후보와 화면용 경로로 만든다."""
 
-import ipaddress
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
@@ -23,6 +22,7 @@ WITH peers AS (
     JOIN tickets t ON t.id = ANY(i.ticket_ids) AND t.status = 'linked'
     JOIN alerts a ON a.id = ANY(t.alert_ids)
     WHERE i.status = ANY(%s) AND i.updated_at BETWEEN %s AND %s
+      AND cardinality(i.ticket_ids) < %s
     UNION ALL
     SELECT i.id, i.updated_at, i.title, i.summary, i.status, i.ticket_ids,
            i.entities, i.severity, i.assessed_severity, i.analysis_round,
@@ -32,15 +32,17 @@ WITH peers AS (
     JOIN tickets t ON t.id = ANY(i.ticket_ids) AND t.status = 'linked' AND t.hunt_id IS NOT NULL
     JOIN hunts h ON h.id = t.hunt_id
     WHERE i.status = ANY(%s) AND i.updated_at BETWEEN %s AND %s
+      AND cardinality(i.ticket_ids) < %s
 ), matches AS (
     SELECT p.*, seed.source_kind, seed.source_id, entity->>'type' AS entity_type,
-           entity->>'value' AS entity_value
+           entity->>'value' AS entity_value, entity->>'role' AS entity_role
     FROM peers p
     CROSS JOIN jsonb_to_recordset(%s::jsonb) AS seed(
-        source_kind text, source_id text, entity_type text, entity_value text
+        source_kind text, source_id text, entity_type text, entity_value text, entity_role text
     )
     CROSS JOIN LATERAL jsonb_array_elements(p.entities) AS entity
-    WHERE entity->>'type' = seed.entity_type
+    WHERE seed.entity_role = 'src' AND entity->>'role' = seed.entity_role
+      AND entity->>'type' = seed.entity_type
       AND CASE WHEN seed.entity_type = ANY(%s)
                THEN lower(btrim(entity->>'value')) = seed.entity_value
                ELSE btrim(entity->>'value') = seed.entity_value END
@@ -96,16 +98,18 @@ def classify_graph(
         source_id: {
             (item["type"], normalize_entity_value(item["type"], item["value"])): item
             for item in item_source.get("entities", [])
+            if item.get("role") == "src"
         }
         for source_id, item_source in sources.items()
     }
     incident_paths: dict[str, list[dict[str, Any]]] = {}
     all_paths = []
-    excluded_public_ip = False
     for match in matches:
         if match.get("kind") not in ("alert", "hunt"):
             continue
         for entity in match.get("entities", []):
+            if entity.get("role") != "src":
+                continue
             key = (entity["type"], normalize_entity_value(entity["type"], entity["value"]))
             source_ids = (
                 [match["source_id"]] if match.get("source_id") in sources else list(sources)
@@ -113,9 +117,6 @@ def classify_graph(
             for source_id in source_ids:
                 seed = source_entities[source_id].get(key)
                 if seed is None:
-                    continue
-                if key[0] == "ip" and _is_public_ip(key[1]):
-                    excluded_public_ip = True
                     continue
                 path = _path(ticket_id, sources[source_id], match, seed)
                 if path not in all_paths:
@@ -131,12 +132,7 @@ def classify_graph(
         GraphCandidate(incident_id, tuple(paths), incidents[incident_id])
         for incident_id, paths in sorted(incident_paths.items())
     )
-    if candidates:
-        reason = "paths_found"
-    elif excluded_public_ip:
-        reason = "public_ip_only"
-    else:
-        reason = "no_path"
+    reason = "paths_found" if candidates else "no_path"
     return GraphResult(candidates, "complete", reason, tuple(all_paths))
 
 
@@ -148,6 +144,7 @@ def read_graph(
     *,
     candidate_window_ms: int,
     max_candidates: int,
+    max_incident_tickets: int,
 ) -> GraphResult:
     """시간 창의 linked Ticket들을 엔티티로 연결한다. Event 테이블은 읽지 않는다."""
     source_entities = [
@@ -156,9 +153,11 @@ def read_graph(
             "source_id": source["id"],
             "entity_type": entity["type"],
             "entity_value": normalize_entity_value(entity["type"], entity["value"]),
+            "entity_role": entity["role"],
         }
         for source in sources
         for entity in source["entities"]
+        if entity["role"] == "src"
     ]
     if not source_entities:
         return GraphResult((), "complete", "no_path", ())
@@ -167,9 +166,11 @@ def read_graph(
         list(_OPEN_STATUSES),
         cutoff,
         now,
+        max_incident_tickets,
         list(_OPEN_STATUSES),
         cutoff,
         now,
+        max_incident_tickets,
         psycopg.types.json.Jsonb(source_entities),
         list(_LOWER_TYPES),
         max_candidates + 1,
@@ -188,13 +189,6 @@ def read_graph(
     if len(incident_ids) > max_candidates:
         return GraphResult((), "incomplete", "candidate_limit", result.paths)
     return result
-
-
-def _is_public_ip(value: str) -> bool:
-    try:
-        return ipaddress.ip_address(value).is_global
-    except ValueError:
-        return False
 
 
 def _path(
@@ -261,7 +255,9 @@ def _match_row(row: dict[str, Any]) -> dict[str, Any]:
     data["incident"] = incident
     data["id"] = data["peer_id"]
     data["kind"] = data["peer_kind"]
-    data["entities"] = [{"type": data["entity_type"], "value": data["entity_value"]}]
+    data["entities"] = [
+        {"type": data["entity_type"], "value": data["entity_value"], "role": data["entity_role"]}
+    ]
     return data
 
 

@@ -164,8 +164,18 @@ def test_review_is_incident_and_artifacts_are_preserved(ui_client, ui_db):
             "UPDATE tickets SET details = jsonb_set(details, '{l2_branch}', %s) WHERE id = %s",
             (Jsonb(graph), ticket_id),
         )
+        conn.execute(
+            "UPDATE incidents SET entities = entities || %s WHERE id = %s",
+            (
+                Jsonb([{"type": "host", "value": "collector.example.com", "role": None}]),
+                incident_id,
+            ),
+        )
     body = ui_client.get("/api/incidents/" + items[0]["id"]).json()
     validate_contract("incident", body["incident"])
+    assert {"type": "host", "value": "collector.example.com", "role": None} in body["incident"][
+        "entities"
+    ]
     assert body["artifacts"] and body["proposals"]
     assert body["ticket_graphs"] == [
         {

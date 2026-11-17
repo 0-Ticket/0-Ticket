@@ -39,6 +39,11 @@
           "type": "host",
           "value": "Shared-Proxy",
           "role": "target"
+        },
+        {
+          "type": "ip",
+          "value": "192.0.2.7",
+          "role": "src"
         }
       ],
       "assets": [],
