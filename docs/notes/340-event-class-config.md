@@ -13,6 +13,7 @@ supersedes: []
 - `[[ingest.sources]]`에 선택 항목 `class`(OCSF 클래스 번호)를 더했다. 이벤트 대상만 쓸 수 있고, `ocsf/classes/<번호>.json`이 있는 번호여야 하며 2004(알럿)는 쓰지 못한다. 적지 않으면 `Source.ocsf_class`가 `None`이고 지금처럼 동작한다. `config/default.toml`의 nginx·apache에 `class = 4002`를 적었다(D-065).
 - 이벤트가 쓸 클래스의 공식 OCSF 1.9.0 정의를 받아 `ocsf/classes/`에 고정했다. 새로 `2003`(compliance_finding), `3002`(authentication), `4001`(network_activity), `4003`(dns_activity)를 받았고, 줄여 두었던 `4002`·`6003`은 공식 정의(설명·optional 속성 포함)로 바꿨다. `scripts/fetch_ocsf_schema.py`의 `CLASSES`에 6개를 더했고, `objects.json`은 127개에서 138개가 됐다. 기존 127개는 바뀌지 않았다.
 - `ocsf_schema.has_class_definition`을 더했다. 설정이 이 함수로 받아 둔 클래스만 허용한다.
+- `[[ingest.sources]]`의 알 수 없는 키(`kind`·`key`·`time_field`·`class` 밖)를 설정 오류로 막는다. 오류에 그 키 이름과 쓸 수 있는 키가 담긴다(예: `ingest.sources[1]에 알 수 없는 키가 있다: ['calss']`).
 - **이 설정은 읽고 검사만 한다.** 정규화(`mapping.normalize`, `run.py`)는 `class`를 쓰지 않으므로 서비스 동작과 DB에 쌓이는 결과는 이전과 같다.
 
 ## 계획과 달라진 점
@@ -20,6 +21,7 @@ supersedes: []
 - `tests/normalize/test_ocsf_full_schema.py`의 "클래스 0·2004와 참조 객체 127개" 검사를 "클래스 8개와 138개"로 고쳤다. 범위를 넓히면 숫자가 바뀌는 검사라서 내용은 두고 숫자와 대상 클래스만 바꿨다(계획 "바뀐 점"에 적음).
 - 계획에 없던 테스트를 하나 더했다: 스크립트의 `CLASSES`와 `ocsf/classes/`의 파일 번호가 같은지(`test_fetch_ocsf_schema.py`). 어긋나면 설정이 받지 않은 클래스를 허용하기 때문이다.
 - 알럿 대상에 `class`를 쓰면 번호와 관계없이 오류다(`0`, `4002`도 거부). 계획의 "알럿 대상에 쓸 수 없다"를 그대로 따랐다.
+- **알 수 없는 키 거부는 QA(`/qa-only`)에서 나와 사람이 정해 추가했다.** `class` 대신 `calss`를 적으면 오류 없이 무시되어 클래스 선언이 조용히 빠졌다. 계획 "바뀐 점"(2026-11-19)에 적었다. 이 규칙은 `class`뿐 아니라 `kind`·`key`·`time_field`의 오타도 막는다. 저장소와 문서(`docs/notes/264-lab-cycle.md` 예시 포함)의 `[[ingest.sources]]`는 이 세 키만 쓰므로 영향이 없고, 이 밖의 키를 적어 둔 개인 `local.toml`은 이제 시작하지 못한다.
 - 수집 설정이 `soc.normalize.ocsf_schema`를 불러오게 됐다(`ingest/config.py`). 함수 하나만 쓰고 DB·정규화 실행과 무관하다. 다른 단계 코드를 부르는 것이 마음에 걸리면 번호 목록을 가벼운 공유 모듈로 옮기는 방법이 있다.
 
 ## 다음 사람이 알아야 할 것
@@ -31,11 +33,13 @@ supersedes: []
 - **"YAML로 해 달라"는 요청**은 매핑표인지 클래스 정의 파일인지 전해 준 사람에게 확인 중이다. 클래스 정의를 뜻하면 알럿 쪽(#328) 구조까지 바뀌므로 따로 정한다.
 - 이 계획 작성 중 `origin/main`에서 결정 번호가 D-062~D-064로 올라가 D-065를 썼다. 머지 전에 번호가 겹치지 않는지 다시 확인한다.
 - 실제 ELK에서는 확인하지 않았다. 설정 읽기와 스키마 파일은 로컬에서만 검증했다.
+- **오류 문구가 규칙을 구분하지 않는다(QA 관찰, 고치지 않음).** `class`가 정수가 아닐 때, 정의 파일이 없을 때, 2004일 때 모두 같은 문구(`...정의 파일이 있는 클래스 번호여야 한다(2004 제외)`)가 나온다. 2004는 정의 파일이 있는데도 그 문구로 거부된다. 오류가 나는 것 자체는 계약대로라 두었고, 문구를 나누려면 `_event_class`의 한 분기를 셋으로 나누면 된다.
+- **회귀 확인 입력이 적다.** 공식 정의로 바뀐 4002·6003이 기존 이벤트 정규화 결과를 바꾸지 않았는지는 `origin/main`과 같은 스크립트로 비교했지만(차이 없음), 입력은 손으로 만든 웹 문서 1건과 클라우드 문서 1건뿐이다. 실제 로그로 넓게 확인하지 않았다. PR 설명에 이 한계를 적는다.
 
 ## 확인 방법
 
 - `uv run ruff format --check .`, `uv run ruff check .`: 통과.
-- `uv run pytest`: 2,155 통과(566 제외). 이전 2,121에서 설정 검사·`has_class_definition`·클래스 파일 일치 테스트가 늘었다.
-- 주요 테스트: `tests/ingest/unit/test_config.py`(기본 설정의 클래스 선언, 허용 번호 7개, 생략, 잘못된 값 7종, 알럿 대상 거부), `tests/normalize/test_ocsf_full_schema.py`(`has_class_definition`, 고정 범위 닫힘), `tests/normalize/test_fetch_ocsf_schema.py`(`CLASSES`와 파일 일치).
+- `uv run pytest`: 2,162 통과(566 제외). 이전 2,121에서 설정 검사·`has_class_definition`·클래스 파일 일치·알 수 없는 키 테스트가 늘었다.
+- 주요 테스트: `tests/ingest/unit/test_config.py`(기본 설정의 클래스 선언, 허용 번호 7개, 생략, 잘못된 값 7종, 알럿 대상 거부, 알 수 없는 키 6종과 알려진 키만 있는 설정), `tests/normalize/test_ocsf_full_schema.py`(`has_class_definition`, 고정 범위 닫힘), `tests/normalize/test_fetch_ocsf_schema.py`(`CLASSES`와 파일 일치).
 - `uv run python scripts/fetch_ocsf_schema.py`: 클래스 8개, 객체 138개. 기존 객체 127개는 바뀌지 않았고 `4002`·`6003`은 공식 정의로 바뀌어도 기존 이벤트 검증 테스트가 통과했다.
 - 손으로 확인하지 않은 것: `-m db` 테스트(DB 변경이 없음), 실제 수집 실행.
