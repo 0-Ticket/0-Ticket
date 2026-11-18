@@ -1,0 +1,795 @@
+{
+ "associations": {
+  "actor.user": [
+   "src_endpoint"
+  ],
+  "dst_endpoint": [
+   "user"
+  ],
+  "src_endpoint": [
+   "actor.user"
+  ],
+  "user": [
+   "dst_endpoint"
+  ]
+ },
+ "attributes": {
+  "account_switch_type": {
+   "caption": "Account Switch Type",
+   "description": "The account switch method, normalized to the caption of the account_switch_type_id value. In the case of 'Other', it is defined by the event source.",
+   "group": "primary",
+   "requirement": "recommended",
+   "type": "string_t",
+   "type_name": "String"
+  },
+  "account_switch_type_id": {
+   "caption": "Account Switch Type ID",
+   "description": "The normalized identifier of the account switch method.",
+   "enum": {
+    "0": {
+     "caption": "Unknown",
+     "description": "The account switch type is unknown."
+    },
+    "1": {
+     "caption": "Substitute User",
+     "description": "A utility like <code>sudo</code>, <code>su</code>, or equivalent was used to perform actions in the context of another user.",
+     "references": [
+      {
+       "description": "sudo documentation",
+       "url": "https://www.sudo.ws/"
+      },
+      {
+       "description": "su Linux manual page",
+       "url": "https://man7.org/linux/man-pages/man1/su.1.html"
+      },
+      {
+       "description": "su macOS manual page",
+       "url": "https://www.unix.com/man_page/osx/1/su/"
+      }
+     ]
+    },
+    "2": {
+     "caption": "Impersonate",
+     "description": "An API like <code>ImpersonateLoggedOnUser()</code> or equivalent was used to perform actions in the context of another user.",
+     "references": [
+      {
+       "description": "Microsoft ImpersonateLoggedOnUser() documentation",
+       "url": "https://learn.microsoft.com/en-us/windows/win32/api/securitybaseapi/nf-securitybaseapi-impersonateloggedonuser"
+      }
+     ]
+    },
+    "99": {
+     "caption": "Other",
+     "description": "The account switch type is not mapped. See the <code>account_switch_type</code> attribute, which contains a data source specific value."
+    }
+   },
+   "group": "primary",
+   "requirement": "recommended",
+   "sibling": "account_switch_type",
+   "type": "integer_t",
+   "type_name": "Integer"
+  },
+  "activity_id": {
+   "caption": "Activity ID",
+   "description": "The normalized identifier of the activity that triggered the event. Each event class defines its own set of activity values. Use <code>0</code> (Unknown) when the activity cannot be determined. Use <code>99</code> (Other) when the activity does not match any defined value, in which case <code>activity_name</code> must be populated with the source-specific label.",
+   "enum": {
+    "0": {
+     "caption": "Unknown",
+     "description": "The event activity is unknown."
+    },
+    "1": {
+     "caption": "Logon",
+     "description": "A new logon session was requested."
+    },
+    "2": {
+     "caption": "Logoff",
+     "description": "A logon session was terminated and no longer exists."
+    },
+    "3": {
+     "caption": "Authentication Ticket",
+     "description": "A Kerberos authentication ticket (TGT) was requested."
+    },
+    "4": {
+     "caption": "Service Ticket Request",
+     "description": "A Kerberos service ticket was requested."
+    },
+    "5": {
+     "caption": "Service Ticket Renew",
+     "description": "A Kerberos service ticket was renewed."
+    },
+    "6": {
+     "caption": "Preauth",
+     "description": "A preauthentication stage was engaged."
+    },
+    "7": {
+     "caption": "Account Switch",
+     "description": "A utility or service switched the user account. See the <code>account_switch_type_id</code> attribute for more details."
+    },
+    "99": {
+     "caption": "Other",
+     "description": "The event activity is not mapped. See the <code>activity_name</code> attribute, which contains a data source specific value."
+    }
+   },
+   "group": "classification",
+   "requirement": "required",
+   "sibling": "activity_name",
+   "suppress_checks": [
+    "sibling_convention"
+   ],
+   "type": "integer_t",
+   "type_name": "Integer"
+  },
+  "activity_name": {
+   "caption": "Activity",
+   "description": "The event activity name, as defined by the <code>activity_id</code>. When <code>activity_id</code> is <code>99</code> (Other), this attribute <b>must</b> contain the source-specific activity label. For all other <code>activity_id</code> values, this must match the caption defined for that <code>activity_id</code> enum value.",
+   "group": "classification",
+   "requirement": "optional",
+   "type": "string_t",
+   "type_name": "String"
+  },
+  "actor": {
+   "caption": "Actor",
+   "description": "The user, process, or service that initiated the activity on the host. For system-level events this is typically a process; for IAM events it is typically a user or role.",
+   "group": "context",
+   "object_name": "Actor",
+   "object_type": "actor",
+   "profiles": null,
+   "requirement": "recommended",
+   "type": "object_t"
+  },
+  "auth_factors": {
+   "caption": "Authentication Factors",
+   "description": "Describes a category of methods used for identity verification in an authentication attempt.",
+   "group": "context",
+   "is_array": true,
+   "object_name": "Authentication Factor",
+   "object_type": "auth_factor",
+   "requirement": "optional",
+   "type": "object_t"
+  },
+  "auth_protocol": {
+   "caption": "Auth Protocol",
+   "description": "The authentication protocol as defined by the caption of <code>auth_protocol_id</code>. In the case of <code>Other</code>, it is defined by the event source.",
+   "group": "primary",
+   "requirement": "recommended",
+   "type": "string_t",
+   "type_name": "String"
+  },
+  "auth_protocol_id": {
+   "caption": "Auth Protocol ID",
+   "description": "The normalized identifier of the authentication protocol used to create the user session.",
+   "enum": {
+    "0": {
+     "caption": "Unknown",
+     "description": "The authentication protocol is unknown."
+    },
+    "1": {
+     "caption": "NTLM"
+    },
+    "10": {
+     "caption": "RADIUS"
+    },
+    "11": {
+     "caption": "Basic Authentication"
+    },
+    "12": {
+     "caption": "LDAP"
+    },
+    "2": {
+     "caption": "Kerberos"
+    },
+    "3": {
+     "caption": "Digest"
+    },
+    "4": {
+     "caption": "OpenID"
+    },
+    "5": {
+     "caption": "SAML"
+    },
+    "6": {
+     "caption": "OAUTH 2.0"
+    },
+    "7": {
+     "caption": "PAP"
+    },
+    "8": {
+     "caption": "CHAP"
+    },
+    "9": {
+     "caption": "EAP"
+    },
+    "99": {
+     "caption": "Other",
+     "description": "The authentication protocol is not mapped. See the <code>auth_protocol</code> attribute, which contains a data source specific value."
+    }
+   },
+   "group": "primary",
+   "requirement": "recommended",
+   "sibling": "auth_protocol",
+   "type": "integer_t",
+   "type_name": "Integer"
+  },
+  "authentication_token": {
+   "caption": "Authentication Token",
+   "description": "The authentication token, ticket, or assertion, e.g. <code>Kerberos</code>, <code>OIDC</code>, <code>SAML</code>.",
+   "group": "context",
+   "object_name": "Authentication Token",
+   "object_type": "authentication_token",
+   "references": [
+    {
+     "description": "RFC 4120: The Kerberos Network Authentication Service (V5)",
+     "url": "https://www.rfc-editor.org/rfc/rfc4120"
+    },
+    {
+     "description": "OpenID Connect Core 1.0",
+     "url": "https://openid.net/specs/openid-connect-core-1_0.html"
+    },
+    {
+     "description": "The OASIS Security Assertion Markup Language (SAML) V2.0",
+     "url": "https://docs.oasis-open.org/security/saml/v2.0/saml-core-2.0-os.pdf"
+    }
+   ],
+   "requirement": "optional",
+   "type": "object_t"
+  },
+  "category_name": {
+   "caption": "Category",
+   "description": "The event category name, as defined by category_uid value: <code>Identity & Access Management</code>.",
+   "group": "classification",
+   "requirement": "optional",
+   "type": "string_t",
+   "type_name": "String"
+  },
+  "category_uid": {
+   "caption": "Category ID",
+   "description": "The category unique identifier of the event. Each event class belongs to exactly one category. Producers and mappers must set this to the category defined by the event class being used.",
+   "enum": {
+    "3": {
+     "caption": "Identity & Access Management",
+     "description": "Identity & Access Management (IAM) events relate to the supervision of the system's authentication and access control model. Examples of such events are the success or failure of authentication, granting of authority, password change, entity change, privileged use etc.",
+     "uid": 3
+    }
+   },
+   "group": "classification",
+   "requirement": "required",
+   "sibling": "category_name",
+   "type": "integer_t",
+   "type_name": "Integer"
+  },
+  "certificate": {
+   "caption": "Certificate",
+   "description": "The certificate associated with the authentication or pre-authentication (Kerberos).",
+   "group": "primary",
+   "object_name": "Digital Certificate",
+   "object_type": "certificate",
+   "requirement": "recommended",
+   "type": "object_t"
+  },
+  "class_name": {
+   "caption": "Class",
+   "description": "The event class name, as defined by class_uid value: <code>Authentication</code>.",
+   "group": "classification",
+   "requirement": "optional",
+   "type": "string_t",
+   "type_name": "String"
+  },
+  "class_uid": {
+   "caption": "Class ID",
+   "description": "The unique identifier of a class. A class describes the attributes available in an event. Producers and mappers must set this to the <code>uid</code> defined in the event class definition. For example, <code>Detection Finding</code> is <code>2004</code>.",
+   "enum": {
+    "3002": {
+     "caption": "Authentication",
+     "description": "Authentication events report authentication session activities, including user attempts to log on or log off, regardless of success, as well as other key stages within the authentication process. These events are typically generated by authentication services, such as Kerberos, OIDC, or SAML, and may include information about the user, the authentication method used, and the status of the authentication attempt."
+    }
+   },
+   "group": "classification",
+   "requirement": "required",
+   "sibling": "class_name",
+   "type": "integer_t",
+   "type_name": "Integer"
+  },
+  "count": {
+   "caption": "Count",
+   "description": "The number of events aggregated into this single record. Only populate for aggregate events. When set, <code>start_time</code> and <code>end_time</code> should also be provided to define the aggregation window.",
+   "group": "occurrence",
+   "requirement": "optional",
+   "type": "integer_t",
+   "type_name": "Integer"
+  },
+  "dst_endpoint": {
+   "caption": "Destination Endpoint",
+   "description": "The endpoint to which the authentication was targeted.",
+   "group": "primary",
+   "object_name": "Network Endpoint",
+   "object_type": "network_endpoint",
+   "requirement": "recommended",
+   "type": "object_t"
+  },
+  "duration": {
+   "caption": "Duration Milliseconds",
+   "description": "The elapsed time of the aggregation window in milliseconds, from <code>start_time</code> to <code>end_time</code>. Only populate for aggregate events (<code>count</code> &gt; 1). The value should equal <code>end_time - start_time</code>.",
+   "group": "occurrence",
+   "requirement": "optional",
+   "type": "long_t",
+   "type_name": "Long"
+  },
+  "end_time": {
+   "caption": "End Time",
+   "description": "The time of the most recent event in an aggregate (<code>count</code> &gt; 1). Do not populate for discrete, point-in-time events - use <code>time</code> alone. Subclasses such as findings may redefine this for their own time-range semantics.",
+   "group": "occurrence",
+   "requirement": "optional",
+   "type": "timestamp_t",
+   "type_name": "Timestamp"
+  },
+  "enrichments": {
+   "caption": "Enrichments",
+   "description": "The additional information from an external data source, which is associated with the event or a finding. For example add location information for the IP address in the DNS answers:</p><code>[{\"name\": \"answers.ip\", \"value\": \"92.24.47.250\", \"type\": \"location\", \"data\": {\"city\": \"Socotra\", \"continent\": \"Asia\", \"coordinates\": [-25.4153, 17.0743], \"country\": \"YE\", \"desc\": \"Yemen\"}}]</code>",
+   "group": "context",
+   "is_array": true,
+   "object_name": "Enrichment",
+   "object_type": "enrichment",
+   "requirement": "optional",
+   "type": "object_t"
+  },
+  "http_request": {
+   "caption": "HTTP Request",
+   "description": "Details about the underlying HTTP request.",
+   "group": "context",
+   "object_name": "HTTP Request",
+   "object_type": "http_request",
+   "requirement": "optional",
+   "type": "object_t"
+  },
+  "http_response": {
+   "caption": "HTTP Response",
+   "description": "Details about the underlying HTTP response.",
+   "group": "context",
+   "object_name": "HTTP Response",
+   "object_type": "http_response",
+   "requirement": "optional",
+   "type": "object_t"
+  },
+  "is_cleartext": {
+   "caption": "Cleartext Credentials",
+   "description": "Indicates whether the credentials were passed in clear text.<p><b>Note:</b> True if the credentials were passed in a clear text protocol such as FTP or TELNET, or if Windows detected that a user's logon password was passed to the authentication package in clear text.</p>",
+   "group": "context",
+   "requirement": "optional",
+   "type": "boolean_t",
+   "type_name": "Boolean"
+  },
+  "is_mfa": {
+   "caption": "Multi Factor Authentication",
+   "description": "Indicates whether Multi Factor Authentication was used during authentication.",
+   "group": "primary",
+   "requirement": "recommended",
+   "type": "boolean_t",
+   "type_name": "Boolean"
+  },
+  "is_new_logon": {
+   "caption": "New Logon",
+   "description": "Indicates logon is from a device not seen before or a first time account logon.",
+   "group": "context",
+   "requirement": "optional",
+   "type": "boolean_t",
+   "type_name": "Boolean"
+  },
+  "is_remote": {
+   "caption": "Remote",
+   "description": "The attempted authentication is over a remote connection.",
+   "group": "primary",
+   "requirement": "recommended",
+   "type": "boolean_t",
+   "type_name": "Boolean"
+  },
+  "logon_process": {
+   "caption": "Logon Process",
+   "description": "The trusted process that validated the authentication credentials.",
+   "group": "context",
+   "object_name": "Process",
+   "object_type": "process",
+   "requirement": "optional",
+   "type": "object_t"
+  },
+  "logon_type": {
+   "caption": "Logon Type",
+   "description": "The logon type, normalized to the caption of the logon_type_id value. In the case of 'Other', it is defined by the event source.",
+   "group": "primary",
+   "requirement": "recommended",
+   "type": "string_t",
+   "type_name": "String"
+  },
+  "logon_type_id": {
+   "caption": "Logon Type ID",
+   "description": "The normalized logon type identifier.",
+   "enum": {
+    "0": {
+     "caption": "Unknown",
+     "description": "The logon type is unknown."
+    },
+    "1": {
+     "caption": "System",
+     "description": "Used only by the System account, for example at system startup."
+    },
+    "10": {
+     "caption": "Remote Interactive",
+     "description": "A remote logon using Terminal Services or remote desktop application."
+    },
+    "11": {
+     "caption": "Cached Interactive",
+     "description": "A user logged on to this device with network credentials that were stored locally on the device and the domain controller was not contacted to verify the credentials."
+    },
+    "12": {
+     "caption": "Cached Remote Interactive",
+     "description": "Same as Remote Interactive. This is used for internal auditing."
+    },
+    "13": {
+     "caption": "Cached Unlock",
+     "description": "Workstation logon."
+    },
+    "2": {
+     "caption": "Interactive",
+     "description": "A local logon to device console."
+    },
+    "3": {
+     "caption": "Network",
+     "description": "A user or device logged onto this device from the network."
+    },
+    "4": {
+     "caption": "Batch",
+     "description": "A batch server logon, where processes may be executing on behalf of a user without their direct intervention."
+    },
+    "5": {
+     "caption": "OS Service",
+     "description": "A logon by a service or daemon that was started by the OS."
+    },
+    "7": {
+     "caption": "Unlock",
+     "description": "A user unlocked the device."
+    },
+    "8": {
+     "caption": "Network Cleartext",
+     "description": "A user logged on to this device from the network. The user's password in the authentication package was not hashed."
+    },
+    "9": {
+     "caption": "New Credentials",
+     "description": "A caller cloned its current token and specified new credentials for outbound connections. The new logon session has the same local identity, but uses different credentials for other network connections."
+    },
+    "99": {
+     "caption": "Other",
+     "description": "The logon type is not mapped. See the <code>logon_type</code> attribute, which contains a data source specific value."
+    }
+   },
+   "group": "primary",
+   "requirement": "recommended",
+   "sibling": "logon_type",
+   "type": "integer_t",
+   "type_name": "Integer"
+  },
+  "message": {
+   "caption": "Message",
+   "description": "A human-readable description of the event, as defined by the source. This should be a concise, meaningful summary suitable for display in a UI or alert notification - not a raw log line. For example: <code>\"User john_doe logged in from 10.0.0.1.\"</code> rather than a raw syslog string.",
+   "group": "primary",
+   "requirement": "recommended",
+   "type": "string_t",
+   "type_name": "String"
+  },
+  "metadata": {
+   "caption": "Metadata",
+   "description": "The metadata object describes the event producer, schema version, and processing information. Producers and mappers <b>must</b> populate <code>metadata.product</code> to identify the data source, and <code>metadata.version</code> to indicate the OCSF schema version used. Consumers rely on this to interpret the event correctly.",
+   "group": "context",
+   "object_name": "Metadata",
+   "object_type": "metadata",
+   "requirement": "required",
+   "type": "object_t"
+  },
+  "observables": {
+   "caption": "Observables",
+   "description": "The observables array surfaces key indicators and entities from the event or finding in a single, consistent location for downstream correlation and detection. Each entry references an attribute path within the event (e.g., <code>src_endpoint.ip</code>) along with its type and value, enabling consumers to extract IOCs without parsing the full event structure.",
+   "group": "primary",
+   "is_array": true,
+   "object_name": "Observable",
+   "object_type": "observable",
+   "references": [
+    {
+     "description": "OCSF Observables FAQ",
+     "url": "https://github.com/ocsf/ocsf-docs/blob/main/articles/defining-and-using-observables.md"
+    }
+   ],
+   "requirement": "recommended",
+   "type": "object_t"
+  },
+  "raw_data": {
+   "caption": "Raw Data",
+   "description": "The original event/finding data as received from the source, before normalization into OCSF. Populate this with the verbatim log line, JSON payload, or other native format for forensic and debugging purposes. This field is not intended for structured querying - use the normalized OCSF attributes instead.",
+   "group": "context",
+   "requirement": "optional",
+   "type": "string_t",
+   "type_name": "String"
+  },
+  "raw_data_hash": {
+   "caption": "Raw Data Hash",
+   "description": "A fingerprint (hash) of the <code>raw_data</code> content. Use this to verify the integrity of the original event data or to deduplicate events.",
+   "group": "context",
+   "object_name": "Fingerprint",
+   "object_type": "fingerprint",
+   "requirement": "optional",
+   "type": "object_t"
+  },
+  "raw_data_size": {
+   "caption": "Raw Data Size",
+   "description": "The size of the original event data (as captured in <code>raw_data</code>) in bytes, before OCSF normalization. Useful for metering and capacity planning.",
+   "group": "context",
+   "requirement": "optional",
+   "type": "long_t",
+   "type_name": "Long"
+  },
+  "service": {
+   "caption": "Service",
+   "description": "The service or gateway to which the user or process is being authenticated",
+   "group": "primary",
+   "object_name": "Service",
+   "object_type": "service",
+   "requirement": "recommended",
+   "type": "object_t"
+  },
+  "session": {
+   "caption": "Session",
+   "description": "The authenticated user or service session.",
+   "group": "primary",
+   "object_name": "Session",
+   "object_type": "session",
+   "requirement": "recommended",
+   "type": "object_t"
+  },
+  "severity": {
+   "caption": "Severity",
+   "description": "The event/finding severity label, normalized to the caption of the <code>severity_id</code> value. When <code>severity_id</code> is <code>99</code> (Other), this attribute <b>must</b> contain the source-specific severity label. For all other values, this should match the caption defined for that <code>severity_id</code> enum value (e.g., <code>\"High\"</code> for <code>severity_id: 4</code>).",
+   "group": "classification",
+   "requirement": "optional",
+   "type": "string_t",
+   "type_name": "String"
+  },
+  "severity_id": {
+   "caption": "Severity ID",
+   "description": "<p>The normalized identifier of the event/finding severity.</p>The normalized severity is a measurement the effort and expense required to manage and resolve an event or incident. Smaller numerical values represent lower impact events, and larger numerical values represent higher impact events.",
+   "enum": {
+    "0": {
+     "caption": "Unknown",
+     "description": "The event/finding severity is unknown."
+    },
+    "1": {
+     "caption": "Informational",
+     "description": "Informational message. No action required."
+    },
+    "2": {
+     "caption": "Low",
+     "description": "The user decides if action is needed."
+    },
+    "3": {
+     "caption": "Medium",
+     "description": "Action is required but the situation is not serious at this time."
+    },
+    "4": {
+     "caption": "High",
+     "description": "Action is required immediately."
+    },
+    "5": {
+     "caption": "Critical",
+     "description": "Action is required immediately and the scope is broad."
+    },
+    "6": {
+     "caption": "Fatal",
+     "description": "An error occurred but it is too late to take remedial action."
+    },
+    "99": {
+     "caption": "Other",
+     "description": "The event/finding severity is not mapped. See the <code>severity</code> attribute, which contains a data source specific value."
+    }
+   },
+   "group": "classification",
+   "requirement": "required",
+   "sibling": "severity",
+   "type": "integer_t",
+   "type_name": "Integer"
+  },
+  "src_endpoint": {
+   "caption": "Source Endpoint",
+   "description": "Details about the source of the IAM activity.",
+   "group": "primary",
+   "object_name": "Network Endpoint",
+   "object_type": "network_endpoint",
+   "requirement": "recommended",
+   "type": "object_t"
+  },
+  "start_time": {
+   "caption": "Start Time",
+   "description": "The time of the earliest event in an aggregate (<code>count</code> &gt; 1). Do not populate for discrete, point-in-time events - use <code>time</code> alone. Subclasses such as findings may redefine this for their own time-range semantics.",
+   "group": "occurrence",
+   "requirement": "optional",
+   "type": "timestamp_t",
+   "type_name": "Timestamp"
+  },
+  "status": {
+   "caption": "Status",
+   "description": "The event status label, normalized to the caption of the <code>status_id</code> value. When <code>status_id</code> is <code>99</code> (Other), this attribute <b>must</b> contain the source-specific status label. For all other values, this must match the caption defined for that <code>status_id</code> enum value (e.g., <code>\"Success\"</code> for <code>status_id: 1</code>).",
+   "group": "primary",
+   "requirement": "recommended",
+   "type": "string_t",
+   "type_name": "String"
+  },
+  "status_code": {
+   "caption": "Status Code",
+   "description": "The source-specific status or error code as reported by the event source. For example, a Windows logon failure code (<code>0x18</code>), an HTTP response code (<code>403</code>), or an AWS API error code. This preserves the original code for detailed troubleshooting beyond what <code>status_id</code> conveys.",
+   "group": "primary",
+   "requirement": "recommended",
+   "type": "string_t",
+   "type_name": "String"
+  },
+  "status_detail": {
+   "caption": "Status Detail",
+   "description": "The details about the authentication request. For example, possible details for Windows logon or logoff events are:<ul><li>Success</li><ul><li>LOGOFF_USER_INITIATED</li><li>LOGOFF_OTHER</li></ul><li>Failure</li><ul><li>USER_DOES_NOT_EXIST</li><li>INVALID_CREDENTIALS</li><li>ACCOUNT_DISABLED</li><li>ACCOUNT_LOCKED_OUT</li><li>PASSWORD_EXPIRED</li></ul></ul>",
+   "group": "primary",
+   "requirement": "recommended",
+   "type": "string_t",
+   "type_name": "String"
+  },
+  "status_id": {
+   "caption": "Status ID",
+   "description": "The normalized status of the event outcome. Use this family of attributes to convey the outcome of the activity described by the event. Producers should map their source outcome to <code>1</code> (Success) or <code>2</code> (Failure). Use <code>0</code> (Unknown) when the outcome cannot be determined, and <code>99</code> (Other) with a populated <code>status</code> string when the source value does not map cleanly.",
+   "enum": {
+    "0": {
+     "caption": "Unknown",
+     "description": "The status is unknown."
+    },
+    "1": {
+     "caption": "Success",
+     "description": "The activity completed successfully."
+    },
+    "2": {
+     "caption": "Failure",
+     "description": "The activity failed."
+    },
+    "99": {
+     "caption": "Other",
+     "description": "The status is not mapped. See the <code>status</code> attribute, which contains a data source specific value."
+    }
+   },
+   "group": "primary",
+   "requirement": "recommended",
+   "sibling": "status",
+   "type": "integer_t",
+   "type_name": "Integer"
+  },
+  "time": {
+   "caption": "Event Time",
+   "description": "The primary timestamp of the event - when the activity actually occurred at the source. This does not capture when the event record was created or serialized by the source system; for event lifecycle timestamps such as ingestion and processing, use <code>metadata.logged_time</code> and <code>metadata.processed_time</code> respectively, or the equivalent attributes in the <code>metadata.loggers</code> array when recording pipeline stages. For aggregate events (<code>count</code> &gt; 1), set this to <code>start_time</code> (the earliest OCSF <code>time</code> in the aggregate) to preserve causal ordering and consistent timeline alignment. Note: finding classes redefine <code>time</code> as the finding creation time rather than the activity occurrence time. This <b>must</b> be a UTC epoch value in milliseconds (e.g., <code>1776881335332</code>). Mappers should use the most precise and authoritative timestamp available from the source.",
+   "group": "occurrence",
+   "requirement": "required",
+   "type": "timestamp_t",
+   "type_name": "Timestamp"
+  },
+  "timezone_offset": {
+   "caption": "Timezone Offset",
+   "description": "The number of minutes that the reported event <code>time</code> is ahead or behind UTC, in the range -1,080 to +1,080. This allows consumers to reconstruct the local time at the event source. For example, US Eastern Standard Time is <code>-300</code>. Populate this when the source provides local time zone information.",
+   "group": "occurrence",
+   "requirement": "recommended",
+   "type": "integer_t",
+   "type_name": "Integer"
+  },
+  "type_name": {
+   "caption": "Type Name",
+   "description": "The event/finding type name, combining the class and activity (e.g., <code>\"Detection Finding: Create\"</code>). The value must match the <code>class_name</code> and <code>activity_name</code> joined by <code>\": \"</code>.",
+   "group": "classification",
+   "requirement": "optional",
+   "type": "string_t",
+   "type_name": "String"
+  },
+  "type_uid": {
+   "caption": "Type ID",
+   "description": "The event/finding type ID. It identifies the event's semantics and structure. Producers and mappers <b>must</b> compute this as <code>class_uid * 100 + activity_id</code>. It uniquely identifies the combination of event class and activity across the entire schema. For example, <code>Detection Finding: Create</code> is <code>200401</code>.",
+   "enum": {
+    "300200": {
+     "caption": "Authentication: Unknown"
+    },
+    "300201": {
+     "caption": "Authentication: Logon",
+     "description": "A new logon session was requested."
+    },
+    "300202": {
+     "caption": "Authentication: Logoff",
+     "description": "A logon session was terminated and no longer exists."
+    },
+    "300203": {
+     "caption": "Authentication: Authentication Ticket",
+     "description": "A Kerberos authentication ticket (TGT) was requested."
+    },
+    "300204": {
+     "caption": "Authentication: Service Ticket Request",
+     "description": "A Kerberos service ticket was requested."
+    },
+    "300205": {
+     "caption": "Authentication: Service Ticket Renew",
+     "description": "A Kerberos service ticket was renewed."
+    },
+    "300206": {
+     "caption": "Authentication: Preauth",
+     "description": "A preauthentication stage was engaged."
+    },
+    "300207": {
+     "caption": "Authentication: Account Switch",
+     "description": "A utility or service switched the user account. See the <code>account_switch_type_id</code> attribute for more details."
+    },
+    "300299": {
+     "caption": "Authentication: Other"
+    }
+   },
+   "group": "classification",
+   "requirement": "required",
+   "sibling": "type_name",
+   "type": "long_t",
+   "type_name": "Long"
+  },
+  "unmapped": {
+   "caption": "Unmapped Data",
+   "description": "A container for source-specific attributes that do not map to any defined OCSF attribute. Use this to preserve valuable source data that would otherwise be lost during normalization. The keys and values are specific to the event source. <p><b>Note: </b>Consumers should not rely on a stable structure within this field. The preferred approach to unmapped attributes is to create a custom extension with the desired structure.</p>",
+   "group": "context",
+   "object_name": "Object",
+   "object_type": "object",
+   "references": [
+    {
+     "description": "Schema FAQ: When should I use the unmapped attribute?",
+     "url": "https://github.com/ocsf/ocsf-docs/blob/main/faqs/schema-faq.md#when-should-i-use-the-unmapped-attribute"
+    },
+    {
+     "description": "OCSF Extensions",
+     "url": "https://github.com/ocsf/ocsf-schema/blob/main/CONTRIBUTING.md#ocsf-extensions"
+    }
+   ],
+   "requirement": "optional",
+   "type": "object_t"
+  },
+  "user": {
+   "caption": "User",
+   "description": "The subject (user/role or account) to authenticate.",
+   "group": "primary",
+   "object_name": "User",
+   "object_type": "user",
+   "requirement": "required",
+   "type": "object_t"
+  }
+ },
+ "caption": "Authentication",
+ "category": "iam",
+ "category_name": "Identity & Access Management",
+ "category_uid": 3,
+ "constraints": {
+  "at_least_one": [
+   "service",
+   "dst_endpoint"
+  ]
+ },
+ "description": "Authentication events report authentication session activities, including user attempts to log on or log off, regardless of success, as well as other key stages within the authentication process. These events are typically generated by authentication services, such as Kerberos, OIDC, or SAML, and may include information about the user, the authentication method used, and the status of the authentication attempt.",
+ "extends": "iam",
+ "name": "authentication",
+ "profiles": [
+  "ai_operation",
+  "cloud",
+  "container",
+  "data_classification",
+  "datetime",
+  "host",
+  "linux/linux_users",
+  "macos/macos_users",
+  "osint",
+  "record_integrity",
+  "security_control"
+ ],
+ "references": [
+  {
+   "description": "D3FEND™ Ontology d3f:AuthenticationEvent",
+   "url": "https://d3fend.mitre.org/event/d3f:AuthenticationEvent"
+  }
+ ],
+ "uid": 3002
+}
