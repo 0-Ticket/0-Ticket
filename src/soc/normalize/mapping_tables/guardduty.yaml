@@ -1,0 +1,57 @@
+# GuardDuty 알럿. ECS 필드가 없어 엔티티와 제목·설명을 guardduty.* 에서 읽는다(D-064).
+# 판별은 최상위 guardduty 키가 있는지로 한다. 원본에 없는 값은 common 값을 그대로 둔다.
+# 순서가 엔티티 목록의 순서다. 포트·evidences·배열 안쪽 값·액세스 키 ID는 읽지 않는다.
+detect:
+  - field: guardduty
+    exists: true
+entries:
+  - target: finding_info.title
+    from: [guardduty.title]
+  - target: finding_info.desc
+    from: [guardduty.description]
+  - target: message
+    from: [guardduty.description]
+entities:
+  - type: ip
+    role: src
+    from: [guardduty.service.action.awsApiCallAction.remoteIpDetails.ipAddressV4]
+    transform: ip
+  - type: user
+    role: actor
+    from: [guardduty.resource.accessKeyDetails.userName]
+  - type: host
+    role: target
+    from: [guardduty.resource.instanceDetails.instanceId]
+  # 계정 ID. 계약에 계정 타입이 없어 host로 둔다(Hostname observable이 된다)
+  - type: host
+    role: target
+    from: [guardduty.accountId]
+  # 네트워크 연결은 방향에 따라 src와 dst가 바뀐다
+  - type: ip
+    role: src
+    from: [guardduty.service.action.networkConnectionAction.remoteIpDetails.ipAddressV4]
+    transform: ip
+    when:
+      field: guardduty.service.action.networkConnectionAction.connectionDirection
+      equals: INBOUND
+  - type: ip
+    role: dst
+    from: [guardduty.service.action.networkConnectionAction.localIpDetails.ipAddressV4]
+    transform: ip
+    when:
+      field: guardduty.service.action.networkConnectionAction.connectionDirection
+      equals: INBOUND
+  - type: ip
+    role: src
+    from: [guardduty.service.action.networkConnectionAction.localIpDetails.ipAddressV4]
+    transform: ip
+    when:
+      field: guardduty.service.action.networkConnectionAction.connectionDirection
+      equals: OUTBOUND
+  - type: ip
+    role: dst
+    from: [guardduty.service.action.networkConnectionAction.remoteIpDetails.ipAddressV4]
+    transform: ip
+    when:
+      field: guardduty.service.action.networkConnectionAction.connectionDirection
+      equals: OUTBOUND

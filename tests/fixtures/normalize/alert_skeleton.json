@@ -225,7 +225,172 @@
       "message": "GuardDuty All Findings",
       "risk_score": 47,
       "attacks": [],
-      "entities": []
+      "entities": [["ip", "192.0.2.1", "src"]]
+    }
+  },
+  {
+    "case": "guardduty_root_credential_usage",
+    "original": {
+      "_id": "a1f0c2d3e4b5968778695a4b3c2d1e0f00112233445566778899aabbccddeeff",
+      "_index": ".internal.alerts-security.alerts-default-000001",
+      "_source": {
+        "@timestamp": "2026-11-13T11:47:00.003Z",
+        "event": {"dataset": "aws.guardduty", "provider": "guardduty.amazonaws.com"},
+        "guardduty": {
+          "type": "Policy:IAMUser/RootCredentialUsage",
+          "title": "The API ListManagedNotificationEvents was invoked using root credentials.",
+          "description": "The API ListManagedNotificationEvents was invoked using root credentials from IP address 192.0.2.1.",
+          "accountId": "123456789012",
+          "service": {"action": {"awsApiCallAction": {"remoteIpDetails": {"ipAddressV4": "192.0.2.1"}}}},
+          "resource": {"accessKeyDetails": {"userName": "Root", "accessKeyId": "AKIAEXAMPLEEXAMPLE00", "principalId": "123456789012"}}
+        },
+        "kibana.alert.uuid": "a1f0c2d3e4b5968778695a4b3c2d1e0f00112233445566778899aabbccddeeff",
+        "kibana.alert.start": "2026-11-13T11:47:00.100Z",
+        "kibana.alert.original_time": "2026-11-13T09:13:17.000Z",
+        "kibana.alert.severity": "medium",
+        "kibana.alert.risk_score": 47,
+        "kibana.alert.rule.name": "GuardDuty All Findings",
+        "kibana.alert.rule.description": "GuardDuty All Findings",
+        "kibana.alert.rule.rule_id": "9bc2b7b3-6b2e-4e56-a2d9-b572f42dfd0a",
+        "kibana.alert.rule.tags": []
+      }
+    },
+    "expect": {
+      "source": "guardduty",
+      "outcome": "ok",
+      "error_code": null,
+      "missing_fields": [],
+      "class_uid": 2004,
+      "time": "2026-11-13T11:47:00.100Z",
+      "start_time": "2026-11-13T09:13:17.000Z",
+      "severity": 3,
+      "rule_id": "9bc2b7b3-6b2e-4e56-a2d9-b572f42dfd0a",
+      "title": "The API ListManagedNotificationEvents was invoked using root credentials.",
+      "desc": "The API ListManagedNotificationEvents was invoked using root credentials from IP address 192.0.2.1.",
+      "message": "The API ListManagedNotificationEvents was invoked using root credentials from IP address 192.0.2.1.",
+      "risk_score": 47,
+      "attacks": [],
+      "entities": [
+        ["ip", "192.0.2.1", "src"],
+        ["user", "Root", "actor"],
+        ["host", "123456789012", "target"]
+      ]
+    }
+  },
+  {
+    "case": "guardduty_tor_client_outbound",
+    "original": {
+      "_id": "b2e1d3c4f5a6978869584a3b2c1d0e0f11223344556677889900aabbccddeeff",
+      "_index": ".internal.alerts-security.alerts-default-000001",
+      "_source": {
+        "@timestamp": "2026-11-13T10:12:42.300Z",
+        "event": {"dataset": "aws.guardduty", "provider": "guardduty.amazonaws.com"},
+        "guardduty": {
+          "type": "UnauthorizedAccess:EC2/TorClient",
+          "title": "The EC2 instance i-0123456789abcdef0 is communicating with a Tor entry node.",
+          "description": "The EC2 instance i-0123456789abcdef0 is communicating with IP address 203.0.113.1 on the Tor Anonymizing Proxy network marked as an entry node.",
+          "accountId": "123456789012",
+          "service": {
+            "action": {
+              "networkConnectionAction": {
+                "connectionDirection": "OUTBOUND",
+                "localIpDetails": {"ipAddressV4": "198.51.100.1"},
+                "remoteIpDetails": {"ipAddressV4": "203.0.113.1"}
+              }
+            }
+          },
+          "resource": {"instanceDetails": {"instanceId": "i-0123456789abcdef0"}}
+        },
+        "kibana.alert.uuid": "b2e1d3c4f5a6978869584a3b2c1d0e0f11223344556677889900aabbccddeeff",
+        "kibana.alert.start": "2026-11-13T10:12:42.400Z",
+        "kibana.alert.original_time": "2026-11-13T10:11:56.000Z",
+        "kibana.alert.severity": "high",
+        "kibana.alert.risk_score": 73,
+        "kibana.alert.rule.name": "GuardDuty All Findings",
+        "kibana.alert.rule.description": "GuardDuty All Findings",
+        "kibana.alert.rule.rule_id": "9bc2b7b3-6b2e-4e56-a2d9-b572f42dfd0a",
+        "kibana.alert.rule.tags": []
+      }
+    },
+    "expect": {
+      "source": "guardduty",
+      "outcome": "ok",
+      "error_code": null,
+      "missing_fields": [],
+      "class_uid": 2004,
+      "time": "2026-11-13T10:12:42.400Z",
+      "start_time": "2026-11-13T10:11:56.000Z",
+      "severity": 4,
+      "rule_id": "9bc2b7b3-6b2e-4e56-a2d9-b572f42dfd0a",
+      "title": "The EC2 instance i-0123456789abcdef0 is communicating with a Tor entry node.",
+      "desc": "The EC2 instance i-0123456789abcdef0 is communicating with IP address 203.0.113.1 on the Tor Anonymizing Proxy network marked as an entry node.",
+      "message": "The EC2 instance i-0123456789abcdef0 is communicating with IP address 203.0.113.1 on the Tor Anonymizing Proxy network marked as an entry node.",
+      "risk_score": 73,
+      "attacks": [],
+      "entities": [
+        ["host", "i-0123456789abcdef0", "target"],
+        ["host", "123456789012", "target"],
+        ["ip", "198.51.100.1", "src"],
+        ["ip", "203.0.113.1", "dst"]
+      ]
+    }
+  },
+  {
+    "case": "guardduty_tor_client_inbound",
+    "original": {
+      "_id": "c3d2e4b5a6f7898a79685b4c3d2e1f0f22334455667788990011bbccddeeff00",
+      "_index": ".internal.alerts-security.alerts-default-000001",
+      "_source": {
+        "@timestamp": "2026-11-13T10:20:42.300Z",
+        "event": {"dataset": "aws.guardduty", "provider": "guardduty.amazonaws.com"},
+        "guardduty": {
+          "type": "UnauthorizedAccess:EC2/TorClient",
+          "title": "The EC2 instance i-0123456789abcdef0 is communicating with a Tor entry node.",
+          "description": "The EC2 instance i-0123456789abcdef0 is communicating with IP address 203.0.113.1 on the Tor Anonymizing Proxy network marked as an entry node.",
+          "accountId": "123456789012",
+          "service": {
+            "action": {
+              "networkConnectionAction": {
+                "connectionDirection": "INBOUND",
+                "localIpDetails": {"ipAddressV4": "198.51.100.1"},
+                "remoteIpDetails": {"ipAddressV4": "203.0.113.1"}
+              }
+            }
+          },
+          "resource": {"instanceDetails": {"instanceId": "i-0123456789abcdef0"}}
+        },
+        "kibana.alert.uuid": "c3d2e4b5a6f7898a79685b4c3d2e1f0f22334455667788990011bbccddeeff00",
+        "kibana.alert.start": "2026-11-13T10:20:42.400Z",
+        "kibana.alert.original_time": "2026-11-13T10:19:56.000Z",
+        "kibana.alert.severity": "high",
+        "kibana.alert.risk_score": 73,
+        "kibana.alert.rule.name": "GuardDuty All Findings",
+        "kibana.alert.rule.description": "GuardDuty All Findings",
+        "kibana.alert.rule.rule_id": "9bc2b7b3-6b2e-4e56-a2d9-b572f42dfd0a",
+        "kibana.alert.rule.tags": []
+      }
+    },
+    "expect": {
+      "source": "guardduty",
+      "outcome": "ok",
+      "error_code": null,
+      "missing_fields": [],
+      "class_uid": 2004,
+      "time": "2026-11-13T10:20:42.400Z",
+      "start_time": "2026-11-13T10:19:56.000Z",
+      "severity": 4,
+      "rule_id": "9bc2b7b3-6b2e-4e56-a2d9-b572f42dfd0a",
+      "title": "The EC2 instance i-0123456789abcdef0 is communicating with a Tor entry node.",
+      "desc": "The EC2 instance i-0123456789abcdef0 is communicating with IP address 203.0.113.1 on the Tor Anonymizing Proxy network marked as an entry node.",
+      "message": "The EC2 instance i-0123456789abcdef0 is communicating with IP address 203.0.113.1 on the Tor Anonymizing Proxy network marked as an entry node.",
+      "risk_score": 73,
+      "attacks": [],
+      "entities": [
+        ["host", "i-0123456789abcdef0", "target"],
+        ["host", "123456789012", "target"],
+        ["ip", "203.0.113.1", "src"],
+        ["ip", "198.51.100.1", "dst"]
+      ]
     }
   },
   {

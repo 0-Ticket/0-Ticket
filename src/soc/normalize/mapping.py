@@ -223,17 +223,22 @@ def _finding(raw: RawRow) -> Result:
     time_ms = common.values["time"]
     original_ms = _optional_time_ms(source, "kibana.alert.original_time")
     start_ms = time_ms if original_ms is None else original_ms
-    severity = common.values.get("severity_id", UNKNOWN_ID)
-    rule_id = common.values.get("finding_info.analytic.uid")
-    title = common.values["finding_info.title"]
-    alert_source = _detect_source(raw.original, source)
-    incomplete = [*common.missing, *(["start_time"] if original_ms is None else [])]
+    alert_source = _detect_source(raw.original)
+    values, missing = common.values, common.missing
     found = apply_entities(tables[COMMON], raw.original)
     if alert_source in tables:
+        # 소스 표의 entries는 common의 같은 target을 덮어쓴다. 원본에 값이 없으면 common 값이 남는다
+        sourced = apply_table(tables[alert_source], raw.original)
+        values = {**common.values, **sourced.values}
+        missing = [t for t in dict.fromkeys([*common.missing, *sourced.missing]) if t not in values]
         apply_entities(tables[alert_source], raw.original, found)
+    severity = values.get("severity_id", UNKNOWN_ID)
+    rule_id = values.get("finding_info.analytic.uid")
+    title = values["finding_info.title"]
+    incomplete = [*missing, *(["start_time"] if original_ms is None else [])]
     entities, bad_ips = found.entities, found.missing
     destination = _text(source, "destination.ip")
-    extra = _nested(common.values)
+    extra = _nested(values)
     finding_info = extra["finding_info"]
     finding_info["analytic"]["type_id"] = ANALYTIC_RULE
     finding_info["attacks"] = _attacks(source) or None
@@ -293,17 +298,13 @@ def _nested(values: dict[str, Any]) -> dict[str, Any]:
     return nested
 
 
-def _detect_source(hit: dict[str, Any], source: dict[str, Any]) -> str:
-    """알럿 소스를 고른다. 소스 표의 detect, 없으면 최상위 guardduty 키(코드), 없으면 unknown.
+def _detect_source(hit: dict[str, Any]) -> str:
+    """알럿 소스를 고른다. 소스 표의 detect가 맞는 첫 표, 없으면 unknown.
 
     Args:
         hit: raw.original.
-        source: raw.original["_source"].
     """
-    name = matching_source(load_tables(), hit)
-    if name is not None:
-        return name
-    return "guardduty" if isinstance(source.get("guardduty"), dict) else "unknown"
+    return matching_source(load_tables(), hit) or "unknown"
 
 
 def _is_ip(value: str) -> bool:

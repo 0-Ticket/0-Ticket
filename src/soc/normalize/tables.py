@@ -1,7 +1,7 @@
 """소스별 매핑표(YAML)를 읽고 원본 hit에 적용한다(D-060, D-061).
 
-표 한 파일은 `entries`(target·from·transform·required), 선택 `entities`(type·role·from·transform),
-선택 `detect`를 가진다.
+표 한 파일은 `entries`(target·from·transform·required), 선택 `entities`
+(type·role·from·transform·when), 선택 `detect`를 가진다.
 `common.yaml`은 소스와 무관한 단순 대응이고 그 밖의 파일은 소스 이름이 파일 이름이다.
 """
 
@@ -31,7 +31,7 @@ TABLE_DIR = Path(__file__).parent / "mapping_tables"
 COMMON = "common"
 _TABLE_KEYS = {"detect", "entries", "entities"}
 _ENTRY_KEYS = {"target", "from", "transform", "required"}
-_ENTITY_KEYS = {"type", "role", "from", "transform"}
+_ENTITY_KEYS = {"type", "role", "from", "transform", "when"}
 
 
 class MappingTableError(Exception):
@@ -64,12 +64,14 @@ class EntityRule:
         role: 엔티티 역할(계약의 허용 값). 생략하면 None.
         sources: 원본 경로 목록. 앞에서부터 처음 있는 값을 쓴다.
         transform: 등록된 엔티티 변환 이름. 없으면 문자열을 그대로 쓴다.
+        when: 이 조건이 맞을 때만 항목을 적용한다(D-064). 없으면 항상 적용한다.
     """
 
     type: str
     role: str | None
     sources: tuple[str, ...]
     transform: str | None = None
+    when: "Condition | None" = None
 
 
 @dataclass(frozen=True)
@@ -232,7 +234,22 @@ def _entity(item: Any) -> EntityRule:
         raise MappingTableError(f"{entity_type}: 등록되지 않은 엔티티 transform {transform}")
     if transform == "ip" and role not in _IP_GAPS:
         raise MappingTableError(f"{entity_type}: ip 변환은 role이 src 또는 dst여야 한다")
-    return EntityRule(entity_type, role, tuple(sources), transform)
+    when = item.get("when")
+    return EntityRule(
+        entity_type, role, tuple(sources), transform, None if when is None else _when(when)
+    )
+
+
+def _when(item: Any) -> Condition:
+    """엔티티 항목의 when을 검사한다. `field`(문자열 또는 목록)와 `equals`(문자열)만 가진다."""
+    if not isinstance(item, dict) or set(item) != {"field", "equals"}:
+        raise MappingTableError("when은 field와 equals만 가진 객체여야 한다")
+    if not isinstance(item["equals"], str):
+        raise MappingTableError("when의 equals는 문자열이어야 한다")
+    try:
+        return _condition(item)
+    except MappingTableError:
+        raise MappingTableError("when의 field는 경로 문자열 또는 그 목록이어야 한다") from None
 
 
 def _condition(item: Any) -> Condition:
@@ -314,6 +331,8 @@ def apply_entities(
     """
     applied = applied or AppliedEntities()
     for rule in table.entities:
+        if rule.when is not None and not _matches(rule.when, hit):
+            continue
         value = next((v for v in (_read(hit, path) for path in rule.sources) if is_text(v)), None)
         if value is None:
             continue

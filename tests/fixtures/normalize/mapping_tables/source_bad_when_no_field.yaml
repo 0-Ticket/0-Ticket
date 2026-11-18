@@ -1,0 +1,6 @@
+entries: []
+entities:
+  - type: ip
+    role: src
+    from: [a]
+    when: {equals: x}
