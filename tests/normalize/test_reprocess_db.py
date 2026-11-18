@@ -111,7 +111,7 @@ def status_row(conn: psycopg.Connection, raw_id: str) -> tuple[Any, ...]:
 
 def dump(conn: psycopg.Connection) -> dict[str, list[tuple[Any, ...]]]:
     return {
-        table: conn.execute(f"SELECT * FROM {table} ORDER BY 1").fetchall()  # noqa: S608
+        table: conn.execute(f"SELECT * FROM {table} ORDER BY 1").fetchall()
         for table in ("raw_records", "alerts", "events", "normalize_status", "tickets")
     }
 
