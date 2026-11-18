@@ -1,0 +1,16 @@
+# 테스트용 소스 표. 엔티티 선언과 detect의 field 목록 형식을 확인한다
+detect:
+  - field: [event.module, kibana.alert.original_event.module]
+    equals: suricata
+entries: []
+entities:
+  - type: ip
+    role: dst
+    from: [transaction.host_ip]
+    transform: ip
+  - type: domain
+    role: dst
+    from: [transaction.request.hostname]
+    transform: domain_or_ip
+  - type: host
+    from: [host.name]

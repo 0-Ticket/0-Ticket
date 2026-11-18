@@ -76,9 +76,9 @@ def test_repository_tables_load_and_common_holds_the_nine_simple_rules():
 def test_source_table_loads_with_detect_and_array_targets(tmp_path):
     tables = load_tables(table_dir(tmp_path, "source_ok"))
     assert set(tables) == {"common", "ok"}
-    assert [c.field for c in tables["ok"].detect] == [
-        "event.module",
-        "kibana.alert.original_event.module",
+    assert [c.fields for c in tables["ok"].detect] == [
+        ("event.module",),
+        ("kibana.alert.original_event.module",),
     ]
     assert tables["ok"].entries[0].target == "evidences[].src_endpoint.ip"
 
