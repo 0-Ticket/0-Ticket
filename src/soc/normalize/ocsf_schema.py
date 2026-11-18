@@ -1,7 +1,8 @@
 """OCSF 1.9.0 클래스 정의로 정규화 결과를 검사한다(D-007).
 
 정의 파일은 ocsf/에 있다. 출처와 만든 방법은 ocsf/SOURCE.md에 적혀 있다.
-검사 항목: 필수 속성, 정의에 없는 속성, 값 타입, enum 값, 목록, 객체 안쪽, at_least_one 제약.
+검사 항목: 필수 속성, 정의에 없는 속성, 값 타입, enum 값, 목록, 객체 안쪽,
+at_least_one·just_one 제약.
 """
 
 import json
@@ -14,6 +15,8 @@ from soc.normalize.errors import NormalizeError
 
 _OCSF_DIR = Path(__file__).parent / "ocsf"
 _INTEGER_TYPES = {"integer_t", "long_t", "timestamp_t", "port_t"}
+# 로더가 검사하는 constraints 종류. 다른 종류가 정의에 있으면 스키마 고정 스크립트가 실패한다
+SUPPORTED_CONSTRAINTS = frozenset({"at_least_one", "just_one"})
 
 
 def validate_ocsf(ocsf: dict[str, Any]) -> None:
@@ -44,8 +47,12 @@ def _object_is_valid(definition: dict[str, Any], value: dict[str, Any]) -> bool:
     ]
     if any(name not in value for name in required):
         return False
-    alternatives = definition.get("constraints", {}).get("at_least_one", [])
+    constraints = definition.get("constraints", {})
+    alternatives = constraints.get("at_least_one", [])
     if alternatives and not any(name in value for name in alternatives):
+        return False
+    exclusive = constraints.get("just_one", [])
+    if exclusive and sum(name in value for name in exclusive) != 1:
         return False
     return all(
         name in attributes and _attribute_is_valid(attributes[name], item)
@@ -80,6 +87,11 @@ def _value_is_valid(attribute: dict[str, Any], item: Any) -> bool:
         return isinstance(item, dict) and nested is not None and _object_is_valid(nested, item)
     if kind in _INTEGER_TYPES:
         matches = isinstance(item, int) and not isinstance(item, bool)
+    elif kind == "float_t":
+        matches = isinstance(item, int | float) and not isinstance(item, bool)
+        matches = matches and math.isfinite(item)
+    elif kind == "json_t":
+        matches = _json_value_is_valid(item)
     elif kind == "boolean_t":
         matches = isinstance(item, bool)
     else:
@@ -102,6 +114,49 @@ def _json_value_is_valid(value: Any) -> bool:
     if isinstance(value, float):
         return math.isfinite(value)
     return value is None or isinstance(value, (str, bool, int))
+
+
+def field_definition(class_uid: int, path: str) -> dict[str, Any] | None:
+    """클래스 정의에서 경로의 속성 정의를 찾는다. 없으면 None.
+
+    Args:
+        class_uid: OCSF 클래스 번호. 0 또는 2004 등 ocsf/classes/에 있는 것.
+        path: 점으로 이은 OCSF 경로. 배열 속성은 `[]`를 붙여도 된다.
+            예: "finding_info.analytic.uid", "evidences[].dst_endpoint.ip".
+
+    Returns:
+        속성 정의(type, requirement, is_array, object_type, enum 중 있는 것).
+    """
+    definition = _class_definition(class_uid)
+    parts = path.split(".")
+    for index, part in enumerate(parts):
+        if definition is None or not part.removesuffix("[]"):
+            return None
+        attribute = definition["attributes"].get(part.removesuffix("[]"))
+        if attribute is None or index == len(parts) - 1:
+            return attribute
+        if attribute["type"] != "object_t":
+            return None
+        definition = _object_definitions().get(attribute.get("object_type", ""))
+    return None
+
+
+def required_children(class_uid: int, path: str = "") -> list[str]:
+    """클래스(path가 빈 문자열) 또는 그 안 객체의 필수 속성 이름을 정의 순서대로 돌려준다.
+
+    Args:
+        class_uid: OCSF 클래스 번호.
+        path: 객체 속성의 경로. 예: "finding_info.analytic". 객체가 아니거나 없으면 빈 목록.
+    """
+    if path:
+        attribute = field_definition(class_uid, path)
+        if attribute is None or attribute["type"] != "object_t":
+            return []
+        definition = _object_definitions().get(attribute.get("object_type", ""))
+    else:
+        definition = _class_definition(class_uid)
+    attributes = definition["attributes"] if definition else {}
+    return [name for name, item in attributes.items() if item.get("requirement") == "required"]
 
 
 @cache

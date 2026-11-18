@@ -1,0 +1,4 @@
+entries:
+  - target: finding_info.desc
+    from: [kibana.alert.rule.description]
+    transform: shell

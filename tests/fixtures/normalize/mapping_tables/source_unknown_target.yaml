@@ -1,0 +1,3 @@
+entries:
+  - target: finding_info.analytic.nope
+    from: [kibana.alert.rule.name]

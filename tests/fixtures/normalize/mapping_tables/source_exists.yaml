@@ -1,0 +1,6 @@
+detect:
+  - field: guardduty
+    exists: true
+entries:
+  - target: finding_info.desc
+    from: [guardduty.description]

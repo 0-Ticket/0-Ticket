@@ -18,6 +18,7 @@ from soc.api.db import DATABASE_URL_ENV
 from soc.normalize.config import ConfigError, Settings, load_settings
 from soc.normalize.report import report_lines
 from soc.normalize.run import RunResult, exit_code, run
+from soc.normalize.tables import MappingTableError, load_tables
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -58,6 +59,11 @@ def _run_command(
         settings = load_settings()
     except (ConfigError, OSError, tomllib.TOMLDecodeError) as error:
         print(f"설정 오류: {error}", file=sys.stderr)
+        return 2
+    try:
+        load_tables()
+    except MappingTableError as error:
+        print(f"매핑표 오류: {error}", file=sys.stderr)
         return 2
     url = os.environ.get(DATABASE_URL_ENV)
     if not url:

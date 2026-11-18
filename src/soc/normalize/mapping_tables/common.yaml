@@ -1,0 +1,31 @@
+# 소스와 무관한 알럿 대응(D-061). 필드 하나를 읽어 옮기는 규칙만 둔다.
+# 폴백 조건(uid·title·time 누락), 상수, start_time 대체, attacks, observables, 엔티티,
+# evidences, metadata는 코드(mapping.py)가 채운다.
+# required: 얻지 못하면 partial + missing_fields로 기록한다. 순서가 missing_fields의 순서다.
+entries:
+  - target: finding_info.title
+    from: [kibana.alert.rule.name]
+  - target: finding_info.desc
+    from: [kibana.alert.rule.description]
+  - target: finding_info.uid
+    from: [kibana.alert.uuid, $._id]
+  - target: finding_info.analytic.uid
+    from: [kibana.alert.rule.rule_id]
+    required: true
+  - target: finding_info.analytic.name
+    from: [kibana.alert.rule.name]
+  - target: severity_id
+    from: [kibana.alert.severity]
+    transform: severity
+    required: true
+  - target: risk_score
+    from: [kibana.alert.risk_score]
+    transform: round_int
+  - target: message
+    from: [kibana.alert.rule.description, kibana.alert.rule.name]
+  - target: time
+    from: [kibana.alert.start, "@timestamp"]
+    transform: time
+  - target: finding_info.created_time
+    from: [kibana.alert.start, "@timestamp"]
+    transform: time
