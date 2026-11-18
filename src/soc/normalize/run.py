@@ -133,17 +133,26 @@ def _normalize_and_save(
     return save_success(conn, owner, raw.id, mapped.kind, row, mapped)
 
 
-def _checked_row(settings: Settings, conn: psycopg.Connection, mapped: Result) -> dict[str, Any]:
+def _checked_row(
+    settings: Settings,
+    conn: psycopg.Connection,
+    mapped: Result,
+    previous: tuple[list[Any], list[Any]] | None = None,
+) -> dict[str, Any]:
     """결과를 저장 가능한 모양으로 이스케이프하고 OCSF·계약 검증과 자산 조회를 거친다.
 
     Args:
         settings: 정규화 설정.
         conn: DB 연결.
         mapped: 정규화 결과.
+        previous: 이미 저장된 (entities, assets). 엔티티가 같으면 자산을 다시 조회하지 않는다(#334).
     """
     escaped = escape_unstorable(mapped.row)
     validate_ocsf(escaped["ocsf"])
-    assets = lookup_assets(conn, escaped["entities"], settings.asset_statement_timeout_ms)
+    if previous is not None and previous[0] == escaped["entities"]:
+        assets = previous[1]
+    else:
+        assets = lookup_assets(conn, escaped["entities"], settings.asset_statement_timeout_ms)
     row = {**escaped, "assets": assets}
     validate_contract(mapped.kind, row)
     return row
