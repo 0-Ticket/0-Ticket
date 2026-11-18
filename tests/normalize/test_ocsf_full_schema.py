@@ -9,6 +9,7 @@ from soc.normalize import ocsf_schema
 from soc.normalize.ocsf_schema import (
     SUPPORTED_CONSTRAINTS,
     field_definition,
+    has_class_definition,
     validate_ocsf,
 )
 
@@ -31,6 +32,16 @@ def test_pinned_schema_is_the_full_closure_of_the_pinned_classes():
         for attribute in definition["attributes"].values():
             if attribute["type"] == "object_t":
                 assert attribute["object_type"] in objects
+
+
+@pytest.mark.parametrize("uid", [0, 2003, 2004, 3002, 4001, 4002, 4003, 6003])
+def test_has_class_definition_is_true_for_every_pinned_class(uid):
+    assert has_class_definition(uid) is True
+
+
+@pytest.mark.parametrize("uid", [1, 9999, -1, True, "4002", 4002.0, None])
+def test_has_class_definition_is_false_for_unpinned_or_non_integer(uid):
+    assert has_class_definition(uid) is False
 
 
 def test_every_pinned_constraint_kind_is_supported():

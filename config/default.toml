@@ -211,6 +211,9 @@ overlap_seconds = 60
 # 조회 대상. kind: alert | event, key: alias·인덱스·데이터 스트림 패턴, time_field: 커서로 쓰는 시각 필드.
 # (kind, key)마다 체크포인트가 하나다. key를 바꾸면 그 대상은 처음부터 다시 조회한다.
 # Alert는 space별 alias(기본 space는 default).
+# class(선택, 이벤트 대상만): 이 대상의 이벤트를 매핑할 OCSF 클래스 번호(D-065). ocsf/classes/에 정의 파일이 있는
+# 번호만 쓸 수 있고 2004(알럿)는 쓰지 못한다. 적지 않으면 지금처럼 동작한다.
+# 지금은 설정을 읽고 검사만 한다. 정규화가 이 값을 쓰도록 연결하는 일은 후속 이슈다(#340).
 [[ingest.sources]]
 kind = "alert"
 key = ".alerts-security.alerts-default"
@@ -224,11 +227,13 @@ time_field = "@timestamp"
 kind = "event"
 key = "logs-nginx.access-*"
 time_field = "@timestamp"
+class = 4002
 
 [[ingest.sources]]
 kind = "event"
 key = "logs-apache.access-*"
 time_field = "@timestamp"
+class = 4002
 
 [[ingest.sources]]
 kind = "event"

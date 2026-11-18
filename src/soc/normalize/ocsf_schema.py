@@ -116,6 +116,18 @@ def _json_value_is_valid(value: Any) -> bool:
     return value is None or isinstance(value, (str, bool, int))
 
 
+def has_class_definition(class_uid: object) -> bool:
+    """ocsf/classes/에 이 클래스 번호의 정의 파일이 있으면 True. 정수가 아니면 False.
+
+    수집 설정의 `class`(D-065)가 받아 둔 클래스만 허용하는 데 쓴다. bool·문자열·실수는
+    번호로 보지 않는다.
+
+    Args:
+        class_uid: 확인할 값.
+    """
+    return type(class_uid) is int and _class_definition(class_uid) is not None
+
+
 def field_definition(class_uid: int, path: str) -> dict[str, Any] | None:
     """클래스 정의에서 경로의 속성 정의를 찾는다. 없으면 None.
 

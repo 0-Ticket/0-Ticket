@@ -12,8 +12,12 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from soc.normalize.ocsf_schema import has_class_definition
+
 CONFIG_DIR = Path(__file__).resolve().parents[3] / "config"
 KINDS = ("alert", "event")
+# 알럿(Detection Finding)의 클래스. 알럿 경로가 정하므로 이벤트 대상의 class로는 쓰지 못한다
+ALERT_CLASS = 2004
 # ELK 기본 index.max_result_window. 한 페이지가 이보다 크면 ELK가 거부한다.
 MAX_PAGE_SIZE = 10_000
 # 조회 대상은 URL 경로(/{key}/_pit)에 들어간다. 경로·질의를 바꾸는 /, ?, #, 공백을 받지 않고,
@@ -34,11 +38,14 @@ class Source:
         kind: "alert" 또는 "event". RawRecord의 kind와 같다.
         key: ELK 조회 대상(alias, 인덱스·데이터 스트림 패턴). URL 경로(/{key}/_pit)에 들어간다.
         time_field: 정렬과 커서에 쓰는 시각 필드 이름(예: @timestamp).
+        ocsf_class: 이벤트 대상이 선언한 OCSF 클래스 번호(D-065). 적지 않으면 None이다.
+            읽고 검사만 하며 정규화에는 아직 연결하지 않는다(#340).
     """
 
     kind: str
     key: str
     time_field: str
+    ocsf_class: int | None = None
 
     @property
     def name(self) -> str:
@@ -188,6 +195,7 @@ def read_settings(ingest: dict[str, Any]) -> Settings:
                 kind=kind,
                 key=_text(raw, "key", at, _KEY),
                 time_field=_text(raw, "time_field", at, _FIELD),
+                ocsf_class=_event_class(raw, kind, at),
             )
         )
     # 체크포인트는 (siem_profile, kind, key)마다 하나라 같은 대상이 두 번 있으면 서로 덮어쓴다.
@@ -219,6 +227,30 @@ def read_settings(ingest: dict[str, Any]) -> Settings:
         initial_lookback_seconds=lookback,
         overlap_seconds=overlap,
     )
+
+
+def _event_class(raw: dict[str, Any], kind: str, at: str) -> int | None:
+    """대상의 선택 항목 `class`를 읽어 검사한다(D-065). 없으면 None.
+
+    이벤트 대상만 쓸 수 있고, ocsf/classes/에 정의 파일이 있는 번호여야 한다.
+    알럿 클래스(2004)는 알럿 경로가 따로 정하므로 이벤트 대상에도 쓰지 못한다.
+
+    인자:
+        raw: [[ingest.sources]] 표 하나.
+        kind: 이 대상의 kind.
+        at: 오류 메시지에 쓸 위치(예: ingest.sources[1]).
+
+    발생:
+        ConfigError: 알럿 대상에 class를 적었거나, 정의 파일이 없는 번호·정수 아닌 값·2004다.
+    """
+    if "class" not in raw:
+        return None
+    value = raw["class"]
+    if kind == "alert":
+        raise ConfigError(f"{at}.class는 이벤트 대상에만 쓸 수 있다(알럿은 {ALERT_CLASS})")
+    if not has_class_definition(value) or value == ALERT_CLASS:
+        raise ConfigError(f"{at}.class는 정의 파일이 있는 클래스 번호여야 한다({ALERT_CLASS} 제외)")
+    return value
 
 
 _RELATIVE = re.compile(r"([0-9]+)([mhd])")
