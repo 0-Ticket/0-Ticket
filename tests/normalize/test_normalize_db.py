@@ -14,6 +14,7 @@ from typing import Any
 import psycopg
 import pytest
 from conftest import HiddenUrl
+from psycopg.types.json import Jsonb
 
 from soc.asset_lookup import AssetLookupError, lookup_assets
 from soc.contracts import to_datetime
@@ -475,3 +476,16 @@ def test_status_row_requires_a_result_exactly_when_succeeded(conn: psycopg.Conne
         conn.execute(
             "INSERT INTO normalize_status (raw_id, status) VALUES (%s, 'succeeded')", (raw_id,)
         )
+
+
+def test_alert_ocsf_class_must_be_a_finding_or_the_fallback(conn: psycopg.Connection) -> None:
+    raw_id = add_raw_records(conn, CASES[:1])[CASES[0]["case"]]
+    insert = (
+        "INSERT INTO alerts (id, raw_id, time, severity, title, entities, assets, ocsf, details)"
+        " VALUES (%s, %s, now(), 0, 't', '[]', '[]', %s, '{}')"
+    )
+
+    for n, class_uid in enumerate((2004, 0)):
+        conn.execute(insert, (f"alt_ok{n}", raw_id, Jsonb({"class_uid": class_uid})))
+    with pytest.raises(psycopg.errors.CheckViolation):
+        conn.execute(insert, ("alt_bad", raw_id, Jsonb({"class_uid": 4002})))

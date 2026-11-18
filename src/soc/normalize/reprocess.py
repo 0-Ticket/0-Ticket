@@ -29,7 +29,7 @@ _ALERT_COLUMNS = ("time", "severity", "title", "rule_id", "entities", "assets", 
 _CANDIDATES = """
 SELECT s.raw_id FROM normalize_status s JOIN alerts a ON a.id = s.result_id
 WHERE s.result_kind = 'alert' AND s.status = 'succeeded'
-  AND (%s::text IS NOT NULL OR s.outcome IS NULL)
+  AND (%s OR %s::text IS NOT NULL OR s.outcome IS NULL)
   AND (%s::timestamptz IS NULL OR a.time >= %s)
 ORDER BY a.time, a.id
 LIMIT %s
@@ -82,6 +82,7 @@ def reprocess(
     since: datetime | None = None,
     limit: int | None = None,
     dry_run: bool = False,
+    all_rows: bool = False,
 ) -> ReprocessResult:
     """대상 알럿을 새 로직으로 다시 정규화해 달라진 행만 갱신한다.
 
@@ -92,13 +93,14 @@ def reprocess(
         since: alerts.time이 이 시각 이후인 알럿만.
         limit: 읽을(정규화할) 최대 행 수. alerts.time, id 오름차순.
         dry_run: 어떤 테이블에도 쓰지 않고 잠그지도 않는다.
+        all_rows: outcome과 관계없이 기존 알럿 전체를 읽는다. 폴백·outcome 하락은 그대로 건너뛴다.
 
     Raises:
         MappingTableError: 매핑표가 틀렸다. 읽기 전에 난다.
     """
     load_tables()
     result = ReprocessResult(dry_run=dry_run)
-    rows = conn.execute(_CANDIDATES, (source, since, since, limit)).fetchall()
+    rows = conn.execute(_CANDIDATES, (all_rows, source, since, since, limit)).fetchall()
     for (raw_id,) in rows:
         result.read += 1
         try:

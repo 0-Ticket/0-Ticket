@@ -164,6 +164,7 @@ def test_migrate_creates_all_tables_on_empty_db(temp_database: str) -> None:
         "0300_threat_intel.sql",
         "0301_intel_local_lookup.sql",
         "0302_agent_reader_intel.sql",
+        "0303_alert_ocsf_class.sql",
     ]
     with psycopg.connect(temp_database) as conn:
         other_tables = {

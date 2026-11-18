@@ -268,6 +268,21 @@ def test_source_filter_uses_new_source_and_updates_rows_with_outcome(
     assert status_row(conn, sqli)[3:5] == ("ok", "modsecurity")
 
 
+def test_all_option_reads_rows_that_already_have_an_outcome(conn: psycopg.Connection) -> None:
+    (raw_id,) = seed(conn, SQLI)
+    conn.execute("UPDATE alerts SET ocsf = ocsf - 'evidences' WHERE raw_id = %s", (raw_id,))
+    before = alert_row(conn, raw_id)
+
+    by_default = reprocess(SETTINGS, conn)
+    everything = reprocess(SETTINGS, conn, all_rows=True)
+
+    assert by_default.read == 0
+    assert (everything.read, everything.changed) == (1, 1)
+    after = alert_row(conn, raw_id)
+    assert after[0] == before[0]  # 알럿 id는 그대로
+    assert "evidences" in after[9]
+
+
 def test_event_rows_are_never_touched(conn: psycopg.Connection) -> None:
     seed(conn, SQLI)
     add_raw(conn, [EVENT], kind="event")
