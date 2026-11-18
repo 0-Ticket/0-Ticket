@@ -146,3 +146,33 @@ def test_source_with_only_known_keys_is_still_accepted() -> None:
         set(source) <= {"kind", "key", "time_field", "class"} for source in ingest["sources"]
     )
     read_settings(ingest)
+
+
+NOT_INTEGER = "정수여야 한다"
+ALERT_ONLY = "알럿 전용"
+NOT_PINNED = "받아 둔 클래스가 아니다"
+
+
+@pytest.mark.parametrize(
+    ("value", "expected", "also"),
+    [
+        ("4002", NOT_INTEGER, "str"),
+        (4002.0, NOT_INTEGER, "float"),
+        (True, NOT_INTEGER, "bool"),
+        (None, NOT_INTEGER, "NoneType"),
+        (2004, ALERT_ONLY, "2004"),
+        (9999, NOT_PINNED, "9999"),
+        (-1, NOT_PINNED, "-1"),
+        (1, NOT_PINNED, "classes/1.json"),
+    ],
+)
+def test_each_class_rule_gives_its_own_message(value, expected: str, also: str) -> None:
+    """규칙마다 다른 문구가 나온다. 한 규칙의 문구가 다른 규칙 위반에 섞이지 않는다."""
+    ingest = valid_ingest()
+    event_source(ingest)["class"] = value
+    with pytest.raises(ConfigError, match=r"sources\[\d+\]\.class") as caught:
+        read_settings(ingest)
+    message = str(caught.value)
+    assert expected in message
+    assert also in message
+    assert all(other not in message for other in {NOT_INTEGER, ALERT_ONLY, NOT_PINNED} - {expected})

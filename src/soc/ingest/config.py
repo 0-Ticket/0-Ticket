@@ -247,15 +247,23 @@ def _event_class(raw: dict[str, Any], kind: str, at: str) -> int | None:
         at: 오류 메시지에 쓸 위치(예: ingest.sources[1]).
 
     발생:
-        ConfigError: 알럿 대상에 class를 적었거나, 정의 파일이 없는 번호·정수 아닌 값·2004다.
+        ConfigError: 알럿 대상에 class를 적었거나, 정수가 아니거나, 2004이거나, 정의 파일이 없는
+            번호다. 어긴 규칙마다 문구가 다르다. 받은 값은 정수일 때만 문구에 담고 그 밖에는
+            타입 이름만 담는다.
     """
     if "class" not in raw:
         return None
     value = raw["class"]
     if kind == "alert":
         raise ConfigError(f"{at}.class는 이벤트 대상에만 쓸 수 있다(알럿은 {ALERT_CLASS})")
-    if not has_class_definition(value) or value == ALERT_CLASS:
-        raise ConfigError(f"{at}.class는 정의 파일이 있는 클래스 번호여야 한다({ALERT_CLASS} 제외)")
+    if type(value) is not int:
+        raise ConfigError(f"{at}.class는 정수여야 한다(받은 값의 타입: {type(value).__name__})")
+    if value == ALERT_CLASS:
+        raise ConfigError(f"{at}.class {ALERT_CLASS}는 알럿 전용 클래스라 이벤트 대상에 쓸 수 없다")
+    if not has_class_definition(value):
+        raise ConfigError(
+            f"{at}.class {value}는 받아 둔 클래스가 아니다(ocsf/classes/{value}.json 없음)"
+        )
     return value
 
 
