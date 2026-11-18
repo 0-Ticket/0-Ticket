@@ -44,7 +44,9 @@ def test_destination_is_preserved(case: dict[str, Any]) -> None:
     )
     ocsf = row["ocsf"]
     if ocsf["class_uid"] == 2004:
-        assert ocsf["evidences"] == [{"dst_endpoint": {"ip": case["destination"]}}]
+        # 엔티티에서 만드는 evidences(D-065): dst 요소는 한 번, src는 요소가 더해진다
+        dst = [e for e in ocsf["evidences"] if "dst_endpoint" in e]
+        assert dst == [{"dst_endpoint": {"ip": case["destination"]}}]
         assert "dst_endpoint" not in ocsf
     elif ocsf["class_uid"] in (4002, 6003):
         assert ocsf["dst_endpoint"] == {"ip": case["destination"]}
@@ -65,7 +67,7 @@ def test_invalid_flat_destination_does_not_fall_back_or_create_empty_objects(
     row = convert(case)
     assert not any(e["role"] == "dst" for e in row["entities"])
     assert "dst_endpoint" not in row["ocsf"]
-    assert "evidences" not in row["ocsf"]
+    assert not any("dst_endpoint" in e for e in row["ocsf"].get("evidences", []))
     assert "unmapped" not in row["ocsf"]
     assert {"type": "ip", "value": "198.51.100.7", "role": "src"} in row["entities"]
 
@@ -79,7 +81,7 @@ def test_missing_destination_is_omitted(case: dict[str, Any]) -> None:
     row = convert(case)
     assert not any(e["role"] == "dst" for e in row["entities"])
     assert "dst_endpoint" not in row["ocsf"]
-    assert "evidences" not in row["ocsf"]
+    assert not any("dst_endpoint" in e for e in row["ocsf"].get("evidences", []))
     assert "unmapped" not in row["ocsf"]
 
 
