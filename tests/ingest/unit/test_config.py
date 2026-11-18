@@ -128,3 +128,21 @@ def test_alert_source_rejects_class(value: int) -> None:
     ingest["sources"][0]["class"] = value
     with pytest.raises(ConfigError, match=r"sources\[0\]\.class"):
         read_settings(ingest)
+
+
+@pytest.mark.parametrize("stray", ["calss", "Class", "classs", "timefield", "kind2", ""])
+def test_source_rejects_an_unknown_key_and_names_it(stray: str) -> None:
+    """오타 키가 조용히 무시되어 class 선언이 빠지지 않는다. 다른 값은 모두 유효하다."""
+    ingest = valid_ingest()
+    event_source(ingest)[stray] = 4002
+    with pytest.raises(ConfigError, match=r"sources\[\d+\]") as caught:
+        read_settings(ingest)
+    assert repr(stray) in str(caught.value)
+
+
+def test_source_with_only_known_keys_is_still_accepted() -> None:
+    ingest = valid_ingest()
+    assert all(
+        set(source) <= {"kind", "key", "time_field", "class"} for source in ingest["sources"]
+    )
+    read_settings(ingest)

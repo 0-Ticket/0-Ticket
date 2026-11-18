@@ -18,6 +18,8 @@ CONFIG_DIR = Path(__file__).resolve().parents[3] / "config"
 KINDS = ("alert", "event")
 # 알럿(Detection Finding)의 클래스. 알럿 경로가 정하므로 이벤트 대상의 class로는 쓰지 못한다
 ALERT_CLASS = 2004
+# [[ingest.sources]] 표가 가질 수 있는 키. 이 밖의 키는 오타일 수 있어 설정 오류로 막는다(#340)
+SOURCE_KEYS = frozenset({"kind", "key", "time_field", "class"})
 # ELK 기본 index.max_result_window. 한 페이지가 이보다 크면 ELK가 거부한다.
 MAX_PAGE_SIZE = 10_000
 # 조회 대상은 URL 경로(/{key}/_pit)에 들어간다. 경로·질의를 바꾸는 /, ?, #, 공백을 받지 않고,
@@ -187,6 +189,10 @@ def read_settings(ingest: dict[str, Any]) -> Settings:
         at = f"{where}.sources[{index}]"
         if not isinstance(raw, dict):
             raise ConfigError(f"{at}가 표가 아니다")
+        unknown = sorted(str(name) for name in raw.keys() - SOURCE_KEYS)
+        if unknown:
+            allowed = ", ".join(sorted(SOURCE_KEYS))
+            raise ConfigError(f"{at}에 알 수 없는 키가 있다: {unknown!r}(쓸 수 있는 키: {allowed})")
         kind = _text(raw, "kind", at)
         if kind not in KINDS:
             raise ConfigError(f"{at}.kind는 {', '.join(KINDS)} 중 하나여야 한다")
