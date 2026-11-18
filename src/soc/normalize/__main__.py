@@ -2,21 +2,29 @@
 
     uv run python -m soc.normalize
     uv run python -m soc.normalize report   # 소스별 채움률(읽기 전용, 건수만)
+    uv run python -m soc.normalize reprocess [--source S] [--since T] [--limit N] [--dry-run]
+    # 이미 정규화된 알럿을 id를 유지한 채 다시 정규화한다(#334)
 
 종료 코드: 0 실패 없음, 1 실패한 건이 있거나 DB에 접속·조회하지 못함, 2 설정·환경변수 오류.
 """
 
+import argparse
 import os
 import sys
 import tomllib
 import uuid
 from collections.abc import Callable
+from datetime import UTC, datetime
+from typing import Any
 
 import psycopg
 
 from soc.api.db import DATABASE_URL_ENV
 from soc.normalize.config import ConfigError, Settings, load_settings
 from soc.normalize.report import report_lines
+from soc.normalize.reprocess import exit_code as reprocess_exit_code
+from soc.normalize.reprocess import format_result as format_reprocess
+from soc.normalize.reprocess import reprocess
 from soc.normalize.run import RunResult, exit_code, run
 from soc.normalize.tables import MappingTableError, load_tables
 
@@ -29,8 +37,10 @@ def main(argv: list[str] | None = None) -> int:
     """
     if argv == ["report"]:
         return _report_command()
+    if argv and argv[0] == "reprocess":
+        return _reprocess_command(argv[1:])
     if argv:
-        print("사용법: python -m soc.normalize [report]", file=sys.stderr)
+        print("사용법: python -m soc.normalize [report | reprocess]", file=sys.stderr)
         return 2
     return _run_command(run)
 
@@ -51,8 +61,49 @@ def _report_command() -> int:
     return 0
 
 
+def _reprocess_command(argv: list[str]) -> int:
+    """재처리 옵션을 읽어 알럿을 다시 정규화한다. 옵션이 틀리면 종료 코드 2다."""
+    parser = argparse.ArgumentParser(prog="python -m soc.normalize reprocess")
+    parser.add_argument("--source", help="새 결과의 소스(modsecurity, suricata 등)가 같은 알럿만")
+    parser.add_argument(
+        "--since", type=_since, help="alerts.time이 이 시각 이후인 알럿만(ISO 8601)"
+    )
+    parser.add_argument("--limit", type=_positive, help="읽을(정규화할) 최대 행 수")
+    parser.add_argument("--dry-run", action="store_true", help="쓰지 않고 건수만 낸다")
+    args = parser.parse_args(argv)
+
+    def action(settings: Settings, conn: psycopg.Connection, _owner: str) -> Any:
+        return reprocess(
+            settings,
+            conn,
+            source=args.source,
+            since=args.since,
+            limit=args.limit,
+            dry_run=args.dry_run,
+        )
+
+    return _run_command(action, format_reprocess, reprocess_exit_code)
+
+
+def _since(value: str) -> datetime:
+    """시각 문자열을 읽는다. 시간대가 없으면 UTC다."""
+    try:
+        parsed = datetime.fromisoformat(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError("ISO 8601 시각이어야 한다") from None
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
+
+
+def _positive(value: str) -> int:
+    if not value.isdigit() or int(value) < 1:
+        raise argparse.ArgumentTypeError("1 이상의 정수여야 한다")
+    return int(value)
+
+
 def _run_command(
-    action: Callable[[Settings, psycopg.Connection, str], RunResult],
+    action: Callable[[Settings, psycopg.Connection, str], Any],
+    format_result: Callable[[Any], str] = lambda result: _format(result),
+    code: Callable[[Any], int] = lambda result: exit_code(result),
 ) -> int:
     """설정·DB 연결을 준비하고 실행 함수 하나를 호출한다."""
     try:
@@ -77,8 +128,8 @@ def _run_command(
     except psycopg.Error:
         print("DB에 접속하지 못했거나 조회·저장에 실패했다", file=sys.stderr)
         return 1
-    print(_format(result))
-    return exit_code(result)
+    print(format_result(result))
+    return code(result)
 
 
 def _format(result: RunResult) -> str:

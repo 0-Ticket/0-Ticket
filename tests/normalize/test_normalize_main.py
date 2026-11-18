@@ -22,3 +22,20 @@ def test_retry_command_requires_write_database_url(
 
     assert retry_main() == 2
     assert "DATABASE_URL" in capsys.readouterr().err
+
+
+def test_reprocess_command_requires_write_database_url(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+
+    assert main(["reprocess", "--dry-run"]) == 2
+    assert "DATABASE_URL" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("argv", [["reprocess", "--limit", "0"], ["reprocess", "--since", "x"]])
+def test_reprocess_command_rejects_bad_options(argv: list[str]) -> None:
+    with pytest.raises(SystemExit) as stopped:
+        main(argv)
+
+    assert stopped.value.code == 2
