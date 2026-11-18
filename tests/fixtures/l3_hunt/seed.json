@@ -23,10 +23,6 @@
     {
       "id": "alt_01a19f93-1150-7000-8000-000000000001",
       "raw_id": "raw_01a19f93-1150-7000-8000-000000000001",
-      "time": 1793678340000,
-      "severity": 4,
-      "title": "Web Shell Upload",
-      "rule_id": null,
       "entities": [
         {
           "type": "ip",
@@ -42,7 +38,48 @@
       "assets": [],
       "triage": null,
       "ocsf": {
-        "class_uid": 2004
+        "class_uid": 2004,
+        "category_uid": 2,
+        "activity_id": 1,
+        "type_uid": 200401,
+        "severity_id": 4,
+        "time": 1793678340000,
+        "metadata": {
+          "version": "1.9.0",
+          "product": {
+            "name": "Elasticsearch",
+            "vendor_name": "Elastic"
+          }
+        },
+        "finding_info": {
+          "uid": "alt_01a19f93-1150-7000-8000-000000000001",
+          "title": "Web Shell Upload",
+          "analytic": {
+            "name": "Web Shell Upload",
+            "type_id": 1
+          }
+        },
+        "is_alert": true,
+        "status_id": 1,
+        "start_time": 1793678340000,
+        "end_time": 1793678340000,
+        "observables": [
+          {
+            "type_id": 2,
+            "value": "203.0.113.10"
+          },
+          {
+            "type_id": 1,
+            "value": "web-01"
+          }
+        ],
+        "evidences": [
+          {
+            "src_endpoint": {
+              "ip": "203.0.113.10"
+            }
+          }
+        ]
       },
       "details": {}
     }

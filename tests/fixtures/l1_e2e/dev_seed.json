@@ -7,15 +7,12 @@
       "expected": "benign",
       "alert": {
         "ago_ms": 3600000,
-        "severity": 3,
-        "title": "Scheduled Task Created",
-        "rule_id": "dev-l1-schtask-create",
         "entities": [
           {"type": "host", "value": "fin-ws-12", "role": "target"},
           {"type": "user", "value": "it.yoon", "role": "actor"},
           {"type": "process", "value": "schtasks.exe", "role": null}
         ],
-        "ocsf": {"class_uid": 2004, "finding_info": {"title": "Scheduled Task Created"}},
+        "ocsf": {"severity_id": 3, "finding_info": {"uid": "dev-l1-schtask-create", "title": "Scheduled Task Created", "analytic": {"uid": "dev-l1-schtask-create", "type_id": 1}}},
         "original": {"rule": "Scheduled Task Created", "host": "fin-ws-12"}
       },
       "events": [
@@ -60,15 +57,12 @@
       "expected": "benign",
       "alert": {
         "ago_ms": 7200000,
-        "severity": 3,
-        "title": "Multiple Failed Logins",
-        "rule_id": "dev-l1-failed-logins",
         "entities": [
           {"type": "user", "value": "svc-monitor", "role": "target"},
           {"type": "ip", "value": "192.0.2.10", "role": "src"},
           {"type": "host", "value": "db-03", "role": "dst"}
         ],
-        "ocsf": {"class_uid": 2004, "finding_info": {"title": "Multiple Failed Logins"}},
+        "ocsf": {"severity_id": 3, "finding_info": {"uid": "dev-l1-failed-logins", "title": "Multiple Failed Logins", "analytic": {"uid": "dev-l1-failed-logins", "type_id": 1}}},
         "original": {"rule": "Multiple Failed Logins", "user": "svc-monitor"}
       },
       "events": [
@@ -162,15 +156,12 @@
       "expected": "malicious",
       "alert": {
         "ago_ms": 5400000,
-        "severity": 5,
-        "title": "Encoded PowerShell Command",
-        "rule_id": "dev-l1-encoded-powershell",
         "entities": [
           {"type": "host", "value": "hr-ws-07", "role": "target"},
           {"type": "user", "value": "hana.lee", "role": "actor"},
           {"type": "process", "value": "powershell.exe", "role": null}
         ],
-        "ocsf": {"class_uid": 2004, "finding_info": {"title": "Encoded PowerShell Command"}},
+        "ocsf": {"severity_id": 5, "finding_info": {"uid": "dev-l1-encoded-powershell", "title": "Encoded PowerShell Command", "analytic": {"uid": "dev-l1-encoded-powershell", "type_id": 1}}},
         "original": {"rule": "Encoded PowerShell Command", "host": "hr-ws-07"}
       },
       "events": [
@@ -229,15 +220,12 @@
       "expected": "malicious",
       "alert": {
         "ago_ms": 10800000,
-        "severity": 4,
-        "title": "SQL Injection Attempt",
-        "rule_id": "dev-l1-sqli",
         "entities": [
           {"type": "ip", "value": "203.0.113.99", "role": "src"},
           {"type": "host", "value": "store-web-01", "role": "dst"},
           {"type": "url", "value": "https://store.example.com/product", "role": "target"}
         ],
-        "ocsf": {"class_uid": 2004, "finding_info": {"title": "SQL Injection Attempt"}},
+        "ocsf": {"severity_id": 4, "finding_info": {"uid": "dev-l1-sqli", "title": "SQL Injection Attempt", "analytic": {"uid": "dev-l1-sqli", "type_id": 1}}},
         "original": {"rule": "SQL Injection Attempt", "host": "store-web-01"}
       },
       "events": [
@@ -293,15 +281,12 @@
       "expected": "undetermined",
       "alert": {
         "ago_ms": 14400000,
-        "severity": 3,
-        "title": "Login From New Location",
-        "rule_id": "dev-l1-new-location",
         "entities": [
           {"type": "user", "value": "jiwoo.kang", "role": "actor"},
           {"type": "ip", "value": "198.51.100.140", "role": "src"},
           {"type": "host", "value": "mail-gw", "role": "dst"}
         ],
-        "ocsf": {"class_uid": 2004, "finding_info": {"title": "Login From New Location"}},
+        "ocsf": {"severity_id": 3, "finding_info": {"uid": "dev-l1-new-location", "title": "Login From New Location", "analytic": {"uid": "dev-l1-new-location", "type_id": 1}}},
         "original": {"rule": "Login From New Location", "user": "jiwoo.kang"}
       },
       "events": [
@@ -334,14 +319,11 @@
       "expected": "undetermined",
       "alert": {
         "ago_ms": 18000000,
-        "severity": 2,
-        "title": "Port Scan Detected",
-        "rule_id": "dev-l1-port-scan",
         "entities": [
           {"type": "ip", "value": "198.51.100.60", "role": "src"},
           {"type": "host", "value": "api-02", "role": "dst"}
         ],
-        "ocsf": {"class_uid": 2004, "finding_info": {"title": "Port Scan Detected"}},
+        "ocsf": {"severity_id": 2, "finding_info": {"uid": "dev-l1-port-scan", "title": "Port Scan Detected", "analytic": {"uid": "dev-l1-port-scan", "type_id": 1}}},
         "original": {"rule": "Port Scan Detected", "src": "198.51.100.60"}
       },
       "events": [
