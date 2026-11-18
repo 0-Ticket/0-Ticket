@@ -1,0 +1,18 @@
+# 테스트용 소스 표. 엔티티 항목의 when(field 문자열·목록, equals)과 소스 entries의 덮어쓰기를 확인한다
+detect:
+  - field: kind
+    exists: true
+entries:
+  - target: finding_info.title
+    from: [custom.title]
+entities:
+  - type: ip
+    role: src
+    from: [ip.a]
+    transform: ip
+    when: {field: direction, equals: IN}
+  - type: ip
+    role: src
+    from: [ip.b]
+    transform: ip
+    when: {field: [direction_old, direction], equals: OUT}

@@ -106,6 +106,8 @@ def test_samples_become_a_detection_finding(case: dict[str, Any]) -> None:
     assert row["title"] == ocsf["finding_info"]["title"] == expect["title"]
     assert row["rule_id"] == expect["rule_id"]
     assert ocsf["message"] == expect["message"]
+    if "desc" in expect:
+        assert ocsf["finding_info"]["desc"] == expect["desc"]
     assert ocsf.get("risk_score") == expect.get("risk_score")
     assert attack_ids(ocsf) == expect["attacks"]
     assert triples(row) == expect["entities"]
