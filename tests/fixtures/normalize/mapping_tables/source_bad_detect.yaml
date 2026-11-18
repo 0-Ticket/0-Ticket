@@ -1,0 +1,5 @@
+# 조건식은 넣을 수 없다. field와 equals 또는 exists만 허용한다
+detect:
+  - field: event.module
+    regex: "suri.*"
+entries: []

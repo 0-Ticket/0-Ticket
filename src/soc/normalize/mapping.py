@@ -5,7 +5,6 @@ _value가 평평한 키를 먼저, 없으면 중첩 경로를 읽는다.
 """
 
 import ipaddress
-import math
 import re
 from dataclasses import dataclass
 from datetime import datetime
@@ -15,6 +14,8 @@ from soc.contracts import to_epoch_ms
 from soc.ids import new_id
 from soc.normalize.errors import NormalizeError
 from soc.normalize.mask import mask_headers
+from soc.normalize.paths import read_value as _value
+from soc.normalize.tables import COMMON, apply_table, load_tables
 from soc.tools.local_intel import normalize_technique_id
 
 OCSF_VERSION = "1.9.0"
@@ -22,7 +23,6 @@ OCSF_VERSION = "1.9.0"
 _WEB_INDEX = re.compile(r"^(?:\.ds-)?logs-(?:nginx|apache)\.access-")
 _CLOUD_INDEX = re.compile(r"^(?:\.ds-)?logs-(?:aws\.cloudtrail|azure\.activitylogs|gcp\.audit)-")
 
-SEVERITY_IDS = {"low": 2, "medium": 3, "high": 4, "critical": 5}
 HTTP_ACTIVITY_IDS = {
     "CONNECT": 1,
     "DELETE": 2,
@@ -73,6 +73,13 @@ OBSERVABLE_TYPE_IDS = {
     "process": 9,
 }
 ANALYTIC_RULE = 1
+# common 표에서 값을 얻지 못하면 해석할 수 없는 알럿으로 보고 폴백하는 target과 사유(D-059).
+# 순서대로 본다
+_FALLBACK_TARGETS = (
+    ("finding_info.uid", "missing_uid"),
+    ("finding_info.title", "missing_title"),
+    ("time", "bad_time"),
+)
 _HOST_PORT = re.compile(r"\[([^\]]+)\](?::\d{1,5})?|([^:\[\]]+):\d{1,5}")
 
 
@@ -204,54 +211,36 @@ def _finding(raw: RawRow) -> Result:
     source = raw.original.get("_source")
     if not isinstance(source, dict):
         raise _Fallback("invalid_source")
-    uid = _text(source, "kibana.alert.uuid") or _text(raw.original, "_id")
-    if uid is None:
-        raise _Fallback("missing_uid")
-    title = _text(source, "kibana.alert.rule.name")
-    if title is None:
-        raise _Fallback("missing_title")
-    try:
-        time_ms = _time_ms(source, "kibana.alert.start", "@timestamp")
-    except NormalizeError:
-        raise _Fallback("bad_time") from None
+    common = apply_table(load_tables()[COMMON], raw.original)
+    for target, reason in _FALLBACK_TARGETS:
+        if target not in common.values:
+            raise _Fallback(reason)
+    time_ms = common.values["time"]
     original_ms = _optional_time_ms(source, "kibana.alert.original_time")
     start_ms = time_ms if original_ms is None else original_ms
-    severity_name = _text(source, "kibana.alert.severity")
-    severity = SEVERITY_IDS.get(severity_name, UNKNOWN_ID)
-    rule_id = _text(source, "kibana.alert.rule.rule_id")
+    severity = common.values.get("severity_id", UNKNOWN_ID)
+    rule_id = common.values.get("finding_info.analytic.uid")
+    title = common.values["finding_info.title"]
     alert_source = _detect_source(source)
-    incomplete = [
-        path
-        for path, found in (
-            ("finding_info.analytic.uid", rule_id is not None),
-            ("severity_id", severity_name in SEVERITY_IDS),
-            ("start_time", original_ms is not None),
-        )
-        if not found
-    ]
+    incomplete = [*common.missing, *(["start_time"] if original_ms is None else [])]
     entities, bad_ips = _alert_entities(source)
-    description = _text(source, "kibana.alert.rule.description")
     destination = _text(source, "destination.ip")
-    extra = {
-        "finding_info": {
-            "uid": uid,
-            "title": title,
-            "desc": description,
-            "created_time": time_ms,
-            "analytic": {"name": title, "uid": rule_id, "type_id": ANALYTIC_RULE},
-            "attacks": _attacks(source) or None,
-        },
-        "is_alert": True,
-        "status_id": 1,
-        "start_time": start_ms,
-        "end_time": start_ms,
-        "message": description or title,
-        "risk_score": _rounded(_value(source, "kibana.alert.risk_score")),
-        "observables": _observables(entities) or None,
-        "evidences": [{"dst_endpoint": {"ip": destination}}]
-        if destination is not None and _is_ip(destination)
-        else None,
-    }
+    extra = _nested(common.values)
+    finding_info = extra["finding_info"]
+    finding_info["analytic"]["type_id"] = ANALYTIC_RULE
+    finding_info["attacks"] = _attacks(source) or None
+    extra.update(
+        {
+            "is_alert": True,
+            "status_id": 1,
+            "start_time": start_ms,
+            "end_time": start_ms,
+            "observables": _observables(entities) or None,
+            "evidences": [{"dst_endpoint": {"ip": destination}}]
+            if destination is not None and _is_ip(destination)
+            else None,
+        }
+    )
     ocsf = _ocsf(2004, 2, 1, time_ms, severity, extra)
     row = {
         "id": new_id("alt"),
@@ -278,6 +267,22 @@ def _finding(raw: RawRow) -> Result:
         (*incomplete, *bad_ips),
         alert_source,
     )
+
+
+def _nested(values: dict[str, Any]) -> dict[str, Any]:
+    """점으로 이은 target 경로의 값들을 중첩 객체로 만든다.
+
+    Args:
+        values: target 경로 → 값. 배열(`[]`) 경로는 다루지 않는다.
+    """
+    nested: dict[str, Any] = {}
+    for path, value in values.items():
+        *parents, leaf = path.split(".")
+        node = nested
+        for part in parents:
+            node = node.setdefault(part, {})
+        node[leaf] = value
+    return nested
 
 
 def _detect_source(source: dict[str, Any]) -> str:
@@ -396,17 +401,6 @@ def _observables(entities: list[dict[str, Any]]) -> list[dict[str, Any]]:
         type_id = OBSERVABLE_TYPE_IDS[entity["type"]]
         seen.setdefault((type_id, entity["value"]), {"type_id": type_id, "value": entity["value"]})
     return list(seen.values())
-
-
-def _rounded(value: Any) -> int | None:
-    """유한한 숫자를 반올림한 정수로 바꾼다. 그 밖은 None.
-
-    Args:
-        value: kibana.alert.risk_score 값.
-    """
-    if isinstance(value, bool) or not isinstance(value, int | float) or not math.isfinite(value):
-        return None
-    return round(value)
 
 
 def _optional_time_ms(source: dict[str, Any], path: str) -> int | None:
@@ -610,23 +604,6 @@ def _source(raw: RawRow) -> dict[str, Any]:
     if not isinstance(source, dict):
         raise NormalizeError("validation_failed")
     return source
-
-
-def _value(source: dict[str, Any], path: str) -> Any:
-    """평평한 점 키를 먼저, 없으면 중첩 경로를 따라 값을 읽는다. 없으면 None.
-
-    Args:
-        source: raw.original["_source"].
-        path: 점으로 이은 필드 이름. 예: "http.response.status_code".
-    """
-    if path in source:
-        return source[path]
-    node: Any = source
-    for part in path.split("."):
-        if not isinstance(node, dict) or part not in node:
-            return None
-        node = node[part]
-    return node
 
 
 def _text(source: dict[str, Any], path: str) -> str | None:

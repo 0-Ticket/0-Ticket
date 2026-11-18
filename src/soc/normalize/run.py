@@ -18,6 +18,7 @@ from soc.normalize.errors import NormalizeError
 from soc.normalize.mapping import RawRow, Result, fallback_alert, normalize
 from soc.normalize.ocsf_schema import validate_ocsf
 from soc.normalize.store import claim_failed_batch, claim_pending_batch, save_failure, save_success
+from soc.normalize.tables import load_tables
 
 
 @dataclass
@@ -67,7 +68,12 @@ def _run_batch(
     owner: str,
     claim: Callable[[psycopg.Connection, str, int, int], list[RawRow]],
 ) -> RunResult:
-    """한 상태 종류의 원본을 맡아 건마다 변환·검증·자산 조회·저장한다."""
+    """한 상태 종류의 원본을 맡아 건마다 변환·검증·자산 조회·저장한다.
+
+    Raises:
+        MappingTableError: 매핑표가 틀렸다. 원본을 맡기 전에 나므로 처리 중간에 터지지 않는다.
+    """
+    load_tables()
     result = RunResult()
     for raw in claim(conn, owner, settings.batch_size, settings.lease_seconds):
         result.claimed += 1

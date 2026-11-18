@@ -1,0 +1,11 @@
+# 테스트용 소스 표. detect 형식(필드 equals 값, 키 존재)과 배열 target 표기를 확인한다
+detect:
+  - field: event.module
+    equals: suricata
+  - field: kibana.alert.original_event.module
+    equals: suricata
+entries:
+  - target: evidences[].src_endpoint.ip
+    from: [source.ip]
+  - target: evidences[].dst_endpoint.ip
+    from: [destination.ip]

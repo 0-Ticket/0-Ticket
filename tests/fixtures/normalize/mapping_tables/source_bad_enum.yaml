@@ -1,0 +1,5 @@
+# severity 변환은 4·5를 내보낼 수 있는데 activity_id enum에는 없다
+entries:
+  - target: activity_id
+    from: [kibana.alert.severity]
+    transform: severity

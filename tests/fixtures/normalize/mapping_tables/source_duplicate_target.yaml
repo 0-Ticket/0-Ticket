@@ -1,0 +1,5 @@
+entries:
+  - target: finding_info.desc
+    from: [a]
+  - target: finding_info.desc
+    from: [b]
