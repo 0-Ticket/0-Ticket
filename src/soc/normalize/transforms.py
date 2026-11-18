@@ -4,7 +4,9 @@
 values는 검증기가 target의 enum과 맞는지 볼 때 쓴다.
 """
 
+import ipaddress
 import math
+import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
@@ -60,4 +62,62 @@ TRANSFORMS: dict[str, Transform] = {
         SEVERITY_IDS.get, values=frozenset(str(value) for value in SEVERITY_IDS.values())
     ),
     "round_int": Transform(_round_int, accepts=lambda value: value is not None),
+}
+
+
+# host:port, [v6]:port, [v6]. 맨 IPv6(콜론 여러 개)는 맞지 않는다
+_HOST_PORT = re.compile(r"\[([^\]]+)\](?::\d{1,5})?|([^:\[\]]+):\d{1,5}")
+
+
+def is_ip(value: str) -> bool:
+    """IPv4·IPv6 형식이면 True.
+
+    Args:
+        value: 검사할 문자열.
+    """
+    try:
+        ipaddress.ip_address(value)
+    except ValueError:
+        return False
+    return True
+
+
+def strip_port(value: str) -> str:
+    """host:port, [v6]:port, [v6]에서 포트와 대괄호를 뗀다. 맨 IPv6는 그대로 둔다.
+
+    Args:
+        value: domain 후보 값.
+    """
+    match = _HOST_PORT.fullmatch(value)
+    return (match.group(1) or match.group(2)) if match else value
+
+
+@dataclass(frozen=True)
+class EntityTransform:
+    """엔티티 항목의 변환. `entries` 변환과 따로 등록한다(D-062).
+
+    Attributes:
+        convert: (선언한 type, 원본 문자열)을 받아 (type, 값)을 돌려준다.
+            읽을 수 없으면 NormalizeError.
+    """
+
+    convert: Callable[[str, str], tuple[str, str]]
+
+
+def _ip(entity_type: str, value: str) -> tuple[str, str]:
+    """IP 형식만 받는다."""
+    if not is_ip(value):
+        raise NormalizeError("validation_failed")
+    return entity_type, value
+
+
+def _domain_or_ip(_entity_type: str, value: str) -> tuple[str, str]:
+    """포트를 떼고 IP 형식이면 type을 ip로, 아니면 domain으로 한다."""
+    host = strip_port(value)
+    return ("ip" if is_ip(host) else "domain"), host
+
+
+ENTITY_TRANSFORMS: dict[str, EntityTransform] = {
+    "ip": EntityTransform(_ip),
+    "domain_or_ip": EntityTransform(_domain_or_ip),
 }

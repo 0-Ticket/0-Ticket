@@ -1,6 +1,6 @@
 # 소스와 무관한 알럿 대응(D-061). 필드 하나를 읽어 옮기는 규칙만 둔다.
-# 폴백 조건(uid·title·time 누락), 상수, start_time 대체, attacks, observables, 엔티티,
-# evidences, metadata는 코드(mapping.py)가 채운다.
+# 폴백 조건(uid·title·time 누락), 상수, start_time 대체, attacks, observables,
+# evidences, metadata는 코드(mapping.py)가 채운다. 엔티티는 아래 entities가 선언한다(D-062).
 # required: 얻지 못하면 partial + missing_fields로 기록한다. 순서가 missing_fields의 순서다.
 entries:
   - target: finding_info.title
@@ -29,3 +29,30 @@ entries:
   - target: finding_info.created_time
     from: [kibana.alert.start, "@timestamp"]
     transform: time
+
+# ECS 표준 엔티티(D-059의 role). 소스 표가 없는 알럿에도 적용된다. 센서 필드(host.name, agent.*)는 읽지 않는다.
+# 순서가 엔티티 목록의 순서다. url.domain과 destination.domain은 둘 다 엔티티가 된다.
+# ip 변환이 값을 읽지 못하면 role에서 누락 경로(evidences[].src_endpoint.ip 등)를 만든다.
+entities:
+  - type: ip
+    role: src
+    from: [source.ip]
+    transform: ip
+  - type: ip
+    role: dst
+    from: [destination.ip]
+    transform: ip
+  - type: user
+    role: actor
+    from: [user.name]
+  - type: domain
+    role: dst
+    from: [url.domain]
+    transform: domain_or_ip
+  - type: domain
+    role: dst
+    from: [destination.domain]
+    transform: domain_or_ip
+  - type: url
+    role: dst
+    from: [url.original]

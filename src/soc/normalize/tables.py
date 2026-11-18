@@ -1,24 +1,37 @@
 """소스별 매핑표(YAML)를 읽고 원본 hit에 적용한다(D-060, D-061).
 
-표 한 파일은 `entries`(target·from·transform·required)와 선택 `detect`를 가진다.
+표 한 파일은 `entries`(target·from·transform·required), 선택 `entities`(type·role·from·transform),
+선택 `detect`를 가진다.
 `common.yaml`은 소스와 무관한 단순 대응이고 그 밖의 파일은 소스 이름이 파일 이름이다.
 """
 
 from dataclasses import dataclass, field
 from functools import cache
 from pathlib import Path
-from typing import Any
+from typing import Any, get_args
 
 import yaml
 
+from soc.contracts.generated.common.entity_schema import Entity as EntityContract
 from soc.normalize.errors import NormalizeError
 from soc.normalize.paths import read_value
-from soc.normalize.transforms import COPY, TRANSFORMS
+from soc.normalize.transforms import COPY, ENTITY_TRANSFORMS, TRANSFORMS, is_text
+
+ENTITY_TYPES = frozenset(get_args(EntityContract.model_fields["type"].annotation))
+# role은 `Literal[...] | None`이라 한 겹 더 풀어 문자열만 모은다
+ENTITY_ROLES = frozenset(
+    role
+    for part in get_args(EntityContract.model_fields["role"].annotation)
+    for role in get_args(part)
+)
+# ip 변환이 틀린 값을 만났을 때 누락으로 적을 OCSF 경로. role이 정한다
+_IP_GAPS = {"src": "evidences[].src_endpoint.ip", "dst": "evidences[].dst_endpoint.ip"}
 
 TABLE_DIR = Path(__file__).parent / "mapping_tables"
 COMMON = "common"
-_TABLE_KEYS = {"detect", "entries"}
+_TABLE_KEYS = {"detect", "entries", "entities"}
 _ENTRY_KEYS = {"target", "from", "transform", "required"}
+_ENTITY_KEYS = {"type", "role", "from", "transform"}
 
 
 class MappingTableError(Exception):
@@ -43,16 +56,33 @@ class Entry:
 
 
 @dataclass(frozen=True)
+class EntityRule:
+    """엔티티 항목 하나.
+
+    Attributes:
+        type: 엔티티 종류(계약의 허용 값). 변환이 바꿀 수 있다.
+        role: 엔티티 역할(계약의 허용 값). 생략하면 None.
+        sources: 원본 경로 목록. 앞에서부터 처음 있는 값을 쓴다.
+        transform: 등록된 엔티티 변환 이름. 없으면 문자열을 그대로 쓴다.
+    """
+
+    type: str
+    role: str | None
+    sources: tuple[str, ...]
+    transform: str | None = None
+
+
+@dataclass(frozen=True)
 class Condition:
     """detect 조건 하나. equals와 exists 중 하나만 가진다.
 
     Attributes:
-        field: 읽을 원본 경로(`from`과 같은 문법).
+        fields: 읽을 원본 경로 목록(`from`과 같은 문법). 앞에서부터 처음 있는 값을 쓴다.
         equals: 필드 값이 이 문자열과 같으면 맞다.
         exists: True면 필드 값이 있으면(None이 아니면) 맞다.
     """
 
-    field: str
+    fields: tuple[str, ...]
     equals: str | None = None
     exists: bool = False
 
@@ -65,11 +95,13 @@ class Table:
         name: 표 이름(파일 이름에서 확장자를 뗀 것).
         entries: 항목들. 적용 순서이자 missing_fields의 순서다.
         detect: 소스 판별 조건들. 하나라도 맞으면 이 소스다.
+        entities: 엔티티 항목들. 적용 순서가 엔티티 목록의 순서다.
     """
 
     name: str
     entries: tuple[Entry, ...]
     detect: tuple[Condition, ...] = ()
+    entities: tuple[EntityRule, ...] = ()
 
 
 @dataclass
@@ -85,6 +117,19 @@ class Applied:
     values: dict[str, Any] = field(default_factory=dict)
     missing: list[str] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
+
+
+@dataclass
+class AppliedEntities:
+    """엔티티 항목들을 원본 하나에 적용한 결과. 여러 표에 걸쳐 쌓을 수 있다.
+
+    Attributes:
+        entities: {"type", "value", "role"} 목록. 같은 것은 한 번만 둔다.
+        missing: IP가 아니라서 얻지 못한 OCSF 경로. 같은 경로는 한 번만 둔다.
+    """
+
+    entities: list[dict[str, Any]] = field(default_factory=list)
+    missing: list[str] = field(default_factory=list)
 
 
 def load_tables(directory: Path | None = None) -> dict[str, Table]:
@@ -140,7 +185,15 @@ def parse_table(name: str, document: Any) -> Table:
     raw_detect = document.get("detect", [])
     if not isinstance(raw_detect, list):
         raise MappingTableError("detect는 목록이어야 한다")
-    return Table(name, entries, tuple(_condition(item) for item in raw_detect))
+    raw_entities = document.get("entities", [])
+    if not isinstance(raw_entities, list):
+        raise MappingTableError("entities는 목록이어야 한다")
+    return Table(
+        name,
+        entries,
+        tuple(_condition(item) for item in raw_detect),
+        tuple(_entity(item) for item in raw_entities),
+    )
 
 
 def _entry(item: Any) -> Entry:
@@ -161,15 +214,38 @@ def _entry(item: Any) -> Entry:
     return Entry(target, tuple(sources), transform, required)
 
 
+def _entity(item: Any) -> EntityRule:
+    """엔티티 항목 하나를 검사한다. type·role은 계약의 허용 값이어야 한다."""
+    if not isinstance(item, dict) or not set(item) <= _ENTITY_KEYS:
+        raise MappingTableError("엔티티 항목은 type, role, from, transform만 가진 객체여야 한다")
+    entity_type, role, sources = item.get("type"), item.get("role"), item.get("from")
+    if entity_type not in ENTITY_TYPES:
+        raise MappingTableError(f"계약에 없는 엔티티 type {entity_type!r}")
+    if role is not None and role not in ENTITY_ROLES:
+        raise MappingTableError(f"{entity_type}: 계약에 없는 role {role!r}")
+    if not isinstance(sources, list) or not sources or not all(_is_name(p) for p in sources):
+        raise MappingTableError(
+            f"{entity_type}: from은 경로 문자열의 비어 있지 않은 목록이어야 한다"
+        )
+    transform = item.get("transform")
+    if transform is not None and transform not in ENTITY_TRANSFORMS:
+        raise MappingTableError(f"{entity_type}: 등록되지 않은 엔티티 transform {transform}")
+    if transform == "ip" and role not in _IP_GAPS:
+        raise MappingTableError(f"{entity_type}: ip 변환은 role이 src 또는 dst여야 한다")
+    return EntityRule(entity_type, role, tuple(sources), transform)
+
+
 def _condition(item: Any) -> Condition:
-    """detect 조건 하나를 검사한다. `field`와 `equals` 또는 `exists: true`만 허용한다."""
-    if not isinstance(item, dict) or not _is_name(item.get("field")):
+    """detect 조건 하나를 검사한다. `field`(문자열 또는 목록)와 `equals`·`exists: true` 중 하나."""
+    raw = item.get("field") if isinstance(item, dict) else None
+    fields = tuple(raw) if isinstance(raw, list) and raw else (raw,)
+    if not all(_is_name(name) for name in fields):
         raise MappingTableError("detect 조건은 field를 가져야 한다")
     rest = set(item) - {"field"}
     if rest == {"equals"} and isinstance(item["equals"], str):
-        return Condition(item["field"], equals=item["equals"])
+        return Condition(fields, equals=item["equals"])
     if rest == {"exists"} and item["exists"] is True:
-        return Condition(item["field"], exists=True)
+        return Condition(fields, exists=True)
     raise MappingTableError("detect 조건은 field와 equals(문자열) 또는 exists(true)만 가진다")
 
 
@@ -223,6 +299,39 @@ def apply_table(table: Table, hit: dict[str, Any]) -> Applied:
     return applied
 
 
+def apply_entities(
+    table: Table, hit: dict[str, Any], applied: AppliedEntities | None = None
+) -> AppliedEntities:
+    """표의 엔티티 항목을 순서대로 원본 hit에 적용한다.
+
+    `from`은 처음 있는 문자열 값을 쓴다. 값이 있는데 변환이 읽지 못하면(ip가 아님) 다음 경로로
+    넘어가지 않고 엔티티를 만들지 않으며, ip 변환이면 role에서 누락 경로를 기록한다.
+
+    Args:
+        table: 적용할 표.
+        hit: raw.original.
+        applied: 앞 표의 결과. 주면 이어서 쌓는다(같은 엔티티·경로는 한 번만).
+    """
+    applied = applied or AppliedEntities()
+    for rule in table.entities:
+        value = next((v for v in (_read(hit, path) for path in rule.sources) if is_text(v)), None)
+        if value is None:
+            continue
+        entity_type = rule.type
+        if rule.transform:
+            try:
+                entity_type, value = ENTITY_TRANSFORMS[rule.transform].convert(entity_type, value)
+            except NormalizeError:
+                gap = _IP_GAPS.get(rule.role or "")
+                if gap and gap not in applied.missing:
+                    applied.missing.append(gap)
+                continue
+        entity = {"type": entity_type, "value": value, "role": rule.role}
+        if entity not in applied.entities:
+            applied.entities.append(entity)
+    return applied
+
+
 def matching_source(tables: dict[str, Table], hit: dict[str, Any]) -> str | None:
     """detect 조건이 맞는 첫 소스 표의 이름을 돌려준다. 표 이름 순서로 본다. 없으면 None.
 
@@ -237,6 +346,8 @@ def matching_source(tables: dict[str, Table], hit: dict[str, Any]) -> str | None
 
 
 def _matches(condition: Condition, hit: dict[str, Any]) -> bool:
-    """조건 하나가 hit에 맞는가."""
-    value = _read(hit, condition.field)
-    return value is not None if condition.exists else value == condition.equals
+    """조건 하나가 hit에 맞는가. equals는 필드 목록에서 처음 있는 문자열 값으로 비교한다."""
+    values = [_read(hit, path) for path in condition.fields]
+    if condition.exists:
+        return any(value is not None for value in values)
+    return next((value for value in values if is_text(value)), None) == condition.equals

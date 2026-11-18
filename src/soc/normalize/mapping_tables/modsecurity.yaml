@@ -1,0 +1,19 @@
+# ModSecurity 알럿. source.ip만 있는 common 엔티티에 transaction.*의 목적지를 더한다(실제 알럿 54건 모두에 있다).
+# headers.Host는 45건에만 있어 쓰지 않는다. host_port는 계약에 포트 칸이 없어 읽지 않는다.
+detect:
+  - field: [event.module, kibana.alert.original_event.module]
+    equals: modsecurity
+entries: []
+entities:
+  - type: ip
+    role: src
+    from: [transaction.client_ip]
+    transform: ip
+  - type: ip
+    role: dst
+    from: [transaction.host_ip]
+    transform: ip
+  - type: domain
+    role: dst
+    from: [transaction.request.hostname]
+    transform: domain_or_ip

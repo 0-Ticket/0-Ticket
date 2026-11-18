@@ -105,8 +105,13 @@
         "host": {"name": "26d0b29d0b9a"},
         "source": {"ip": "192.0.2.4"},
         "transaction": {
+          "client_ip": "192.0.2.4",
           "host_ip": "192.0.2.3",
-          "request": {"headers": {"Host": "198.51.100.1:8080", "Cookie": "session=SYNTHETIC-COOKIE-VALUE"}}
+          "host_port": 8080,
+          "request": {
+            "hostname": "198.51.100.1:8080",
+            "headers": {"Host": "198.51.100.1:8080", "Cookie": "session=SYNTHETIC-COOKIE-VALUE"}
+          }
         },
         "kibana.alert.uuid": "8790bdc08eeae783b95b4bed8a4f68543384c1fcd0226ece8d27a058186ba601",
         "kibana.alert.start": "2026-11-14T12:48:03.252Z",
@@ -134,7 +139,7 @@
       "message": "ModSecurity가 SQLi를 탐지하고 403으로 차단",
       "risk_score": 73,
       "attacks": ["T1190"],
-      "entities": [["ip", "192.0.2.4", "src"]]
+      "entities": [["ip", "192.0.2.4", "src"], ["ip", "192.0.2.3", "dst"], ["ip", "198.51.100.1", "dst"]]
     }
   },
   {
@@ -145,7 +150,15 @@
       "_source": {
         "@timestamp": "2026-11-06T08:41:15.355Z",
         "event": {"module": "modsecurity"},
+        "host": {"name": "26d0b29d0b9a"},
+        "agent": {"name": "26d0b29d0b9a", "type": "filebeat"},
         "source": {"ip": "203.0.113.4"},
+        "transaction": {
+          "client_ip": "203.0.113.4",
+          "host_ip": "192.0.2.3",
+          "host_port": 8080,
+          "request": {"hostname": "www.example.com"}
+        },
         "kibana.alert.uuid": "79f1243a2b79199ec2e95817e5fcf894228d5a9fba27ee8811dba7206b79d278",
         "kibana.alert.start": "2026-11-06T08:41:15.367Z",
         "kibana.alert.original_time": "2026-11-06T08:40:22.328Z",
@@ -172,7 +185,7 @@
       "message": "IRLAB WAF XSS 차단",
       "risk_score": 73,
       "attacks": ["T1190", "T1059.007"],
-      "entities": [["ip", "203.0.113.4", "src"]]
+      "entities": [["ip", "203.0.113.4", "src"], ["ip", "192.0.2.3", "dst"], ["domain", "www.example.com", "dst"]]
     }
   },
   {

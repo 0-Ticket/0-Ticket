@@ -4,7 +4,6 @@
 _value가 평평한 키를 먼저, 없으면 중첩 경로를 읽는다.
 """
 
-import ipaddress
 import re
 from dataclasses import dataclass
 from datetime import datetime
@@ -15,7 +14,14 @@ from soc.ids import new_id
 from soc.normalize.errors import NormalizeError
 from soc.normalize.mask import mask_headers
 from soc.normalize.paths import read_value as _value
-from soc.normalize.tables import COMMON, apply_table, load_tables
+from soc.normalize.tables import (
+    COMMON,
+    apply_entities,
+    apply_table,
+    load_tables,
+    matching_source,
+)
+from soc.normalize.transforms import is_ip
 from soc.tools.local_intel import normalize_technique_id
 
 OCSF_VERSION = "1.9.0"
@@ -60,7 +66,6 @@ ENTITY_FIELDS = (
 UNKNOWN_ID = 0
 OTHER_ID = 99
 MAX_DIGITS = 9
-ALERT_SOURCES = ("suricata", "modsecurity")
 # OCSF observable type_id(1.9.0): Hostname 1, IP Address 2, User Name 4, URL String 6, Hash 8,
 # Process Name 9
 OBSERVABLE_TYPE_IDS = {
@@ -80,7 +85,6 @@ _FALLBACK_TARGETS = (
     ("finding_info.title", "missing_title"),
     ("time", "bad_time"),
 )
-_HOST_PORT = re.compile(r"\[([^\]]+)\](?::\d{1,5})?|([^:\[\]]+):\d{1,5}")
 
 
 @dataclass(frozen=True)
@@ -211,7 +215,8 @@ def _finding(raw: RawRow) -> Result:
     source = raw.original.get("_source")
     if not isinstance(source, dict):
         raise _Fallback("invalid_source")
-    common = apply_table(load_tables()[COMMON], raw.original)
+    tables = load_tables()
+    common = apply_table(tables[COMMON], raw.original)
     for target, reason in _FALLBACK_TARGETS:
         if target not in common.values:
             raise _Fallback(reason)
@@ -221,9 +226,12 @@ def _finding(raw: RawRow) -> Result:
     severity = common.values.get("severity_id", UNKNOWN_ID)
     rule_id = common.values.get("finding_info.analytic.uid")
     title = common.values["finding_info.title"]
-    alert_source = _detect_source(source)
+    alert_source = _detect_source(raw.original, source)
     incomplete = [*common.missing, *(["start_time"] if original_ms is None else [])]
-    entities, bad_ips = _alert_entities(source)
+    found = apply_entities(tables[COMMON], raw.original)
+    if alert_source in tables:
+        apply_entities(tables[alert_source], raw.original, found)
+    entities, bad_ips = found.entities, found.missing
     destination = _text(source, "destination.ip")
     extra = _nested(common.values)
     finding_info = extra["finding_info"]
@@ -285,82 +293,22 @@ def _nested(values: dict[str, Any]) -> dict[str, Any]:
     return nested
 
 
-def _detect_source(source: dict[str, Any]) -> str:
-    """알럿 소스를 고른다. event.module, 없으면 kibana.alert.original_event.module, 그것도 없으면
-    최상위 guardduty 키로 판별한다.
+def _detect_source(hit: dict[str, Any], source: dict[str, Any]) -> str:
+    """알럿 소스를 고른다. 소스 표의 detect, 없으면 최상위 guardduty 키(코드), 없으면 unknown.
 
     Args:
+        hit: raw.original.
         source: raw.original["_source"].
     """
-    module = _text(source, "event.module") or _text(source, "kibana.alert.original_event.module")
-    if module in ALERT_SOURCES:
-        return module
+    name = matching_source(load_tables(), hit)
+    if name is not None:
+        return name
     return "guardduty" if isinstance(source.get("guardduty"), dict) else "unknown"
 
 
-def _alert_entities(source: dict[str, Any]) -> tuple[list[dict[str, Any]], list[str]]:
-    """ECS 표준 필드에서 Alert 엔티티를 만든다. 센서 필드(host.name, agent.*)는 읽지 않는다.
-
-    Args:
-        source: raw.original["_source"].
-
-    Returns:
-        (엔티티 목록, 틀린 IP라서 얻지 못한 OCSF 경로 목록).
-    """
-    entities: list[dict[str, Any]] = []
-    missing: list[str] = []
-
-    def add(entity_type: str, value: str, role: str) -> None:
-        entity = {"type": entity_type, "value": value, "role": role}
-        if entity not in entities:
-            entities.append(entity)
-
-    for path, role, gap in (
-        ("source.ip", "src", "evidences[].src_endpoint.ip"),
-        ("destination.ip", "dst", "evidences[].dst_endpoint.ip"),
-    ):
-        value = _text(source, path)
-        if value is None:
-            continue
-        if _is_ip(value):
-            add("ip", value, role)
-        else:
-            missing.append(gap)
-    user = _text(source, "user.name")
-    if user is not None:
-        add("user", user, "actor")
-    for path in ("url.domain", "destination.domain"):
-        value = _text(source, path)
-        if value is not None:
-            host = _strip_port(value)
-            add("ip" if _is_ip(host) else "domain", host, "dst")
-    url = _text(source, "url.original")
-    if url is not None:
-        add("url", url, "dst")
-    return entities, missing
-
-
-def _strip_port(value: str) -> str:
-    """host:port, [v6]:port, [v6]에서 포트와 대괄호를 뗀다. 맨 IPv6(콜론 여러 개)는 그대로 둔다.
-
-    Args:
-        value: domain 후보 값.
-    """
-    match = _HOST_PORT.fullmatch(value)
-    return (match.group(1) or match.group(2)) if match else value
-
-
 def _is_ip(value: str) -> bool:
-    """IPv4·IPv6 형식이면 True.
-
-    Args:
-        value: 검사할 문자열.
-    """
-    try:
-        ipaddress.ip_address(value)
-    except ValueError:
-        return False
-    return True
+    """IPv4·IPv6 형식이면 True(evidences의 destination.ip 검사)."""
+    return is_ip(value)
 
 
 def _attacks(source: dict[str, Any]) -> list[dict[str, Any]]:
