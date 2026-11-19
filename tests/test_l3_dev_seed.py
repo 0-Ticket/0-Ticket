@@ -8,6 +8,7 @@ from urllib.parse import urlsplit
 import pytest
 
 from soc.contracts import validate_contract
+from soc.contracts.alert import contract_data
 from soc.l3.__main__ import build_parser
 from soc.l3.hunt.dev_seed import SEED_PATH, SEED_PROFILE, build_rows, load_seed
 
@@ -82,7 +83,7 @@ def test_build_rows_are_contract_valid_and_shifted_to_now() -> None:
         validate_contract("raw_record", raw)
         assert raw["siem_profile"] == SEED_PROFILE
     for alert in rows.alerts:
-        validate_contract("alert", alert)
+        validate_contract("alert", contract_data("alert", alert))
     for event in rows.events:
         validate_contract("event", event)
         assert event["ocsf_class"] == event["ocsf"]["class_uid"]

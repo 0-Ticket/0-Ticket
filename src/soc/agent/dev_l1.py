@@ -33,6 +33,7 @@ from psycopg.types.json import Jsonb
 from soc.agent.runner import run_agent
 from soc.agent.types import AgentResult, AgentTask, TaskPrompt
 from soc.contracts import to_datetime, to_epoch_ms, validate_contract
+from soc.contracts.alert import contract_data
 from soc.ids import new_id
 from soc.normalize.mapping import alert_row, finding_ocsf
 
@@ -135,7 +136,7 @@ def build_rows(seed_data: Mapping[str, Any], now_ms: int) -> SeedRows:
                 }
                 rows.events.append(row)
             validate_contract("raw_record", raw)
-            validate_contract(kind, row)
+            validate_contract(kind, contract_data(kind, row))
             rows.raw_records.append(raw)
     return rows
 

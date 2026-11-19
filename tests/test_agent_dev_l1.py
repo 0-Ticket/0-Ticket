@@ -25,6 +25,7 @@ from soc.agent.dev_l1 import (
 )
 from soc.agent.types import contains_forbidden
 from soc.contracts import validate_contract
+from soc.contracts.alert import contract_data
 from soc.l3.hunt.dev_seed import SEED_PROFILE as L3_SEED_PROFILE
 from soc.l3.hunt.dev_seed import load_seed as load_l3_seed
 
@@ -145,7 +146,7 @@ def test_rows_pass_contracts_and_use_now() -> None:
     refs = [raw["siem_ref"] for raw in rows.raw_records]
     assert len(set(refs)) == len(refs)
     for alert in rows.alerts:
-        validate_contract("alert", alert)
+        validate_contract("alert", contract_data("alert", alert))
         assert alert["triage"] is None
         assert alert["details"] == {}  # 시드 표시는 RawRecord에만 둔다
         assert NOW_MS - DAY_MS < alert["time"] < NOW_MS

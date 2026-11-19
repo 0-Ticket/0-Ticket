@@ -490,6 +490,48 @@ def test_single_oversized_record_has_long_strings_shortened() -> None:
     assert len(caller.rows[-1]["output"]["records"][0]["title"]) < 5000
 
 
+def _nested(alert_id: str) -> dict[str, Any]:
+    """Alert JSON 모양(D-066): 근거 ID는 details.id에 있다."""
+    return {"class_uid": 2004, "details": {"id": alert_id, "entities": []}}
+
+
+def test_id_field_path_registers_nested_id_in_ledger() -> None:
+    registry = ToolRegistry(
+        [spec("nested", _fixed([_nested(ALERT_ID)]), id_fields=("details.id",))]
+    )
+    caller = Caller(registry, config(["nested"]))
+    call(caller, "nested", {})
+    assert ALERT_ID in caller.session.evidence_ids
+
+
+def test_unqueried_nested_id_cannot_be_cited() -> None:
+    registry = ToolRegistry(
+        [spec("nested", _fixed([_nested(OTHER_ALERT)]), id_fields=("details.id",))]
+    )
+    unqueried = "alt_01a19f93-1150-7000-8000-00000000abcd"
+    steps = [tool_call("nested", {}), {"final": verdict(unqueried)}]
+    result, _, _ = run(steps, cfg=config(["nested"]), registry=registry)
+    assert result.failure == "evidence_id_error"
+    steps = [tool_call("nested", {}), {"final": verdict(OTHER_ALERT)}]
+    result, _, _ = run(steps, cfg=config(["nested"]), registry=registry)
+    assert result.failure is None
+
+
+def test_shortening_keeps_the_nested_id_field() -> None:
+    big = {
+        "class_uid": 2004,
+        "message": "m" * 1000,
+        "details": {"id": ALERT_ID + "-" + "i" * 3000, "entities": [{"value": "z" * 1000}]},
+    }
+    registry = ToolRegistry([spec("big", _fixed([big]), id_fields=("details.id",))])
+    caller = Caller(registry, config(["big"], chars=4000))
+    out = parse(call(caller, "big", {}))
+    [record] = out["records"]
+    assert record["details"]["id"] == big["details"]["id"]  # ID 칸은 줄이지 않는다
+    assert "details.id" not in out["truncated_fields"]
+    assert "message" in out["truncated_fields"]
+
+
 def test_record_that_cannot_fit_is_omitted() -> None:
     many_keys = {"id": ALERT_ID, **{f"k{i:04d}": i for i in range(400)}}
     registry = ToolRegistry([spec("keys", _fixed([many_keys]))])

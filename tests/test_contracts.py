@@ -201,7 +201,7 @@ def test_unknown_contract_name_is_rejected(name: str) -> None:
 # 모양을 정하지 않은 자유 객체. schema는 안쪽 값을 보지 않는다.
 FREE_OBJECTS = [
     ("ingest_checkpoint", "cursor"),
-    ("alert", "ocsf"),
+    ("alert", "details"),
     ("ticket", "details"),
     ("hunt", "details"),
     ("agent_log", "input"),
@@ -260,10 +260,10 @@ def test_values_that_are_not_storable_json_are_rejected(name: str, field: str, e
     ("name", "field", "value"),
     [
         ("verdict", "confidence", float("nan")),
-        ("alert", "title", "SQL INJECTED\x00"),
-        ("alert", "title", "SQL INJECTED\ud800"),
+        ("event", "summary", "SQL INJECTED\x00"),
+        ("event", "summary", "SQL INJECTED\ud800"),
     ],
-    ids=["verdict.confidence_nan", "alert.title_nul", "alert.title_lone_surrogate"],
+    ids=["verdict.confidence_nan", "event.summary_nul", "event.summary_lone_surrogate"],
 )
 def test_contract_fields_with_unstorable_values_are_rejected_as_json(
     name: str, field: str, value: object
@@ -287,9 +287,9 @@ def test_emoji_in_free_objects_passes(name: str, field: str, extra: dict) -> Non
 
 
 def test_emoji_in_contract_text_field_passes() -> None:
-    data = {**load("valid", "alert")[0]["data"], "title": "SQL Injection 😀"}
+    data = {**load("valid", "event")[0]["data"], "summary": "SQL Injection 😀"}
 
-    assert validate_contract("alert", data).model_dump(mode="json") == data
+    assert validate_contract("event", data).model_dump(mode="json") == data
 
 
 # JSON 사전 검사의 깊이 한도. dict·list가 겹친 수이고 data 최상위 dict가 1이다.

@@ -18,6 +18,7 @@ from psycopg.types.json import Jsonb
 
 from soc.api.ui_read import times
 from soc.contracts import to_datetime, validate_contract
+from soc.contracts.alert import contract_data
 from soc.normalize.mapping import with_derived_columns
 
 SEED_PATH = Path(__file__).resolve().parents[3] / "tests/fixtures/api/ui_seed.json"
@@ -72,7 +73,7 @@ def load_seed() -> dict[str, list[dict[str, Any]]]:
         for row in records:
             contract = CONTRACTS[table]
             if contract:
-                validate_contract(contract, row)
+                validate_contract(contract, contract_data(contract, row))
             if table == "raw_records" and row["siem_profile"] != SEED_SOURCE:
                 raise ValueError("시드 프로필 오류")
             if "details" in row and (

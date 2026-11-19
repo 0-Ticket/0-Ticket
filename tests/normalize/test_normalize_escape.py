@@ -12,6 +12,7 @@ from typing import Any
 import pytest
 
 from soc.contracts import validate_contract
+from soc.contracts.alert import contract_data
 from soc.ids import new_id
 from soc.normalize.mapping import RawRow, normalize
 from soc.normalize.ocsf_schema import validate_ocsf
@@ -88,7 +89,7 @@ def test_normalized_alert_with_nul_and_surrogates_passes_contract() -> None:
         assert not any("\ud800" <= ch <= "\udfff" for ch in text)
     assert row["title"] == "Web\\u0000scan\\ud83d"
     validate_ocsf(row["ocsf"])
-    validate_contract(mapped.kind, row)
+    validate_contract(mapped.kind, contract_data(mapped.kind, row))
 
 
 def test_korean_backslash_quote_and_literal_escape_text_are_unchanged() -> None:

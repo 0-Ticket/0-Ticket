@@ -113,6 +113,7 @@ class ToolSpec:
 
     result_kind
     - records: 핸들러가 레코드(dict) 목록을 돌려준다. id_fields 값이 장부에 들어간다.
+      id_fields의 칸은 점으로 이은 경로(`details.id`)일 수 있고 줄이기에서도 지켜진다(D-066).
       뒤 레코드부터 빼서 한도에 맞춘다.
     - text: 핸들러가 문자열을 돌려준다. 글자 수로 자른다.
     - aggregate: 핸들러가 집계 객체(dict)를 돌려준다. 한도는 핸들러가 ctx.fits로 맞춘다.
@@ -361,7 +362,7 @@ class ToolSession:
                 shown.append(first)
                 body["omitted"] = total - 1
                 body["truncated_fields"] = paths
-        ids = [r[f] for r in shown for f in spec.id_fields if isinstance(r.get(f), str)]
+        ids = [i for r in shown for f in spec.id_fields if isinstance(i := _id_at(r, f), str)]
         return body, ids
 
     def _fits_record(self, call_id: str, total: int) -> Callable[[dict[str, Any], list[str]], bool]:
@@ -488,8 +489,7 @@ def shorten_record(
             (len(value), path, keys)
             for path, keys, value in _string_leaves(current)
             # 이미 최소 길이까지 줄인 값(_MIN_SHORTEN + 표시)은 더 줄이지 않는다
-            if len(value) > _MIN_SHORTEN + len(CUT_MARK)
-            and not (len(keys) == 1 and keys[0] in id_fields)
+            if len(value) > _MIN_SHORTEN + len(CUT_MARK) and path not in id_fields
         ]
         if not leaves:
             return None, []
@@ -511,6 +511,16 @@ def _string_leaves(value: Any, path: str = "", keys: tuple[Any, ...] = ()) -> It
     elif isinstance(value, list):
         for index, item in enumerate(value):
             yield from _string_leaves(item, f"{path}[{index}]", (*keys, index))
+
+
+def _id_at(record: dict[str, Any], field: str) -> Any:
+    """id_fields의 한 칸 값. 점으로 이은 경로(`details.id`)면 안쪽까지 따라간다. 없으면 None."""
+    value: Any = record
+    for key in field.split("."):
+        if not isinstance(value, dict) or key not in value:
+            return None
+        value = value[key]
+    return value
 
 
 def _get(value: Any, keys: tuple[Any, ...]) -> Any:

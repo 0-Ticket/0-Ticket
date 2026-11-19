@@ -155,7 +155,7 @@ def test_alert_promotion_then_ticket_decision_reaches_l2(db: str, conn: psycopg.
     assert branch.ticket["status"] == "escalated"
     assert branch.ticket["verdict"] == verdict(alert_id)
     assert branch.ticket["entities"] == entities
-    assert branch.alerts[0]["id"] == alert_id
+    assert branch.alerts[0]["details"]["id"] == alert_id
     assert branch.evidence_ids == (alert_id,)
     assert branch.missing_evidence_count == 0
     assert [task.subject_type for task in tasks] == ["alert", "ticket"]

@@ -3,23 +3,11 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Any, Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from .common import asset_schema, entity_schema, verdict_schema
-
-
-class Ocsf(BaseModel):
-    model_config = ConfigDict(
-        extra="allow",
-    )
-    class_uid: Annotated[
-        Literal[2004, 0],
-        Field(
-            description="2004 Detection Finding. 해석할 수 없는 원본의 폴백 Alert만 0(Base Event)"
-        ),
-    ]
 
 
 class Triage(BaseModel):
@@ -35,9 +23,9 @@ class Triage(BaseModel):
     verdict: verdict_schema.Verdict | None
 
 
-class Alert(BaseModel):
+class Details(BaseModel):
     model_config = ConfigDict(
-        extra="forbid",
+        extra="allow",
     )
     id: Annotated[
         str,
@@ -47,29 +35,39 @@ class Alert(BaseModel):
         str,
         Field(pattern="^raw_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"),
     ]
-    time: Annotated[
-        int,
-        Field(
-            description="UTC epoch 밀리초. 상한은 9999-12-30T23:59:59.999Z(+14시간 시간대로 읽어도 9999년 안)",
-            ge=0,
-            le=253402214399999,
-        ),
+    rule_id: Annotated[
+        str | None, Field(description="알럿을 만든 SIEM 탐지 룰 ID. 없으면 null(폴백은 항상 null)")
     ]
-    severity: Annotated[
-        int,
-        Field(
-            description="OCSF severity_id. 0 Unknown, 1 Informational, 2 Low, 3 Medium, 4 High, 5 Critical, 6 Fatal",
-            ge=0,
-            le=6,
-        ),
-    ]
-    title: Annotated[str, Field(description="한 줄 요약(룰 이름 등)")]
-    rule_id: Annotated[str | None, Field(description="알럿을 만든 SIEM 탐지 룰 ID. 없으면 null")]
     entities: list[entity_schema.Entity]
     assets: list[asset_schema.Asset]
     triage: Annotated[
         Triage | None,
         Field(description="시나리오 모드에서 일치하지 않은 알럿의 L1 1차 판정. 그 밖에는 null"),
     ]
-    ocsf: Annotated[Ocsf, Field(description="OCSF Detection Finding 전체")]
-    details: Annotated[dict[str, Any], Field(description="계약에 없는 값. 다른 단계는 읽지 않는다")]
+
+
+class Alert(BaseModel):
+    model_config = ConfigDict(
+        extra="allow",
+    )
+    class_uid: Annotated[
+        Literal[2004, 0],
+        Field(
+            description="2004 Detection Finding. 해석할 수 없는 원본의 폴백 Alert만 0(Base Event)"
+        ),
+    ]
+    time: Annotated[
+        int, Field(description="OCSF 생성 시각(epoch 밀리초)", ge=0, le=253402214399999)
+    ]
+    severity_id: Annotated[
+        Literal[0, 1, 2, 3, 4, 5, 6, 99],
+        Field(
+            description="OCSF 심각도. 0 Unknown, 1 Informational, 2 Low, 3 Medium, 4 High, 5 Critical, 6 Fatal, 99 Other"
+        ),
+    ]
+    details: Annotated[
+        Details,
+        Field(
+            description="우리 쪽 값. OCSF 속성 이름과 같은 키를 두지 않는다. 아래 6개는 필수이고 그 밖의 값(fallback 등)은 더 올 수 있다"
+        ),
+    ]

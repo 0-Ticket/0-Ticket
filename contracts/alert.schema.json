@@ -2,69 +2,60 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "alert.schema.json",
   "title": "Alert",
-  "description": "OCSF 1.9.0 Detection Finding(class_uid 2004)으로 정규화한 알럿",
+  "description": "OCSF 1.9.0 Detection Finding(class_uid 2004) 문서. 해석할 수 없는 원본의 폴백 Alert만 Base Event(0)다. class_uid가 2004이면 finding_info(OCSF 탐지 정보)가 필수다. 우리 쪽 값은 모두 details에 있다. 최상위 time은 OCSF 생성 시각이고 severity_id가 심각도다(DB 컬럼 time·severity와 의미가 다르다)",
   "type": "object",
-  "additionalProperties": false,
-  "required": [
-    "id",
-    "raw_id",
-    "time",
-    "severity",
-    "title",
-    "rule_id",
-    "entities",
-    "assets",
-    "triage",
-    "ocsf",
-    "details"
-  ],
+  "additionalProperties": true,
+  "required": ["class_uid", "time", "severity_id", "details"],
   "properties": {
-    "id": {"$ref": "common/types.schema.json#/definitions/alert_id"},
-    "raw_id": {"$ref": "common/types.schema.json#/definitions/raw_id"},
-    "time": {"$ref": "common/types.schema.json#/definitions/epoch_ms"},
-    "severity": {"$ref": "common/types.schema.json#/definitions/severity"},
-    "title": {
-      "description": "한 줄 요약(룰 이름 등)",
-      "type": "string"
+    "class_uid": {
+      "description": "2004 Detection Finding. 해석할 수 없는 원본의 폴백 Alert만 0(Base Event)",
+      "type": "integer",
+      "enum": [2004, 0]
     },
-    "rule_id": {
-      "description": "알럿을 만든 SIEM 탐지 룰 ID. 없으면 null",
-      "type": ["string", "null"]
+    "time": {
+      "description": "OCSF 생성 시각(epoch 밀리초)",
+      "$ref": "common/types.schema.json#/definitions/epoch_ms"
     },
-    "entities": {
-      "type": "array",
-      "items": {"$ref": "common/entity.schema.json"}
-    },
-    "assets": {
-      "type": "array",
-      "items": {"$ref": "common/asset.schema.json"}
-    },
-    "triage": {
-      "description": "시나리오 모드에서 일치하지 않은 알럿의 L1 1차 판정. 그 밖에는 null",
-      "anyOf": [
-        {"$ref": "#/definitions/triage"},
-        {"type": "null"}
-      ]
-    },
-    "ocsf": {
-      "description": "OCSF Detection Finding 전체",
-      "type": "object",
-      "additionalProperties": true,
-      "required": ["class_uid"],
-      "properties": {
-        "class_uid": {
-          "description": "2004 Detection Finding. 해석할 수 없는 원본의 폴백 Alert만 0(Base Event)",
-          "type": "integer",
-          "enum": [2004, 0]
-        }
-      }
+    "severity_id": {
+      "description": "OCSF 심각도. 0 Unknown, 1 Informational, 2 Low, 3 Medium, 4 High, 5 Critical, 6 Fatal, 99 Other",
+      "type": "integer",
+      "enum": [0, 1, 2, 3, 4, 5, 6, 99]
     },
     "details": {
-      "description": "계약에 없는 값. 다른 단계는 읽지 않는다",
+      "description": "우리 쪽 값. OCSF 속성 이름과 같은 키를 두지 않는다. 아래 6개는 필수이고 그 밖의 값(fallback 등)은 더 올 수 있다",
       "type": "object",
-      "additionalProperties": true
+      "additionalProperties": true,
+      "required": ["id", "raw_id", "rule_id", "entities", "assets", "triage"],
+      "properties": {
+        "id": {"$ref": "common/types.schema.json#/definitions/alert_id"},
+        "raw_id": {"$ref": "common/types.schema.json#/definitions/raw_id"},
+        "rule_id": {
+          "description": "알럿을 만든 SIEM 탐지 룰 ID. 없으면 null(폴백은 항상 null)",
+          "type": ["string", "null"]
+        },
+        "entities": {
+          "type": "array",
+          "items": {"$ref": "common/entity.schema.json"}
+        },
+        "assets": {
+          "type": "array",
+          "items": {"$ref": "common/asset.schema.json"}
+        },
+        "triage": {
+          "description": "시나리오 모드에서 일치하지 않은 알럿의 L1 1차 판정. 그 밖에는 null",
+          "anyOf": [
+            {"$ref": "#/definitions/triage"},
+            {"type": "null"}
+          ]
+        }
+      }
     }
   },
+  "if": {
+    "required": ["class_uid"],
+    "properties": {"class_uid": {"type": "integer", "const": 2004}}
+  },
+  "then": {"required": ["finding_info"]},
   "definitions": {
     "triage": {
       "title": "Triage",
