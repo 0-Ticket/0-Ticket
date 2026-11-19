@@ -1,0 +1,6 @@
+# 손으로 만든 샘플: class를 TOML 문자열로 적었다(정수가 아니다)
+[[ingest.sources]]
+kind = "event"
+key = "logs-nginx.access-*"
+time_field = "@timestamp"
+class = "4002"
