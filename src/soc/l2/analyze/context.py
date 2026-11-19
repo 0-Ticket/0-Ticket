@@ -8,6 +8,7 @@ from psycopg.rows import dict_row
 
 from soc.asset_lookup import AssetLookupError, lookup_assets
 from soc.contracts import to_epoch_ms, validate_contract
+from soc.contracts.alert import alert_model_input
 from soc.l2.branch.read import _contract_row, _existing_ids, read_branch_data
 from soc.l2.config import AnalyzeSettings
 
@@ -92,8 +93,9 @@ def read_context(
             }
         )
         for alert in rows.alerts:
-            alerts.setdefault(alert["id"], alert)
-            evidence.setdefault(alert["id"], None)
+            item = alert_model_input(alert)  # 모델 입력과 시간 창은 이전 모양(start_time 기준)이다
+            alerts.setdefault(item["id"], item)
+            evidence.setdefault(item["id"], None)
         for event in rows.events:
             events.setdefault(event["id"], event)
         if rows.hunt is not None:

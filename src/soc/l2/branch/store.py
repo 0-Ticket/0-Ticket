@@ -8,6 +8,7 @@ from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
 from soc.contracts import to_datetime, validate_contract
+from soc.contracts.alert import alert_severity, alert_title
 from soc.entities import normalize_entity_value
 from soc.ids import new_id
 from soc.l2.branch.context import BranchContext
@@ -149,12 +150,12 @@ def _merge_entities(
 
 
 def _ticket_severity(context: BranchContext) -> int:
-    return max((alert["severity"] for alert in context.alerts), default=0)
+    return max((alert_severity(alert) for alert in context.alerts), default=0)
 
 
 def _title(context: BranchContext, ticket: dict[str, Any]) -> str:
-    if context.alerts and context.alerts[0]["title"]:
-        return context.alerts[0]["title"]
+    if context.alerts and alert_title(context.alerts[0]):
+        return alert_title(context.alerts[0])
     if context.hunt is not None and context.hunt["hypothesis"]:
         return context.hunt["hypothesis"]
     if ticket["entities"]:
