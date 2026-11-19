@@ -129,6 +129,9 @@ def test_raw_pages_and_details(ui_client):
             assert data["raw_record"]["original_text"] == stored["original_text"]
             if item["record_id"]:
                 validate_contract(kind[:-1], data["record"])
+                if kind == "alerts":  # OCSF 최상위 + details(D-066)
+                    assert "ocsf" not in data["record"]
+                    assert data["record"]["details"]["id"] == item["record_id"]
                 assert ui_client.get(f"/api/{kind}/{item['record_id']}").json() == data
         failed = ui_client.get("/api/" + kind, params={"status": "failed"}).json()["items"]
         assert len(failed) == 1 and failed[0]["record_id"] is None

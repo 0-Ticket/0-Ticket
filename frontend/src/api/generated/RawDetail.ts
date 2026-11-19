@@ -19,22 +19,22 @@ export type FetchedAt = number;
  */
 export type OriginalText = string;
 export type Record = Alert | Event | null;
-export type Id1 = string;
-export type RawId = string;
 /**
- * UTC epoch 밀리초. 상한은 9999-12-30T23:59:59.999Z(+14시간 시간대로 읽어도 9999년 안)
+ * 2004 Detection Finding. 해석할 수 없는 원본의 폴백 Alert만 0(Base Event)
+ */
+export type ClassUid = 2004 | 0;
+/**
+ * OCSF 생성 시각(epoch 밀리초)
  */
 export type Time = number;
 /**
- * OCSF severity_id. 0 Unknown, 1 Informational, 2 Low, 3 Medium, 4 High, 5 Critical, 6 Fatal
+ * OCSF 심각도. 0 Unknown, 1 Informational, 2 Low, 3 Medium, 4 High, 5 Critical, 6 Fatal, 99 Other
  */
-export type Severity = number;
+export type SeverityId = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 99;
+export type Id1 = string;
+export type RawId = string;
 /**
- * 한 줄 요약(룰 이름 등)
- */
-export type Title = string;
-/**
- * 알럿을 만든 SIEM 탐지 룰 ID. 없으면 null
+ * 알럿을 만든 SIEM 탐지 룰 ID. 없으면 null(폴백은 항상 null)
  */
 export type RuleId = string | null;
 /**
@@ -95,10 +95,6 @@ export type EvidenceIds = EvidenceId[];
  * UTC epoch 밀리초. 상한은 9999-12-30T23:59:59.999Z(+14시간 시간대로 읽어도 9999년 안)
  */
 export type DecidedAt = number;
-/**
- * 2004 Detection Finding. 해석할 수 없는 원본의 폴백 Alert만 0(Base Event)
- */
-export type ClassUid = 2004 | 0;
 export type Id2 = string;
 export type RawId1 = string;
 /**
@@ -136,11 +132,18 @@ export interface RawRecord {
   original_text: OriginalText;
 }
 export interface Alert {
+  class_uid: ClassUid;
+  time: Time;
+  severity_id: SeverityId;
+  details: Details;
+  [k: string]: unknown;
+}
+/**
+ * 우리 쪽 값. OCSF 속성 이름과 같은 키를 두지 않는다. 아래 6개는 필수이고 그 밖의 값(fallback 등)은 더 올 수 있다
+ */
+export interface Details {
   id: Id1;
   raw_id: RawId;
-  time: Time;
-  severity: Severity;
-  title: Title;
   rule_id: RuleId;
   entities: Entities;
   assets: Assets;
@@ -148,8 +151,7 @@ export interface Alert {
    * 시나리오 모드에서 일치하지 않은 알럿의 L1 1차 판정. 그 밖에는 null
    */
   triage: Triage | null;
-  ocsf: Ocsf;
-  details: Details;
+  [k: string]: unknown;
 }
 export interface Entity {
   type: Type;
@@ -183,19 +185,6 @@ export interface Verdict {
   evidence_ids: EvidenceIds;
   decided_at: DecidedAt;
 }
-/**
- * OCSF Detection Finding 전체
- */
-export interface Ocsf {
-  class_uid: ClassUid;
-  [k: string]: unknown;
-}
-/**
- * 계약에 없는 값. 다른 단계는 읽지 않는다
- */
-export interface Details {
-  [k: string]: unknown;
-}
 export interface Event {
   id: Id2;
   raw_id: RawId1;
@@ -204,13 +193,13 @@ export interface Event {
   summary: Summary;
   entities: Entities1;
   assets: Assets1;
-  ocsf: Ocsf1;
+  ocsf: Ocsf;
   details: Details1;
 }
 /**
  * 매핑한 OCSF 클래스 전체
  */
-export interface Ocsf1 {
+export interface Ocsf {
   class_uid: ClassUid1;
   [k: string]: unknown;
 }

@@ -6,49 +6,40 @@
 export type Triage = Triage1;
 
 /**
- * OCSF 1.9.0 Detection Finding(class_uid 2004)으로 정규화한 알럿
+ * OCSF 1.9.0 Detection Finding(class_uid 2004) 문서. 해석할 수 없는 원본의 폴백 Alert만 Base Event(0)다. class_uid가 2004이면 finding_info(OCSF 탐지 정보)가 필수다. 우리 쪽 값은 모두 details에 있다. 최상위 time은 OCSF 생성 시각이고 severity_id가 심각도다(DB 컬럼 time·severity와 의미가 다르다)
  */
 export interface Alert {
-  id: string;
-  raw_id: string;
   /**
-   * UTC epoch 밀리초. 상한은 9999-12-30T23:59:59.999Z(+14시간 시간대로 읽어도 9999년 안)
+   * 2004 Detection Finding. 해석할 수 없는 원본의 폴백 Alert만 0(Base Event)
+   */
+  class_uid: 2004 | 0;
+  /**
+   * OCSF 생성 시각(epoch 밀리초)
    */
   time: number;
   /**
-   * OCSF severity_id. 0 Unknown, 1 Informational, 2 Low, 3 Medium, 4 High, 5 Critical, 6 Fatal
+   * OCSF 심각도. 0 Unknown, 1 Informational, 2 Low, 3 Medium, 4 High, 5 Critical, 6 Fatal, 99 Other
    */
-  severity: number;
+  severity_id: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 99;
   /**
-   * 한 줄 요약(룰 이름 등)
-   */
-  title: string;
-  /**
-   * 알럿을 만든 SIEM 탐지 룰 ID. 없으면 null
-   */
-  rule_id: string | null;
-  entities: Entity[];
-  assets: Asset[];
-  /**
-   * 시나리오 모드에서 일치하지 않은 알럿의 L1 1차 판정. 그 밖에는 null
-   */
-  triage: Triage | null;
-  /**
-   * OCSF Detection Finding 전체
-   */
-  ocsf: {
-    /**
-     * 2004 Detection Finding. 해석할 수 없는 원본의 폴백 Alert만 0(Base Event)
-     */
-    class_uid: 2004 | 0;
-    [k: string]: unknown;
-  };
-  /**
-   * 계약에 없는 값. 다른 단계는 읽지 않는다
+   * 우리 쪽 값. OCSF 속성 이름과 같은 키를 두지 않는다. 아래 6개는 필수이고 그 밖의 값(fallback 등)은 더 올 수 있다
    */
   details: {
+    id: string;
+    raw_id: string;
+    /**
+     * 알럿을 만든 SIEM 탐지 룰 ID. 없으면 null(폴백은 항상 null)
+     */
+    rule_id: string | null;
+    entities: Entity[];
+    assets: Asset[];
+    /**
+     * 시나리오 모드에서 일치하지 않은 알럿의 L1 1차 판정. 그 밖에는 null
+     */
+    triage: Triage | null;
     [k: string]: unknown;
   };
+  [k: string]: unknown;
 }
 /**
  * 알럿·이벤트·Ticket·Incident에 나온 엔티티 하나
