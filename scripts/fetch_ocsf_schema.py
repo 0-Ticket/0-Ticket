@@ -17,7 +17,7 @@ import httpx
 from soc.normalize.ocsf_schema import SUPPORTED_CONSTRAINTS
 
 API = "https://schema.ocsf.io/api/1.9.0"
-# 0·2004는 알럿(#328), 나머지는 이벤트 수집 설정 `class`가 쓰는 클래스(#340, D-065)
+# 0·2004는 알럿(#328), 나머지는 이벤트 수집 설정 `class`가 쓰는 클래스(#340, D-067)
 CLASSES = {
     "base_event": 0,
     "detection_finding": 2004,

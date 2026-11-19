@@ -16,7 +16,7 @@
       "entities": [{"type": "host", "value": "web-01", "role": "target"}],
       "assets": [],
       "triage": null,
-      "ocsf": {"class_uid": 2004},
+      "ocsf": {"class_uid": 2004, "time": 1793678578000, "severity_id": 4, "finding_info": {"uid": "default-rule", "title": "Unusual service login"}},
       "details": {}
     }
   },
@@ -37,7 +37,7 @@
       "entities": [{"type": "user", "value": "kim.admin", "role": "actor"}],
       "assets": [],
       "triage": null,
-      "ocsf": {"class_uid": 2004},
+      "ocsf": {"class_uid": 2004, "time": 1793678578100, "severity_id": 3, "finding_info": {"uid": "scenario-rule", "title": "Privileged account login"}},
       "details": {}
     }
   },
@@ -58,7 +58,7 @@
       "entities": [{"type": "ip", "value": "203.0.113.20", "role": "src"}],
       "assets": [],
       "triage": null,
-      "ocsf": {"class_uid": 2004},
+      "ocsf": {"class_uid": 2004, "time": 1793678578200, "severity_id": 2, "finding_info": {"uid": "other-rule", "title": "Port scan detected"}},
       "details": {}
     }
   },
@@ -79,7 +79,7 @@
       "entities": [],
       "assets": [],
       "triage": null,
-      "ocsf": {"class_uid": 2004},
+      "ocsf": {"class_uid": 2004, "time": 1793678578300, "severity_id": 2, "finding_info": {"uid": null, "title": "Alert without a rule identifier"}},
       "details": {}
     }
   },
@@ -100,7 +100,7 @@
       "entities": [],
       "assets": [],
       "triage": {"status": "pending", "verdict": null},
-      "ocsf": {"class_uid": 2004},
+      "ocsf": {"class_uid": 2004, "time": 1793678578400, "severity_id": 3, "finding_info": {"uid": "scenario-rule", "title": "Already triaged alert"}},
       "details": {}
     }
   },

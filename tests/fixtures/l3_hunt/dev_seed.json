@@ -10,18 +10,12 @@
       "alerts": [
         {
           "ago_ms": 86400000,
-          "severity": 4,
-          "title": "Web Shell Upload",
-          "rule_id": "dev-seed-webshell-upload",
           "entities": [
             {"type": "ip", "value": "203.0.113.45", "role": "src"},
             {"type": "host", "value": "web-01", "role": "dst"},
             {"type": "url", "value": "https://shop.example.com/uploads/img_7731.php", "role": "target"}
           ],
-          "ocsf": {
-            "class_uid": 2004,
-            "finding_info": {"title": "Web Shell Upload"}
-          },
+          "ocsf": {"severity_id": 4, "finding_info": {"uid": "dev-seed-webshell-upload", "title": "Web Shell Upload", "analytic": {"uid": "dev-seed-webshell-upload", "type_id": 1}}},
           "original": {"rule": "Web Shell Upload", "host": "web-01"}
         }
       ],

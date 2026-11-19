@@ -48,7 +48,11 @@ class L2BranchWorker:
                 return
             context = build_branch(conn, ticket_id)
             sources = tuple(
-                {"kind": "alert", "id": alert["id"], "entities": alert["entities"]}
+                {
+                    "kind": "alert",
+                    "id": alert["details"]["id"],
+                    "entities": alert["details"]["entities"],
+                }
                 for alert in context.alerts
             )
             if not sources and context.hunt is not None:

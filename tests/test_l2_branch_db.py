@@ -110,7 +110,7 @@ def test_reads_ticket_evidence_without_incidents(
     with psycopg.connect(database_url) as conn:
         rows = read_branch_data(conn, sample["tickets"][0]["id"])
 
-    assert [row["id"] for row in rows.alerts] == [sample["alerts"][0]["id"]]
+    assert [row["details"]["id"] for row in rows.alerts] == [sample["alerts"][0]["id"]]
     assert [row["id"] for row in rows.events] == [sample["events"][0]["id"]]
     assert rows.evidence_ids == (
         sample["alerts"][0]["id"],

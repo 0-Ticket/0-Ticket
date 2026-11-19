@@ -34,6 +34,18 @@ def validate_ocsf(ocsf: dict[str, Any]) -> None:
         raise NormalizeError("schema_failed")
 
 
+def validate_alert_ocsf(alert: dict[str, Any]) -> None:
+    """Alert JSON(D-066)의 OCSF 부분을 검사한다. 우리 값인 details는 빼고 검사한다.
+
+    Args:
+        alert: 조립한 Alert JSON. details를 뺀 나머지가 OCSF 문서다.
+
+    Raises:
+        NormalizeError: 정의를 어기면 schema_failed.
+    """
+    validate_ocsf({key: value for key, value in alert.items() if key != "details"})
+
+
 def _object_is_valid(definition: dict[str, Any], value: dict[str, Any]) -> bool:
     """객체 하나가 정의의 필수·제약·속성 규칙을 지키는지 본다.
 
@@ -119,7 +131,7 @@ def _json_value_is_valid(value: Any) -> bool:
 def has_class_definition(class_uid: object) -> bool:
     """ocsf/classes/에 이 클래스 번호의 정의 파일이 있으면 True. 정수가 아니면 False.
 
-    수집 설정의 `class`(D-065)가 받아 둔 클래스만 허용하는 데 쓴다. bool·문자열·실수는
+    수집 설정의 `class`(D-067)가 받아 둔 클래스만 허용하는 데 쓴다. bool·문자열·실수는
     번호로 보지 않는다.
 
     Args:

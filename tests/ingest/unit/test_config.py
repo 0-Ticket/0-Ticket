@@ -27,7 +27,7 @@ def test_default_config_reads_into_settings() -> None:
 
 
 def test_default_config_declares_the_event_class_of_web_sources_only() -> None:
-    """class는 선택이고(#340, D-065), 지금은 샘플로 확인한 nginx·apache만 적는다."""
+    """class는 선택이고(#340, D-067), 지금은 샘플로 확인한 nginx·apache만 적는다."""
     settings = read_settings(load_config(REPO_CONFIG)["ingest"])
     assert [(s.key, s.ocsf_class) for s in settings.sources] == [
         (".alerts-security.alerts-default", None),

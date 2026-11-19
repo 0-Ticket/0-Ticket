@@ -7,9 +7,10 @@ import psycopg
 from psycopg.rows import dict_row
 
 from soc.contracts import to_epoch_ms, validate_contract
+from soc.contracts.alert import contract_data
 
 _TIME_FIELDS = {
-    "alert": ("time",),
+    "alert": (),  # 조립 Alert JSON의 시각은 ocsf가 이미 epoch 밀리초로 가진다
     "event": ("time",),
     "ticket": ("created_at", "updated_at"),
     "incident": ("created_at", "updated_at"),
@@ -123,4 +124,4 @@ def _contract_row(name: str, row: dict[str, Any]) -> dict[str, Any]:
     for field in _TIME_FIELDS[name]:
         if data[field] is not None:
             data[field] = to_epoch_ms(data[field])
-    return validate_contract(name, data).model_dump(mode="json")
+    return validate_contract(name, contract_data(name, data)).model_dump(mode="json")

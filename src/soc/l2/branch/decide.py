@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from soc.agent import AgentResult, AgentTask, TaskPrompt
+from soc.contracts.alert import alert_model_input
 from soc.l2.branch.context import BranchContext
 
 _PROMPT = Path(__file__).resolve().parents[1] / "prompts" / "l2_classify.md"
@@ -38,7 +39,7 @@ def make_task(
         data={
             "context": {
                 "ticket": context.ticket,
-                "alerts": list(context.alerts),
+                "alerts": [alert_model_input(alert) for alert in context.alerts],
                 "events": list(context.events),
                 "hunt": context.hunt,
                 "evidence_ids": list(context.evidence_ids),

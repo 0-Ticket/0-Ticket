@@ -21,7 +21,7 @@ _FIXTURE = Path(__file__).parents[1] / "fixtures" / "normalize" / "destination.j
 @pytest.mark.parametrize(
     ("case_name", "table", "destination", "ocsf_path"),
     [
-        ("alert_flat_destination", "alerts", "192.0.2.20", "{evidences,0,dst_endpoint,ip}"),
+        ("alert_flat_destination", "alerts", "192.0.2.20", "{evidences,1,dst_endpoint,ip}"),
         ("base_destination", "events", "192.0.2.24", "{unmapped,destination,ip}"),
     ],
 )
@@ -73,7 +73,10 @@ def test_destination_survives_storage_asset_lookup_and_repeated_run(
             assert ocsf["unmapped"] == {"destination": {"ip": "192.0.2.24"}}
             assert "dst_endpoint" not in ocsf
         else:
-            assert ocsf["evidences"] == [{"dst_endpoint": {"ip": "192.0.2.20"}}]
+            assert ocsf["evidences"] == [
+                {"src_endpoint": {"ip": "198.51.100.7"}},
+                {"dst_endpoint": {"ip": "192.0.2.20"}},
+            ]
         assert assets == [
             {
                 "entity": {"type": "ip", "value": destination},

@@ -9,6 +9,7 @@ from typing import Any
 import pytest
 
 from soc.contracts import validate_contract
+from soc.contracts.alert import contract_data
 from soc.ids import new_id
 from soc.normalize.errors import NormalizeError
 from soc.normalize.mapping import RawRow, Result, normalize
@@ -38,7 +39,7 @@ def normalize_and_check(raw: RawRow) -> Result:
     """
     result = normalize(raw)
     validate_ocsf(result.row["ocsf"])
-    validate_contract(result.kind, result.row)
+    validate_contract(result.kind, contract_data(result.kind, result.row))
     return result
 
 

@@ -10,7 +10,7 @@ supersedes: []
 
 ## 한 일
 
-- `[[ingest.sources]]`에 선택 항목 `class`(OCSF 클래스 번호)를 더했다. 이벤트 대상만 쓸 수 있고, `ocsf/classes/<번호>.json`이 있는 번호여야 하며 2004(알럿)는 쓰지 못한다. 적지 않으면 `Source.ocsf_class`가 `None`이고 지금처럼 동작한다. `config/default.toml`의 nginx·apache에 `class = 4002`를 적었다(D-065).
+- `[[ingest.sources]]`에 선택 항목 `class`(OCSF 클래스 번호)를 더했다. 이벤트 대상만 쓸 수 있고, `ocsf/classes/<번호>.json`이 있는 번호여야 하며 2004(알럿)는 쓰지 못한다. 적지 않으면 `Source.ocsf_class`가 `None`이고 지금처럼 동작한다. `config/default.toml`의 nginx·apache에 `class = 4002`를 적었다(D-067).
 - 이벤트가 쓸 클래스의 공식 OCSF 1.9.0 정의를 받아 `ocsf/classes/`에 고정했다. 새로 `2003`(compliance_finding), `3002`(authentication), `4001`(network_activity), `4003`(dns_activity)를 받았고, 줄여 두었던 `4002`·`6003`은 공식 정의(설명·optional 속성 포함)로 바꿨다. `scripts/fetch_ocsf_schema.py`의 `CLASSES`에 6개를 더했고, `objects.json`은 127개에서 138개가 됐다. 기존 127개는 바뀌지 않았다.
 - `ocsf_schema.has_class_definition`을 더했다. 설정이 이 함수로 받아 둔 클래스만 허용한다.
 - `[[ingest.sources]]`의 알 수 없는 키(`kind`·`key`·`time_field`·`class` 밖)를 설정 오류로 막는다. 오류에 그 키 이름과 쓸 수 있는 키가 담긴다(예: `ingest.sources[1]에 알 수 없는 키가 있다: ['calss']`).
@@ -32,7 +32,7 @@ supersedes: []
 - **이벤트 매핑표 위치(후속)**: `mapping_tables/events/<클래스 번호>.yaml`로 두기로 했다. 알럿 로더(`tables.py`)가 `mapping_tables/*.yaml`을 파일 이름을 소스 이름으로 읽고 `table_check.py`가 2004 기준으로 검사하므로, 이벤트 표를 같은 폴더에 두면 안 된다. 이벤트 표는 설정이 클래스를 정하므로 `detect`가 필요 없다. 이벤트용 로더와 검사(클래스 번호 기준)는 후속 이슈에서 만든다.
 - **보류 항목(소스 쪽 사정)**: GuardDuty는 OCSF 2004가 맞지만 알럿 전용이라 이벤트 클래스로 쓰지 않았다. Suricata는 한 데이터셋에 `event_type`별 클래스(4001·4002·4003, 알럿성은 2004)가 섞여 "대상당 클래스 하나"와 맞지 않는다. Prowler가 2003인지 2004인지, ModSecurity가 어떤 로그인지, CloudTrail 로그인이 3002인지는 샘플로 확인하지 못했다. 그래서 `default.toml`의 클라우드 3곳에는 `class`를 적지 않았다.
 - **"YAML로 해 달라"는 요청**은 매핑표인지 클래스 정의 파일인지 전해 준 사람에게 확인 중이다. 클래스 정의를 뜻하면 알럿 쪽(#328) 구조까지 바뀌므로 따로 정한다.
-- 이 계획 작성 중 `origin/main`에서 결정 번호가 D-062~D-064로 올라가 D-065를 썼다. 머지 전에 번호가 겹치지 않는지 다시 확인한다.
+- 결정 번호는 D-067이다. 계획 작성 중 D-062~D-064가 올라갔고, 그 뒤 #338·#339 머지로 D-065·D-066이 Alert 결정으로 쓰여 D-067로 바꿨다(`origin/main`을 브랜치에 merge하면서 `decisions.md` 충돌을 풀었다). PR 전에 번호가 또 겹치지 않는지 다시 확인한다.
 - 실제 ELK에서는 확인하지 않았다. 설정 읽기와 스키마 파일은 로컬에서만 검증했다.
 - **설정 오류는 시작할 때 멈춘다(fail-fast).** 잘못된 `class`나 알 수 없는 키는 수집을 시작하지 않고 `ConfigError`(종료 코드 2)로 알린다. 오류를 Base Event(class 0)로 흘려보내는 방식은 클래스가 조용히 안 맞는 문제를 설정 오류가 다시 만들어서 택하지 않았다. 반대로 **데이터 문제**(문서가 선언한 클래스에 맞지 않거나 그 클래스의 매핑표가 없음)는 알럿(#326)처럼 정규화 단계에서 Base Event로 폴백하는 것이 맞고, 이는 이벤트 매핑표를 만드는 후속 이슈에서 정한다. 두 층을 나누어 다룬다.
 - **회귀 확인 입력이 적다.** 공식 정의로 바뀐 4002·6003이 기존 이벤트 정규화 결과를 바꾸지 않았는지는 `origin/main`과 같은 스크립트로 비교했지만(차이 없음), 입력은 손으로 만든 웹 문서 1건과 클라우드 문서 1건뿐이다. 실제 로그로 넓게 확인하지 않았다. PR 설명에 이 한계를 적는다.

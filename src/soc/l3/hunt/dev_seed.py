@@ -24,8 +24,10 @@ import psycopg
 from psycopg.types.json import Jsonb
 
 from soc.contracts import to_datetime, to_epoch_ms, validate_contract
+from soc.contracts.alert import contract_data
 from soc.ids import new_id
 from soc.l3.hunt import store
+from soc.normalize.mapping import alert_row, finding_ocsf
 
 SEED_PATH = Path(__file__).resolve().parents[4] / "tests" / "fixtures" / "l3_hunt" / "dev_seed.json"
 SEED_PROFILE = "dev-seed"
@@ -105,19 +107,8 @@ def build_rows(seed_data: Mapping[str, Any], now_ms: int) -> SeedRows:
                     "original_text": json.dumps(record["original"], ensure_ascii=True),
                 }
                 if kind == "alert":
-                    row = {
-                        "id": new_id("alt"),
-                        "raw_id": raw["id"],
-                        "time": time_ms,
-                        "severity": record["severity"],
-                        "title": record["title"],
-                        "rule_id": record["rule_id"],
-                        "entities": record["entities"],
-                        "assets": [],
-                        "triage": None,
-                        "ocsf": record["ocsf"],
-                        "details": {},
-                    }
+                    ocsf = finding_ocsf(record["ocsf"], time_ms, record["entities"])
+                    row = alert_row(new_id("alt"), raw["id"], ocsf, record["entities"])
                     rows.alerts.append(row)
                 else:
                     row = {
@@ -133,7 +124,7 @@ def build_rows(seed_data: Mapping[str, Any], now_ms: int) -> SeedRows:
                     }
                     rows.events.append(row)
                 validate_contract("raw_record", raw)
-                validate_contract(kind, row)
+                validate_contract(kind, contract_data(kind, row))
                 rows.raw_records.append(raw)
         hunt = {
             "id": new_id("hnt"),

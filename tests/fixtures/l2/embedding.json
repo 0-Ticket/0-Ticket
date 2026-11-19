@@ -3,24 +3,39 @@
     {
       "name": "normal",
       "ticket": {
-        "verdict": {"reason": "인공 샘플의 근거가 일치한다"}
+        "verdict": {
+          "reason": "인공 샘플의 근거가 일치한다"
+        }
       },
       "alerts": [
-        {"title": "인공 분류 샘플"},
-        {"title": ""}
+        {
+          "finding_info": {
+            "title": "인공 분류 샘플"
+          },
+          "message": "m"
+        },
+        {
+          "message": ""
+        }
       ],
       "events": [
-        {"summary": "일반 Ticket 근거"}
+        {
+          "summary": "일반 Ticket 근거"
+        }
       ],
       "hunt": null,
       "expected": "인공 분류 샘플\n일반 Ticket 근거\n인공 샘플의 근거가 일치한다"
     },
     {
       "name": "l3",
-      "ticket": {"verdict": null},
+      "ticket": {
+        "verdict": null
+      },
       "alerts": [],
       "events": [
-        {"summary": "L3 Hunt 근거"}
+        {
+          "summary": "L3 Hunt 근거"
+        }
       ],
       "hunt": {
         "hypothesis": "인공 DNS 비콘 가설",
@@ -30,7 +45,9 @@
     },
     {
       "name": "empty",
-      "ticket": {"verdict": null},
+      "ticket": {
+        "verdict": null
+      },
       "alerts": [],
       "events": [],
       "hunt": null,

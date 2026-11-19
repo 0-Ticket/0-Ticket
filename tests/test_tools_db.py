@@ -23,6 +23,7 @@ from test_agent_core import CONFIG
 from tool_helpers import Caller, body_chars, parse
 
 from soc.contracts import to_datetime, validate_contract
+from soc.contracts.alert import assemble_alert, contract_data
 from soc.db.migrate import migrate
 from soc.tools import Arg, ToolRegistry, ToolSpec, default_registry
 from soc.tools.db import read_rows
@@ -39,7 +40,7 @@ ALL_TOOLS = ["get_alert", "get_event", "query_records", "query_http_flow", "summ
 def load_records() -> dict[str, list[dict[str, Any]]]:
     data = json.loads(FIXTURE.read_text(encoding="utf-8"))
     for alert in data["alerts"]:
-        validate_contract("alert", alert)
+        validate_contract("alert", contract_data("alert", alert))
     for event in data["events"]:
         validate_contract("event", event)
     return data
@@ -189,8 +190,9 @@ def test_get_alert_returns_full_record_and_ledger_has_id(reader_url: str) -> Non
     c = caller()
     out = call(c, "get_alert", {"id": A1})
     [record] = out["records"]
-    expected = next(a for a in load_records()["alerts"] if a["id"] == A1)
+    expected = assemble_alert(next(a for a in load_records()["alerts"] if a["id"] == A1))
     assert record == expected
+    assert "ocsf" not in record and record["details"]["id"] == A1  # OCSF 최상위(D-066)
     assert A1 in c.session.evidence_ids
     assert out["call_id"] in c.session.evidence_ids
     assert c.rows[-1]["output"]["records"] == [expected]  # 모델에게 보인 결과(#278)

@@ -10,6 +10,7 @@ from datetime import datetime
 from typing import Any
 
 from soc.contracts import to_epoch_ms
+from soc.contracts.alert import alert_rule_id, alert_severity, alert_time, alert_title
 from soc.ids import new_id
 from soc.normalize.errors import NormalizeError
 from soc.normalize.mask import mask_headers
@@ -21,7 +22,6 @@ from soc.normalize.tables import (
     load_tables,
     matching_source,
 )
-from soc.normalize.transforms import is_ip
 from soc.tools.local_intel import normalize_technique_id
 
 OCSF_VERSION = "1.9.0"
@@ -190,19 +190,8 @@ def fallback_alert(raw: RawRow, reason: str) -> Result:
         time_ms = raw.fetched_at
         details["time_from"] = "fetched_at"
     message = f"정규화 실패: {reason}"
-    row = {
-        "id": new_id("alt"),
-        "raw_id": raw.id,
-        "time": time_ms,
-        "severity": UNKNOWN_ID,
-        "title": message,
-        "rule_id": None,
-        "entities": [],
-        "assets": [],
-        "triage": None,
-        "ocsf": _ocsf(0, 0, UNKNOWN_ID, time_ms, UNKNOWN_ID, {"message": message}),
-        "details": {"fallback": details},
-    }
+    ocsf = _ocsf(0, 0, UNKNOWN_ID, time_ms, UNKNOWN_ID, {"message": message})
+    row = alert_row(new_id("alt"), raw.id, ocsf, [], {"fallback": details})
     return Result("alert", row, "fallback", reason, (), "unknown")
 
 
@@ -232,44 +221,15 @@ def _finding(raw: RawRow) -> Result:
         values = {**common.values, **sourced.values}
         missing = [t for t in dict.fromkeys([*common.missing, *sourced.missing]) if t not in values]
         apply_entities(tables[alert_source], raw.original, found)
-    severity = values.get("severity_id", UNKNOWN_ID)
-    rule_id = values.get("finding_info.analytic.uid")
-    title = values["finding_info.title"]
     incomplete = [*missing, *(["start_time"] if original_ms is None else [])]
     entities, bad_ips = found.entities, found.missing
-    destination = _text(source, "destination.ip")
     extra = _nested(values)
     finding_info = extra["finding_info"]
     finding_info["analytic"]["type_id"] = ANALYTIC_RULE
     finding_info["attacks"] = _attacks(source) or None
-    extra.update(
-        {
-            "is_alert": True,
-            "status_id": 1,
-            "start_time": start_ms,
-            "end_time": start_ms,
-            "observables": _observables(entities) or None,
-            "evidences": [{"dst_endpoint": {"ip": destination}}]
-            if destination is not None and _is_ip(destination)
-            else None,
-        }
-    )
-    ocsf = _ocsf(2004, 2, 1, time_ms, severity, extra)
-    row = {
-        "id": new_id("alt"),
-        "raw_id": raw.id,
-        "time": start_ms,
-        "severity": severity,
-        "title": title,
-        "rule_id": rule_id,
-        "entities": entities,
-        "assets": [],
-        "triage": None,
-        "ocsf": ocsf,
-        "details": {},
-    }
-    # 소스별 매퍼가 값을 더해도 마지막에 한 번 가려 빠뜨리지 못하게 한다
-    row["ocsf"], row["details"] = mask_headers(row["ocsf"]), mask_headers(row["details"])
+    ocsf = finding_ocsf(extra, time_ms, entities, start_ms)
+    # 소스별 매퍼가 값을 더해도 마지막에 한 번 가려 빠뜨리지 못하게 한다(컬럼은 가린 ocsf에서 파생)
+    row = alert_row(new_id("alt"), raw.id, mask_headers(ocsf), entities)
     unknown = alert_source == "unknown"
     outcome = "partial" if unknown or incomplete else "ok"
     return Result(
@@ -307,11 +267,6 @@ def _detect_source(hit: dict[str, Any]) -> str:
     return matching_source(load_tables(), hit) or "unknown"
 
 
-def _is_ip(value: str) -> bool:
-    """IPv4·IPv6 형식이면 True(evidences의 destination.ip 검사)."""
-    return is_ip(value)
-
-
 def _attacks(source: dict[str, Any]) -> list[dict[str, Any]]:
     """룰 태그의 attack.T####와 threat.technique.id를 합쳐 중복 없이 OCSF attack 객체로 만든다.
 
@@ -339,6 +294,16 @@ def _attacks(source: dict[str, Any]) -> list[dict[str, Any]]:
     ]
 
 
+# 엔티티 (type, role) → evidences 요소. 대응이 없는 것(target·null role 등)은 뺀다(D-065)
+_EVIDENCE_BUILDERS = {
+    ("ip", "src"): lambda value: {"src_endpoint": {"ip": value}},
+    ("ip", "dst"): lambda value: {"dst_endpoint": {"ip": value}},
+    ("user", "actor"): lambda value: {"actor": {"user": {"name": value}}},
+    ("domain", "dst"): lambda value: {"dst_endpoint": {"domain": value}},
+    ("url", "dst"): lambda value: {"url": {"url_string": value}},
+}
+
+
 def _observables(entities: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """엔티티 목록에서 OCSF observable을 만든다. 같은 type·값은 한 번만 넣는다.
 
@@ -350,6 +315,110 @@ def _observables(entities: list[dict[str, Any]]) -> list[dict[str, Any]]:
         type_id = OBSERVABLE_TYPE_IDS[entity["type"]]
         seen.setdefault((type_id, entity["value"]), {"type_id": type_id, "value": entity["value"]})
     return list(seen.values())
+
+
+def _evidences(entities: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """엔티티에서 OCSF evidence 요소를 만든다. 엔티티 하나에 요소 하나, 같은 요소는 한 번만 둔다.
+
+    Args:
+        entities: Alert 엔티티 목록.
+    """
+    found: list[dict[str, Any]] = []
+    for entity in entities:
+        build = _EVIDENCE_BUILDERS.get((entity["type"], entity["role"]))
+        if build is not None and (item := build(entity["value"])) not in found:
+            found.append(item)
+    return found
+
+
+def finding_ocsf(
+    extra: dict[str, Any], time_ms: int, entities: list[dict[str, Any]], start_ms: int | None = None
+) -> dict[str, Any]:
+    """Detection Finding(2004) OCSF 문서를 만든다. observables·evidences는 entities에서만 온다.
+
+    Args:
+        extra: 클래스별 OCSF 속성(finding_info 등). severity_id가 있으면 쓴다.
+        time_ms: 생성 시각 `time`(epoch 밀리초).
+        entities: Alert 엔티티 목록. 원본 컬럼이다.
+        start_ms: `start_time`·`end_time`. 없으면 time_ms.
+    """
+    start = time_ms if start_ms is None else start_ms
+    severity = extra.get("severity_id", UNKNOWN_ID)
+    return _ocsf(
+        2004,
+        2,
+        1,
+        time_ms,
+        severity,
+        {
+            **extra,
+            "is_alert": True,
+            "status_id": 1,
+            "start_time": start,
+            "end_time": start,
+            "observables": _observables(entities) or None,
+            "evidences": _evidences(entities) or None,
+        },
+    )
+
+
+def derive_columns(ocsf: dict[str, Any]) -> dict[str, Any]:
+    """ocsf 문서에서 alerts의 time·severity·title·rule_id를 만든다(D-065). 파생은 이 함수 하나다.
+
+    읽는 규칙은 `soc.contracts.alert`의 헬퍼와 같다. time은 start_time, 없으면 time.
+    title은 finding_info.title, 없으면 message. severity는 severity_id이고 컬럼 범위(0~6)
+    밖(99 Other 등)은 0이다.
+
+    Args:
+        ocsf: 알럿의 OCSF 문서(2004 또는 폴백 0).
+    """
+    return {
+        "time": alert_time(ocsf),
+        "severity": alert_severity(ocsf),
+        "title": alert_title(ocsf),
+        "rule_id": alert_rule_id(ocsf),
+    }
+
+
+def with_derived_columns(row: dict[str, Any]) -> dict[str, Any]:
+    """ocsf만 가진 alerts 행(시드 샘플)에 파생 컬럼 time·severity·title·rule_id를 채운다.
+
+    Args:
+        row: ocsf를 가진 alerts 행.
+    """
+    return {**row, **derive_columns(row["ocsf"])}
+
+
+def alert_row(
+    alert_id: str,
+    raw_id: str,
+    ocsf: dict[str, Any],
+    entities: list[dict[str, Any]],
+    details: dict[str, Any] | None = None,
+    assets: list[Any] | None = None,
+    triage: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """alerts 행 하나를 만든다. 컬럼 값은 ocsf에서 파생하고 그 밖의 칸은 받은 값이다.
+
+    Args:
+        alert_id: alerts.id.
+        raw_id: raw_records.id.
+        ocsf: 알럿의 OCSF 문서. 원본이다.
+        entities: Alert 엔티티 목록. 원본이다.
+        details: OCSF 속성이 아닌 값. 없으면 빈 객체.
+        assets: 자산 목록. 정규화 뒤 자산 조회가 채우므로 기본은 빈 목록이다.
+        triage: L1 1차 판정 상태.
+    """
+    return {
+        "id": alert_id,
+        "raw_id": raw_id,
+        **derive_columns(ocsf),
+        "entities": entities,
+        "assets": assets or [],
+        "triage": triage,
+        "ocsf": ocsf,
+        "details": details or {},
+    }
 
 
 def _optional_time_ms(source: dict[str, Any], path: str) -> int | None:

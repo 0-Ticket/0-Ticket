@@ -68,6 +68,9 @@ def _reprocess_command(argv: list[str]) -> int:
     parser.add_argument(
         "--since", type=_since, help="alerts.time이 이 시각 이후인 알럿만(ISO 8601)"
     )
+    parser.add_argument(
+        "--all", action="store_true", help="outcome과 관계없이 기존 알럿 전체를 대상으로 한다"
+    )
     parser.add_argument("--limit", type=_positive, help="읽을(정규화할) 최대 행 수")
     parser.add_argument("--dry-run", action="store_true", help="쓰지 않고 건수만 낸다")
     args = parser.parse_args(argv)
@@ -80,6 +83,7 @@ def _reprocess_command(argv: list[str]) -> int:
             since=args.since,
             limit=args.limit,
             dry_run=args.dry_run,
+            all_rows=args.all,
         )
 
     return _run_command(action, format_reprocess, reprocess_exit_code)

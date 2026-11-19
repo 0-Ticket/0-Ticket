@@ -7,7 +7,9 @@ from typing import Any
 import pytest
 
 from soc.contracts import validate_contract
+from soc.contracts.alert import assemble_alert, contract_data
 from soc.l2.branch.context import build_context
+from soc.l2.branch.decide import make_task
 from soc.l2.branch.embed import embedding_text
 from soc.l2.branch.read import BranchRows
 
@@ -33,7 +35,8 @@ def test_fixture_contracts_are_valid(sample: dict[str, Any]) -> None:
 
     for group, contract in contracts.items():
         for data in sample[group]:
-            assert validate_contract(contract, data).model_dump(mode="json") == data
+            expected = contract_data(contract, data)
+            assert validate_contract(contract, expected).model_dump(mode="json") == expected
 
 
 def rows_for(sample: dict[str, Any], ticket_index: int) -> BranchRows:
@@ -52,7 +55,7 @@ def rows_for(sample: dict[str, Any], ticket_index: int) -> BranchRows:
         )
     return BranchRows(
         ticket=ticket,
-        alerts=(sample["alerts"][0],),
+        alerts=(assemble_alert(sample["alerts"][0]),),
         events=(sample["events"][0],),
         hunt=None,
         evidence_ids=(
@@ -68,10 +71,19 @@ def test_context_keeps_confirmed_data(sample: dict[str, Any]) -> None:
     context = build_context(rows_for(sample, 0))
 
     assert context.ticket["id"] == sample["tickets"][0]["id"]
-    assert [alert["id"] for alert in context.alerts] == [sample["alerts"][0]["id"]]
+    assert [alert["details"]["id"] for alert in context.alerts] == [sample["alerts"][0]["id"]]
     assert [event["id"] for event in context.events] == [sample["events"][0]["id"]]
     assert context.hunt is None
     assert context.missing_evidence_count == 1
+
+
+def test_classify_model_input_keeps_the_previous_alert_shape(sample: dict[str, Any]) -> None:
+    """조립 JSON을 쓰는 문맥에서도 모델이 받는 alerts는 전환 전 행 모양과 같다(D-066)."""
+    context = build_context(rows_for(sample, 0))
+
+    task = make_task(context, (), {})
+
+    assert task.data["context"]["alerts"] == [sample["alerts"][0]]
 
 
 def test_l3_context_uses_hunt_evidence(sample: dict[str, Any]) -> None:

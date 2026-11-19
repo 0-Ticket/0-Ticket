@@ -40,7 +40,7 @@ class Source:
         kind: "alert" 또는 "event". RawRecord의 kind와 같다.
         key: ELK 조회 대상(alias, 인덱스·데이터 스트림 패턴). URL 경로(/{key}/_pit)에 들어간다.
         time_field: 정렬과 커서에 쓰는 시각 필드 이름(예: @timestamp).
-        ocsf_class: 이벤트 대상이 선언한 OCSF 클래스 번호(D-065). 적지 않으면 None이다.
+        ocsf_class: 이벤트 대상이 선언한 OCSF 클래스 번호(D-067). 적지 않으면 None이다.
             읽고 검사만 하며 정규화에는 아직 연결하지 않는다(#340).
     """
 
@@ -236,7 +236,7 @@ def read_settings(ingest: dict[str, Any]) -> Settings:
 
 
 def _event_class(raw: dict[str, Any], kind: str, at: str) -> int | None:
-    """대상의 선택 항목 `class`를 읽어 검사한다(D-065). 없으면 None.
+    """대상의 선택 항목 `class`를 읽어 검사한다(D-067). 없으면 None.
 
     이벤트 대상만 쓸 수 있고, ocsf/classes/에 정의 파일이 있는 번호여야 한다.
     알럿 클래스(2004)는 알럿 경로가 따로 정하므로 이벤트 대상에도 쓰지 못한다.
