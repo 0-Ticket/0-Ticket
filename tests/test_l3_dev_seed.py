@@ -11,6 +11,7 @@ from soc.contracts import validate_contract
 from soc.contracts.alert import contract_data
 from soc.l3.__main__ import build_parser
 from soc.l3.hunt.dev_seed import SEED_PATH, SEED_PROFILE, build_rows, load_seed
+from soc.normalize.ocsf_schema import validate_ocsf
 
 FIXTURE = Path(__file__).parent / "fixtures" / "l3_hunt" / "dev_seed.json"
 DOC_NETS = [ipaddress.ip_network(n) for n in ("192.0.2.0/24", "198.51.100.0/24", "203.0.113.0/24")]
@@ -85,8 +86,10 @@ def test_build_rows_are_contract_valid_and_shifted_to_now() -> None:
     for alert in rows.alerts:
         validate_contract("alert", contract_data("alert", alert))
     for event in rows.events:
-        validate_contract("event", event)
+        validate_contract("event", contract_data("event", event))
+        validate_ocsf(event["ocsf"])
         assert event["ocsf_class"] == event["ocsf"]["class_uid"]
+        assert event["summary"] == event["ocsf"]["message"]
     # 시각은 지금 - ago_ms. 에이전트 도구가 보여 주는 Alert·Event에는 시드 표시를 넣지 않는다
     assert sorted(r["time"] for r in made) == sorted(NOW_MS - r["ago_ms"] for r in expected)
     for record in made:

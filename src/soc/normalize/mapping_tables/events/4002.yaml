@@ -1,0 +1,6 @@
+# HTTP Activity. 목록에 없는 메서드는 http_method 대신 activity_name에 있다
+class_uid: 4002
+summary:
+  - [http_request.http_method, activity_name]
+  - [http_request.url.path, http_request.url.url_string]
+  - http_response.code

@@ -25,11 +25,14 @@
             {"type": "process", "value": "schtasks.exe", "role": null}
           ],
           "ocsf": {
-            "class_uid": 1007,
-            "activity_id": 1,
-            "process": {"name": "schtasks.exe", "cmd_line": "schtasks.exe /create /tn WeeklyDiskCleanup /tr cleanmgr.exe /sc weekly", "parent_process": {"name": "mmc.exe"}},
-            "actor": {"user": {"name": "it.yoon"}},
-            "device": {"hostname": "fin-ws-12"}
+            "class_uid": 0,
+            "activity_id": 99,
+            "activity_name": "process started",
+            "unmapped": {
+              "process": {"name": "schtasks.exe", "cmd_line": "schtasks.exe /create /tn WeeklyDiskCleanup /tr cleanmgr.exe /sc weekly", "parent_process": {"name": "mmc.exe"}},
+              "actor": {"user": {"name": "it.yoon"}},
+              "device": {"hostname": "fin-ws-12"}
+            }
           },
           "original": {"event": "process_start", "image": "schtasks.exe", "host": "fin-ws-12"}
         },
@@ -42,11 +45,14 @@
             {"type": "process", "value": "schtasks.exe", "role": null}
           ],
           "ocsf": {
-            "class_uid": 1007,
-            "activity_id": 1,
-            "process": {"name": "schtasks.exe", "cmd_line": "schtasks.exe /create /tn WeeklyDiskCleanup /tr cleanmgr.exe /sc weekly", "parent_process": {"name": "mmc.exe"}},
-            "actor": {"user": {"name": "it.yoon"}},
-            "device": {"hostname": "fin-ws-11"}
+            "class_uid": 0,
+            "activity_id": 99,
+            "activity_name": "process started",
+            "unmapped": {
+              "process": {"name": "schtasks.exe", "cmd_line": "schtasks.exe /create /tn WeeklyDiskCleanup /tr cleanmgr.exe /sc weekly", "parent_process": {"name": "mmc.exe"}},
+              "actor": {"user": {"name": "it.yoon"}},
+              "device": {"hostname": "fin-ws-11"}
+            }
           },
           "original": {"event": "process_start", "image": "schtasks.exe", "host": "fin-ws-11"}
         }
@@ -75,7 +81,7 @@
             {"type": "host", "value": "monitor-01", "role": "src"},
             {"type": "host", "value": "db-03", "role": "dst"}
           ],
-          "ocsf": {"class_uid": 3002, "activity_id": 1, "status_id": 1, "user": {"name": "svc-monitor"}, "src_endpoint": {"ip": "192.0.2.10", "hostname": "monitor-01"}},
+          "ocsf": {"class_uid": 3002, "activity_id": 1, "status_id": 1, "user": {"name": "svc-monitor"}, "src_endpoint": {"ip": "192.0.2.10", "hostname": "monitor-01"}, "service": {"name": "monitoring"}},
           "original": {"event": "login", "result": "success", "user": "svc-monitor"}
         },
         {
@@ -87,7 +93,7 @@
             {"type": "host", "value": "monitor-01", "role": "src"},
             {"type": "host", "value": "db-03", "role": "dst"}
           ],
-          "ocsf": {"class_uid": 3002, "activity_id": 1, "status_id": 1, "user": {"name": "svc-monitor"}, "src_endpoint": {"ip": "192.0.2.10", "hostname": "monitor-01"}},
+          "ocsf": {"class_uid": 3002, "activity_id": 1, "status_id": 1, "user": {"name": "svc-monitor"}, "src_endpoint": {"ip": "192.0.2.10", "hostname": "monitor-01"}, "service": {"name": "monitoring"}},
           "original": {"event": "login", "result": "success", "user": "svc-monitor"}
         },
         {
@@ -99,7 +105,7 @@
             {"type": "host", "value": "monitor-01", "role": "src"},
             {"type": "host", "value": "db-03", "role": "dst"}
           ],
-          "ocsf": {"class_uid": 3002, "activity_id": 1, "status_id": 1, "user": {"name": "svc-monitor"}, "src_endpoint": {"ip": "192.0.2.10", "hostname": "monitor-01"}},
+          "ocsf": {"class_uid": 3002, "activity_id": 1, "status_id": 1, "user": {"name": "svc-monitor"}, "src_endpoint": {"ip": "192.0.2.10", "hostname": "monitor-01"}, "service": {"name": "monitoring"}},
           "original": {"event": "login", "result": "success", "user": "svc-monitor"}
         },
         {
@@ -110,7 +116,7 @@
             {"type": "user", "value": "dba.choi", "role": "actor"},
             {"type": "host", "value": "db-03", "role": "dst"}
           ],
-          "ocsf": {"class_uid": 3001, "activity_id": 3, "user": {"name": "svc-monitor"}, "actor": {"user": {"name": "dba.choi"}}},
+          "ocsf": {"class_uid": 0, "activity_id": 99, "activity_name": "password changed", "unmapped": {"user": {"name": "svc-monitor"}, "actor": {"user": {"name": "dba.choi"}}}},
           "original": {"event": "password_change", "user": "svc-monitor"}
         },
         {
@@ -122,7 +128,7 @@
             {"type": "host", "value": "monitor-01", "role": "src"},
             {"type": "host", "value": "db-03", "role": "dst"}
           ],
-          "ocsf": {"class_uid": 3002, "activity_id": 1, "status_id": 2, "user": {"name": "svc-monitor"}, "src_endpoint": {"ip": "192.0.2.10", "hostname": "monitor-01"}},
+          "ocsf": {"class_uid": 3002, "activity_id": 1, "status_id": 2, "user": {"name": "svc-monitor"}, "src_endpoint": {"ip": "192.0.2.10", "hostname": "monitor-01"}, "service": {"name": "monitoring"}},
           "original": {"event": "login", "result": "failure", "user": "svc-monitor"}
         },
         {
@@ -134,7 +140,7 @@
             {"type": "host", "value": "monitor-01", "role": "src"},
             {"type": "host", "value": "db-03", "role": "dst"}
           ],
-          "ocsf": {"class_uid": 3002, "activity_id": 1, "status_id": 2, "user": {"name": "svc-monitor"}, "src_endpoint": {"ip": "192.0.2.10", "hostname": "monitor-01"}},
+          "ocsf": {"class_uid": 3002, "activity_id": 1, "status_id": 2, "user": {"name": "svc-monitor"}, "src_endpoint": {"ip": "192.0.2.10", "hostname": "monitor-01"}, "service": {"name": "monitoring"}},
           "original": {"event": "login", "result": "failure", "user": "svc-monitor"}
         },
         {
@@ -146,7 +152,7 @@
             {"type": "host", "value": "monitor-01", "role": "src"},
             {"type": "host", "value": "db-03", "role": "dst"}
           ],
-          "ocsf": {"class_uid": 3002, "activity_id": 1, "status_id": 2, "user": {"name": "svc-monitor"}, "src_endpoint": {"ip": "192.0.2.10", "hostname": "monitor-01"}},
+          "ocsf": {"class_uid": 3002, "activity_id": 1, "status_id": 2, "user": {"name": "svc-monitor"}, "src_endpoint": {"ip": "192.0.2.10", "hostname": "monitor-01"}, "service": {"name": "monitoring"}},
           "original": {"event": "login", "result": "failure", "user": "svc-monitor"}
         }
       ]
@@ -174,11 +180,14 @@
             {"type": "process", "value": "powershell.exe", "role": null}
           ],
           "ocsf": {
-            "class_uid": 1007,
-            "activity_id": 1,
-            "process": {"name": "powershell.exe", "cmd_line": "powershell.exe -NoProfile -WindowStyle Hidden -EncodedCommand <생략>", "parent_process": {"name": "winword.exe"}},
-            "actor": {"user": {"name": "hana.lee"}},
-            "device": {"hostname": "hr-ws-07"}
+            "class_uid": 0,
+            "activity_id": 99,
+            "activity_name": "process started",
+            "unmapped": {
+              "process": {"name": "powershell.exe", "cmd_line": "powershell.exe -NoProfile -WindowStyle Hidden -EncodedCommand <생략>", "parent_process": {"name": "winword.exe"}},
+              "actor": {"user": {"name": "hana.lee"}},
+              "device": {"hostname": "hr-ws-07"}
+            }
           },
           "original": {"event": "process_start", "image": "powershell.exe", "parent": "winword.exe"}
         },
@@ -200,7 +209,7 @@
             {"type": "host", "value": "hr-ws-07", "role": "target"},
             {"type": "file_hash", "value": "0000000000000000000000000000000000000000000000000000000000000001", "role": null}
           ],
-          "ocsf": {"class_uid": 1001, "activity_id": 1, "file": {"name": "upd.exe", "path": "C:\\Users\\hana.lee\\AppData\\Roaming\\upd.exe"}, "device": {"hostname": "hr-ws-07"}},
+          "ocsf": {"class_uid": 0, "activity_id": 99, "activity_name": "file created", "unmapped": {"file": {"name": "upd.exe", "path": "C:\\Users\\hana.lee\\AppData\\Roaming\\upd.exe"}, "device": {"hostname": "hr-ws-07"}}},
           "original": {"event": "file_create", "path": "C:\\Users\\hana.lee\\AppData\\Roaming\\upd.exe"}
         },
         {
@@ -210,7 +219,7 @@
             {"type": "host", "value": "hr-ws-07", "role": "target"},
             {"type": "process", "value": "upd.exe", "role": null}
           ],
-          "ocsf": {"class_uid": 1007, "activity_id": 1, "process": {"name": "upd.exe", "parent_process": {"name": "powershell.exe"}}, "device": {"hostname": "hr-ws-07"}},
+          "ocsf": {"class_uid": 0, "activity_id": 99, "activity_name": "process started", "unmapped": {"process": {"name": "upd.exe", "parent_process": {"name": "powershell.exe"}}, "device": {"hostname": "hr-ws-07"}}},
           "original": {"event": "process_start", "image": "upd.exe", "parent": "powershell.exe"}
         }
       ]
@@ -298,7 +307,7 @@
             {"type": "ip", "value": "198.51.100.140", "role": "src"},
             {"type": "host", "value": "mail-gw", "role": "dst"}
           ],
-          "ocsf": {"class_uid": 3002, "activity_id": 1, "status_id": 1, "user": {"name": "jiwoo.kang"}, "src_endpoint": {"ip": "198.51.100.140"}},
+          "ocsf": {"class_uid": 3002, "activity_id": 1, "status_id": 1, "user": {"name": "jiwoo.kang"}, "src_endpoint": {"ip": "198.51.100.140"}, "service": {"name": "mail"}},
           "original": {"event": "login", "result": "success", "user": "jiwoo.kang"}
         },
         {
@@ -309,7 +318,7 @@
             {"type": "ip", "value": "192.0.2.30", "role": "src"},
             {"type": "host", "value": "mail-gw", "role": "dst"}
           ],
-          "ocsf": {"class_uid": 3002, "activity_id": 1, "status_id": 1, "user": {"name": "jiwoo.kang"}, "src_endpoint": {"ip": "192.0.2.30"}},
+          "ocsf": {"class_uid": 3002, "activity_id": 1, "status_id": 1, "user": {"name": "jiwoo.kang"}, "src_endpoint": {"ip": "192.0.2.30"}, "service": {"name": "mail"}},
           "original": {"event": "login", "result": "success", "user": "jiwoo.kang"}
         }
       ]

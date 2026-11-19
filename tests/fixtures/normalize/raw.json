@@ -330,7 +330,7 @@
     "expect": {
       "kind": "event",
       "class_uid": 0,
-      "activity_id": 0,
+      "activity_id": 99,
       "summary": "logon",
       "entities": []
     }

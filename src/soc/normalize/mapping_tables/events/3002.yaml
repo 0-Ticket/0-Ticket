@@ -1,0 +1,6 @@
+# Authentication
+class_uid: 3002
+summary:
+  - user.name
+  - activity_name
+  - status

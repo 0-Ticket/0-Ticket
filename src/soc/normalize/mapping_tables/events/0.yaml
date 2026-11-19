@@ -1,0 +1,4 @@
+# Base Event. 출처의 활동 이름(event.action)이 activity_name에 있다
+class_uid: 0
+summary:
+  - activity_name

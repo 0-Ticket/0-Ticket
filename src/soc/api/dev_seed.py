@@ -19,7 +19,7 @@ from psycopg.types.json import Jsonb
 from soc.api.ui_read import times
 from soc.contracts import to_datetime, validate_contract
 from soc.contracts.alert import contract_data
-from soc.normalize.mapping import with_derived_columns
+from soc.normalize.mapping import with_derived_columns, with_derived_event_columns
 
 SEED_PATH = Path(__file__).resolve().parents[3] / "tests/fixtures/api/ui_seed.json"
 SEED_SOURCE = "dev-seed-ui"
@@ -69,6 +69,7 @@ def load_seed() -> dict[str, list[dict[str, Any]]]:
     if set(rows) != set(CONTRACTS):
         raise ValueError("시드 테이블 집합 오류")
     rows["alerts"] = [with_derived_columns(row) for row in rows["alerts"]]
+    rows["events"] = [with_derived_event_columns(row) for row in rows["events"]]
     for table, records in rows.items():
         for row in records:
             contract = CONTRACTS[table]
