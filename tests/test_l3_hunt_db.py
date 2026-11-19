@@ -32,12 +32,16 @@ from soc.l3.hunt.command import run_hunt
 from soc.l3.hunt.hypothesize import hypothesize
 from soc.l3.hunt.settings import HuntSettings, read_hunt_settings
 from soc.l3.hunt.verify import HuntVerifier
+from soc.normalize.mapping import with_derived_columns
 from soc.tools import Arg, ToolRegistry, ToolSpec
 
 pytestmark = pytest.mark.db
 
 FIXTURES = Path(__file__).parent / "fixtures" / "l3_hunt"
 SEED = json.loads((FIXTURES / "seed.json").read_text(encoding="utf-8"))
+SEED["alerts"] = [
+    with_derived_columns(row) for row in SEED["alerts"]
+]  # 파생 컬럼은 ocsf에서(D-065)
 NOW_MS = SEED["now"]
 NOW = to_datetime(NOW_MS)
 DAY_MS = 86_400_000

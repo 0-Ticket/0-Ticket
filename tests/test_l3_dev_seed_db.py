@@ -20,11 +20,13 @@ from soc.l3.config import load_config
 from soc.l3.hunt.dev_seed import SEED_PROFILE, SeedInUse, remove_seed, run_dev_seed, seed
 from soc.l3.hunt.settings import read_hunt_settings
 from soc.l3.hunt.verify import HuntVerifier
+from soc.normalize.mapping import with_derived_columns
 
 pytestmark = pytest.mark.db
 
 FIXTURES = Path(__file__).parent / "fixtures"
 OTHER = json.loads((FIXTURES / "l3_hunt" / "seed.json").read_text(encoding="utf-8"))
+OTHER["alerts"] = [with_derived_columns(row) for row in OTHER["alerts"]]
 AGENT_LOG = json.loads((FIXTURES / "contracts" / "valid" / "agent_log.json").read_text("utf-8"))
 NOW = datetime(2026, 11, 5, 3, 0, tzinfo=UTC)
 TABLES = ("raw_records", "alerts", "events", "hunts", "tickets")

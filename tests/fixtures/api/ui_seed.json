@@ -157,10 +157,6 @@
     {
       "id": "alt_01a19f93-1266-7000-8000-000000000001",
       "raw_id": "raw_01a19f93-1266-7000-8000-000000000001",
-      "time": 1793678578000,
-      "severity": 0,
-      "title": "샘플 Alert 0",
-      "rule_id": "9f1e2d3c-4b5a-6789-0abc-def012345678",
       "entities": [
         {
           "type": "ip",
@@ -195,19 +191,56 @@
       },
       "ocsf": {
         "class_uid": 2004,
+        "category_uid": 2,
+        "activity_id": 1,
+        "type_uid": 200401,
         "severity_id": 0,
         "time": 1793678578000,
+        "metadata": {
+          "version": "1.9.0",
+          "product": {
+            "name": "Elasticsearch",
+            "vendor_name": "Elastic"
+          }
+        },
         "finding_info": {
-          "title": "SQL Injection Attempt",
-          "uid": "9f1e2d3c-4b5a-6789-0abc-def012345678"
+          "title": "샘플 Alert 0",
+          "uid": "9f1e2d3c-4b5a-6789-0abc-def012345678",
+          "analytic": {
+            "uid": "9f1e2d3c-4b5a-6789-0abc-def012345678",
+            "type_id": 1
+          }
         },
-        "src_endpoint": {
-          "ip": "203.0.113.10"
-        },
-        "dst_endpoint": {
-          "ip": "198.51.100.5",
-          "hostname": "web-01"
-        }
+        "is_alert": true,
+        "status_id": 1,
+        "start_time": 1793678578000,
+        "end_time": 1793678578000,
+        "observables": [
+          {
+            "type_id": 2,
+            "value": "203.0.113.10"
+          },
+          {
+            "type_id": 2,
+            "value": "198.51.100.5"
+          },
+          {
+            "type_id": 1,
+            "value": "web-01"
+          }
+        ],
+        "evidences": [
+          {
+            "src_endpoint": {
+              "ip": "203.0.113.10"
+            }
+          },
+          {
+            "dst_endpoint": {
+              "ip": "198.51.100.5"
+            }
+          }
+        ]
       },
       "details": {
         "seed_source": "dev-seed-ui"
@@ -216,10 +249,6 @@
     {
       "id": "alt_01a19f93-1266-7000-8000-000000000002",
       "raw_id": "raw_01a19f93-1266-7000-8000-000000000002",
-      "time": 1793678578000,
-      "severity": 1,
-      "title": "샘플 Alert 1",
-      "rule_id": "9f1e2d3c-4b5a-6789-0abc-def012345678",
       "entities": [
         {
           "type": "ip",
@@ -251,19 +280,56 @@
       "triage": null,
       "ocsf": {
         "class_uid": 2004,
+        "category_uid": 2,
+        "activity_id": 1,
+        "type_uid": 200401,
         "severity_id": 1,
         "time": 1793678578000,
+        "metadata": {
+          "version": "1.9.0",
+          "product": {
+            "name": "Elasticsearch",
+            "vendor_name": "Elastic"
+          }
+        },
         "finding_info": {
-          "title": "SQL Injection Attempt",
-          "uid": "9f1e2d3c-4b5a-6789-0abc-def012345678"
+          "title": "샘플 Alert 1",
+          "uid": "9f1e2d3c-4b5a-6789-0abc-def012345678",
+          "analytic": {
+            "uid": "9f1e2d3c-4b5a-6789-0abc-def012345678",
+            "type_id": 1
+          }
         },
-        "src_endpoint": {
-          "ip": "203.0.113.10"
-        },
-        "dst_endpoint": {
-          "ip": "198.51.100.5",
-          "hostname": "web-01"
-        }
+        "is_alert": true,
+        "status_id": 1,
+        "start_time": 1793678578000,
+        "end_time": 1793678578000,
+        "observables": [
+          {
+            "type_id": 2,
+            "value": "203.0.113.10"
+          },
+          {
+            "type_id": 2,
+            "value": "198.51.100.5"
+          },
+          {
+            "type_id": 1,
+            "value": "web-01"
+          }
+        ],
+        "evidences": [
+          {
+            "src_endpoint": {
+              "ip": "203.0.113.10"
+            }
+          },
+          {
+            "dst_endpoint": {
+              "ip": "198.51.100.5"
+            }
+          }
+        ]
       },
       "details": {
         "seed_source": "dev-seed-ui"
@@ -272,10 +338,6 @@
     {
       "id": "alt_01a19f93-1266-7000-8000-000000000003",
       "raw_id": "raw_01a19f93-1266-7000-8000-000000000003",
-      "time": 1793678578000,
-      "severity": 2,
-      "title": "샘플 Alert 2",
-      "rule_id": "9f1e2d3c-4b5a-6789-0abc-def012345678",
       "entities": [
         {
           "type": "ip",
@@ -307,19 +369,56 @@
       "triage": null,
       "ocsf": {
         "class_uid": 2004,
+        "category_uid": 2,
+        "activity_id": 1,
+        "type_uid": 200401,
         "severity_id": 2,
         "time": 1793678578000,
+        "metadata": {
+          "version": "1.9.0",
+          "product": {
+            "name": "Elasticsearch",
+            "vendor_name": "Elastic"
+          }
+        },
         "finding_info": {
-          "title": "SQL Injection Attempt",
-          "uid": "9f1e2d3c-4b5a-6789-0abc-def012345678"
+          "title": "샘플 Alert 2",
+          "uid": "9f1e2d3c-4b5a-6789-0abc-def012345678",
+          "analytic": {
+            "uid": "9f1e2d3c-4b5a-6789-0abc-def012345678",
+            "type_id": 1
+          }
         },
-        "src_endpoint": {
-          "ip": "203.0.113.10"
-        },
-        "dst_endpoint": {
-          "ip": "198.51.100.5",
-          "hostname": "web-01"
-        }
+        "is_alert": true,
+        "status_id": 1,
+        "start_time": 1793678578000,
+        "end_time": 1793678578000,
+        "observables": [
+          {
+            "type_id": 2,
+            "value": "203.0.113.10"
+          },
+          {
+            "type_id": 2,
+            "value": "198.51.100.5"
+          },
+          {
+            "type_id": 1,
+            "value": "web-01"
+          }
+        ],
+        "evidences": [
+          {
+            "src_endpoint": {
+              "ip": "203.0.113.10"
+            }
+          },
+          {
+            "dst_endpoint": {
+              "ip": "198.51.100.5"
+            }
+          }
+        ]
       },
       "details": {
         "seed_source": "dev-seed-ui"
@@ -328,10 +427,6 @@
     {
       "id": "alt_01a19f93-1266-7000-8000-000000000004",
       "raw_id": "raw_01a19f93-1266-7000-8000-000000000004",
-      "time": 1793678578000,
-      "severity": 3,
-      "title": "샘플 Alert 3",
-      "rule_id": "9f1e2d3c-4b5a-6789-0abc-def012345678",
       "entities": [
         {
           "type": "ip",
@@ -363,19 +458,56 @@
       "triage": null,
       "ocsf": {
         "class_uid": 2004,
+        "category_uid": 2,
+        "activity_id": 1,
+        "type_uid": 200401,
         "severity_id": 3,
         "time": 1793678578000,
+        "metadata": {
+          "version": "1.9.0",
+          "product": {
+            "name": "Elasticsearch",
+            "vendor_name": "Elastic"
+          }
+        },
         "finding_info": {
-          "title": "SQL Injection Attempt",
-          "uid": "9f1e2d3c-4b5a-6789-0abc-def012345678"
+          "title": "샘플 Alert 3",
+          "uid": "9f1e2d3c-4b5a-6789-0abc-def012345678",
+          "analytic": {
+            "uid": "9f1e2d3c-4b5a-6789-0abc-def012345678",
+            "type_id": 1
+          }
         },
-        "src_endpoint": {
-          "ip": "203.0.113.10"
-        },
-        "dst_endpoint": {
-          "ip": "198.51.100.5",
-          "hostname": "web-01"
-        }
+        "is_alert": true,
+        "status_id": 1,
+        "start_time": 1793678578000,
+        "end_time": 1793678578000,
+        "observables": [
+          {
+            "type_id": 2,
+            "value": "203.0.113.10"
+          },
+          {
+            "type_id": 2,
+            "value": "198.51.100.5"
+          },
+          {
+            "type_id": 1,
+            "value": "web-01"
+          }
+        ],
+        "evidences": [
+          {
+            "src_endpoint": {
+              "ip": "203.0.113.10"
+            }
+          },
+          {
+            "dst_endpoint": {
+              "ip": "198.51.100.5"
+            }
+          }
+        ]
       },
       "details": {
         "seed_source": "dev-seed-ui"
@@ -384,10 +516,6 @@
     {
       "id": "alt_01a19f93-1266-7000-8000-000000000005",
       "raw_id": "raw_01a19f93-1266-7000-8000-000000000005",
-      "time": 1793678578000,
-      "severity": 4,
-      "title": "샘플 Alert 4",
-      "rule_id": "9f1e2d3c-4b5a-6789-0abc-def012345678",
       "entities": [
         {
           "type": "ip",
@@ -419,19 +547,56 @@
       "triage": null,
       "ocsf": {
         "class_uid": 2004,
+        "category_uid": 2,
+        "activity_id": 1,
+        "type_uid": 200401,
         "severity_id": 4,
         "time": 1793678578000,
+        "metadata": {
+          "version": "1.9.0",
+          "product": {
+            "name": "Elasticsearch",
+            "vendor_name": "Elastic"
+          }
+        },
         "finding_info": {
-          "title": "SQL Injection Attempt",
-          "uid": "9f1e2d3c-4b5a-6789-0abc-def012345678"
+          "title": "샘플 Alert 4",
+          "uid": "9f1e2d3c-4b5a-6789-0abc-def012345678",
+          "analytic": {
+            "uid": "9f1e2d3c-4b5a-6789-0abc-def012345678",
+            "type_id": 1
+          }
         },
-        "src_endpoint": {
-          "ip": "203.0.113.10"
-        },
-        "dst_endpoint": {
-          "ip": "198.51.100.5",
-          "hostname": "web-01"
-        }
+        "is_alert": true,
+        "status_id": 1,
+        "start_time": 1793678578000,
+        "end_time": 1793678578000,
+        "observables": [
+          {
+            "type_id": 2,
+            "value": "203.0.113.10"
+          },
+          {
+            "type_id": 2,
+            "value": "198.51.100.5"
+          },
+          {
+            "type_id": 1,
+            "value": "web-01"
+          }
+        ],
+        "evidences": [
+          {
+            "src_endpoint": {
+              "ip": "203.0.113.10"
+            }
+          },
+          {
+            "dst_endpoint": {
+              "ip": "198.51.100.5"
+            }
+          }
+        ]
       },
       "details": {
         "seed_source": "dev-seed-ui"
@@ -440,10 +605,6 @@
     {
       "id": "alt_01a19f93-1266-7000-8000-000000000006",
       "raw_id": "raw_01a19f93-1266-7000-8000-000000000006",
-      "time": 1793678578000,
-      "severity": 5,
-      "title": "샘플 Alert 5",
-      "rule_id": "9f1e2d3c-4b5a-6789-0abc-def012345678",
       "entities": [
         {
           "type": "ip",
@@ -475,19 +636,56 @@
       "triage": null,
       "ocsf": {
         "class_uid": 2004,
+        "category_uid": 2,
+        "activity_id": 1,
+        "type_uid": 200401,
         "severity_id": 5,
         "time": 1793678578000,
+        "metadata": {
+          "version": "1.9.0",
+          "product": {
+            "name": "Elasticsearch",
+            "vendor_name": "Elastic"
+          }
+        },
         "finding_info": {
-          "title": "SQL Injection Attempt",
-          "uid": "9f1e2d3c-4b5a-6789-0abc-def012345678"
+          "title": "샘플 Alert 5",
+          "uid": "9f1e2d3c-4b5a-6789-0abc-def012345678",
+          "analytic": {
+            "uid": "9f1e2d3c-4b5a-6789-0abc-def012345678",
+            "type_id": 1
+          }
         },
-        "src_endpoint": {
-          "ip": "203.0.113.10"
-        },
-        "dst_endpoint": {
-          "ip": "198.51.100.5",
-          "hostname": "web-01"
-        }
+        "is_alert": true,
+        "status_id": 1,
+        "start_time": 1793678578000,
+        "end_time": 1793678578000,
+        "observables": [
+          {
+            "type_id": 2,
+            "value": "203.0.113.10"
+          },
+          {
+            "type_id": 2,
+            "value": "198.51.100.5"
+          },
+          {
+            "type_id": 1,
+            "value": "web-01"
+          }
+        ],
+        "evidences": [
+          {
+            "src_endpoint": {
+              "ip": "203.0.113.10"
+            }
+          },
+          {
+            "dst_endpoint": {
+              "ip": "198.51.100.5"
+            }
+          }
+        ]
       },
       "details": {
         "seed_source": "dev-seed-ui"
@@ -496,10 +694,6 @@
     {
       "id": "alt_01a19f93-1266-7000-8000-000000000007",
       "raw_id": "raw_01a19f93-1266-7000-8000-000000000007",
-      "time": 1793678578000,
-      "severity": 6,
-      "title": "샘플 Alert 6",
-      "rule_id": "9f1e2d3c-4b5a-6789-0abc-def012345678",
       "entities": [
         {
           "type": "ip",
@@ -531,19 +725,56 @@
       "triage": null,
       "ocsf": {
         "class_uid": 2004,
+        "category_uid": 2,
+        "activity_id": 1,
+        "type_uid": 200401,
         "severity_id": 6,
         "time": 1793678578000,
+        "metadata": {
+          "version": "1.9.0",
+          "product": {
+            "name": "Elasticsearch",
+            "vendor_name": "Elastic"
+          }
+        },
         "finding_info": {
-          "title": "SQL Injection Attempt",
-          "uid": "9f1e2d3c-4b5a-6789-0abc-def012345678"
+          "title": "샘플 Alert 6",
+          "uid": "9f1e2d3c-4b5a-6789-0abc-def012345678",
+          "analytic": {
+            "uid": "9f1e2d3c-4b5a-6789-0abc-def012345678",
+            "type_id": 1
+          }
         },
-        "src_endpoint": {
-          "ip": "203.0.113.10"
-        },
-        "dst_endpoint": {
-          "ip": "198.51.100.5",
-          "hostname": "web-01"
-        }
+        "is_alert": true,
+        "status_id": 1,
+        "start_time": 1793678578000,
+        "end_time": 1793678578000,
+        "observables": [
+          {
+            "type_id": 2,
+            "value": "203.0.113.10"
+          },
+          {
+            "type_id": 2,
+            "value": "198.51.100.5"
+          },
+          {
+            "type_id": 1,
+            "value": "web-01"
+          }
+        ],
+        "evidences": [
+          {
+            "src_endpoint": {
+              "ip": "203.0.113.10"
+            }
+          },
+          {
+            "dst_endpoint": {
+              "ip": "198.51.100.5"
+            }
+          }
+        ]
       },
       "details": {
         "seed_source": "dev-seed-ui"

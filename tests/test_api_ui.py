@@ -11,8 +11,12 @@ from psycopg.types.json import Jsonb
 
 from soc.contracts import to_datetime, validate_contract
 from soc.db.migrate import migrate
+from soc.normalize.mapping import with_derived_columns
 
 SEED = json.loads((Path(__file__).parent / "fixtures/api/ui_seed.json").read_text())
+SEED["alerts"] = [
+    with_derived_columns(row) for row in SEED["alerts"]
+]  # 파생 컬럼은 ocsf에서(D-065)
 CONTRACTS = {
     "raw_records": "raw_record",
     "alerts": "alert",
