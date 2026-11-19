@@ -109,6 +109,7 @@
 | D-036 | Agent Log는 모델·도구 호출의 입출력을 PostgreSQL에 저장한다. 호출이 끝날 때마다 그 줄을 바로 쓴다. model 줄의 입력은 줄마다 새로 더해진 항목만 저장하고, `records` 도구 줄의 출력은 모델에게 보인 결과만 저장한다 | 성능 문제가 생기면 NoSQL을 다시 논의한다. 입출력에는 공격자가 쓴 문자열이 들어가므로 화면에서는 텍스트로만 표시한다(로그 원문·LLM 출력 텍스트 표시, D-019). 복원: 같은 `run_id`의 model 줄을 `seq` 순으로 이어 붙이면(system 지시는 첫 줄, 이후 줄은 `input_from`) 그 호출의 전체 입력이 된다. 그 입력은 모델에게 보낸 값이라 비밀 가림이 적용된 뒤의 값이다(D-048). model 출력 줄·`details`·도구 인자 줄은 쓰기 직전에만 가려, 모델이 낸 원문과 다를 수 있다(#279). 앞 입력의 접두가 아니면 전체를 저장하고 `details.input_reset`을 단다. `records` 도구 줄은 모델에게 보인 결과와 뺀 건수(`omitted`)를 담는다. 도구 결과를 자르기 전 전체로 저장하던 방식(#211)을 바꾼 것이다. 읽는 규칙: 끝난 run에는 `details.validation` 또는 `details.failure`가 있는 model 줄이 있고, `details.sent=false` 줄은 모델에 보내지 않은 호출이다. 줄을 호출마다 쓰므로 강제 종료된 run은 끝난 호출까지만 남고 그 줄이 없다(#278) |
 | D-037 | 계약 검증·DB 라이브러리: psycopg 3(`psycopg[binary]`), jsonschema, pydantic v2. 개발용: datamodel-code-generator | psycopg는 LGPL-3.0이고 수정 없이 import해서 쓴다. 생성 도구 버전은 `uv.lock`으로 고정한다 |
 | D-038 | 생성 코드 폴더(`src/soc/contracts/generated/`)에서만 ruff E501(줄 길이)을 끈다. 포맷 검사와 나머지 린트 규칙은 그대로 적용한다 | 생성 코드는 손으로 고칠 수 없고, schema의 설명 문장이 한 줄로 생성돼 100자를 넘는다. 2026-11-03 #192 계획에서 사람이 승인한 예외 |
+| D-067 | Ticket 제목. Ticket 계약에 필수 `title`(1~200자)을 두고 `tickets.title`(NOT NULL)을 더한다. 제목 규칙은 `soc.ticketing`의 `clean_title`·`ticket_title` 한 곳이다. 공백 목록(탭·LF·VT·FF·CR·공백·U+00A0·U+3000)의 연속을 한 칸으로 줄이고 앞뒤를 떼며, 200자(코드포인트)를 넘으면 앞 199자 + `…`이고, 목록 밖 글자가 하나도 없으면 `(제목 없음)`이다. 계약 `pattern`(`[^\t\n\u000b\f\r  　]`)·DB CHECK·`clean_title`이 같은 목록을 쓴다. 값은 auto·scenario·l1이 소속 alert의 제목(시나리오는 alert 하나당 Ticket 하나이므로 그 alert의 제목), l3가 Hunt `hypothesis`다. alert가 여럿이면 심각도 내림차순 → time 오름차순 → id 오름차순으로 첫 alert의 제목을 쓰는 순수 함수를 두되, auto·scenario·l1은 alert가 정확히 1개라(0104) 생성 경로는 하나만 넘긴다. 기존 행은 마이그레이션 0109가 같은 규칙으로 채운다. 목록 API `TicketItem`에 `title`을 더하고 L2 모델 입력에 `title`이 포함된다 | 공백뿐인 값의 기준을 `\S`로 하지 않은 것은 `\S`가 유니코드 공백 전체를 공백으로 봐서, `clean_title`을 통과한 U+2003만 있는 제목을 계약이 거부하고 `run()`이 같은 alert를 매번 다시 시도해 D-059 문제가 다시 생기기 때문이다. 폴백 문구는 생성 코드와 백필이 같다. 제목은 생성 시점 값이라 alert 제목이 재처리(D-063)로 바뀌어도 따라가지 않는다. L3 제목은 LLM 출력(`hypothesis`)이라 데이터·텍스트로만 다룬다. 공통 계약 변경이라 L1·L2·L3·UI 담당이 계획 확정 전에 승인했다. 계획은 `docs/plans/343-ticket-title.md`(#343) |
 
 ### 화면
 
@@ -153,6 +154,7 @@
 | ID | 항목 | 메모 |
 |---|---|---|
 | D-032 | 알림 | 추후 개발 예정. 이전 안: Slack, L2 분석이 끝나 사람 승인이 필요할 때만 |
+| D-068 | 시나리오 모드 묶음 Ticket의 요약 제목 | 여러 alert를 묶은 Ticket이면 AI가 분석한 뒤 요약한 제목을 쓴다. 지금은 계약과 DB가 auto·scenario·l1 Ticket의 alert를 1개로 제한해(`ticket.schema.json`, 0104) 묶음 Ticket을 만들 수 없다. 계약이 묶음을 먼저 허용해야 하고, 요약 생성은 시나리오 로직 이슈에서 만든다. 원본 alert 하나당 Ticket 하나이면 alert 제목을 쓴다(D-067). 코드 주석은 `_make_ticket` 근처에 있다(#343) |
 
 ## 폐기
 
@@ -163,6 +165,7 @@
 
 새 기록을 맨 위에 쓴다.
 
+- #343 · Ticket 제목(D-067)을 확정으로, 시나리오 묶음 Ticket의 요약 제목(D-068)을 추후로 추가했다. Ticket 계약에 필수 `title`(1~200자)을 두고 `tickets.title`을 마이그레이션 0109로 채운다. 제목 규칙(공백 정리·199자 + `…`·폴백 `(제목 없음)`)과 공백 기준(명시한 8종, `\S`를 쓰지 않음)을 정했다. L3 Ticket 제목은 `hypothesis`이고, 다중 alert 규칙은 함수로만 두며 생성 경로는 alert 하나다(auto·scenario·l1은 alert 1개). 목록 API에 `title`을 더하고 L2 모델 입력에 `title`이 포함된다. 공통 계약 변경이라 L1·L2·L3·UI 담당이 계획 확정 전에 승인했다. 사용자가 계획을 확정함.
 - #339 · Alert 계약 구조(D-066)를 확정으로 추가했다. Alert JSON 최상위를 OCSF 문서로 두고 우리 쪽 값 6개를 `details`에 모으며, 조립 함수 한 곳·`details`를 뺀 OCSF 검증·`id_fields` 점 경로 확장을 정했다. D-059의 계약 서술과 D-065의 "계약·읽는 쪽 코드는 바꾸지 않는다"를 대체한다. `rule_id`는 `details`에서 필수이되 null을 허용한다. 공통 계약 변경은 L1·L2·L3·UI 담당이 계획 확정 전에 승인했다. 사용자가 계획을 확정함.
 - #338 · Alert 저장 구조(D-065)를 확정으로 추가했다. `ocsf`가 원본이고 파생 컬럼은 단일 함수가 만들며 `observables`·`evidences`는 entities에서 만든다. D-062의 `evidences` 서술을 대체한다. 시드 픽스처·코드·`ocsf` 내용 변화는 L1·L2·L3 담당자 확인을 사용자가 받아 알린다. 사용자가 계획을 확정함.
 - #336 · 매핑표 엔티티 항목의 `when`과 소스 표 `entries`의 `common` 덮어쓰기, GuardDuty 판별의 표 이동(D-064, D-060 예외·D-062의 해당 부분 대체)을 확정으로 추가했다. OUTBOUND 로컬 IP가 `src`가 되어 L2 그래프 연결에 주는 영향은 담당자 확인을 사용자가 받아 알린다. 사용자가 계획을 확정함.
