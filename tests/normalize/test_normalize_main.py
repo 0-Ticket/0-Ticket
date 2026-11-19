@@ -33,9 +33,26 @@ def test_reprocess_command_requires_write_database_url(
     assert "DATABASE_URL" in capsys.readouterr().err
 
 
-@pytest.mark.parametrize("argv", [["reprocess", "--limit", "0"], ["reprocess", "--since", "x"]])
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ["reprocess", "--limit", "0"],
+        ["reprocess", "--since", "x"],
+        ["reprocess", "--kind", "log"],
+        ["reprocess", "--kind", "event", "--source", "suricata"],  # --source는 알럿 전용
+    ],
+)
 def test_reprocess_command_rejects_bad_options(argv: list[str]) -> None:
     with pytest.raises(SystemExit) as stopped:
         main(argv)
 
     assert stopped.value.code == 2
+
+
+def test_reprocess_kind_event_without_source_reaches_the_database_check(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+
+    assert main(["reprocess", "--kind", "event", "--dry-run"]) == 2
+    assert "DATABASE_URL" in capsys.readouterr().err

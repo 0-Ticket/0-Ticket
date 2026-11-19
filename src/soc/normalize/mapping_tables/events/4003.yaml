@@ -1,0 +1,5 @@
+# DNS Activity
+class_uid: 4003
+summary:
+  - query.hostname
+  - query.type

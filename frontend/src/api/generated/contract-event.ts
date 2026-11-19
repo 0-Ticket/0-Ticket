@@ -1,38 +1,36 @@
 /* Generated. Do not edit. Run pnpm contracts. */
 
 /**
- * OCSF 1.9.0으로 정규화한 이벤트. 맞는 클래스가 없으면 Base Event(class_uid 0)
+ * OCSF 1.9.0 이벤트 문서. 클래스는 저장한 7개(0 Base Event, 2003, 3002, 4001, 4002, 4003, 6003)다. 우리 쪽 값은 모두 details에 있다. 최상위 time은 활동 발생 시각이고 severity_id가 심각도다. DB 컬럼 time(start_time 우선)·summary(message)·ocsf_class(class_uid)는 ocsf에서 파생한다
  */
 export interface Event {
-  id: string;
-  raw_id: string;
   /**
-   * UTC epoch 밀리초. 상한은 9999-12-30T23:59:59.999Z(+14시간 시간대로 읽어도 9999년 안)
+   * OCSF 클래스. 0 Base Event, 2003 Compliance Finding, 3002 Authentication, 4001 Network Activity, 4002 HTTP Activity, 4003 DNS Activity, 6003 API Activity
+   */
+  class_uid: 0 | 2003 | 3002 | 4001 | 4002 | 4003 | 6003;
+  /**
+   * 활동 발생 시각(epoch 밀리초)
    */
   time: number;
   /**
-   * OCSF class_uid. ocsf.class_uid와 같아야 한다(validate_contract 추가 검사)
+   * OCSF 심각도. 0 Unknown, 1 Informational, 2 Low, 3 Medium, 4 High, 5 Critical, 6 Fatal, 99 Other
    */
-  ocsf_class: number;
+  severity_id: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 99;
   /**
-   * 한 줄 요약
+   * 한 줄 요약. 공백이 아닌 글자가 하나 이상 있어야 한다. DB 컬럼 summary가 여기서 파생된다
    */
-  summary: string;
-  entities: Entity[];
-  assets: Asset[];
+  message: string;
   /**
-   * 매핑한 OCSF 클래스 전체
-   */
-  ocsf: {
-    class_uid: number;
-    [k: string]: unknown;
-  };
-  /**
-   * 계약에 없는 값. 다른 단계는 읽지 않는다
+   * 우리 쪽 값. OCSF 속성 이름과 같은 키를 두지 않는다. 아래 4개는 필수이고 그 밖의 값은 더 올 수 있다
    */
   details: {
+    id: string;
+    raw_id: string;
+    entities: Entity[];
+    assets: Asset[];
     [k: string]: unknown;
   };
+  [k: string]: unknown;
 }
 /**
  * 알럿·이벤트·Ticket·Incident에 나온 엔티티 하나

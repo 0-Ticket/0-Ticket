@@ -12,6 +12,7 @@ from psycopg.types.json import Jsonb
 
 from soc.contracts import to_datetime
 from soc.contracts.alert import assemble_alert
+from soc.contracts.event import assemble_event
 from soc.tools.db import read_rows
 from soc.tools.registry import Arg, CallContext, ToolError, ToolSpec
 
@@ -28,7 +29,9 @@ ORDER_BY = {"time_desc": "time DESC, id DESC", "time_asc": "time ASC, id ASC"}
 _FULL = {
     # Alert JSON(D-066)을 조립하는 데 필요한 열만 읽는다. 시각·제목·심각도는 ocsf 안에 있다
     "alerts": "id, raw_id, rule_id, entities, assets, triage, ocsf, details",
-    "events": f"id, raw_id, {TIME_MS}, ocsf_class, summary, entities, assets, ocsf, details",
+    # Event JSON(D-068)을 조립하는 데 필요한 열만 읽는다. 시각·클래스·요약은 ocsf 안에 있다
+    # summary는 ocsf에 message가 없는 옛 행의 요약을 채우는 데만 쓴다
+    "events": "id, raw_id, summary, entities, assets, ocsf, details",
 }
 _LIST = {
     "alert": ("alerts", f"id, {TIME_MS}, severity, title, rule_id, entities"),
@@ -116,7 +119,8 @@ def _get(table: str):
     def handler(args: dict[str, Any], ctx: CallContext) -> list[dict[str, Any]]:
         query = f"SELECT {_FULL[table]} FROM {table} WHERE id = %s"  # 표 이름은 상수다
         rows = read_rows(ctx, query, (args["id"],))
-        return [assemble_alert(row) for row in rows] if table == "alerts" else rows
+        assemble = assemble_alert if table == "alerts" else assemble_event
+        return [assemble(row) for row in rows]
 
     return handler
 
@@ -169,11 +173,14 @@ GET_ALERT = ToolSpec(
 
 GET_EVENT = ToolSpec(
     name="get_event",
-    description="Event 하나를 id(evt_…)로 읽는다. ocsf·details를 포함한 전체를 돌려준다.",
+    description=(
+        "Event 하나를 id(evt_…)로 읽는다. OCSF 이벤트 문서에 우리 값(id·raw_id·entities·assets)을 "
+        "details로 합친 전체를 돌려준다. id는 details.id다."
+    ),
     handler=_get("events"),
     bundle="internal",
     result_kind="records",
-    id_fields=("id",),
+    id_fields=("details.id",),
     args=(Arg("id", "string", required=True, pattern=f"evt_{_UUID7}", description="Event id"),),
 )
 

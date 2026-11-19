@@ -489,3 +489,19 @@ def test_alert_ocsf_class_must_be_a_finding_or_the_fallback(conn: psycopg.Connec
         conn.execute(insert, (f"alt_ok{n}", raw_id, Jsonb({"class_uid": class_uid})))
     with pytest.raises(psycopg.errors.CheckViolation):
         conn.execute(insert, ("alt_bad", raw_id, Jsonb({"class_uid": 4002})))
+
+
+def test_event_ocsf_class_must_be_one_of_the_stored_classes(conn: psycopg.Connection) -> None:
+    raw_id = add_raw_records(conn, CASES[:1])[CASES[0]["case"]]
+    insert = (
+        "INSERT INTO events"
+        " (id, raw_id, time, ocsf_class, summary, entities, assets, ocsf, details)"
+        " VALUES (%s, %s, now(), 0, 's', '[]', '[]', %s, '{}')"
+    )
+
+    for n, class_uid in enumerate((0, 2003, 3002, 4001, 4002, 4003, 6003)):
+        conn.execute(insert, (f"evt_ok{n}", raw_id, Jsonb({"class_uid": class_uid})))
+    conn.execute(insert, ("evt_old_format", raw_id, Jsonb({})))  # class_uid가 없는 옛 행은 통과한다
+    for n, class_uid in enumerate((1007, 2004)):
+        with pytest.raises(psycopg.errors.CheckViolation):
+            conn.execute(insert, (f"evt_bad{n}", raw_id, Jsonb({"class_uid": class_uid})))

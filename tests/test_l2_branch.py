@@ -8,10 +8,12 @@ import pytest
 
 from soc.contracts import validate_contract
 from soc.contracts.alert import assemble_alert, contract_data
+from soc.contracts.event import assemble_event
 from soc.l2.branch.context import build_context
 from soc.l2.branch.decide import make_task
 from soc.l2.branch.embed import embedding_text
 from soc.l2.branch.read import BranchRows
+from soc.normalize.mapping import with_derived_event_columns
 
 FIXTURE = Path(__file__).parent / "fixtures" / "l2" / "branch.json"
 EMBEDDING_FIXTURE = Path(__file__).parent / "fixtures" / "l2" / "embedding.json"
@@ -45,7 +47,7 @@ def rows_for(sample: dict[str, Any], ticket_index: int) -> BranchRows:
         return BranchRows(
             ticket=ticket,
             alerts=(),
-            events=(sample["events"][1],),
+            events=(assemble_event(sample["events"][1]),),
             hunt=sample["hunts"][0],
             evidence_ids=(
                 sample["events"][1]["id"],
@@ -56,7 +58,7 @@ def rows_for(sample: dict[str, Any], ticket_index: int) -> BranchRows:
     return BranchRows(
         ticket=ticket,
         alerts=(assemble_alert(sample["alerts"][0]),),
-        events=(sample["events"][0],),
+        events=(assemble_event(sample["events"][0]),),
         hunt=None,
         evidence_ids=(
             sample["alerts"][0]["id"],
@@ -72,7 +74,7 @@ def test_context_keeps_confirmed_data(sample: dict[str, Any]) -> None:
 
     assert context.ticket["id"] == sample["tickets"][0]["id"]
     assert [alert["details"]["id"] for alert in context.alerts] == [sample["alerts"][0]["id"]]
-    assert [event["id"] for event in context.events] == [sample["events"][0]["id"]]
+    assert [event["details"]["id"] for event in context.events] == [sample["events"][0]["id"]]
     assert context.hunt is None
     assert context.missing_evidence_count == 1
 
@@ -84,6 +86,8 @@ def test_classify_model_input_keeps_the_previous_alert_shape(sample: dict[str, A
     task = make_task(context, (), {})
 
     assert task.data["context"]["alerts"] == [sample["alerts"][0]]
+    # 이벤트도 같다. 파생 컬럼(time·ocsf_class·summary)은 ocsf에서 다시 만들어진다(D-068)
+    assert task.data["context"]["events"] == [with_derived_event_columns(sample["events"][0])]
 
 
 def test_l3_context_uses_hunt_evidence(sample: dict[str, Any]) -> None:
@@ -91,7 +95,7 @@ def test_l3_context_uses_hunt_evidence(sample: dict[str, Any]) -> None:
 
     assert context.alerts == ()
     assert context.hunt == sample["hunts"][0]
-    assert [event["id"] for event in context.events] == [sample["events"][1]["id"]]
+    assert [event["details"]["id"] for event in context.events] == [sample["events"][1]["id"]]
     assert context.missing_evidence_count == 1
 
 

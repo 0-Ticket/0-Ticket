@@ -1,8 +1,9 @@
-"""이미 정규화된 알럿을 id를 유지한 채 다시 정규화한다(#334, D-063).
+"""이미 정규화된 알럿·이벤트를 id를 유지한 채 다시 정규화한다(#334, D-063, #347, D-068).
 
-alerts와 normalize_status를 직접 읽는다(임대 경로 claim_*_batch는 쓰지 않는다). 알럿 id·raw_id·
-triage와 status·result_id·result_kind는 바꾸지 않고, 정규화가 만드는 값 중 달라진 것만 UPDATE한다.
-출력에는 건수와 항목 종류만 있고 원문 값은 없다.
+alerts(또는 events)와 normalize_status를 직접 읽는다(임대 경로 claim_*_batch는 쓰지 않는다). id·
+raw_id·triage와 status·result_id·result_kind는 바꾸지 않고, 정규화가 만드는 값 중 달라진 것만
+UPDATE한다. 이벤트는 outcome·source를 기록하지 않으므로 normalize_status를 바꾸지 않고 outcome
+비교도 하지 않는다. 출력에는 건수와 항목 종류만 있고 원문 값은 없다.
 """
 
 import json
@@ -18,6 +19,7 @@ from soc.asset_lookup import AssetLookupError
 from soc.contracts import ContractError, to_datetime, to_epoch_ms
 from soc.normalize.config import Settings
 from soc.normalize.errors import NormalizeError
+from soc.normalize.event_tables import load_event_summaries
 from soc.normalize.mapping import RawRow, normalize
 from soc.normalize.run import _checked_row, _failure_code
 from soc.normalize.store import _db_value
@@ -25,6 +27,8 @@ from soc.normalize.tables import load_tables
 
 _RANK = {"fallback": 0, "partial": 1, "ok": 2}
 _ALERT_COLUMNS = ("time", "severity", "title", "rule_id", "entities", "assets", "ocsf", "details")
+_EVENT_COLUMNS = ("time", "ocsf_class", "summary", "entities", "assets", "ocsf", "details")
+KINDS = ("alert", "event")
 
 _CANDIDATES = """
 SELECT s.raw_id FROM normalize_status s JOIN alerts a ON a.id = s.result_id
@@ -33,6 +37,21 @@ WHERE s.result_kind = 'alert' AND s.status = 'succeeded'
   AND (%s::timestamptz IS NULL OR a.time >= %s)
 ORDER BY a.time, a.id
 LIMIT %s
+"""
+
+# 이벤트는 outcome이 없어 정규화된 행 전부가 대상이다. since·limit만 건다
+_EVENT_CANDIDATES = """
+SELECT s.raw_id FROM normalize_status s JOIN events e ON e.id = s.result_id
+WHERE s.result_kind = 'event' AND s.status = 'succeeded'
+  AND (%s::timestamptz IS NULL OR e.time >= %s)
+ORDER BY e.time, e.id
+LIMIT %s
+"""
+
+_EVENT_CURRENT = """
+SELECT e.id, e.time, e.ocsf_class, e.summary, e.entities, e.assets, e.ocsf, e.details
+FROM normalize_status s JOIN events e ON e.id = s.result_id
+WHERE s.raw_id = %s AND s.result_kind = 'event' AND s.status = 'succeeded'
 """
 
 _CURRENT = """
@@ -49,19 +68,21 @@ class ReprocessResult:
 
     Attributes:
         dry_run: 쓰지 않고 센 결과인지.
+        kind: 다시 정규화한 종류. "alert" 또는 "event".
         read: 읽어 다시 정규화한 행 수.
         changed: 달라져서 갱신한(dry_run이면 갱신할) 행 수.
         unchanged: 새 결과가 기존과 같은 행 수.
         other_source: `--source`와 새 결과의 소스가 달라 건드리지 않은 행 수.
         skipped: 건너뛴 사유별 건수. fallback, worse, 또는 정규화 실패 코드.
         errors: DB 오류로 그 행만 되돌린 건수.
-        duplicates: 같은 raw_id에서 result_id가 아니라서 건드리지 않은 알럿 수.
+        duplicates: 같은 raw_id에서 result_id가 아니라서 건드리지 않은 알럿(또는 이벤트) 수.
         by_source: 새 결과의 소스별 changed·unchanged·skipped 건수.
         columns: 바뀌는 컬럼 이름별 행 수.
         entity_changes: 엔티티 type·role 추가(`+ip/dst`)·제거(`-ip/dst`) 건수.
     """
 
     dry_run: bool = False
+    kind: str = "alert"
     read: int = 0
     changed: int = 0
     unchanged: int = 0
@@ -83,29 +104,43 @@ def reprocess(
     limit: int | None = None,
     dry_run: bool = False,
     all_rows: bool = False,
+    kind: str = "alert",
 ) -> ReprocessResult:
-    """대상 알럿을 새 로직으로 다시 정규화해 달라진 행만 갱신한다.
+    """대상 알럿(또는 이벤트)을 새 로직으로 다시 정규화해 달라진 행만 갱신한다.
 
     Args:
         settings: 정규화 설정.
         conn: DB 연결(autocommit).
         source: 새 결과의 소스가 이것인 알럿만. 주면 outcome과 관계없이 모든 알럿을 읽는다.
+            알럿 소스 이름이라 이벤트(`kind="event"`)에는 쓸 수 없다.
         since: alerts.time이 이 시각 이후인 알럿만.
         limit: 읽을(정규화할) 최대 행 수. alerts.time, id 오름차순.
         dry_run: 어떤 테이블에도 쓰지 않고 잠그지도 않는다.
         all_rows: outcome과 관계없이 기존 알럿 전체를 읽는다. 폴백·outcome 하락은 그대로 건너뛴다.
+            이벤트는 outcome이 없어 늘 전체를 읽는다.
+        kind: 다시 정규화할 종류. "alert"(기본) 또는 "event".
 
     Raises:
+        ValueError: kind가 틀렸거나 이벤트에 source를 줬다.
         MappingTableError: 매핑표가 틀렸다. 읽기 전에 난다.
     """
+    if kind not in KINDS or (kind == "event" and source is not None):
+        raise ValueError("재처리 종류나 source가 맞지 않는다")
     load_tables()
-    result = ReprocessResult(dry_run=dry_run)
-    rows = conn.execute(_CANDIDATES, (all_rows, source, since, since, limit)).fetchall()
+    load_event_summaries()
+    result = ReprocessResult(dry_run=dry_run, kind=kind)
+    if kind == "event":
+        rows = conn.execute(_EVENT_CANDIDATES, (since, since, limit)).fetchall()
+    else:
+        rows = conn.execute(_CANDIDATES, (all_rows, source, since, since, limit)).fetchall()
     for (raw_id,) in rows:
         result.read += 1
         try:
             with conn.transaction():
-                _one(settings, conn, raw_id, source, dry_run, result)
+                if kind == "event":
+                    _one_event(settings, conn, raw_id, dry_run, result)
+                else:
+                    _one(settings, conn, raw_id, source, dry_run, result)
         except (NormalizeError, AssetLookupError, ContractError) as error:
             _count_skip(result, None, _failure_code(error))
         except psycopg.Error:
@@ -177,6 +212,51 @@ def _one(
         _update(conn, raw_id, alert_id, changed_alert, changed_status)
 
 
+def _one_event(
+    settings: Settings,
+    conn: psycopg.Connection,
+    raw_id: str,
+    dry_run: bool,
+    result: ReprocessResult,
+) -> None:
+    """이벤트 원본 한 건을 다시 정규화해 기존 행과 비교하고, 달라졌으면 갱신한다.
+
+    outcome·source는 기록하지 않으므로 normalize_status는 읽지도 바꾸지도 않는다.
+    """
+    lock = sql.SQL("" if dry_run else " FOR UPDATE OF e, s")
+    current = conn.execute(sql.SQL(_EVENT_CURRENT) + lock, (raw_id,)).fetchone()
+    raw = _read_raw(conn, raw_id)
+    if current is None or raw is None:
+        return  # 읽은 뒤 다른 곳에서 바뀌었다. 다음 실행이 다시 본다
+    (event_id, *old_event) = current
+    old = dict(zip(_EVENT_COLUMNS, old_event, strict=True))
+    mapped = normalize(raw)
+    row = _checked_row(settings, conn, mapped, (old["entities"], old["assets"]))
+    changed = {
+        column: row[column]
+        for column in _EVENT_COLUMNS
+        if _differs(column, old[column], row[column])
+    }
+    result.duplicates += conn.execute(
+        "SELECT count(*) FROM events WHERE raw_id = %s AND id <> %s", (raw_id, event_id)
+    ).fetchone()[0]
+    counts = result.by_source.setdefault(
+        f"class_{row['ocsf_class']}", {"changed": 0, "unchanged": 0, "skipped": 0}
+    )
+    if not changed:
+        result.unchanged += 1
+        counts["unchanged"] += 1
+        return
+    result.changed += 1
+    counts["changed"] += 1
+    for column in changed:
+        result.columns[column] = result.columns.get(column, 0) + 1
+    if "entities" in changed:
+        _count_entities(result, old["entities"], row["entities"])
+    if not dry_run:
+        _update_row(conn, "events", event_id, changed)
+
+
 def _read_raw(conn: psycopg.Connection, raw_id: str) -> RawRow | None:
     """원본 한 건을 읽는다. 저장된 JSON 글자를 그대로 되살린다(D-049)."""
     row = conn.execute(
@@ -209,6 +289,17 @@ def _count_entities(result: ReprocessResult, old: list[Any], new: list[Any]) -> 
         for (kind, role, _value), number in entries.items():
             key = f"{sign}{kind}/{role}"
             result.entity_changes[key] = result.entity_changes.get(key, 0) + number
+
+
+def _update_row(conn: psycopg.Connection, table: str, row_id: str, changes: dict[str, Any]) -> None:
+    """한 테이블의 행 하나에서 달라진 컬럼만 UPDATE한다. 열린 트랜잭션 안이고 행은 잠겨 있다."""
+    assignments = sql.SQL(", ").join(
+        sql.SQL("{} = {}").format(sql.Identifier(column), sql.Placeholder()) for column in changes
+    )
+    query = sql.SQL("UPDATE {} SET {} WHERE id = {}").format(
+        sql.Identifier(table), assignments, sql.Placeholder()
+    )
+    conn.execute(query, [*(_db_value(c, v) for c, v in changes.items()), row_id])
 
 
 def _update(
@@ -248,7 +339,7 @@ def format_result(result: ReprocessResult) -> str:
     lines = [
         f"{prefix}read={result.read} {verb}={result.changed} unchanged={result.unchanged}"
         f" skipped={sum(result.skipped.values())} other_source={result.other_source}"
-        f" errors={result.errors} duplicate_alerts={result.duplicates}"
+        f" errors={result.errors} duplicate_{result.kind}s={result.duplicates}"
     ]
     if skipped:
         lines.append(f"skipped by reason: {skipped}")
