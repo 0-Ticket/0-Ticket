@@ -11,7 +11,8 @@ OCSF가 클래스별 JSON Schema 파일을 따로 배포하지 않아, OCSF 서�
   속성마다 `type`, `requirement`, `is_array`, `object_type`, `enum`(값과 설명), 설명 문장이 있고
   클래스·객체의 `constraints`도 있다. 직접 고치지 않는다. 바꿀 때는 아래 명령으로 다시 만든다.
 - 받는 방법: `uv run python scripts/fetch_ocsf_schema.py`
-  - `https://schema.ocsf.io/api/1.9.0/classes/<이름>?profiles=`로 `base_event`, `detection_finding`을 받고,
+  - `https://schema.ocsf.io/api/1.9.0/classes/<이름>?profiles=`로 `CLASSES`의 클래스(처음에는 `base_event`,
+    `detection_finding`)를 받고,
     `https://schema.ocsf.io/api/1.9.0/objects/<이름>?profiles=`로 참조 객체를 빠짐없이 따라가 받는다.
     서버가 상속을 풀어 준 정의다. 객체 이름의 `/`(예: `win/reg_key`)는 키 그대로 둔다.
   - 프로필 없이(`profiles=`) 받으므로 프로필 속성(cloud 등)은 없다. 필요해지면 해당 프로필로 다시 받는다.
@@ -23,13 +24,21 @@ OCSF가 클래스별 JSON Schema 파일을 따로 배포하지 않아, OCSF 서�
   필수 누락·제약 위반만 실패한다. 우리 코드가 내보내는 값은 알럿 회귀 테스트(`tests/normalize/`)가 지킨다.
 - 매핑표(`../mapping_tables/*.yaml`)의 target은 이 정의로 검사한다(`table_check.py`, D-061).
 
-## 줄여 둔 클래스(#234)
+## 이벤트 클래스 확대(#340, 2026-11-19)
 
-`classes/4002.json`(http_activity), `classes/6003.json`(api_activity)은 Event 정규화가 쓰는 줄인 정의다.
-속성마다 `type`, `requirement`, `object_type`, `is_array`, `enum` 목록(값)만 남겼고 설명은 없다.
-받은 곳은 `https://schema.ocsf.io/api/1.9.0/classes/<이름>?profiles=`다. 이 클래스들이 참조하는 객체는
-위 `objects.json`에 들어 있고, 이전에 줄여 담았던 18개 객체와 `requirement`·`type`·`is_array`·`object_type`·
-enum 값이 같음을 확인했다(2026-11-18). 로더는 두 형식을 같은 키로 읽는다.
+이벤트 수집 설정의 `class`(D-067)가 쓸 수 있는 클래스를 위 방법으로 더 받아 고정했다. 설정은 `classes/<번호>.json`이
+있는 번호만 쓸 수 있고 2004는 이벤트 대상에 쓰지 못한다(틀린 값은 Base Event(0)로 두고 경고한다).
+
+- 새로 받은 클래스: `2003`(compliance_finding), `3002`(authentication), `4001`(network_activity),
+  `4003`(dns_activity). 예전에 줄여 두었던 `4002`(http_activity), `6003`(api_activity)은 공식 정의로 대체했다.
+  이제 `classes/`의 8개(`0`, `2003`, `2004`, `3002`, `4001`, `4002`, `4003`, `6003`)가 모두 같은 형식이다.
+- `objects.json`은 127개에서 138개가 됐다. 늘어난 11개(`assessment`, `authentication_token`, `check`, `compliance`,
+  `dns_answer`, `dns_resource_record`, `dns_section`, `http_cookie`, `network_traffic`, `packet`, `tsig`)만
+  더해졌고, 기존 127개는 바뀌지 않았다.
+- 어떤 클래스를 받을지는 `scripts/fetch_ocsf_schema.py`의 `CLASSES`가 정한다. 클래스를 더할 때는 거기에
+  이름과 번호를 더하고 스크립트를 다시 실행한다.
+- 클래스를 받아 두는 것과 정규화가 그 클래스를 쓰는 것은 다르다. 이벤트 매핑표(`mapping_tables/events/<번호>.yaml`)는
+  후속 이슈에서 만든다.
 
 ## 이전에 확인한 것(그대로 유효)
 

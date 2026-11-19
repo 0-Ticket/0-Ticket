@@ -1,0 +1,16 @@
+# 손으로 만든 샘플: class를 올바르게 적은 local.toml. sources 목록은 default.toml을 통째로 대체한다
+[[ingest.sources]]
+kind = "alert"
+key = ".alerts-security.alerts-default"
+time_field = "@timestamp"
+
+[[ingest.sources]]
+kind = "event"
+key = "logs-nginx.access-*"
+time_field = "@timestamp"
+class = 4002
+
+[[ingest.sources]]
+kind = "event"
+key = "logs-aws.cloudtrail-*"
+time_field = "@timestamp"

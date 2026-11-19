@@ -1,4 +1,4 @@
-"""고정한 OCSF 1.9.0 정의(클래스 0·2004와 참조 객체 127개)와 스키마 로더를 검사한다(#328)."""
+"""고정한 OCSF 1.9.0 정의(클래스 8개와 참조 객체 138개)와 스키마 로더를 검사한다(#328, #340)."""
 
 import json
 from pathlib import Path
@@ -9,6 +9,7 @@ from soc.normalize import ocsf_schema
 from soc.normalize.ocsf_schema import (
     SUPPORTED_CONSTRAINTS,
     field_definition,
+    has_class_definition,
     validate_ocsf,
 )
 
@@ -19,10 +20,10 @@ def _objects() -> dict:
     return json.loads((OCSF_DIR / "objects.json").read_text(encoding="utf-8"))
 
 
-def test_pinned_schema_is_the_full_closure_of_classes_0_and_2004():
+def test_pinned_schema_is_the_full_closure_of_the_pinned_classes():
     objects = _objects()
-    assert len(objects) == 127
-    for uid in (0, 2004):
+    assert len(objects) == 138
+    for uid in (0, 2003, 2004, 3002, 4001, 4002, 4003, 6003):
         definition = json.loads((OCSF_DIR / "classes" / f"{uid}.json").read_text(encoding="utf-8"))
         assert definition["uid"] == uid
         assert "caption" in definition and "description" in definition
@@ -31,6 +32,16 @@ def test_pinned_schema_is_the_full_closure_of_classes_0_and_2004():
         for attribute in definition["attributes"].values():
             if attribute["type"] == "object_t":
                 assert attribute["object_type"] in objects
+
+
+@pytest.mark.parametrize("uid", [0, 2003, 2004, 3002, 4001, 4002, 4003, 6003])
+def test_has_class_definition_is_true_for_every_pinned_class(uid):
+    assert has_class_definition(uid) is True
+
+
+@pytest.mark.parametrize("uid", [1, 9999, -1, True, "4002", 4002.0, None])
+def test_has_class_definition_is_false_for_unpinned_or_non_integer(uid):
+    assert has_class_definition(uid) is False
 
 
 def test_every_pinned_constraint_kind_is_supported():

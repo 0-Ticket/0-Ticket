@@ -1,0 +1,6 @@
+# 손으로 만든 샘플: 이벤트 대상의 class가 알럿 전용인 2004다
+[[ingest.sources]]
+kind = "event"
+key = "logs-nginx.access-*"
+time_field = "@timestamp"
+class = 2004

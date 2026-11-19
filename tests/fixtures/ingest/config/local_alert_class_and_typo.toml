@@ -1,0 +1,12 @@
+# 손으로 만든 샘플: 알럿 대상에 class를 적었고, 이벤트 대상에는 class 오타(calss)가 있다
+[[ingest.sources]]
+kind = "alert"
+key = ".alerts-security.alerts-default"
+time_field = "@timestamp"
+class = 4002
+
+[[ingest.sources]]
+kind = "event"
+key = "logs-nginx.access-*"
+time_field = "@timestamp"
+calss = 4002
