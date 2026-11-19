@@ -4,13 +4,18 @@
 common과 소스별 표를 합쳐 클래스의 필수 속성이 채워지는가. 모르는 변환 이름은 표를 읽을 때 오류다.
 """
 
+from pathlib import Path
+
+import yaml
+
+from soc.normalize.event_tables import EventTables
 from soc.normalize.ocsf_schema import field_definition, required_children
 from soc.normalize.tables import COMMON, Table
 from soc.normalize.transforms import TRANSFORMS
 
 CLASS_UID = 2004
 # 표가 아니라 코드가 채우는 2004 경로. 하위 전체를 코드가 맡는 것은 그 경로 하나만 적는다
-CODE_FILLED = frozenset(
+ALERT_CODE_FILLED = frozenset(
     {
         "activity_id",
         "category_uid",
@@ -20,6 +25,21 @@ CODE_FILLED = frozenset(
         "finding_info.analytic.type_id",
     }
 )
+
+# 이벤트의 time은 매핑표에서 읽는다.
+EVENT_CODE_FILLED = frozenset(
+    {
+        "activity_id",
+        "category_uid",
+        "class_uid",
+        "message",
+        "metadata.product",
+        "metadata.version",
+        "severity_id",
+        "type_uid",
+    }
+)
+ECS_FIELDS_PATH = Path(__file__).with_name("ecs_fields.yaml")
 
 
 def check_tables(tables: dict[str, Table], class_uid: int = CLASS_UID) -> list[str]:
@@ -39,7 +59,31 @@ def check_tables(tables: dict[str, Table], class_uid: int = CLASS_UID) -> list[s
     scopes = [("common", [common])]
     scopes += [(f"common+{n}", [common, t]) for n, t in sorted(tables.items()) if n != COMMON]
     for scope, group in scopes:
-        problems += _missing_required(scope, group, class_uid)
+        problems += _missing_required(scope, group, class_uid, ALERT_CODE_FILLED)
+    return list(dict.fromkeys(problems))
+
+
+def check_event_tables(tables: EventTables) -> list[str]:
+    """이벤트 표의 target, 필수 경로, 클래스 공통 표의 ECS 원본 경로를 검사한다."""
+    ecs_fields = yaml.safe_load(ECS_FIELDS_PATH.read_text(encoding="utf-8"))
+    problems: list[str] = []
+    source_class_uids = set(tables.source_classes.values())
+    for class_uid, table in tables.classes.items():
+        if not (table.entries or table.entities or class_uid in source_class_uids):
+            continue  # 요약 정의만 있는 클래스는 코드가 매핑한다
+        problems += _target_problems(table, class_uid)
+        problems += _missing_required(table.name, [table], class_uid, EVENT_CODE_FILLED)
+        for rule in (*table.entries, *table.entities):
+            for source in rule.sources:
+                if source not in ecs_fields:
+                    problems.append(f"unknown_ecs_field [{table.name}] {source}")
+    for name, table in tables.sources.items():
+        class_uid = tables.source_classes[name]
+        common = tables.classes[class_uid]
+        problems += _target_problems(table, class_uid)
+        problems += _missing_required(
+            f"{common.name}+{name}", [common, table], class_uid, EVENT_CODE_FILLED
+        )
     return list(dict.fromkeys(problems))
 
 
@@ -61,18 +105,20 @@ def _target_problems(table: Table, class_uid: int) -> list[str]:
     return problems
 
 
-def _missing_required(scope: str, group: list[Table], class_uid: int) -> list[str]:
+def _missing_required(
+    scope: str, group: list[Table], class_uid: int, code_filled: frozenset[str]
+) -> list[str]:
     """표들과 코드 채움 목록을 합쳐 필수 속성이 모두 채워지는지 본다.
 
     class 최상위 필수는 모두 요구하고, 안쪽 객체의 필수 자식은 그 객체가 채워질 때만 요구한다.
     """
     filled = {entry.target.replace("[]", "") for table in group for entry in table.entries}
-    filled |= CODE_FILLED
+    filled |= code_filled
     problems: list[str] = []
 
     def covered(path: str) -> bool:
         return any(item == path or item.startswith(path + ".") for item in filled) or any(
-            path.startswith(owner + ".") for owner in CODE_FILLED
+            path.startswith(owner + ".") for owner in code_filled
         )
 
     def walk(prefix: str) -> None:
@@ -84,7 +130,7 @@ def _missing_required(scope: str, group: list[Table], class_uid: int) -> list[st
         children = {item[len(below) :].split(".")[0] for item in filled if item.startswith(below)}
         for name in sorted(children):
             path = f"{below}{name}"
-            if path not in CODE_FILLED and required_children(class_uid, path):
+            if path not in code_filled and required_children(class_uid, path):
                 walk(path)
 
     walk("")

@@ -1,0 +1,27 @@
+{
+  "_index": ".ds-filebeat-synthetic-000001",
+  "_source": {
+    "@timestamp": "2026-11-19T15:50:01.000Z",
+    "event": {"module": "modsecurity", "dataset": "modsecurity.audit"},
+    "source": {"ip": "192.0.2.19"},
+    "host": {"name": "synthetic-sensor"},
+    "transaction": {
+      "client_port": 43210,
+      "host_ip": "198.51.100.20",
+      "host_port": 443,
+      "request": {
+        "method": "GET",
+        "http_version": "1.1",
+        "uri": "/catalog",
+        "hostname": "example.com",
+        "headers": {"User-Agent": "ExampleBrowser/1.0"}
+      },
+      "response": {
+        "http_code": 200,
+        "headers": {"Content-Length": "512", "Content-Type": "text/html"}
+      },
+      "unique_id": "synthetic-request-001",
+      "time_stamp": "Thu Nov 19 15:49:58 2026"
+    }
+  }
+}

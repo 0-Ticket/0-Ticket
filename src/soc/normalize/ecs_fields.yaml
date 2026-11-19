@@ -1,0 +1,25 @@
+# 이벤트 클래스 공통 표가 읽는 ECS 필드의 타입과 배열 여부.
+# https://github.com/elastic/ecs/blob/main/generated/ecs/ecs_flat.yml
+"@timestamp": {type: date, array: false}
+destination.domain: {type: keyword, array: false}
+destination.ip: {type: ip, array: false}
+http.request.method: {type: keyword, array: false}
+http.response.body.bytes: {type: long, array: false}
+http.response.bytes: {type: long, array: false}
+http.response.status_code: {type: long, array: false}
+http.version: {type: keyword, array: false}
+source.as.number: {type: long, array: false}
+source.as.organization.name: {type: keyword, array: false}
+source.geo.city_name: {type: keyword, array: false}
+source.geo.continent_name: {type: keyword, array: false}
+source.geo.country_iso_code: {type: keyword, array: false}
+source.geo.location: {type: geo_point, array: false}
+source.geo.region_iso_code: {type: keyword, array: false}
+source.ip: {type: ip, array: false}
+url.domain: {type: keyword, array: false}
+url.original: {type: wildcard, array: false}
+url.path: {type: wildcard, array: false}
+url.query: {type: keyword, array: false}
+url.scheme: {type: keyword, array: false}
+user.name: {type: keyword, array: false}
+user_agent.original: {type: keyword, array: false}

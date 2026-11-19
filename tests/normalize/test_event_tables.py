@@ -8,9 +8,11 @@ from soc.normalize.event_tables import (
     EVENT_CLASSES,
     check_event_summaries,
     load_event_summaries,
+    load_event_tables,
     summary_text,
 )
-from soc.normalize.tables import MappingTableError, load_tables
+from soc.normalize.table_check import check_event_tables
+from soc.normalize.tables import MappingTableError, load_tables, matching_source
 
 FIXTURES = Path(__file__).parent.parent / "fixtures" / "normalize" / "event_tables"
 
@@ -29,7 +31,7 @@ def test_alert_table_loader_does_not_read_the_events_folder() -> None:
     names = set(load_tables())
 
     assert names.isdisjoint({str(n) for n in EVENT_CLASSES})
-    assert "events" not in names
+    assert names.isdisjoint({"events", "nginx"})
 
 
 @pytest.mark.parametrize(
@@ -91,3 +93,72 @@ def test_unknown_path_is_reported() -> None:
 
     assert "unknown_path [4002] http_request.no_such_field" in problems
     assert "missing_class [0]" in problems
+
+
+def test_source_tables_load_in_name_order_and_keep_class_summaries(tmp_path: Path) -> None:
+    (tmp_path / "4002.yaml").write_text("class_uid: 4002\nsummary: [time]\n")
+    for name in ("z_source", "a_source"):
+        (tmp_path / f"{name}.yaml").write_text(
+            "class_uid: 4002\ndetect: [{field: event.module, exists: true}]\nentries: []\n"
+        )
+
+    tables = load_event_tables(tmp_path)
+    assert matching_source(tables.sources, {"_source": {"event.module": "sample"}}) == "a_source"
+    assert tables.source_classes == {"a_source": 4002, "z_source": 4002}
+    assert tables.classes[4002].name == "4002"
+    assert set(load_event_summaries(tmp_path)) == {4002}
+
+
+@pytest.mark.parametrize(
+    ("filename", "document", "problem"),
+    [
+        ("2004.yaml", "class_uid: 2004\nsummary: [time]\n", "class_uid"),
+        ("0.yaml", "class_uid: false\nsummary: [time]\n", "class_uid"),
+        ("bad.yaml", "class_uid: 4002\nentries: []\nunknown: true\n", "알 수 없는 키"),
+        ("bad.yaml", "class_uid: 4002\nentries: []\ndetect: [{}]\n", "field"),
+        ("bad.yaml", "class_uid: 4002\nentries: []\n", "detect"),
+        ("bad.yaml", "class_uid: 2004\nentries: []\n", "class_uid"),
+        (
+            "bad.yaml",
+            "class_uid: 6003\nentries: []\ndetect: [ {field: x, exists: true} ]\n",
+            "6003",
+        ),
+    ],
+)
+def test_invalid_event_tables_report_the_file_name(tmp_path, filename, document, problem) -> None:
+    (tmp_path / "4002.yaml").write_text("class_uid: 4002\nsummary: [time]\n")
+    (tmp_path / filename).write_text(document)
+
+    with pytest.raises(MappingTableError, match=rf"^{filename}: .*{problem}"):
+        load_event_tables(tmp_path)
+
+
+def test_event_table_targets_required_paths_enums_and_ecs_are_valid() -> None:
+    assert check_event_tables(load_event_tables()) == []
+
+
+def test_checker_reports_bad_targets_required_paths_enums_and_ecs_paths(tmp_path: Path) -> None:
+    (tmp_path / "4002.yaml").write_text(
+        "class_uid: 4002\nsummary: [time]\n"
+        "entries:\n"
+        "  - {target: unknown_target, from: [url.path, unknown.entry]}\n"
+        "  - {target: http_request.http_method, from: [network.transport], transform: severity}\n"
+        "entities:\n"
+        "  - {type: domain, from: [url.domain, unknown.entity]}\n"
+    )
+    (tmp_path / "sample.yaml").write_text(
+        "class_uid: 4002\ndetect: [{field: event.module, equals: sample}]\n"
+        "entries: [{target: time, from: [source_specific.time]}]\n"
+    )
+
+    problems = check_event_tables(load_event_tables(tmp_path))
+
+    assert "unknown_target [4002] unknown_target" in problems
+    assert any(
+        problem.startswith("bad_enum [4002] http_request.http_method:") for problem in problems
+    )
+    assert "missing_required [4002] time" in problems
+    assert "missing_required [4002+sample] time" not in problems
+    assert "unknown_ecs_field [4002] unknown.entry" in problems
+    assert "unknown_ecs_field [4002] unknown.entity" in problems
+    assert all("source_specific.time" not in problem for problem in problems)
