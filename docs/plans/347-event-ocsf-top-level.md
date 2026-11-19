@@ -88,3 +88,6 @@ Event(`events` 테이블과 Event 계약)를 Alert(#338 D-065, #339 D-066)와 �
 - **결정:** D-068. D-066의 "`get_event`는 바꾸지 않는다"를 대체한다.
 
 ## 바뀐 점
+
+- 2026-11-19 · 7개 클래스에 없는 시드 이벤트(1007·1001·3001)가 CHECK에 걸려 알럿(#338)처럼 시드를 OCSF 검증을 통과하게 다시 쓰기로 했다(Base Event + `activity_name`, 내용은 `unmapped`). 시드 변경은 L1·L2·L3 담당 확인 대상이다.
+- 2026-11-19 · 제약 이름을 `events_ocsf_class_uid_check`로 했다(`events.ocsf_class` 컬럼 CHECK가 이미 `events_ocsf_class_check`를 쓴다). 계약의 `message`는 필수로 두지 않고 `event_summary`가 비면 "event"를 돌려준다.
