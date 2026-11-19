@@ -10,6 +10,7 @@ from psycopg import sql
 from psycopg.types.json import Jsonb
 
 from soc.contracts import to_datetime, validate_contract
+from soc.contracts.alert import contract_data
 from soc.db.migrate import migrate
 from soc.normalize.mapping import with_derived_columns
 
@@ -77,7 +78,7 @@ def insert_row(conn, table, row):
 def test_ui_fixture_contracts():
     for table, name in CONTRACTS.items():
         for row in SEED[table]:
-            validate_contract(name, row)
+            validate_contract(name, contract_data(name, row))
 
 
 @pytest.fixture

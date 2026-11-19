@@ -34,6 +34,18 @@ def validate_ocsf(ocsf: dict[str, Any]) -> None:
         raise NormalizeError("schema_failed")
 
 
+def validate_alert_ocsf(alert: dict[str, Any]) -> None:
+    """Alert JSON(D-066)의 OCSF 부분을 검사한다. 우리 값인 details는 빼고 검사한다.
+
+    Args:
+        alert: 조립한 Alert JSON. details를 뺀 나머지가 OCSF 문서다.
+
+    Raises:
+        NormalizeError: 정의를 어기면 schema_failed.
+    """
+    validate_ocsf({key: value for key, value in alert.items() if key != "details"})
+
+
 def _object_is_valid(definition: dict[str, Any], value: dict[str, Any]) -> bool:
     """객체 하나가 정의의 필수·제약·속성 규칙을 지키는지 본다.
 

@@ -13,6 +13,7 @@ import psycopg
 
 from soc.asset_lookup import AssetLookupError, lookup_assets
 from soc.contracts import ContractError, validate_contract
+from soc.contracts.alert import contract_data
 from soc.normalize.config import Settings
 from soc.normalize.errors import NormalizeError
 from soc.normalize.mapping import RawRow, Result, fallback_alert, normalize
@@ -154,7 +155,7 @@ def _checked_row(
     else:
         assets = lookup_assets(conn, escaped["entities"], settings.asset_statement_timeout_ms)
     row = {**escaped, "assets": assets}
-    validate_contract(mapped.kind, row)
+    validate_contract(mapped.kind, contract_data(mapped.kind, row))
     return row
 
 

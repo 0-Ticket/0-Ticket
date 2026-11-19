@@ -1,0 +1,125 @@
+[
+  {
+    "name": "finding_2004",
+    "row": {
+      "id": "alt_01930000-0000-7000-8000-000000000001",
+      "raw_id": "raw_01930000-0000-7000-8000-000000000002",
+      "time": 1792999990000,
+      "severity": 4,
+      "title": "Example rule",
+      "rule_id": "rule-1",
+      "entities": [
+        {
+          "type": "ip",
+          "value": "198.51.100.7",
+          "role": "src"
+        }
+      ],
+      "assets": [],
+      "triage": null,
+      "ocsf": {
+        "class_uid": 2004,
+        "class_name": "Detection Finding",
+        "category_uid": 2,
+        "category_name": "Findings",
+        "activity_id": 1,
+        "type_uid": 200401,
+        "time": 1793000000000,
+        "start_time": 1792999990000,
+        "end_time": 1792999990000,
+        "severity_id": 4,
+        "finding_info": {
+          "uid": "u-1",
+          "title": "Example rule",
+          "analytic": {
+            "uid": "rule-1"
+          }
+        },
+        "message": "Example rule"
+      },
+      "details": {}
+    },
+    "alert": {
+      "class_uid": 2004,
+      "class_name": "Detection Finding",
+      "category_uid": 2,
+      "category_name": "Findings",
+      "activity_id": 1,
+      "type_uid": 200401,
+      "time": 1793000000000,
+      "start_time": 1792999990000,
+      "end_time": 1792999990000,
+      "severity_id": 4,
+      "finding_info": {
+        "uid": "u-1",
+        "title": "Example rule",
+        "analytic": {
+          "uid": "rule-1"
+        }
+      },
+      "message": "Example rule",
+      "details": {
+        "id": "alt_01930000-0000-7000-8000-000000000001",
+        "raw_id": "raw_01930000-0000-7000-8000-000000000002",
+        "rule_id": "rule-1",
+        "entities": [
+          {
+            "type": "ip",
+            "value": "198.51.100.7",
+            "role": "src"
+          }
+        ],
+        "assets": [],
+        "triage": null
+      }
+    },
+    "alert_time": 1792999990000,
+    "alert_severity": 4,
+    "alert_title": "Example rule"
+  },
+  {
+    "name": "fallback_0",
+    "row": {
+      "id": "alt_01930000-0000-7000-8000-000000000001",
+      "raw_id": "raw_01930000-0000-7000-8000-000000000002",
+      "time": 1793000000000,
+      "severity": 0,
+      "title": "fallback sample",
+      "rule_id": null,
+      "entities": [],
+      "assets": [],
+      "triage": null,
+      "ocsf": {
+        "class_uid": 0,
+        "time": 1793000000000,
+        "severity_id": 99,
+        "message": "fallback sample"
+      },
+      "details": {
+        "fallback": {
+          "reason": "validation_failed"
+        }
+      }
+    },
+    "alert": {
+      "class_uid": 0,
+      "time": 1793000000000,
+      "severity_id": 99,
+      "message": "fallback sample",
+      "details": {
+        "fallback": {
+          "reason": "validation_failed"
+        },
+        "id": "alt_01930000-0000-7000-8000-000000000001",
+        "raw_id": "raw_01930000-0000-7000-8000-000000000002",
+        "rule_id": null,
+        "entities": [],
+        "assets": [],
+        "triage": null
+      }
+    },
+    "alert_time": 1793000000000,
+    "alert_severity": 0,
+    "alert_title": "fallback sample"
+  }
+]

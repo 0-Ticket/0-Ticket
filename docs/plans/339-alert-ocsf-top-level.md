@@ -98,3 +98,5 @@ Alert JSON(계약)의 최상위를 OCSF 1.9.0 문서(Detection Finding 2004, 폴
 - **확인 방법**: 개발 DB 사본 확인(사람)과 `alert_skeleton.json` 18건 테스트(같은 입력에서 `task.data`·SQL 결과가 전환 전과 같음)를 둘 다 한다.
 
 ## 바뀐 점
+
+- 2026-11-19 · L2 모델 입력(`l2/branch/decide.py`, `l2/analyze/context.py`)은 조립 JSON을 그대로 쓰지 않고 변환 함수 `alert_model_input`(조립 함수와 같은 모듈)을 거쳐 지금의 입력 모양을 유지한다. 분석 시간 창(`evidence_times`)의 시각도 이 함수가 만든 이전 의미(`start_time` 기준)를 쓴다. 조립 함수와 변환 함수의 왕복(이전 모양과 같은 값)을 18건 테스트로 지킨다. DB 행을 계약에 직접 넣던 곳(`normalize/run.py`, 시드 3종)은 조립 함수를 거치게 바꾼다(사람이 정함).

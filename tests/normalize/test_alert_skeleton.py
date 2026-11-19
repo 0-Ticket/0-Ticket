@@ -12,6 +12,7 @@ from typing import Any
 import pytest
 
 from soc.contracts import to_epoch_ms, validate_contract
+from soc.contracts.alert import contract_data
 from soc.ids import new_id
 from soc.normalize.errors import FALLBACK_REASONS, PARTIAL_REASONS, NormalizeError
 from soc.normalize.mapping import RawRow, Result, fallback_alert, normalize
@@ -47,7 +48,7 @@ def raw_row(case: dict[str, Any]) -> RawRow:
 def check(result: Result) -> Result:
     """OCSF 검사와 계약 검증을 통과시킨다."""
     validate_ocsf(result.row["ocsf"])
-    validate_contract(result.kind, result.row)
+    validate_contract(result.kind, contract_data(result.kind, result.row))
     return result
 
 

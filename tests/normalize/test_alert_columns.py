@@ -7,6 +7,7 @@ from typing import Any
 import pytest
 
 from soc.contracts import validate_contract
+from soc.contracts.alert import contract_data
 from soc.ids import new_id
 from soc.normalize.mapping import (
     RawRow,
@@ -206,7 +207,7 @@ def test_seed_alerts_are_valid_ocsf_with_columns_from_the_document(
     name: str, row: dict[str, Any]
 ) -> None:
     validate_ocsf(row["ocsf"])
-    validate_contract("alert", row)
+    validate_contract("alert", contract_data("alert", row))
 
     assert row["time"] == row["ocsf"]["start_time"]
     assert row["ocsf"].get("evidences", []) == expected_evidences(row["entities"])

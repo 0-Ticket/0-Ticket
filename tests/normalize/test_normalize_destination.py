@@ -8,6 +8,7 @@ from typing import Any
 import pytest
 
 from soc.contracts import validate_contract
+from soc.contracts.alert import contract_data
 from soc.ids import new_id
 from soc.normalize.errors import NormalizeError
 from soc.normalize.mapping import RawRow, normalize
@@ -29,7 +30,7 @@ def convert(case: dict[str, Any]) -> dict[str, Any]:
     before = copy.deepcopy(raw.original)
     result = normalize(raw)
     assert raw.original == before
-    validate_contract(result.kind, result.row)
+    validate_contract(result.kind, contract_data(result.kind, result.row))
     validate_ocsf(result.row["ocsf"])
     return result.row
 

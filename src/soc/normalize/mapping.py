@@ -10,6 +10,7 @@ from datetime import datetime
 from typing import Any
 
 from soc.contracts import to_epoch_ms
+from soc.contracts.alert import alert_rule_id, alert_severity, alert_time, alert_title
 from soc.ids import new_id
 from soc.normalize.errors import NormalizeError
 from soc.normalize.mask import mask_headers
@@ -364,19 +365,18 @@ def finding_ocsf(
 def derive_columns(ocsf: dict[str, Any]) -> dict[str, Any]:
     """ocsf 문서에서 alerts의 time·severity·title·rule_id를 만든다(D-065). 파생은 이 함수 하나다.
 
-    time은 start_time, 없으면 time. title은 finding_info.title, 없으면 message.
-    severity는 severity_id이고 컬럼 범위(0~6) 밖(99 Other 등)은 0이다.
+    읽는 규칙은 `soc.contracts.alert`의 헬퍼와 같다. time은 start_time, 없으면 time.
+    title은 finding_info.title, 없으면 message. severity는 severity_id이고 컬럼 범위(0~6)
+    밖(99 Other 등)은 0이다.
 
     Args:
         ocsf: 알럿의 OCSF 문서(2004 또는 폴백 0).
     """
-    info = ocsf.get("finding_info") or {}
-    severity = ocsf.get("severity_id", UNKNOWN_ID)
     return {
-        "time": ocsf.get("start_time", ocsf["time"]),
-        "severity": severity if 0 <= severity <= 6 else UNKNOWN_ID,
-        "title": info.get("title") or ocsf["message"],
-        "rule_id": (info.get("analytic") or {}).get("uid"),
+        "time": alert_time(ocsf),
+        "severity": alert_severity(ocsf),
+        "title": alert_title(ocsf),
+        "rule_id": alert_rule_id(ocsf),
     }
 
 
