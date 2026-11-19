@@ -34,3 +34,9 @@ supersedes: []
 - uv run ruff format --check . 및 uv run ruff check . 통과. uv run pytest 결과 2,509건 통과, 마커 제외 578건, Qdrant 버전 조회 경고 2건.
 - 별도의 PostgreSQL 17.6 컨테이너에서 uv run pytest -m db tests/normalize 결과 54건 통과. test_event_reprocess_reclassifies_filebeat_base_event가 두 소스의 기존 class 0 행을 같은 ID로 갱신하는지 확인한다.
 - tests/normalize/test_web_event_samples.py는 접근 시각과 수집 시각, 잘못된 시각, 필드 충돌, OCSF 검증 및 민감 필드 제외를 검사한다. test_event_tables.py·test_event_transforms.py는 표 정의와 변환의 경계값을 검사한다.
+
+## 마무리 점검
+
+- 구현 커밋 `f6424e8`에서 포맷을 실행한 결과 447개 파일에 변경이 없었다. 포맷 검사·린트와 기본 pytest를 다시 실행해 2,509건이 통과했다(마커 제외 578건, Qdrant 버전 조회 경고 2건).
+- 새 PostgreSQL 17.6 컨테이너에서 정규화 DB 테스트 54건이 다시 통과했다. 합성 데이터로 확인한 범위는 기존 행 ID 보존과 4002 재분류까지다.
+- PR 전 사람이 확인할 항목: 개발 DB 사본의 재분류 건수, L2의 엔티티 변경, L3·UI의 OCSF 출력, 알럿 원문과의 요청 ID 일치 여부.
