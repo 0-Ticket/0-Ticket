@@ -9,6 +9,7 @@ from psycopg import sql
 from soc.api.errors import InvalidQuery, NotFound
 from soc.contracts import to_epoch_ms
 from soc.contracts.alert import assemble_alert
+from soc.contracts.event import assemble_event
 
 UUID7 = r"[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
 SEED_NAMES = ("dev-seed", "dev-seed-l1", "dev-seed-ui")
@@ -97,8 +98,8 @@ def raw_detail(conn, kind, record_id):
             sql.SQL("SELECT * FROM {} WHERE id=%s").format(sql.Identifier(table)),
             (item["record_id"],),
         ).fetchone()
-    if record:  # Alert는 OCSF 문서에 우리 값을 details로 합친 계약 모양이다(D-066)
-        record = assemble_alert(record) if kind == "alert" else times(record)
+    if record:  # Alert·Event는 OCSF 문서에 우리 값을 details로 합친 계약 모양이다(D-066, D-068)
+        record = assemble_alert(record) if kind == "alert" else assemble_event(record)
     return dict(
         raw_record=times(raw),
         record=record or None,

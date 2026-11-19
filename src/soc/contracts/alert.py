@@ -6,6 +6,8 @@ DB 없는 순수 함수다. alerts 행(이전 계약 모양)에서 Alert JSON을
 
 from typing import Any
 
+from soc.contracts.event import assemble_event
+
 # 컬럼에서 details로 옮기는 우리 쪽 값. 계약의 details 필수 키와 같다
 DETAILS_KEYS = ("id", "raw_id", "rule_id", "entities", "assets", "triage")
 UNKNOWN_ID = 0
@@ -30,8 +32,10 @@ def assemble_alert(row: dict[str, Any]) -> dict[str, Any]:
 
 
 def contract_data(name: str, row: dict[str, Any]) -> dict[str, Any]:
-    """DB 행을 계약 검증에 넘기는 모양으로 바꾼다. Alert는 조립하고 그 밖의 계약은 행 그대로다."""
-    return assemble_alert(row) if name == "alert" else row
+    """DB 행을 계약 검증에 넘기는 모양으로 바꾼다. Alert·Event는 조립하고 그 밖은 행 그대로다."""
+    if name == "alert":
+        return assemble_alert(row)
+    return assemble_event(row) if name == "event" else row
 
 
 def alert_time(alert: dict[str, Any]) -> int:

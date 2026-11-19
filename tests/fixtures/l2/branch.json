@@ -52,7 +52,10 @@
         "class_uid": 2004,
         "severity_id": 4,
         "time": 1793764100000,
-        "finding_info": {"uid": "sample-finding-1", "title": "인공 분류 샘플"}
+        "finding_info": {
+          "uid": "sample-finding-1",
+          "title": "인공 분류 샘플"
+        }
       },
       "details": {}
     }
@@ -74,7 +77,28 @@
       "assets": [],
       "ocsf": {
         "class_uid": 4002,
-        "time": 1793764110000
+        "category_uid": 4,
+        "activity_id": 0,
+        "type_uid": 400200,
+        "severity_id": 1,
+        "time": 1793764110000,
+        "metadata": {
+          "version": "1.9.0",
+          "product": {
+            "name": "Elasticsearch",
+            "vendor_name": "Elastic"
+          }
+        },
+        "message": "일반 Ticket 근거",
+        "http_request": {
+          "http_method": "GET",
+          "url": {
+            "path": "/"
+          }
+        },
+        "http_response": {
+          "code": 200
+        }
       },
       "details": {}
     },
@@ -94,7 +118,22 @@
       "assets": [],
       "ocsf": {
         "class_uid": 4001,
-        "time": 1793764120000
+        "category_uid": 4,
+        "activity_id": 0,
+        "type_uid": 400100,
+        "severity_id": 1,
+        "time": 1793764120000,
+        "metadata": {
+          "version": "1.9.0",
+          "product": {
+            "name": "Elasticsearch",
+            "vendor_name": "Elastic"
+          }
+        },
+        "message": "L3 Hunt 근거",
+        "src_endpoint": {
+          "ip": "2001:db8::1"
+        }
       },
       "details": {}
     }

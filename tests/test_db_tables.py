@@ -20,6 +20,7 @@ from psycopg.types.json import Jsonb
 
 from soc.contracts import ContractError, to_datetime, to_epoch_ms, validate_contract
 from soc.contracts.alert import alert_model_input, contract_data
+from soc.contracts.event import event_model_input
 from soc.db.migrate import LOCK_KEY, MigrationError, find_migrations, migrate
 
 pytestmark = pytest.mark.db
@@ -28,18 +29,21 @@ pytestmark = pytest.mark.db
 
 
 def load(kind: str, name: str) -> list[dict[str, Any]]:
-    """계약 샘플. Alert는 DB 행 모양으로 바꿔 돌려준다(계약 Alert JSON은 OCSF 최상위, D-066)."""
+    """계약 샘플. Alert·Event는 DB 행 모양으로 바꿔 돌려준다(계약 JSON은 OCSF 최상위)."""
     cases = load_contract(kind, name)
-    if kind == "valid" and name == "alert":
-        return [{**case, "data": alert_model_input(case["data"])} for case in cases]
+    if kind == "valid" and name in ROW_SHAPES:
+        return [{**case, "data": ROW_SHAPES[name](case["data"])} for case in cases]
     return cases
 
 
 def checked(name: str, row: dict[str, Any]) -> dict[str, Any]:
     """행을 계약으로 검증하고 검증된 값을 같은 행 모양으로 돌려준다."""
     data = validate_contract(name, contract_data(name, row)).model_dump(mode="json")
-    return alert_model_input(data) if name == "alert" else data
+    return ROW_SHAPES[name](data) if name in ROW_SHAPES else data
 
+
+# 계약 JSON(OCSF 최상위)을 DB 행 모양으로 되돌리는 함수
+ROW_SHAPES = {"alert": alert_model_input, "event": event_model_input}
 
 TABLES = {
     "raw_record": "raw_records",
@@ -183,6 +187,7 @@ def test_migrate_creates_all_tables_on_empty_db(temp_database: str) -> None:
         "0301_intel_local_lookup.sql",
         "0302_agent_reader_intel.sql",
         "0303_alert_ocsf_class.sql",
+        "0304_event_ocsf_class.sql",
     ]
     with psycopg.connect(temp_database) as conn:
         other_tables = {
@@ -518,9 +523,9 @@ def test_table_columns_match_contract_fields(migrated: str, name: str, table: st
     schema = load_schema(f"{name}.schema.json")
 
     with psycopg.connect(migrated) as conn:
-        # Alert 계약은 OCSF 최상위라 필드가 컬럼과 다르다. 컬럼은 DB 행 모양 그대로다(D-066)
+        # Alert·Event 계약은 OCSF 최상위라 필드가 컬럼과 다르다. 컬럼은 DB 행 모양 그대로다
         expected = (
-            set(load("valid", name)[0]["data"]) if name == "alert" else set(schema["properties"])
+            set(load("valid", name)[0]["data"]) if name in ROW_SHAPES else set(schema["properties"])
         )
         assert set(columns_of(conn, table)) == expected
 

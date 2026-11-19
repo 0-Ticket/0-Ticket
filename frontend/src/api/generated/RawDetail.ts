@@ -95,23 +95,26 @@ export type EvidenceIds = EvidenceId[];
  * UTC epoch 밀리초. 상한은 9999-12-30T23:59:59.999Z(+14시간 시간대로 읽어도 9999년 안)
  */
 export type DecidedAt = number;
-export type Id2 = string;
-export type RawId1 = string;
 /**
- * UTC epoch 밀리초. 상한은 9999-12-30T23:59:59.999Z(+14시간 시간대로 읽어도 9999년 안)
+ * OCSF 클래스. 0 Base Event, 2003 Compliance Finding, 3002 Authentication, 4001 Network Activity, 4002 HTTP Activity, 4003 DNS Activity, 6003 API Activity
+ */
+export type ClassUid1 = 0 | 2003 | 3002 | 4001 | 4002 | 4003 | 6003;
+/**
+ * 활동 발생 시각(epoch 밀리초)
  */
 export type Time1 = number;
 /**
- * OCSF class_uid. ocsf.class_uid와 같아야 한다(validate_contract 추가 검사)
+ * OCSF 심각도. 0 Unknown, 1 Informational, 2 Low, 3 Medium, 4 High, 5 Critical, 6 Fatal, 99 Other
  */
-export type OcsfClass = number;
+export type SeverityId1 = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 99;
 /**
- * 한 줄 요약
+ * 한 줄 요약. DB 컬럼 summary가 여기서 파생된다
  */
-export type Summary = string;
+export type Message = string | null;
+export type Id2 = string;
+export type RawId1 = string;
 export type Entities1 = Entity[];
 export type Assets1 = Asset[];
-export type ClassUid1 = number;
 export type NormalizeStatus = "pending" | "succeeded" | "failed";
 export type ErrorCode = string | null;
 export type SeedSource = string | null;
@@ -186,26 +189,20 @@ export interface Verdict {
   decided_at: DecidedAt;
 }
 export interface Event {
-  id: Id2;
-  raw_id: RawId1;
-  time: Time1;
-  ocsf_class: OcsfClass;
-  summary: Summary;
-  entities: Entities1;
-  assets: Assets1;
-  ocsf: Ocsf;
-  details: Details1;
-}
-/**
- * 매핑한 OCSF 클래스 전체
- */
-export interface Ocsf {
   class_uid: ClassUid1;
+  time: Time1;
+  severity_id: SeverityId1;
+  message?: Message;
+  details: Details1;
   [k: string]: unknown;
 }
 /**
- * 계약에 없는 값. 다른 단계는 읽지 않는다
+ * 우리 쪽 값. OCSF 속성 이름과 같은 키를 두지 않는다. 아래 4개는 필수이고 그 밖의 값은 더 올 수 있다
  */
 export interface Details1 {
+  id: Id2;
+  raw_id: RawId1;
+  entities: Entities1;
+  assets: Assets1;
   [k: string]: unknown;
 }

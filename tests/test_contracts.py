@@ -145,7 +145,6 @@ def test_invalid_samples_are_rejected(name: str, sample: dict) -> None:
 # Pydantic 오류 이름(string_pattern_mismatch, less_than_equal 등)이 나오면 약속이 깨진 것이다.
 CONTRACT_RULES = set(Draft7Validator.VALIDATORS) | {
     "json",
-    "equals_ocsf_class",
     "not_before_started_at",
 }
 
@@ -202,6 +201,7 @@ def test_unknown_contract_name_is_rejected(name: str) -> None:
 FREE_OBJECTS = [
     ("ingest_checkpoint", "cursor"),
     ("alert", "details"),
+    ("event", "details"),
     ("ticket", "details"),
     ("hunt", "details"),
     ("agent_log", "input"),
@@ -260,10 +260,10 @@ def test_values_that_are_not_storable_json_are_rejected(name: str, field: str, e
     ("name", "field", "value"),
     [
         ("verdict", "confidence", float("nan")),
-        ("event", "summary", "SQL INJECTED\x00"),
-        ("event", "summary", "SQL INJECTED\ud800"),
+        ("event", "message", "SQL INJECTED\x00"),
+        ("event", "message", "SQL INJECTED\ud800"),
     ],
-    ids=["verdict.confidence_nan", "event.summary_nul", "event.summary_lone_surrogate"],
+    ids=["verdict.confidence_nan", "event.message_nul", "event.message_lone_surrogate"],
 )
 def test_contract_fields_with_unstorable_values_are_rejected_as_json(
     name: str, field: str, value: object
@@ -287,7 +287,7 @@ def test_emoji_in_free_objects_passes(name: str, field: str, extra: dict) -> Non
 
 
 def test_emoji_in_contract_text_field_passes() -> None:
-    data = {**load("valid", "event")[0]["data"], "summary": "SQL Injection 😀"}
+    data = {**load("valid", "event")[0]["data"], "message": "SQL Injection 😀"}
 
     assert validate_contract("event", data).model_dump(mode="json") == data
 
