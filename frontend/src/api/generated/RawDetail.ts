@@ -108,9 +108,9 @@ export type Time1 = number;
  */
 export type SeverityId1 = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 99;
 /**
- * 한 줄 요약. DB 컬럼 summary가 여기서 파생된다
+ * 한 줄 요약. 공백이 아닌 글자가 하나 이상 있어야 한다. DB 컬럼 summary가 여기서 파생된다
  */
-export type Message = string | null;
+export type Message = string;
 export type Id2 = string;
 export type RawId1 = string;
 export type Entities1 = Entity[];
@@ -192,7 +192,7 @@ export interface Event {
   class_uid: ClassUid1;
   time: Time1;
   severity_id: SeverityId1;
-  message?: Message;
+  message: Message;
   details: Details1;
   [k: string]: unknown;
 }

@@ -46,8 +46,12 @@ class Event(BaseModel):
         ),
     ]
     message: Annotated[
-        str | None, Field(description="한 줄 요약. DB 컬럼 summary가 여기서 파생된다")
-    ] = None
+        str,
+        Field(
+            description="한 줄 요약. 공백이 아닌 글자가 하나 이상 있어야 한다. DB 컬럼 summary가 여기서 파생된다",
+            pattern="^[\\s\\S]*\\S[\\s\\S]*$",
+        ),
+    ]
     details: Annotated[
         Details,
         Field(

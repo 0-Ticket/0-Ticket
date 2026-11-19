@@ -30,7 +30,8 @@ _FULL = {
     # Alert JSON(D-066)을 조립하는 데 필요한 열만 읽는다. 시각·제목·심각도는 ocsf 안에 있다
     "alerts": "id, raw_id, rule_id, entities, assets, triage, ocsf, details",
     # Event JSON(D-068)을 조립하는 데 필요한 열만 읽는다. 시각·클래스·요약은 ocsf 안에 있다
-    "events": "id, raw_id, entities, assets, ocsf, details",
+    # summary는 ocsf에 message가 없는 옛 행의 요약을 채우는 데만 쓴다
+    "events": "id, raw_id, summary, entities, assets, ocsf, details",
 }
 _LIST = {
     "alert": ("alerts", f"id, {TIME_MS}, severity, title, rule_id, entities"),

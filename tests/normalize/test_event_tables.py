@@ -63,6 +63,12 @@ def test_alert_table_loader_does_not_read_the_events_folder() -> None:
         ),
         (2003, {"finding_info": {"title": "버킷이 공개됨"}}, "버킷이 공개됨"),
         (4002, {"http_response": {"code": True}}, None),
+        (4002, {"http_response": {"code": 404.0}}, "404"),
+        (4002, {"http_response": {"code": 404.5}}, "404.5"),
+        (4002, {"http_response": {"code": float("nan")}}, None),
+        (4002, {"http_response": {"code": float("inf")}}, None),
+        (4002, {"http_response": {"code": [404]}}, None),
+        (4002, {"http_response": {"code": " "}}, None),
         (0, {}, None),
     ],
 )

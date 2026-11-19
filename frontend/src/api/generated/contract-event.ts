@@ -17,9 +17,9 @@ export interface Event {
    */
   severity_id: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 99;
   /**
-   * 한 줄 요약. DB 컬럼 summary가 여기서 파생된다
+   * 한 줄 요약. 공백이 아닌 글자가 하나 이상 있어야 한다. DB 컬럼 summary가 여기서 파생된다
    */
-  message?: string;
+  message: string;
   /**
    * 우리 쪽 값. OCSF 속성 이름과 같은 키를 두지 않는다. 아래 4개는 필수이고 그 밖의 값은 더 올 수 있다
    */

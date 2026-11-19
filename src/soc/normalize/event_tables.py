@@ -6,6 +6,7 @@
 이슈가 같은 파일에 `entries`·`entities`를 더한다.
 """
 
+import math
 from dataclasses import dataclass
 from functools import cache
 from pathlib import Path
@@ -114,6 +115,22 @@ def check_event_summaries(summaries: dict[int, EventSummary]) -> list[str]:
     return problems
 
 
+def _text(value: Any) -> str | None:
+    """요약에 넣을 글자. 공백이 아닌 문자열, 정수, 유한한 실수만 쓰고 그 밖은 None이다.
+
+    정수와 값이 정수인 실수(404.0)는 소수점 없이 쓴다. bool·목록·객체·NaN·무한대는 쓰지 않는다.
+    """
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, float) and math.isfinite(value):
+        return str(int(value)) if value.is_integer() else str(value)
+    if isinstance(value, str) and value.strip():
+        return value
+    return None
+
+
 def summary_text(class_uid: int, ocsf: dict[str, Any]) -> str | None:
     """OCSF 문서에서 클래스의 1순위 요약을 만든다. 값이 하나도 없으면 None이다.
 
@@ -127,10 +144,8 @@ def summary_text(class_uid: int, ocsf: dict[str, Any]) -> str | None:
     texts = []
     for alternatives in summary.parts:
         for path in alternatives:
-            value = read_value(ocsf, path)
-            if isinstance(value, bool) or not isinstance(value, str | int):
-                continue
-            if str(value).strip():
-                texts.append(str(value))
+            text = _text(read_value(ocsf, path))
+            if text is not None:
+                texts.append(text)
                 break
     return " ".join(texts) or None

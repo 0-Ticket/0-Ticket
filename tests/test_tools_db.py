@@ -209,6 +209,23 @@ def test_get_event_and_missing_id(reader_url: str) -> None:
     assert missing["records"] == []
 
 
+def test_get_event_fills_message_from_the_summary_column_for_an_old_row(
+    migrated: str, reader_url: str
+) -> None:
+    """#347 이전에 저장된 행(ocsf에 message 없음)도 같은 요약을 돌려준다(D-068)."""
+    old = copy.deepcopy(load_records()["events"][0])
+    old["id"] = "evt_01a19f93-1150-7000-8000-0000000fa001"
+    old["raw_id"] = "raw_01a19f93-1150-7000-8000-0000000fa001"
+    old["summary"] = "GET /old 401"
+    del old["ocsf"]["message"]
+    insert_records(migrated, {"alerts": [], "events": [old]})
+
+    record = call(caller(), "get_event", {"id": old["id"]})["records"][0]
+
+    assert record["message"] == "GET /old 401"
+    assert record["details"]["id"] == old["id"]
+
+
 @pytest.mark.parametrize(
     ("name", "arguments"),
     [

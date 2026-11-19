@@ -16,10 +16,12 @@ EMPTY_SUMMARY = "event"
 def assemble_event(row: dict[str, Any]) -> dict[str, Any]:
     """events 행으로 Event JSON을 만든다. 최상위는 `ocsf` 문서이고 우리 값은 `details`다.
 
-    `time`·`ocsf_class`·`summary` 컬럼은 읽지 않는다(ocsf 안에 있다). 받은 행은 바꾸지 않는다.
+    `time`·`ocsf_class` 컬럼은 읽지 않는다(ocsf 안에 있다). `summary` 컬럼은 ocsf에 `message`가
+    없거나 비어 있을 때만 `message`로 옮긴다(#347 이전에 저장된 행). `message`는 OCSF 속성이라
+    문서에 넣어도 규칙에 어긋나지 않는다. 받은 행은 바꾸지 않는다.
 
     Args:
-        row: ocsf·details와 DETAILS_KEYS 컬럼을 가진 events 행.
+        row: ocsf·details와 DETAILS_KEYS 컬럼을 가진 events 행. 옛 행은 summary 컬럼도 필요하다.
 
     Raises:
         ValueError: ocsf에 details 키가 있거나 행의 details가 DETAILS_KEYS 이름을 쓸 때.
@@ -27,7 +29,10 @@ def assemble_event(row: dict[str, Any]) -> dict[str, Any]:
     ocsf, extra = row["ocsf"], row["details"]
     if "details" in ocsf or set(extra) & set(DETAILS_KEYS):
         raise ValueError("details 키가 겹친다")
-    return {**ocsf, "details": {**extra, **{key: row[key] for key in DETAILS_KEYS}}}
+    document = {**ocsf, "details": {**extra, **{key: row[key] for key in DETAILS_KEYS}}}
+    if not _is_text(ocsf.get("message")) and _is_text(row.get("summary")):
+        document["message"] = row["summary"]
+    return document
 
 
 def event_time(event: dict[str, Any]) -> int:
@@ -43,9 +48,15 @@ def event_class(event: dict[str, Any]) -> int:
     return event["class_uid"]
 
 
+def _is_text(value: Any) -> bool:
+    """공백이 아닌 글자가 하나라도 있는 문자열인지."""
+    return isinstance(value, str) and bool(value.strip())
+
+
 def event_summary(event: dict[str, Any]) -> str:
-    """한 줄 요약. `message`이고 비어 있으면 "event"다."""
-    return event.get("message") or EMPTY_SUMMARY
+    """한 줄 요약. `message`이고, 없거나 공백뿐이면 "event"다."""
+    message = event.get("message")
+    return message if _is_text(message) else EMPTY_SUMMARY
 
 
 def event_model_input(event: dict[str, Any]) -> dict[str, Any]:

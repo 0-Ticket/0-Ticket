@@ -84,9 +84,53 @@ def test_event_time_prefers_start_time_like_alerts() -> None:
     assert event_time({"time": 5, "start_time": 3}) == 3
 
 
-def test_summary_falls_back_to_event_when_message_is_missing() -> None:
-    assert event_summary({"message": "GET / 200"}) == "GET / 200"
+@pytest.mark.parametrize("message", [None, "", " ", "  \t\n", 5])
+def test_summary_falls_back_to_event_when_message_is_blank_or_not_text(message: Any) -> None:
+    assert event_summary({"message": message}) == "event"
     assert event_summary({}) == "event"
+    assert event_summary({"message": "GET / 200"}) == "GET / 200"
+
+
+def old_row() -> dict[str, Any]:
+    """#347 이전에 저장된 행: ocsf에 message가 없고 요약은 summary 컬럼에만 있다."""
+    row = copy.deepcopy(ROWS[0][1])
+    row["ocsf"].pop("message")
+    row["summary"] = "GET /login 401"
+    return row
+
+
+def test_old_row_gets_message_from_the_summary_column() -> None:
+    row = old_row()
+    event = assemble_event(row)
+
+    assert event["message"] == "GET /login 401"
+    assert "message" not in row["ocsf"]  # 받은 행은 바꾸지 않는다
+    validate_contract("event", event)
+    validate_event_ocsf(event)
+    assert event_model_input(event)["summary"] == "GET /login 401"
+
+
+@pytest.mark.parametrize("message", ["", "  "])
+def test_blank_message_is_also_filled_from_the_column(message: str) -> None:
+    row = old_row()
+    row["ocsf"]["message"] = message
+
+    assert assemble_event(row)["message"] == "GET /login 401"
+
+
+def test_message_in_ocsf_wins_over_the_column() -> None:
+    row = copy.deepcopy(ROWS[0][1])
+    row["summary"] = "다른 값"
+
+    assert assemble_event(row)["message"] == row["ocsf"]["message"]
+
+
+def test_row_without_any_summary_is_rejected_by_the_contract() -> None:
+    row = old_row()
+    del row["summary"]
+
+    with pytest.raises(ContractError):
+        validate_contract("event", assemble_event(row))
 
 
 def test_details_must_not_repeat_our_keys_or_ocsf_names() -> None:
@@ -102,9 +146,9 @@ def test_details_with_an_ocsf_attribute_name_is_not_added_by_normalization() -> 
         assert set(row["details"]) & set(row["ocsf"]) == set()
 
 
-def test_contract_requires_the_four_top_level_keys_and_details_keys() -> None:
+def test_contract_requires_the_top_level_keys_and_details_keys() -> None:
     event = assemble_event(ROWS[0][1])
-    for key in ("class_uid", "time", "severity_id", "details"):
+    for key in ("class_uid", "time", "severity_id", "message", "details"):
         broken = {k: v for k, v in event.items() if k != key}
         with pytest.raises(ContractError):
             validate_contract("event", broken)

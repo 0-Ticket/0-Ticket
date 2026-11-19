@@ -91,3 +91,4 @@ Event(`events` 테이블과 Event 계약)를 Alert(#338 D-065, #339 D-066)와 �
 
 - 2026-11-19 · 7개 클래스에 없는 시드 이벤트(1007·1001·3001)가 CHECK에 걸려 알럿(#338)처럼 시드를 OCSF 검증을 통과하게 다시 쓰기로 했다(Base Event + `activity_name`, 내용은 `unmapped`). 시드 변경은 L1·L2·L3 담당 확인 대상이다.
 - 2026-11-19 · 제약 이름을 `events_ocsf_class_uid_check`로 했다(`events.ocsf_class` 컬럼 CHECK가 이미 `events_ocsf_class_check`를 쓴다). 계약의 `message`는 필수로 두지 않고 `event_summary`가 비면 "event"를 돌려준다.
+- 2026-11-19 · 계약에 `message`를 필수(공백뿐인 값 거부)로 두고, `assemble_event`가 `ocsf`에 `message`가 없는 옛 행은 `summary` 컬럼 값으로 채운다. 요약 칸은 유한한 실수도 읽는다. 앞의 "message는 필수로 두지 않고 비면 event를 돌려준다" 줄을 대체한다.

@@ -5,7 +5,7 @@
   "description": "OCSF 1.9.0 이벤트 문서. 클래스는 저장한 7개(0 Base Event, 2003, 3002, 4001, 4002, 4003, 6003)다. 우리 쪽 값은 모두 details에 있다. 최상위 time은 활동 발생 시각이고 severity_id가 심각도다. DB 컬럼 time(start_time 우선)·summary(message)·ocsf_class(class_uid)는 ocsf에서 파생한다",
   "type": "object",
   "additionalProperties": true,
-  "required": ["class_uid", "time", "severity_id", "details"],
+  "required": ["class_uid", "time", "severity_id", "message", "details"],
   "properties": {
     "class_uid": {
       "description": "OCSF 클래스. 0 Base Event, 2003 Compliance Finding, 3002 Authentication, 4001 Network Activity, 4002 HTTP Activity, 4003 DNS Activity, 6003 API Activity",
@@ -22,8 +22,9 @@
       "enum": [0, 1, 2, 3, 4, 5, 6, 99]
     },
     "message": {
-      "description": "한 줄 요약. DB 컬럼 summary가 여기서 파생된다",
-      "type": "string"
+      "description": "한 줄 요약. 공백이 아닌 글자가 하나 이상 있어야 한다. DB 컬럼 summary가 여기서 파생된다",
+      "type": "string",
+      "pattern": "^[\\s\\S]*\\S[\\s\\S]*$"
     },
     "details": {
       "description": "우리 쪽 값. OCSF 속성 이름과 같은 키를 두지 않는다. 아래 4개는 필수이고 그 밖의 값은 더 올 수 있다",
