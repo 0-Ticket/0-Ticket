@@ -14,7 +14,7 @@
       ],
       "assets": [],
       "triage": null,
-      "ocsf": {"class_uid": 2004, "finding_info": {"title": "SQL Injection Attempt", "uid": "rule-sqli"}},
+      "ocsf": {"class_uid": 2004, "time": 1793678578000, "severity_id": 4, "finding_info": {"title": "SQL Injection Attempt", "uid": "rule-sqli"}},
       "details": {}
     },
     {
@@ -27,7 +27,7 @@
       "entities": [{"type": "host", "value": "web-02", "role": "target"}],
       "assets": [],
       "triage": null,
-      "ocsf": {"class_uid": 2004, "finding_info": {"title": "100% CPU usage_alert on web-02", "uid": "rule-cpu"}},
+      "ocsf": {"class_uid": 2004, "time": 1793678638000, "severity_id": 2, "finding_info": {"title": "100% CPU usage_alert on web-02", "uid": "rule-cpu"}},
       "details": {}
     },
     {
@@ -40,7 +40,7 @@
       "entities": [{"type": "ip", "value": "203.0.113.10", "role": "src"}],
       "assets": [],
       "triage": null,
-      "ocsf": {"class_uid": 2004},
+      "ocsf": {"class_uid": 2004, "time": 1792814578000, "severity_id": 6, "finding_info": {"title": "Old Brute Force", "uid": "rule-sqli"}},
       "details": {}
     }
   ],

@@ -11,6 +11,7 @@ from typing import Any
 from psycopg.types.json import Jsonb
 
 from soc.contracts import to_datetime
+from soc.contracts.alert import assemble_alert
 from soc.tools.db import read_rows
 from soc.tools.registry import Arg, CallContext, ToolError, ToolSpec
 
@@ -25,8 +26,8 @@ TIME_MS = "floor(extract(epoch FROM time) * 1000)::bigint AS time"
 ORDER_BY = {"time_desc": "time DESC, id DESC", "time_asc": "time ASC, id ASC"}
 
 _FULL = {
-    "alerts": f"id, raw_id, {TIME_MS}, severity, title, rule_id, entities, assets, triage,"
-    " ocsf, details",
+    # Alert JSON(D-066)을 조립하는 데 필요한 열만 읽는다. 시각·제목·심각도는 ocsf 안에 있다
+    "alerts": "id, raw_id, rule_id, entities, assets, triage, ocsf, details",
     "events": f"id, raw_id, {TIME_MS}, ocsf_class, summary, entities, assets, ocsf, details",
 }
 _LIST = {
@@ -114,7 +115,8 @@ def check_entity(args: Mapping[str, Any]) -> None:
 def _get(table: str):
     def handler(args: dict[str, Any], ctx: CallContext) -> list[dict[str, Any]]:
         query = f"SELECT {_FULL[table]} FROM {table} WHERE id = %s"  # 표 이름은 상수다
-        return read_rows(ctx, query, (args["id"],))
+        rows = read_rows(ctx, query, (args["id"],))
+        return [assemble_alert(row) for row in rows] if table == "alerts" else rows
 
     return handler
 
@@ -154,11 +156,14 @@ def _query_records(args: dict[str, Any], ctx: CallContext) -> list[dict[str, Any
 
 GET_ALERT = ToolSpec(
     name="get_alert",
-    description="Alert 하나를 id(alt_…)로 읽는다. ocsf·details를 포함한 전체를 돌려준다.",
+    description=(
+        "Alert 하나를 id(alt_…)로 읽는다. OCSF Detection Finding 문서에 우리 값(id·raw_id·"
+        "rule_id·entities·assets·triage)을 details로 합친 전체를 돌려준다. id는 details.id다."
+    ),
     handler=_get("alerts"),
     bundle="internal",
     result_kind="records",
-    id_fields=("id",),
+    id_fields=("details.id",),
     args=(Arg("id", "string", required=True, pattern=f"alt_{_UUID7}", description="Alert id"),),
 )
 
