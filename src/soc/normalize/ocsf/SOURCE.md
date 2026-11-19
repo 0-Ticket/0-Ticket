@@ -27,7 +27,7 @@ OCSF가 클래스별 JSON Schema 파일을 따로 배포하지 않아, OCSF 서�
 ## 이벤트 클래스 확대(#340, 2026-11-19)
 
 이벤트 수집 설정의 `class`(D-067)가 쓸 수 있는 클래스를 위 방법으로 더 받아 고정했다. 설정은 `classes/<번호>.json`이
-있는 번호만 허용하고 2004는 이벤트 대상에 쓰지 못한다.
+있는 번호만 쓸 수 있고 2004는 이벤트 대상에 쓰지 못한다(틀린 값은 Base Event(0)로 두고 경고한다).
 
 - 새로 받은 클래스: `2003`(compliance_finding), `3002`(authentication), `4001`(network_activity),
   `4003`(dns_activity). 예전에 줄여 두었던 `4002`(http_activity), `6003`(api_activity)은 공식 정의로 대체했다.

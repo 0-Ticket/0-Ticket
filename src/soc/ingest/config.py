@@ -18,7 +18,9 @@ CONFIG_DIR = Path(__file__).resolve().parents[3] / "config"
 KINDS = ("alert", "event")
 # 알럿(Detection Finding)의 클래스. 알럿 경로가 정하므로 이벤트 대상의 class로는 쓰지 못한다
 ALERT_CLASS = 2004
-# [[ingest.sources]] 표가 가질 수 있는 키. 이 밖의 키는 오타일 수 있어 설정 오류로 막는다(#340)
+# 클래스를 정할 수 없을 때 이벤트를 두는 클래스(Base Event, D-067)
+BASE_EVENT_CLASS = 0
+# [[ingest.sources]] 표가 가질 수 있는 키. 이 밖의 키는 무시하고 경고한다(#340)
 SOURCE_KEYS = frozenset({"kind", "key", "time_field", "class"})
 # ELK 기본 index.max_result_window. 한 페이지가 이보다 크면 ELK가 거부한다.
 MAX_PAGE_SIZE = 10_000
@@ -40,8 +42,9 @@ class Source:
         kind: "alert" 또는 "event". RawRecord의 kind와 같다.
         key: ELK 조회 대상(alias, 인덱스·데이터 스트림 패턴). URL 경로(/{key}/_pit)에 들어간다.
         time_field: 정렬과 커서에 쓰는 시각 필드 이름(예: @timestamp).
-        ocsf_class: 이벤트 대상이 선언한 OCSF 클래스 번호(D-067). 적지 않으면 None이다.
-            읽고 검사만 하며 정규화에는 아직 연결하지 않는다(#340).
+        ocsf_class: 이벤트 대상이 선언한 OCSF 클래스 번호(D-067). 적지 않으면 None이고, 적은 값으로
+            클래스를 정할 수 없으면 BASE_EVENT_CLASS(0)다. 읽기만 하며 정규화에는 아직 연결하지
+            않는다(#340).
     """
 
     kind: str
@@ -74,6 +77,8 @@ class Settings:
         initial_lookback_seconds: 체크포인트도 --since도 없을 때 거슬러 가져오는 범위(초, #317).
         overlap_seconds: 체크포인트보다 이만큼 앞에서 다시 읽는다(초, 0이면 겹치지 않음, #317).
             늦게 색인된 문서를 줄이는 완화책이고, 겹친 문서는 저장할 때 건너뛴다.
+        warnings: 읽으면서 건너뛰거나 바꾼 설정(알 수 없는 키, 정할 수 없는 class)의 경고 문장.
+            수집은 멈추지 않고, 호출한 쪽이 stderr에 낸다(#340).
     """
 
     siem_profile: str
@@ -89,6 +94,7 @@ class Settings:
     ca_cert_path: str = ""
     initial_lookback_seconds: int = 86_400
     overlap_seconds: int = 60
+    warnings: tuple[str, ...] = ()
 
 
 def load_config(directory: Path | None = None) -> dict[str, Any]:
@@ -185,14 +191,18 @@ def read_settings(ingest: dict[str, Any]) -> Settings:
     if not isinstance(raw_sources, list) or not raw_sources:
         raise ConfigError(f"{where}.sources가 없거나 비어 있다")
     sources = []
+    warnings: list[str] = []
     for index, raw in enumerate(raw_sources):
         at = f"{where}.sources[{index}]"
         if not isinstance(raw, dict):
             raise ConfigError(f"{at}가 표가 아니다")
         unknown = sorted(str(name) for name in raw.keys() - SOURCE_KEYS)
         if unknown:
+            # 오타일 수 있지만 수집을 멈추지 않는다. 조용히 사라지지 않게 경고에 키 이름을 남긴다
             allowed = ", ".join(sorted(SOURCE_KEYS))
-            raise ConfigError(f"{at}에 알 수 없는 키가 있다: {unknown!r}(쓸 수 있는 키: {allowed})")
+            warnings.append(
+                f"{at}에 알 수 없는 키가 있어 무시한다: {unknown!r}(쓸 수 있는 키: {allowed})"
+            )
         kind = _text(raw, "kind", at)
         if kind not in KINDS:
             raise ConfigError(f"{at}.kind는 {', '.join(KINDS)} 중 하나여야 한다")
@@ -201,7 +211,7 @@ def read_settings(ingest: dict[str, Any]) -> Settings:
                 kind=kind,
                 key=_text(raw, "key", at, _KEY),
                 time_field=_text(raw, "time_field", at, _FIELD),
-                ocsf_class=_event_class(raw, kind, at),
+                ocsf_class=_event_class(raw, kind, at, warnings),
             )
         )
     # 체크포인트는 (siem_profile, kind, key)마다 하나라 같은 대상이 두 번 있으면 서로 덮어쓴다.
@@ -232,38 +242,49 @@ def read_settings(ingest: dict[str, Any]) -> Settings:
         ca_cert_path=ca_cert_path,
         initial_lookback_seconds=lookback,
         overlap_seconds=overlap,
+        warnings=tuple(warnings),
     )
 
 
-def _event_class(raw: dict[str, Any], kind: str, at: str) -> int | None:
-    """대상의 선택 항목 `class`를 읽어 검사한다(D-067). 없으면 None.
+def _event_class(raw: dict[str, Any], kind: str, at: str, warnings: list[str]) -> int | None:
+    """대상의 선택 항목 `class`를 읽는다(D-067). 없으면 None이다. 틀려도 수집은 멈추지 않는다.
 
     이벤트 대상만 쓸 수 있고, ocsf/classes/에 정의 파일이 있는 번호여야 한다.
     알럿 클래스(2004)는 알럿 경로가 따로 정하므로 이벤트 대상에도 쓰지 못한다.
+    클래스를 정할 수 없는 값(정수 아님, 2004, 정의 파일 없음)은 Base Event(0)로 두고,
+    알럿 대상의 class는 무시한다. 어느 쪽이든 어긴 규칙마다 다른 경고를 남긴다.
+    받은 값은 정수일 때만 문구에 담고 그 밖에는 타입 이름만 담는다.
 
     인자:
         raw: [[ingest.sources]] 표 하나.
         kind: 이 대상의 kind.
-        at: 오류 메시지에 쓸 위치(예: ingest.sources[1]).
-
-    발생:
-        ConfigError: 알럿 대상에 class를 적었거나, 정수가 아니거나, 2004이거나, 정의 파일이 없는
-            번호다. 어긴 규칙마다 문구가 다르다. 받은 값은 정수일 때만 문구에 담고 그 밖에는
-            타입 이름만 담는다.
+        at: 경고에 쓸 위치(예: ingest.sources[1]).
+        warnings: 경고 문장을 더할 목록.
     """
     if "class" not in raw:
         return None
     value = raw["class"]
     if kind == "alert":
-        raise ConfigError(f"{at}.class는 이벤트 대상에만 쓸 수 있다(알럿은 {ALERT_CLASS})")
+        warnings.append(f"{at}.class는 이벤트 대상에만 쓸 수 있어 무시한다(알럿은 {ALERT_CLASS})")
+        return None
     if type(value) is not int:
-        raise ConfigError(f"{at}.class는 정수여야 한다(받은 값의 타입: {type(value).__name__})")
-    if value == ALERT_CLASS:
-        raise ConfigError(f"{at}.class {ALERT_CLASS}는 알럿 전용 클래스라 이벤트 대상에 쓸 수 없다")
-    if not has_class_definition(value):
-        raise ConfigError(
-            f"{at}.class {value}는 받아 둔 클래스가 아니다(ocsf/classes/{value}.json 없음)"
+        warnings.append(
+            f"{at}.class는 정수가 아니라 클래스를 정할 수 없어 Base Event({BASE_EVENT_CLASS})로 "
+            f"둔다(받은 값의 타입: {type(value).__name__})"
         )
+        return BASE_EVENT_CLASS
+    if value == ALERT_CLASS:
+        warnings.append(
+            f"{at}.class {ALERT_CLASS}는 알럿 전용 클래스라 이벤트 대상에 쓸 수 없어 "
+            f"Base Event({BASE_EVENT_CLASS})로 둔다"
+        )
+        return BASE_EVENT_CLASS
+    if not has_class_definition(value):
+        warnings.append(
+            f"{at}.class {value}는 받아 둔 클래스가 아니라 Base Event({BASE_EVENT_CLASS})로 "
+            f"둔다(ocsf/classes/{value}.json 없음)"
+        )
+        return BASE_EVENT_CLASS
     return value
 
 

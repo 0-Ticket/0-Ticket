@@ -1,5 +1,6 @@
 """수집 설정 로더(#218): default.toml 위에 local.toml을 덮어쓰고 [ingest]만 돌려준다."""
 
+import re
 from pathlib import Path
 
 import pytest
@@ -103,54 +104,58 @@ def test_event_source_without_class_keeps_none() -> None:
     assert [s.ocsf_class for s in read_settings(ingest).sources if s.kind == "event"][0] is None
 
 
-@pytest.mark.parametrize(
-    "value",
-    [
-        2004,  # 알럿 전용 클래스
-        9999,  # 정의 파일이 없는 번호
-        -1,
-        "4002",
-        4002.0,
-        True,  # bool은 정수가 아니다
-        None,
-    ],
-)
-def test_event_source_rejects_a_bad_class(value) -> None:
+BASE_EVENT = 0
+NOT_INTEGER = "정수가 아니라"
+ALERT_ONLY = "알럿 전용"
+NOT_PINNED = "받아 둔 클래스가 아니라"
+
+
+def class_of(settings, kind: str):
+    return [s.ocsf_class for s in settings.sources if s.kind == kind][0]
+
+
+def test_default_config_has_no_warnings() -> None:
+    assert read_settings(valid_ingest()).warnings == ()
+
+
+@pytest.mark.parametrize("value", [2004, 9999, -1, "4002", 4002.0, True, None])
+def test_event_source_with_a_bad_class_falls_back_to_base_event(value) -> None:
+    """클래스를 정할 수 없으면 Base Event(0)로 두고 멈추지 않는다. 경고는 남긴다(#340)."""
     ingest = valid_ingest()
     event_source(ingest)["class"] = value
-    with pytest.raises(ConfigError, match=r"sources\[\d+\]\.class"):
-        read_settings(ingest)
+    settings = read_settings(ingest)
+    assert class_of(settings, "event") == BASE_EVENT
+    assert len(settings.warnings) == 1
+    assert re.search(r"sources\[\d+\]\.class", settings.warnings[0])
 
 
 @pytest.mark.parametrize("value", [2004, 4002, 0])
-def test_alert_source_rejects_class(value: int) -> None:
+def test_alert_source_class_is_ignored_with_a_warning(value: int) -> None:
     ingest = valid_ingest()
     ingest["sources"][0]["class"] = value
-    with pytest.raises(ConfigError, match=r"sources\[0\]\.class"):
-        read_settings(ingest)
+    settings = read_settings(ingest)
+    assert class_of(settings, "alert") is None
+    assert len(settings.warnings) == 1
+    assert re.search(r"sources\[0\]\.class", settings.warnings[0])
 
 
 @pytest.mark.parametrize("stray", ["calss", "Class", "classs", "timefield", "kind2", ""])
-def test_source_rejects_an_unknown_key_and_names_it(stray: str) -> None:
-    """오타 키가 조용히 무시되어 class 선언이 빠지지 않는다. 다른 값은 모두 유효하다."""
+def test_unknown_source_key_is_ignored_with_a_warning_naming_it(stray: str) -> None:
+    """오타 키는 무시하고 멈추지 않되 조용히 사라지지 않게 경고에 키 이름을 담는다."""
     ingest = valid_ingest()
     event_source(ingest)[stray] = 4002
-    with pytest.raises(ConfigError, match=r"sources\[\d+\]") as caught:
-        read_settings(ingest)
-    assert repr(stray) in str(caught.value)
+    settings = read_settings(ingest)
+    assert class_of(settings, "event") == 4002  # 알려진 키의 값은 그대로 쓴다
+    assert len(settings.warnings) == 1
+    assert repr(stray) in settings.warnings[0]
 
 
-def test_source_with_only_known_keys_is_still_accepted() -> None:
+def test_source_with_only_known_keys_gives_no_warning() -> None:
     ingest = valid_ingest()
     assert all(
         set(source) <= {"kind", "key", "time_field", "class"} for source in ingest["sources"]
     )
-    read_settings(ingest)
-
-
-NOT_INTEGER = "정수여야 한다"
-ALERT_ONLY = "알럿 전용"
-NOT_PINNED = "받아 둔 클래스가 아니다"
+    assert read_settings(ingest).warnings == ()
 
 
 @pytest.mark.parametrize(
@@ -166,13 +171,12 @@ NOT_PINNED = "받아 둔 클래스가 아니다"
         (1, NOT_PINNED, "classes/1.json"),
     ],
 )
-def test_each_class_rule_gives_its_own_message(value, expected: str, also: str) -> None:
-    """규칙마다 다른 문구가 나온다. 한 규칙의 문구가 다른 규칙 위반에 섞이지 않는다."""
+def test_each_class_rule_gives_its_own_warning(value, expected: str, also: str) -> None:
+    """규칙마다 다른 경고가 나온다. 한 규칙의 문구가 다른 규칙 위반에 섞이지 않는다."""
     ingest = valid_ingest()
     event_source(ingest)["class"] = value
-    with pytest.raises(ConfigError, match=r"sources\[\d+\]\.class") as caught:
-        read_settings(ingest)
-    message = str(caught.value)
-    assert expected in message
-    assert also in message
-    assert all(other not in message for other in {NOT_INTEGER, ALERT_ONLY, NOT_PINNED} - {expected})
+    (warning,) = read_settings(ingest).warnings
+    assert expected in warning
+    assert also in warning
+    assert "Base Event(0)" in warning
+    assert all(other not in warning for other in {NOT_INTEGER, ALERT_ONLY, NOT_PINNED} - {expected})
