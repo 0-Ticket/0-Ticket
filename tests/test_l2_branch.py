@@ -9,6 +9,7 @@ import pytest
 from soc.contracts import validate_contract
 from soc.contracts.alert import assemble_alert, contract_data
 from soc.l2.branch.context import build_context
+from soc.l2.branch.decide import make_task
 from soc.l2.branch.embed import embedding_text
 from soc.l2.branch.read import BranchRows
 
@@ -74,6 +75,15 @@ def test_context_keeps_confirmed_data(sample: dict[str, Any]) -> None:
     assert [event["id"] for event in context.events] == [sample["events"][0]["id"]]
     assert context.hunt is None
     assert context.missing_evidence_count == 1
+
+
+def test_classify_model_input_keeps_the_previous_alert_shape(sample: dict[str, Any]) -> None:
+    """조립 JSON을 쓰는 문맥에서도 모델이 받는 alerts는 전환 전 행 모양과 같다(D-066)."""
+    context = build_context(rows_for(sample, 0))
+
+    task = make_task(context, (), {})
+
+    assert task.data["context"]["alerts"] == [sample["alerts"][0]]
 
 
 def test_l3_context_uses_hunt_evidence(sample: dict[str, Any]) -> None:
