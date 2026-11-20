@@ -39,21 +39,38 @@ supersedes: []
 | 7b(옛) | A | 분리 | `no_path` | 호출 안 함 | 일치 | 옛 구조 행도 role이 src가 아닌 host·domain·url은 연결하지 않는다 |
 | 7c | B | 묶여야 함 | `no_path` | 호출 안 함 | 불일치(규칙의 결과) | src 엔티티가 없으면 어떤 Ticket과도 연결되지 않는다. actor·target은 연결 근거가 아니다 |
 
-### 에이전트 단계: 사람이 채울 칸
+### 에이전트 단계: 실제 모델 확인
 
-`uv run pytest -m llm -s tests/test_l2_scenarios_llm.py`(키 환경변수 `LLM_API_KEY`가 있어야 돌고 없으면 건너뛴다)가 케이스마다 `SCENARIO_LLM_RUNS`(기본 3)번 돌려 한 줄씩 낸다. 결과와 비용은 건수와 토큰 수만 적는다.
+사람이 로컬에서 실행한 결과다(2026-11-20). AI는 모델을 실행하지 않았다. `uv run pytest -m llm -s tests/test_l2_scenarios_llm.py`는 판단과 토큰만 출력하고 `reason`을 출력하지 않아서, `reason`을 보려고 레포 밖 일회용 스크립트로 같은 방식(`build_case` → `L2BranchWorker` → `run_agent` 결과 가로채기)을 돌렸다. 코드와 테스트는 바꾸지 않았다.
 
-| 케이스 | 기대 판단 | 실행 횟수 | existing | new | 토큰(입력/출력) 합 | 비고 |
+- 조건: 로컬 Postgres 17.6, 케이스당 5회(15번 호출). 모델은 `config/local.toml`의 `[llm] model = "gpt-oss-120b"`.
+- 비용: 입력 약 109,700 토큰, 출력 약 10,800 토큰(15번 합계). 소요 약 72초. 케이스별 평균 입력은 아래 표에 있다.
+
+| 케이스 | 기대 판단 | 실행 횟수 | existing | new | 토큰 | 비고 |
 |---|---|---|---|---|---|---|
-| 1a | existing | | | | | |
-| 1b | existing | | | | | |
-| 5 | new | | | | | |
+| 1a | existing | 5 | 4 | 1 | 평균 입력 약 9,100(두 번째 턴 1회 포함) | new 1회의 reason은 "IP 하나만으로는 증거 부족" 취지, 신뢰도 0.4 |
+| 1b | existing | 5 | 5 | 0 | 평균 입력 약 6,300 | 기대와 같다 |
+| 5 | new | 5 | **5** | 0 | 평균 입력 약 6,500 | **기대와 반대.** 신뢰도 0.9~0.95 |
+
+케이스 5의 `reason`: 5회 모두 "같은 IP를 공유하고 경로로 연결됨 → 같은 공격"이다. 계정·인스턴스를 비교한 이유는 한 번도 없다. 1회는 "서로 다른 환경"이라고 언급하고도 같은 시나리오 규칙이라는 이유로 묶었다. 샘플 제목("outbound environment two")에서 나온 문장으로 보이며(추정), 실제 알럿에는 이 제목이 없다.
+
+#### 원인 조사(읽기 전용, 가설)
+
+- 모델은 현재 Alert의 계정 ID·인스턴스 ID를 입력으로 받는다(`entities`의 `host`/`target`). 후보 쪽은 `incident_id`·`title`·`ticket_count`·`duration_ms`·`paths`만 받고 `paths`는 노드 id뿐이라 비교할 환경 값이 입력에 없다. 후보 Alert의 값은 L2 도구 `get_alert`로 경로의 alert id를 조회해야 볼 수 있는데 프롬프트는 그렇게 하라고 하지 않는다.
+- `src/soc/l2/prompts/l2_classify.md`에는 환경·계정·리전·인스턴스 지침이 없다. 같은 IP를 근거로 어떻게 판단하라는 기준도 없다. "경로에 포함되지 않은 데이터를 연결 근거로 추측하지 않는다"는 줄(L7)은 "경로 밖 정보를 쓰지 말라"로도 읽힐 수 있다.
+- 위는 입력과 `reason`을 맞춰 본 가설이다. 후보 쪽에 환경 필드를 줬을 때 `new`로 가는지는 확인하지 않았다.
+- 1a의 `new` 1회는 1a가 이미 한 번은 "근거 부족"으로 갈라진다는 뜻이다. 아래 선택지 A·B가 1a·1b를 깨뜨릴 수 있는지 볼 때 이 점을 고려한다.
 
 ## 결정 제안 (이 이슈에서 코드를 바꾸지 않았다)
 
 - **제안 1: `src`끼리만 연결하는 규칙(D-027)이 침해 후 나가는 통신을 못 잇는다(2a, 2b).** 근거: 같은 공격 체인인데 공격자 IP가 첫 알럿에서 src, 둘째에서 dst다. 후보 규칙에는 "한쪽의 src가 다른 쪽의 dst와 같음"처럼 방향을 가로지르는 연결이 있다. 다만 #329가 수집기 host·dst 허브가 무관한 Ticket 23개를 한 Incident로 엮은 사례(host 1개, dst 사설 IP 6건)를 근거로 role 제한을 넣었으므로, 방향 교차 연결은 같은 허브 문제를 되살릴 수 있다. 결정은 사람이 한다.
 - **제안 2: src 엔티티가 없는 Ticket(7c)은 연결 방법이 없다.** 같은 계정(actor)과 같은 계정 ID(target)를 공유하는 GuardDuty 알럿 두 건이 서로 묶이지 않는다. actor·target 연결은 D-027이 막은 범위라 규칙 변경이다.
-- **제안 3: 환경이 다른 같은 로컬 IP(5).** 그래프는 후보 경로를 만들고 에이전트가 거른다. 에이전트가 항상 `new`를 고르면 문제가 없고 `existing`을 고르면 잘못 묶인다. 사람이 확인한 결과가 있어야 판단할 수 있다.
+- **제안 3: 환경이 다른 같은 로컬 IP(5).** 그래프는 후보 경로를 만들고 에이전트가 거른다. 실제 모델(`gpt-oss-120b`)은 5회 모두 `existing`을 골라 잘못 묶었다(위 "에이전트 단계"). 원인은 후보 쪽에 환경 값이 없고 프롬프트에 환경 지침이 없는 것으로 보인다(가설). **결정은 아직 나지 않았다.** 선택지와 영향은 아래와 같다. 1a·1b(같은 환경의 같은 src IP는 묶여야 함)를 깨뜨릴 위험을 같이 적는다.
+  - **A. 프롬프트 지침 추가**: `l2_classify.md`만 바뀐다. 후보 입력이 그대로면 "경로의 alert id를 `get_alert`로 읽어 계정·인스턴스를 비교하라"까지 써야 하고 도구 호출 비용이 늘며 모델이 따를지는 불확실하다. 다른 코드가 부르는 대상이 아니라 원칙 7 대상은 아니라고 보지만 확정된 계획과 L2 담당 확인이 필요하다. 1a·1b 위험은 중간이다. 1a·1b에는 환경 필드가 양쪽에 없어서, "다르면 분리"를 세게 쓰면 dst IP 차이 등으로 `new`가 늘 수 있다(1a가 이미 5회 중 1회 `new`).
+  - **B. 후보 요약에 환경 필드 추가(`task.data`에만)**: `decide.py`의 `_candidate_data`와 후보 Alert 엔티티를 가져오는 `graph.py`가 바뀐다. 현재 Alert 쪽에는 이미 환경 값이 있어 `alert_model_input` 변경은 필요 없어 보인다(호출처는 확인하지 않았다). 모델 입력 모양이 바뀌므로 원칙 7 대상이다(#356 계획도 이 모양을 승인 대상으로 적었다). `test_candidate_summary_has_paths_but_no_entity_roles`의 키 집합을 고쳐야 한다. `paths`에 넣으면 `details.l2_branch`, Incident 상세 API, L2 분석, 화면까지 번진다. 1a·1b 위험은 낮음~중간이다. 환경 필드가 없는 쪽이 "다름"으로 읽히지 않게 생략하거나 "없음"으로 적어야 한다.
+  - **C. 그래프 단계에서 환경이 다르면 연결하지 않기**: `graph.py`의 SQL이 바뀌고 D-027("src 타입·정규화 값이 같을 때만 후보 경로")을 고치는 새 결정이 필요하다. 계정 ID는 `host`/`target`이라 호스트명과 타입으로 구분되지 않고, 같은 공격자가 두 계정을 치는 정상 묶음도 끊길 수 있다. 규칙 설계에 달려 있다. "양쪽에 target host가 있고 서로 다르면 분리"는 1a·1b에 영향이 없다(둘 다 target 없음). "target host가 같아야 연결"은 1a·1b를 깨뜨린다.
+  - **D. 현재 동작 유지, 결정 제안으로만 기록**: 코드·프롬프트 변경 없음, 1a·1b 위험 없음. 케이스 5는 잘못 묶인 채로 남는다.
+  - 어느 쪽이든 고친 뒤에는 1a·1b·5를 실제 모델로 다시 여러 번 돌려야 한다. 결정은 사람이 한다.
 
 ## 계획과 달라진 점
 
@@ -72,20 +89,22 @@ supersedes: []
 - 케이스 6a에서 가득 찬 Incident만 후보였으면 `reason`이 `no_path`로 기록된다. 가득 찼기 때문인지 연결이 없어서인지 `l2_branch` 상세만으로는 구분되지 않는다.
 - 케이스 1c1~1c4는 IPv4·IPv6 표기만 다룬다. 정규화기가 src로 만드는 타입은 ip뿐이라 host·domain 대소문자 차이는 연결에 영향이 없다.
 - 케이스 5의 `198.51.100.21`은 사설 IP 상당이다. 보안 규칙상 샘플은 문서용 대역만 쓰고, #329 이후 코드는 사설·공개를 구분하지 않아 결과가 같다.
-- `tests/test_l2_scenarios_llm.py`는 AI가 실행하지 못했다. 건너뛰는 것만 확인했다(키 없이 `-m llm`: 3 skipped). 실제로 돌려 보지 않았으므로 처음 돌릴 때 임시 읽기 계정 생성이나 설정에서 문제가 생길 수 있다.
+- `tests/test_l2_scenarios_llm.py`는 AI가 실행하지 못했다(키 없이 `-m llm`: 3 skipped). 사람이 같은 방식의 일회용 스크립트로 돌렸다. 이 테스트는 판단과 토큰만 출력하고 `reason`을 출력하지 않는다. `reason`을 보려면 스크립트나 Agent Log(`agent_logs`)를 읽어야 한다.
 
 ## 정리 항목
 
 ### #269
 
-`read_incidents_by_ids`, `read_recent_incidents`, `ticket_branch`는 `src`, `tests`, `config`, 마이그레이션에서 찾지 못했다(`tests/normalize/test_alert_skeleton_db.py`의 테스트 이름 `..._through_the_ticket_branch`는 다른 뜻이다). #269가 가리키는 코드는 없어졌다. 닫을지는 사람이 정한다(댓글 초안은 만들지 않는다).
+`read_incidents_by_ids`, `read_recent_incidents`, `ticket_branch`는 `src`, `tests`, `config`, 마이그레이션에서 찾지 못했다(`tests/normalize/test_alert_skeleton_db.py`의 테스트 이름 `..._through_the_ticket_branch`는 다른 뜻이다). #269가 가리키는 코드는 없어졌다. **닫을지 결정: 미결정, 사람이 정한다**(댓글 초안은 만들지 않는다).
 
 ### 문서·주석 차이
 
 - D-063·#334 계획의 "임베딩(`similar/index.py`, `l2/branch/embed.py`)은 옛 `title`·엔티티 기준일 수 있다": `l2/branch/embed.py`의 `embedding_text`는 `src` 안에서 부르는 곳이 없고 `tests/test_l2_branch.py`만 쓴다. L2 분류가 이 임베딩을 쓰지 않는다는 D-027과 맞다. `similar/index.py`는 이번에 읽지 않았다.
 - #329 이슈 본문과 확정 계획: 본문은 `src` 공개 IP 허용 여부를 (A)/(B)로 열어 두었고 확정 계획과 D-027은 (A)로 정했다. 본문은 `graph.py:117`을 "공개 IP를 무조건 건너뛴다"고 적었지만 지금은 그 코드가 없다.
 
-### DB가 필요한 항목: 사람이 채울 칸
+### DB가 필요한 항목: 해당 없음
+
+아래 다섯 항목은 확인하던 테스트 서버가 삭제되어 확인하지 못한다. 쿼리는 참고용으로 남긴다. 실제 DB가 생기면 새 노트에서 확인한다.
 
 읽기 전용 계정으로 아래 쿼리를 돌려 건수만 적는다. **컬럼 이름은 마이그레이션(0001, 0004, 0103, 0108)과 `l2/analyze/worker.py`에서 읽은 것이고 실제 DB에서 확인하지 못했다.** 쿼리가 오류를 내면 스키마를 먼저 확인한다.
 
@@ -115,11 +134,11 @@ SELECT (SELECT count(*) FROM assets) AS assets,
 
 | 항목 | 결과(건수만) | 확인한 사람·날짜 |
 |---|---|---|
-| (a) held Incident 수, 최대 Ticket 수 | | |
-| (b) 1시간 이상 간격 두 번의 analysis_round 증가 여부 | | |
-| (c) alert outcome 분포(NULL 포함) | | |
-| (d) class_uid 없는 알럿 수 | | |
-| (e) assets / asset_identifiers 행 수 | | |
+| (a) held Incident 수, 최대 Ticket 수 | 해당 없음(확인하던 테스트 서버가 삭제됨) | — |
+| (b) 1시간 이상 간격 두 번의 analysis_round 증가 여부 | 해당 없음(확인하던 테스트 서버가 삭제됨) | — |
+| (c) alert outcome 분포(NULL 포함) | 해당 없음(확인하던 테스트 서버가 삭제됨) | — |
+| (d) class_uid 없는 알럿 수 | 해당 없음(확인하던 테스트 서버가 삭제됨) | — |
+| (e) assets / asset_identifiers 행 수 | 해당 없음(확인하던 테스트 서버가 삭제됨) | — |
 
 ## 확인 방법
 
@@ -127,5 +146,5 @@ SELECT (SELECT count(*) FROM assets) AS assets,
 - `uv run pytest`: 2638개 통과, 634개 제외.
 - `uv run pytest -m db`(로컬 Postgres, 임시 DB를 만들고 지움): 595개 통과, xfail 2개(1c2, 1c4). 로컬 `.env`의 DB 이름이 컨테이너에 없어 DB 이름만 바꿔 접속했다.
 - `uv run pytest -m qdrant`(로컬 Qdrant 컨테이너, `QDRANT_URL`을 지정): 24개 통과. 이 이슈와 무관한 Qdrant 실패는 없었다.
-- `-m llm`은 키 없이 3개 건너뜀만 확인했다. 실제 모델은 실행하지 않았다.
+- `-m llm`: AI는 키 없이 3개 건너뜀만 확인했고 실제 모델은 실행하지 않았다. 실제 모델 결과는 사람이 로컬에서 돌려 위 "에이전트 단계: 실제 모델 확인"에 적었다.
 - 주요 테스트: `test_scenario_matches_the_graph_rules[케이스 이름]`, `test_normalizer_makes_the_roles_the_case_assumes`, `test_agent_input_keeps_the_flat_alert_shape_with_roles`, `test_candidate_summary_has_paths_but_no_entity_roles`, `test_bad_agent_answers_fall_back_to_a_new_incident`.
