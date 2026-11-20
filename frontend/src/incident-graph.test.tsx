@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import seed from "../../tests/fixtures/api/ui_seed.json";
 import sample from "../../tests/fixtures/frontend/incident_graph.json";
 import type { IncidentDetail } from "./api/generated/IncidentDetail";
@@ -142,4 +142,104 @@ test("lays out many repeated shared-entity paths without overlapping ticket colu
         .width,
     ),
   ).toBeGreaterThan(3000);
+});
+
+const titles = Object.fromEntries(
+  sample.ticket_ids.map((id, i) => [id, `Ticket 제목 ${i}`]),
+);
+const inspector = () =>
+  screen.getByRole("complementary", { name: "선택된 노드" });
+const stat = (name: string) =>
+  within(inspector()).getByText(name).parentElement!.querySelector("dd")!
+    .textContent;
+
+test("the header shows the status and ticket count as chips, and the view toggle offers only the ticket view", () => {
+  render(<IncidentGraph incident={incident} ticketGraphs={graphs} />);
+  const heading = document.querySelector(".incident-graph-heading")!;
+  expect(heading).toHaveTextContent("승인 대기");
+  expect(heading).toHaveTextContent(`Ticket ${sample.ticket_ids.length}`);
+  const views = screen.getByRole("group", { name: "그래프 보기" });
+  expect(within(views).getByRole("button", { name: "Ticket" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  expect(within(views).getByRole("button", { name: "Entity" })).toBeDisabled();
+});
+
+test("ticket nodes show the ticket title when titles are given and the id otherwise", () => {
+  const { rerender } = render(
+    <IncidentGraph incident={incident} ticketGraphs={graphs} titles={titles} />,
+  );
+  const diagram = screen.getByRole("region", { name: "Incident 관계도" });
+  expect(within(diagram).getByText("Ticket 제목 0")).toBeInTheDocument();
+  rerender(<IncidentGraph incident={incident} ticketGraphs={graphs} />);
+  expect(within(diagram).queryByText("Ticket 제목 0")).toBeNull();
+  expect(within(diagram).getByText(sample.ticket_ids[0])).toBeInTheDocument();
+});
+
+test("the incident is selected first and the inspector counts its tickets", () => {
+  render(<IncidentGraph incident={incident} ticketGraphs={graphs} />);
+  expect(inspector()).toHaveTextContent("선택된 노드 · INCIDENT");
+  expect(stat("연결 Ticket")).toBe(String(sample.ticket_ids.length));
+  expect(stat("자산 중요도")).toBe("—");
+});
+
+test("clicking or pressing Enter on a node selects it and fills the inspector", () => {
+  const { container } = render(
+    <IncidentGraph incident={incident} ticketGraphs={graphs} titles={titles} />,
+  );
+  const node = (name: string) =>
+    within(screen.getByRole("region", { name: "Incident 관계도" })).getByRole(
+      "group",
+      { name },
+    );
+  const ticket = node(`Ticket ${sample.ticket_ids[1]}`);
+  fireEvent.click(ticket);
+  expect(inspector()).toHaveTextContent("선택된 노드 · TICKET");
+  expect(inspector()).toHaveTextContent("Ticket 제목 1");
+  expect(Number(stat("관련 Alert"))).toBeGreaterThan(0);
+  expect(ticket).toHaveAttribute("aria-current", "true");
+  fireEvent.keyDown(node("host: lab-7"), { key: "Enter" });
+  expect(inspector()).toHaveTextContent("선택된 노드 · ENTITY");
+  expect(inspector()).toHaveTextContent("lab-7");
+  expect(
+    container.querySelectorAll(".incident-graph-node.selected"),
+  ).toHaveLength(1);
+});
+
+test("hovering a node dims what is not connected to it and leaving restores", () => {
+  const { container } = render(
+    <IncidentGraph incident={incident} ticketGraphs={graphs} />,
+  );
+  const dimmed = () =>
+    container.querySelectorAll(".incident-graph-node.dim").length;
+  expect(dimmed()).toBe(0);
+  const entity = screen.getByRole("group", { name: "host: lab-7" });
+  fireEvent.mouseEnter(entity);
+  expect(dimmed()).toBeGreaterThan(0);
+  expect(entity).not.toHaveClass("dim");
+  expect(
+    container.querySelectorAll(".incident-graph-lines g.on").length,
+  ).toBeGreaterThan(0);
+  fireEvent.mouseLeave(entity);
+  expect(dimmed()).toBe(0);
+});
+
+test("entity text stays literal in the inspector too", () => {
+  const hostile = structuredClone(sample.ticket_graphs);
+  // The shared entity is one node, so every path that names it must carry the same value.
+  for (const [g, p] of [
+    [1, 0],
+    [2, 0],
+  ])
+    hostile[g].paths[p].nodes[2].value = '<img src=x onerror="alert(1)">';
+  const { container } = render(
+    <IncidentGraph
+      incident={incident}
+      ticketGraphs={hostile as IncidentDetail["ticket_graphs"]}
+    />,
+  );
+  fireEvent.click(screen.getByRole("group", { name: /onerror/ }));
+  expect(inspector()).toHaveTextContent('<img src=x onerror="alert(1)">');
+  expect(container.querySelector("img, script")).toBeNull();
 });

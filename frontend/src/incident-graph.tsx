@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { Status } from "./badges";
 import type {
   GraphNode,
   IncidentDetail,
@@ -11,6 +13,7 @@ const MARGIN = 24;
 const TICKET_Y = 144;
 const RECORD_Y = 276;
 const RECORD_STEP = 116;
+const MARKER_CENTER = 28; // 선은 노드 가운데가 아니라 동그라미 가운데로 이어진다
 
 type Incident = IncidentDetail["incident"];
 type SavedPath = { source: string; path: IncidentTicketGraph["paths"][number] };
@@ -207,16 +210,68 @@ function buildGraph(incident: Incident, ticketGraphs?: IncidentTicketGraph[]) {
   };
 }
 
+type Edge = PositionedEdge;
+
+// Nodes reachable through saved search paths only (membership lines are not evidence of sharing).
+function reach(start: string, edges: Edge[]) {
+  const seen = new Set([start]);
+  const queue = [start];
+  while (queue.length) {
+    const at = queue.shift()!;
+    for (const edge of edges) {
+      if (edge.relation !== "path") continue;
+      const next =
+        edge.from === at ? edge.to : edge.to === at ? edge.from : null;
+      if (next && !seen.has(next)) {
+        seen.add(next);
+        queue.push(next);
+      }
+    }
+  }
+  return seen;
+}
+
 export function IncidentGraph({
   incident,
   ticketGraphs,
+  titles,
 }: {
   incident: Incident;
   ticketGraphs?: IncidentTicketGraph[];
+  // Ticket titles by id (IncidentDetail.tickets). Without them nodes show the id.
+  titles?: Record<string, string>;
 }) {
   const graph = buildGraph(incident, ticketGraphs);
   const positioned = new Map(graph.nodes.map((node) => [nodeKey(node), node]));
   const byTicket = new Map(ticketGraphs?.map((item) => [item.ticket_id, item]));
+  const incidentKey = nodeKey({ kind: "incident", id: incident.id });
+  const [selected, setSelected] = useState(incidentKey);
+  const [hovered, setHovered] = useState<string | null>(null);
+  // Only hovering (or keyboard focus) dims the rest; the selected node just gets a ring.
+  const linked = new Set(hovered ? [hovered] : []);
+  for (const edge of graph.edges) {
+    if (edge.from === hovered) linked.add(edge.to);
+    if (edge.to === hovered) linked.add(edge.from);
+  }
+  const label = (node: GraphNode) =>
+    node.kind === "incident"
+      ? incident.title || node.id
+      : node.kind === "ticket"
+        ? (titles?.[node.id] ?? node.id)
+        : node.kind === "entity"
+          ? (node.value ?? node.id)
+          : node.id;
+  const chosen = positioned.get(selected) ?? positioned.get(incidentKey)!;
+  const scope =
+    chosen.kind === "incident"
+      ? new Set(graph.nodes.map(nodeKey))
+      : reach(nodeKey(chosen), graph.edges);
+  const inScope = graph.nodes.filter((node) => scope.has(nodeKey(node)));
+  const otherTickets = inScope.filter(
+    (node) => node.kind === "ticket" && nodeKey(node) !== nodeKey(chosen),
+  ).length;
+  const alerts = inScope.filter((node) => node.kind === "alert").length;
+  const select = (key: string) => setSelected(key);
   return (
     <section className="incident-graph">
       <div className="incident-graph-heading">
@@ -224,9 +279,26 @@ export function IncidentGraph({
           <strong>{incident.title || incident.id}</strong>
           <span>{incident.id}</span>
         </div>
-        <span>
-          {incident.status} · Ticket {incident.ticket_ids.length}건
-        </span>
+        <div className="incident-graph-chips">
+          <Status value={incident.status} />
+          <span className="badge">Ticket {incident.ticket_ids.length}</span>
+        </div>
+      </div>
+      <div className="incident-graph-modebar">
+        <span>그래프 보기 전환</span>
+        <div role="group" aria-label="그래프 보기">
+          <button type="button" aria-pressed="true">
+            Ticket
+          </button>
+          <button
+            type="button"
+            aria-pressed="false"
+            disabled
+            title="Entity 공격 경로 보기는 아직 제공하지 않습니다"
+          >
+            Entity
+          </button>
+        </div>
       </div>
       <p className="incident-graph-note">
         선은 저장된 후보 탐색 경로입니다. 공격 순서나 최종 선택 이유를 뜻하지
@@ -235,9 +307,12 @@ export function IncidentGraph({
       <div className="incident-graph-legend" aria-label="관계선 범례">
         <span className="membership">Incident 소속</span>
         <span className="path">공유 엔티티 연결</span>
+        <span className="dot incident">Incident</span>
+        <span className="dot ticket">Ticket</span>
       </div>
       <p className="incident-graph-scroll-hint">
-        관계도 안에서 가로로 스크롤하거나 키보드로 이동할 수 있습니다.
+        관계도 안에서 가로로 스크롤하거나 키보드로 이동할 수 있습니다. 노드에
+        마우스를 올리면 연결이 강조되고, 클릭하면 상세 정보가 표시됩니다.
       </p>
       <div
         className="incident-graph-viewport"
@@ -259,9 +334,9 @@ export function IncidentGraph({
               const from = positioned.get(edge.from)!;
               const to = positioned.get(edge.to)!;
               const x1 = from.x + NODE_WIDTH / 2;
-              const y1 = from.y + NODE_HEIGHT / 2;
+              const y1 = from.y + MARKER_CENTER;
               const x2 = to.x + NODE_WIDTH / 2;
-              const y2 = to.y + NODE_HEIGHT / 2;
+              const y2 = to.y + MARKER_CENTER;
               // 선 하나만 봐도 무엇을 공유해 이어졌는지 읽히게 가운데에 엔티티를 적는다.
               const entity =
                 from.kind === "entity"
@@ -269,8 +344,15 @@ export function IncidentGraph({
                   : to.kind === "entity"
                     ? to
                     : null;
+              const touches =
+                hovered === null ||
+                edge.from === hovered ||
+                edge.to === hovered;
               return (
-                <g key={JSON.stringify([edge.from, edge.to, edge.kind])}>
+                <g
+                  key={JSON.stringify([edge.from, edge.to, edge.kind])}
+                  className={touches ? "on" : "dim"}
+                >
                   <line
                     data-relation={edge.relation}
                     x1={x1}
@@ -291,27 +373,75 @@ export function IncidentGraph({
               );
             })}
           </svg>
-          {graph.nodes.map((node) => (
-            <div
-              key={nodeKey(node)}
-              className={`incident-graph-node ${node.kind}`}
-              style={{ left: node.x, top: node.y }}
-              role="group"
-              tabIndex={0}
-              aria-label={nodeText(node)}
-            >
-              <strong>
-                {node.kind === "entity"
-                  ? (node.type ?? "Entity")
-                  : nodeName[node.kind]}
-              </strong>
-              <span>
-                {node.kind === "entity" ? (node.value ?? node.id) : node.id}
-              </span>
-            </div>
-          ))}
+          {graph.nodes.map((node) => {
+            const key = nodeKey(node);
+            return (
+              <div
+                key={key}
+                className={[
+                  "incident-graph-node",
+                  node.kind,
+                  key === selected ? "selected" : "",
+                  hovered === null || linked.has(key) ? "" : "dim",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+                style={{ left: node.x, top: node.y }}
+                role="group"
+                tabIndex={0}
+                aria-label={nodeText(node)}
+                aria-current={key === selected ? "true" : undefined}
+                onMouseEnter={() => setHovered(key)}
+                onMouseLeave={() => setHovered(null)}
+                onFocus={() => setHovered(key)}
+                onBlur={() => setHovered(null)}
+                onClick={() => select(key)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    select(key);
+                  }
+                }}
+              >
+                <i className="marker" aria-hidden="true" />
+                <strong>
+                  {node.kind === "entity"
+                    ? (node.type ?? "Entity")
+                    : nodeName[node.kind]}
+                </strong>
+                <span>{label(node)}</span>
+              </div>
+            );
+          })}
         </div>
       </div>
+      <aside className="incident-graph-inspector" aria-label="선택된 노드">
+        <span className="eyebrow">
+          선택된 노드 · {nodeName[chosen.kind].toUpperCase()}
+        </span>
+        <h4>{label(chosen)}</h4>
+        <code>
+          {chosen.kind === "entity" ? (chosen.type ?? "") : chosen.id}
+        </code>
+        <dl>
+          <div>
+            <dt>연결 Ticket</dt>
+            <dd>
+              {chosen.kind === "incident"
+                ? incident.ticket_ids.length
+                : otherTickets}
+            </dd>
+          </div>
+          <div>
+            <dt>관련 Alert</dt>
+            <dd>{alerts}</dd>
+          </div>
+          <div>
+            <dt>자산 중요도</dt>
+            <dd>—</dd>
+          </div>
+        </dl>
+      </aside>
       {ticketGraphs === undefined || ticketGraphs.length === 0 ? (
         <p className="incident-graph-empty">
           Ticket별 탐색 기록을 받지 못했습니다.
@@ -344,6 +474,7 @@ export function IncidentGraph({
       <ul className="incident-graph-statuses">
         {incident.ticket_ids.map((id) => (
           <li key={id}>
+            {titles?.[id] && <span className="status-title">{titles[id]}</span>}
             <span>{id}</span>
             <strong>{statusText(byTicket.get(id))}</strong>
           </li>
