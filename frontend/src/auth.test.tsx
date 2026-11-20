@@ -424,9 +424,9 @@ test("the dashboard shows only what the account may read", async () => {
   expect(stages.some((t) => t.includes("L2 분석 대기"))).toBe(true);
   expect(stages.some((t) => t.includes("정규화 대기"))).toBe(false);
   expect(stages.some((t) => t.includes("내 승인 대기"))).toBe(false);
-  expect(screen.getByText("Tickets by Risk Level")).toBeInTheDocument();
+  expect(screen.getByText("심각도별 Ticket")).toBeInTheDocument();
   expect(screen.queryByText("Threat Hunting")).toBeNull();
-  expect(screen.queryByText("Incident Risk Top 10")).toBeNull();
+  expect(screen.queryByText("Incident 심각도 Top 10")).toBeNull();
 });
 
 test("a dashboard with no readable summary says so", async () => {
