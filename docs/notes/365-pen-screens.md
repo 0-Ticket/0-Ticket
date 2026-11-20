@@ -6,7 +6,7 @@ plan: 365-pen-screens.md
 supersedes: []
 ---
 
-# pen 디자인 화면 구현과 Incident 승인·반려 API (개발 중, 일부 미완)
+# Incident 승인·반려 API와 Ticket·Incident 상세 화면 (pen 디자인 전체 구현은 일부 미완)
 
 ## 한 일
 
