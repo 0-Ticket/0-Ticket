@@ -4,6 +4,7 @@
     "violations": [{"path": "alert_ids", "rule": "minItems"}],
     "data": {
       "id": "tkt_01a19f93-1150-7000-8000-000000000001",
+      "title": "샘플 alert 제목",
       "origin": "auto",
       "status": "new",
       "alert_ids": [],
@@ -20,6 +21,7 @@
     "violations": [{"path": "alert_ids", "rule": "minItems"}],
     "data": {
       "id": "tkt_01a19f93-1150-7000-8000-000000000002",
+      "title": "샘플 alert 제목",
       "origin": "scenario",
       "status": "new",
       "alert_ids": [],
@@ -36,6 +38,7 @@
     "violations": [{"path": "alert_ids", "rule": "minItems"}],
     "data": {
       "id": "tkt_01a19f93-1150-7000-8000-000000000003",
+      "title": "샘플 alert 제목",
       "origin": "l1",
       "status": "new",
       "alert_ids": [],
@@ -52,6 +55,7 @@
     "violations": [{"path": "verdict", "rule": "type"}],
     "data": {
       "id": "tkt_01a19f93-1150-7000-8000-000000000001",
+      "title": "샘플 alert 제목",
       "origin": "auto",
       "status": "new",
       "alert_ids": ["alt_01a19f93-1150-7000-8000-000000000001"],
@@ -74,6 +78,7 @@
     "violations": [{"path": "origin", "rule": "enum"}],
     "data": {
       "id": "tkt_01a19f93-1150-7000-8000-000000000001",
+      "title": "샘플 alert 제목",
       "origin": "manual",
       "status": "new",
       "alert_ids": ["alt_01a19f93-1150-7000-8000-000000000001"],
@@ -90,6 +95,7 @@
     "violations": [{"path": "status", "rule": "enum"}],
     "data": {
       "id": "tkt_01a19f93-1150-7000-8000-000000000001",
+      "title": "샘플 alert 제목",
       "origin": "auto",
       "status": "open",
       "alert_ids": ["alt_01a19f93-1150-7000-8000-000000000001"],
@@ -106,6 +112,7 @@
     "violations": [{"path": "verdict", "rule": "additionalProperties"}],
     "data": {
       "id": "tkt_01a19f93-1150-7000-8000-000000000005",
+      "title": "샘플 alert 제목",
       "origin": "auto",
       "status": "closed",
       "alert_ids": ["alt_01a19f93-1150-7000-8000-000000000007"],
@@ -129,6 +136,7 @@
     "violations": [{"path": "verdict.evidence_ids", "rule": "minItems"}],
     "data": {
       "id": "tkt_01a19f93-1150-7000-8000-000000000005",
+      "title": "샘플 alert 제목",
       "origin": "auto",
       "status": "closed",
       "alert_ids": ["alt_01a19f93-1150-7000-8000-000000000007"],
@@ -151,6 +159,7 @@
     "violations": [{"path": "alert_ids[0]", "rule": "pattern"}],
     "data": {
       "id": "tkt_01a19f93-1150-7000-8000-000000000001",
+      "title": "샘플 alert 제목",
       "origin": "auto",
       "status": "new",
       "alert_ids": ["evt_01a19f93-1150-7000-8000-000000000001"],
@@ -170,6 +179,7 @@
     ],
     "data": {
       "id": "tkt_01a19f93-1150-7000-8000-000000000001",
+      "title": "샘플 alert 제목",
       "origin": "auto",
       "status": "new",
       "alert_ids": [
@@ -189,6 +199,7 @@
     "violations": [{"path": "alert_ids[0]", "rule": "pattern"}],
     "data": {
       "id": "tkt_01a19f93-1150-7000-8000-000000000001",
+      "title": "샘플 alert 제목",
       "origin": "auto",
       "status": "new",
       "alert_ids": ["alt_01a19f93-1150-7000-8000-000000000001\n"],
@@ -205,6 +216,7 @@
     "violations": [{"path": "hunt_id", "rule": "type"}],
     "data": {
       "id": "tkt_01a19f93-1150-7000-8000-000000000004",
+      "title": "샘플 가설 제목",
       "origin": "l3",
       "status": "escalated",
       "alert_ids": [],
@@ -221,6 +233,7 @@
     "violations": [{"path": "hunt_id", "rule": "type"}],
     "data": {
       "id": "tkt_01a19f93-1150-7000-8000-000000000004",
+      "title": "샘플 가설 제목",
       "origin": "auto",
       "status": "new",
       "alert_ids": ["alt_01a19f93-1150-7000-8000-000000000001"],
@@ -237,6 +250,7 @@
     "violations": [{"path": "hunt_id", "rule": "pattern"}],
     "data": {
       "id": "tkt_01a19f93-1150-7000-8000-000000000004",
+      "title": "샘플 가설 제목",
       "origin": "l3",
       "status": "escalated",
       "alert_ids": [],
@@ -253,6 +267,7 @@
     "violations": [{"path": "hunt_id", "rule": "pattern"}],
     "data": {
       "id": "tkt_01a19f93-1150-7000-8000-000000000004",
+      "title": "샘플 가설 제목",
       "origin": "l3",
       "status": "escalated",
       "alert_ids": [],
@@ -269,9 +284,133 @@
     "violations": [{"path": "hunt_id", "rule": "required"}],
     "data": {
       "id": "tkt_01a19f93-1150-7000-8000-000000000004",
+      "title": "샘플 alert 제목",
       "origin": "auto",
       "status": "new",
       "alert_ids": ["alt_01a19f93-1150-7000-8000-000000000001"],
+      "entities": [],
+      "verdict": null,
+      "created_at": 1793679000000,
+      "updated_at": 1793679000000,
+      "details": {}
+    }
+  },
+  {
+    "case": "missing_title",
+    "violations": [
+      {
+        "path": "title",
+        "rule": "required"
+      }
+    ],
+    "data": {
+      "id": "tkt_01a19f93-1150-7000-8000-000000000010",
+      "origin": "auto",
+      "status": "new",
+      "alert_ids": [
+        "alt_01a19f93-1150-7000-8000-000000000001"
+      ],
+      "hunt_id": null,
+      "entities": [],
+      "verdict": null,
+      "created_at": 1793679000000,
+      "updated_at": 1793679000000,
+      "details": {}
+    }
+  },
+  {
+    "case": "empty_title",
+    "violations": [
+      {
+        "path": "title",
+        "rule": "minLength"
+      },
+      {
+        "path": "title",
+        "rule": "pattern"
+      }
+    ],
+    "data": {
+      "id": "tkt_01a19f93-1150-7000-8000-000000000010",
+      "title": "",
+      "origin": "auto",
+      "status": "new",
+      "alert_ids": [
+        "alt_01a19f93-1150-7000-8000-000000000001"
+      ],
+      "hunt_id": null,
+      "entities": [],
+      "verdict": null,
+      "created_at": 1793679000000,
+      "updated_at": 1793679000000,
+      "details": {}
+    }
+  },
+  {
+    "case": "whitespace_only_title",
+    "violations": [
+      {
+        "path": "title",
+        "rule": "pattern"
+      }
+    ],
+    "data": {
+      "id": "tkt_01a19f93-1150-7000-8000-000000000010",
+      "title": " \t\n\u000b\f\r 　",
+      "origin": "auto",
+      "status": "new",
+      "alert_ids": [
+        "alt_01a19f93-1150-7000-8000-000000000001"
+      ],
+      "hunt_id": null,
+      "entities": [],
+      "verdict": null,
+      "created_at": 1793679000000,
+      "updated_at": 1793679000000,
+      "details": {}
+    }
+  },
+  {
+    "case": "title_201_chars",
+    "violations": [
+      {
+        "path": "title",
+        "rule": "maxLength"
+      }
+    ],
+    "data": {
+      "id": "tkt_01a19f93-1150-7000-8000-000000000010",
+      "title": "가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가",
+      "origin": "auto",
+      "status": "new",
+      "alert_ids": [
+        "alt_01a19f93-1150-7000-8000-000000000001"
+      ],
+      "hunt_id": null,
+      "entities": [],
+      "verdict": null,
+      "created_at": 1793679000000,
+      "updated_at": 1793679000000,
+      "details": {}
+    }
+  },
+  {
+    "case": "title_not_string",
+    "violations": [
+      {
+        "path": "title",
+        "rule": "type"
+      }
+    ],
+    "data": {
+      "id": "tkt_01a19f93-1150-7000-8000-000000000010",
+      "title": 1,
+      "origin": "auto",
+      "status": "new",
+      "alert_ids": [
+        "alt_01a19f93-1150-7000-8000-000000000001"
+      ],
+      "hunt_id": null,
       "entities": [],
       "verdict": null,
       "created_at": 1793679000000,
