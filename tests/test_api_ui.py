@@ -161,6 +161,31 @@ def test_ticket_filters_and_full_detail(ui_client):
 
 
 @pytest.mark.db
+def test_incident_proposals_come_back_as_one_recommendation_list_in_seq_order(ui_client):
+    """합쳐진 권고 조치가 seq 순으로 나오고, 옛 구조에서 옮긴 행은 priority·rationale이 null이다."""
+    artifacts = {row["id"]: row["incident_id"] for row in SEED["incident_artifacts"]}
+    first = ui_client.get(
+        "/api/incidents/" + artifacts[SEED["incident_proposals"][0]["artifact_id"]]
+    )
+    legacy = ui_client.get(
+        "/api/incidents/" + artifacts[SEED["incident_proposals"][-1]["artifact_id"]]
+    )
+
+    mixed = first.json()["proposals"]
+    assert [(p["seq"], p["kind"], p["priority"]) for p in mixed] == [
+        (1, "detection", "high"),
+        (2, "response", "medium"),
+    ]
+    assert [p["title"] for p in mixed] == ["자식 프로세스 실행 탐지", "서버 점검"]
+    assert all(p["detail"] and p["rationale"] for p in mixed)
+    assert "body" not in mixed[0]
+    moved = legacy.json()["proposals"]
+    assert [(p["priority"], p["rationale"]) for p in moved] == [(None, None)]
+    for row in mixed + moved:
+        validate_contract("incident_proposal", row)
+
+
+@pytest.mark.db
 def test_review_is_incident_and_artifacts_are_preserved(ui_client, ui_db):
     items = ui_client.get("/api/incidents", params={"status": "awaiting_review"}).json()["items"]
     assert len(items) == 1

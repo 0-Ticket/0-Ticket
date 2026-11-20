@@ -107,7 +107,7 @@ def incident(request: Request, incident_id: str):
         proposals = conn.execute(
             "SELECT p.* FROM incident_proposals p JOIN incident_artifacts a "
             "ON a.id=p.artifact_id WHERE a.incident_id=%s "
-            "ORDER BY a.analysis_round DESC,p.kind,p.seq",
+            "ORDER BY a.analysis_round DESC,p.seq",
             (incident_id,),
         ).fetchall()
         ticket_rows = conn.execute(
