@@ -124,3 +124,27 @@ def test_incident_detail_has_the_title_of_each_ticket_in_ticket_ids_order(detail
     assert [t["id"] for t in got["tickets"]] == ids
     assert got["incident"]["ticket_ids"] == ids  # 기존 필드는 그대로다
     assert [t["title"] for t in got["tickets"]] == [titles[i] for i in ids]
+
+
+def test_dashboard_top_incidents_leave_out_confirmed_and_dismissed(detail_db):
+    """Top 10 기준(D-077): 분석 중·승인 대기·사람 처리·보류만 대상이고 확정·기각은 뺀다."""
+    top = admin_client().get("/api/dashboard").json()["top_incidents"]
+    statuses = {INC["1"]: "analyzing", INC["2"]: "awaiting_review", INC["4"]: "human_handling"}
+    assert {i["id"]: i["status"] for i in top} == statuses
+    assert INC["3"] not in {i["id"] for i in top}  # confirmed
+    assert INC["5"] not in {i["id"] for i in top}  # dismissed
+
+
+def test_dashboard_top_incidents_keep_held_ones(detail_db):
+    with psycopg.connect(detail_db, autocommit=True) as conn:
+        conn.execute("UPDATE incidents SET status='held' WHERE id=%s", (INC["1"],))
+    top = admin_client().get("/api/dashboard").json()["top_incidents"]
+    assert {i["id"]: i["status"] for i in top}[INC["1"]] == "held"
+
+
+def test_waiting_count_is_every_awaiting_review_incident_not_per_user(detail_db):
+    """ "승인 대기"는 로그인한 사용자와 무관하게 awaiting_review 전체 수다(D-077)."""
+    with psycopg.connect(detail_db, autocommit=True) as conn:
+        conn.execute("UPDATE incidents SET status='awaiting_review' WHERE id=%s", (INC["4"],))
+    waiting = admin_client().get("/api/dashboard").json()["incident_status"]["awaiting_review"]
+    assert waiting == 2
