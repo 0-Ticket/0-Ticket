@@ -191,7 +191,7 @@ function SmallList({ items }: { items: Dashboard["top_incidents"] }) {
 function RiskBars({ counts }: { counts: Record<string, number> }) {
   const max = Math.max(1, ...Object.values(counts));
   return (
-    <div className="risk-bars" aria-label="Ticket 위험도 분포">
+    <div className="risk-bars" aria-label="Ticket 심각도 분포">
       {[6, 5, 4, 3, 2, 1, 0].map((level) => (
         <div className="risk-row" key={level}>
           <span>{severityLabel(level)}</span>
@@ -242,7 +242,7 @@ export function DashboardView({
             {can("ticket.read") && (
               <article className="card">
                 <div className="card-heading">
-                  <h3>Tickets by Risk Level</h3>
+                  <h3>심각도별 Ticket</h3>
                   <Link to="/tickets">전체 보기 →</Link>
                 </div>
                 <p className="chart-caption">전체 {data.flow.tickets}건</p>
@@ -291,12 +291,12 @@ export function DashboardView({
         {can("incident.read") && (
           <article className="card top-incidents">
             <div className="card-heading">
-              <h3>Incident Risk Top 10</h3>
+              <h3>Incident 심각도 Top 10</h3>
               <Link to="/incidents">전체 보기 →</Link>
             </div>
             <div className="small-list-heading">
               <span>Incident 정보</span>
-              <span>위험도</span>
+              <span>심각도</span>
             </div>
             <SmallList items={data.top_incidents} />
           </article>
@@ -322,7 +322,7 @@ export function Overview({
   if (resource === "tickets")
     return (
       <article className="card">
-        <h3>위험도별 Ticket</h3>
+        <h3>심각도별 Ticket</h3>
         <Bars counts={data.ticket_severity} risk />
       </article>
     );
