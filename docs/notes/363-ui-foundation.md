@@ -30,8 +30,9 @@ supersedes: []
 - **Sidebar·Footer 비교 결과.** 디자인 컴포넌트(`Sidebar`, `Workspace Footer`)의 크기·패딩·간격·글꼴·색을 속성으로 읽어 CSS와 비교했다. 위 글자 굵기 3곳 말고는 모두 같았다. 비교하지 않은 것: Ticket 메뉴 아이콘 크기(CSS에 `a:nth-child(3) svg { 26.5px }`가 있고 디자인은 20×20이다. SVG 안쪽 여백 때문일 수 있어 손대지 않았다), 호버·활성 상태(디자인 컴포넌트에 없음), 관리자가 아닌 역할 배지 색(디자인에 없음). 사람이 화면으로 확인한다.
 - **디자인 색 토큰 비교 결과.** 디자인의 `app-*` 색 변수 20개가 `style.css`의 `:root` 값과 모두 같다. 단 `app-heading`(#162841)은 `:root` 변수가 아니라 CSS 여러 곳에 직접 적혀 있어 그대로 뒀다. 디자인에는 `app-*` 말고 `bg`·`surface`·`ink`·`ink-2`·`muted`·`line`·`good`(7개)도 있는데 쓰이는지 확인하지 못했고 반영하지 않았다. 폰트 변수 `font-ui`(Noto Sans KR)는 D-046대로 번들하지 않았다. 간격 토큰은 디자인에 없다.
 - **`font-weight: 650`은 `style.css`에 8곳 더 있다**(1674, 1703, 1773, 1803, 1808, 1840, 1852, 1873줄 부근). 사이드바가 아닌 화면이라 이번에 안 고쳤다. 화면별 이슈에서 디자인 값과 비교한다.
-- **`.pen` 파일.** git이 `design/0-Ticket.pen`을 텍스트로 세어 35,290줄 추가로 보인다. 그래도 MCP 도구 설명대로 암호화된 파일이라 내용은 열어 보지 않았고 `git add`만 했다. `design/images/`에는 `logo-mark.png` 하나뿐이다. 이미지 참조 경로(`images/logo-mark.png`)가 앱에서 정상으로 열리는지는 사람이 확인한다(계획 완료 기준). **지금 커밋된 `.pen`은 한국어 라벨 텍스트가 들어 있던 상태의 파일이다.** 열린 문서는 원래 문구로 되돌렸고, 사람이 저장한 뒤 파일을 다시 교체해야 한다.
+- **`.pen` 파일.** git이 `design/0-Ticket.pen`을 텍스트로 세어 35,290줄 추가로 보인다. 그래도 MCP 도구 설명대로 암호화된 파일이라 내용은 열어 보지 않았고 `git add`만 했다. `design/images/`에는 `logo-mark.png` 하나뿐이다. 이미지 참조 경로(`images/logo-mark.png`)가 앱에서 정상으로 열리는지는 사람이 확인한다(계획 완료 기준). 라벨을 되돌린 뒤 `df5e99b`에서 파일을 교체했다(크기 1,508,056 → 1,508,068바이트, 31줄 변경 = 라벨 23개와 제목 8개). 처음 저장한 파일은 되돌리기가 빠진 채 이전과 같은 해시로 나와서, pencil `save` 도구로 다시 저장한 파일을 썼다.
 - **Top10에 confirmed·dismissed가 없다.** 백엔드 `top_incidents`는 `analyzing/awaiting_review/human_handling/held`만 뽑는데 디자인 Top10에는 승인/확인됨과 위협 아님도 있다. 이번 범위 밖이다(Dashboard 이슈).
+- **`origin/main`이 앞서 있다.** 이 브랜치는 `53e0ea1` 기준이고 `origin/main`은 `7f5e332`(#364, L2 후보 요약)다. 겹치는 파일은 없고 시험 병합(`git merge-tree`)도 충돌이 없었다. 리베이스는 하지 않았다.
 - **프런트 린트 경고 1건**(`flow-chart.tsx:17`, `react-refresh/only-export-components`)은 이전부터 있던 것이다.
 
 ## 확인 방법
