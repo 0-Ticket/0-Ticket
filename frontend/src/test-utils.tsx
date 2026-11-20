@@ -47,6 +47,7 @@ export function show(path: string) {
 }
 export function dashboard(
   ticketSeverity = { 0: 2, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1 },
+  topIncidents: unknown[] = [],
 ) {
   server.use(
     http.get("*/api/dashboard", () =>
@@ -86,7 +87,7 @@ export function dashboard(
             seed_source: "dev-seed-ui",
           },
         ],
-        top_incidents: [],
+        top_incidents: topIncidents,
       }),
     ),
   );

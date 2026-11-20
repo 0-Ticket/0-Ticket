@@ -67,7 +67,7 @@
 ## 완료 기준
 
 1. 확정된 계획의 "완료 기준"을 모두 충족한다.
-2. `uv run ruff format --check .`, `uv run ruff check .`, `uv run pytest`가 통과한다. 화면 작업이면 화면 검사도 통과한다(화면 명령은 첫 화면 이슈에서 정한다).
+2. `uv run ruff format --check .`, `uv run ruff check .`, `uv run pytest`가 통과한다. 화면 작업이면 `frontend/`에서 `pnpm contracts:check`, `pnpm lint`, `pnpm test`, `pnpm build`도 통과하고, 디자인이 바뀐 PR에는 사람이 전·후 스크린샷을 붙인다(D-075). 스크린샷 비교 도구는 아직 쓰지 않는다(필요해지면 새 안건으로 올린다).
 3. 바꾼 동작을 `tests/fixtures/`의 샘플로 확인하는 테스트가 있다.
 4. 새 환경변수는 `.env.example`에 이름만 있다.
 5. `docs/plans/`에 확정 계획, `docs/notes/`에 개발 기록이 있다.
