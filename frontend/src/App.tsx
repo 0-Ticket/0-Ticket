@@ -495,7 +495,7 @@ function DetailBody({ data }: { data: Detail }) {
           <JsonViewer value={data.ticket} />
         </>
       )}
-      {"incident" in data && (
+      {"artifacts" in data && ( // TicketDetail도 incident 키가 있어 IncidentDetail만 가진 키로 가른다
         <>
           <div className="links">
             {data.incident.ticket_ids.map((id, i) =>

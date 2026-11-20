@@ -64,11 +64,24 @@ export type CreatedAt = number;
 export type UpdatedAt = number;
 export type Severity = number;
 export type SeedSource = string | null;
+export type Id1 = string;
+export type Title1 = string;
+export type Status1 =
+  | "analyzing"
+  | "awaiting_review"
+  | "confirmed"
+  | "human_handling"
+  | "dismissed"
+  | "held";
+export type Severity1 = number;
+export type AssessedSeverity = number | null;
+export type DisplaySeverity = number;
 
 export interface TicketDetail {
   ticket: Ticket;
   severity: Severity;
   seed_source: SeedSource;
+  incident: TicketIncident | null;
 }
 export interface Ticket {
   id: Id;
@@ -106,4 +119,15 @@ export interface Verdict {
  */
 export interface Details {
   [k: string]: unknown;
+}
+/**
+ * Ticket이 붙은 Incident 요약. 필드 이름과 계산은 IncidentItem과 같다(#345).
+ */
+export interface TicketIncident {
+  id: Id1;
+  title: Title1;
+  status: Status1;
+  severity: Severity1;
+  assessed_severity: AssessedSeverity;
+  display_severity: DisplaySeverity;
 }
