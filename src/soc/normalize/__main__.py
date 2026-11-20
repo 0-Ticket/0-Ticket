@@ -1,7 +1,7 @@
 """정규화를 한 번 실행하고 끝낸다. 주기 실행은 cron이 한다.
 
     uv run python -m soc.normalize
-    uv run python -m soc.normalize report   # 소스별 채움률(읽기 전용, 건수만)
+    uv run python -m soc.normalize report [--kind alert|event]   # 소스별 채움률(읽기 전용, 건수만)
     uv run python -m soc.normalize reprocess [--kind alert|event] [--source S] [--since T]
         [--limit N] [--dry-run]
     # 이미 정규화된 알럿(기본) 또는 이벤트를 id를 유지한 채 다시 정규화한다(#334, #347)
@@ -36,8 +36,8 @@ def main(argv: list[str] | None = None) -> int:
     Args:
         argv: 명령 인자. 없으면 정규화를 실행한다.
     """
-    if argv == ["report"]:
-        return _report_command()
+    if argv and argv[0] == "report":
+        return _report_command(argv[1:])
     if argv and argv[0] == "reprocess":
         return _reprocess_command(argv[1:])
     if argv:
@@ -46,15 +46,20 @@ def main(argv: list[str] | None = None) -> int:
     return _run_command(run)
 
 
-def _report_command() -> int:
-    """소스별 채움률을 읽어 출력한다."""
+def _report_command(argv: list[str]) -> int:
+    """소스별 채움률을 읽어 출력한다. 옵션이 틀리면 종료 코드 2다."""
+    parser = argparse.ArgumentParser(prog="python -m soc.normalize report")
+    parser.add_argument(
+        "--kind", choices=("alert", "event"), default="alert", help="집계할 종류. 기본은 alert"
+    )
+    args = parser.parse_args(argv)
     url = os.environ.get(DATABASE_URL_ENV)
     if not url:
         print(f"환경변수 {DATABASE_URL_ENV}가 필요하다", file=sys.stderr)
         return 2
     try:
         with psycopg.connect(url, autocommit=True, connect_timeout=5) as conn:
-            lines = report_lines(conn)
+            lines = report_lines(conn, args.kind)
     except psycopg.Error:
         print("DB에 접속하지 못했거나 조회에 실패했다", file=sys.stderr)
         return 1

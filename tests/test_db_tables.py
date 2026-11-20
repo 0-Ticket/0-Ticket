@@ -190,6 +190,7 @@ def test_migrate_creates_all_tables_on_empty_db(temp_database: str) -> None:
         "0302_agent_reader_intel.sql",
         "0303_alert_ocsf_class.sql",
         "0304_event_ocsf_class.sql",
+        "0305_event_normalize_source.sql",
     ]
     with psycopg.connect(temp_database) as conn:
         other_tables = {

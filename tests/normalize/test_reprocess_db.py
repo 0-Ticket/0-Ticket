@@ -14,6 +14,7 @@ import psycopg
 import pytest
 from conftest import HiddenUrl
 
+from soc.asset_lookup import AssetLookupError
 from soc.contracts import to_datetime
 from soc.db.migrate import migrate
 from soc.ids import new_id
@@ -423,7 +424,7 @@ def test_event_reprocess_keeps_id_and_fills_message_and_activity_name(
     assert after[0] == before[0]  # 이벤트 id는 그대로
     assert after[2:] == before[2:]  # 새 로직의 결과와 같아진다
     assert after[7]["message"] == "BREW / 200" and after[7]["activity_name"] == "BREW"
-    assert status_row(conn, raw_id) == status_before  # normalize_status는 건드리지 않는다
+    assert status_row(conn, raw_id) == status_before  # 품질이 같아 normalize_status는 그대로다
     assert set(result.columns) == {"summary", "ocsf"}  # 이 샘플은 엔티티가 없다
     assert result.by_source == {"class_4002": {"changed": 1, "unchanged": 0, "skipped": 0}}
 
@@ -444,6 +445,12 @@ def test_event_reprocess_reclassifies_filebeat_base_event(
     before = event_row(conn, raw_id)
     assert before[3] == before[7]["class_uid"] == 0
     assert any(entity["type"] == "host" for entity in before[5])
+    assert status_row(conn, raw_id)[3:7] == (
+        "fallback",
+        "unknown",
+        [],
+        "unsupported_event_mapping",
+    )
 
     conn.execute(
         "UPDATE raw_records SET original_text = %s WHERE id = %s",
@@ -460,7 +467,9 @@ def test_event_reprocess_reclassifies_filebeat_base_event(
     assert after[3] == after[7]["class_uid"] == 4002
     assert after[4] == "GET /catalog 200"
     assert all(entity["type"] != "host" for entity in after[5])
-    assert status_row(conn, raw_id) == status_before
+    after_status = status_row(conn, raw_id)
+    assert after_status[:3] == status_before[:3]  # status·result_kind·result_id는 그대로
+    assert after_status[3:7] == ("ok", source, [], None)  # Base Event에서 개선된다
     assert conn.execute("SELECT count(*) FROM events WHERE raw_id = %s", (raw_id,)).fetchone() == (
         1,
     )
@@ -536,3 +545,177 @@ def test_event_reprocess_since_and_limit_select_rows(conn: psycopg.Connection) -
     future = datetime(2100, 1, 1, tzinfo=UTC)
     assert reprocess(SETTINGS, conn, kind="event", since=future, dry_run=True).read == 0
     assert reprocess(SETTINGS, conn, kind="event").read == 3
+
+
+# --- 이벤트 품질 기록·보존(#351) ---
+UNSUPPORTED = "event_without_supported_class"
+
+
+def clear_quality(conn: psycopg.Connection, raw_id: str) -> None:
+    """품질을 기록하기 전(#351 이전) 행처럼 비운다."""
+    conn.execute(
+        "UPDATE normalize_status SET outcome = NULL, source = NULL, missing_fields = '{}',"
+        " error_code = NULL WHERE raw_id = %s",
+        (raw_id,),
+    )
+
+
+def quality_row(conn: psycopg.Connection, raw_id: str) -> tuple[Any, ...]:
+    return status_row(conn, raw_id)[3:7]  # outcome, source, missing_fields, error_code
+
+
+def set_original(conn: psycopg.Connection, raw_id: str, original: dict[str, Any]) -> None:
+    conn.execute(
+        "UPDATE raw_records SET original_text = %s WHERE id = %s", (json.dumps(original), raw_id)
+    )
+
+
+def modsecurity_original(*, request_time: bool) -> dict[str, Any]:
+    original = json.loads((ROOT / "events" / "modsecurity.json").read_text(encoding="utf-8"))
+    if not request_time:
+        del original["_source"]["transaction"]["time_stamp"]
+    return original
+
+
+def test_event_reprocess_fills_missing_quality_for_an_unchanged_event(
+    conn: psycopg.Connection,
+) -> None:
+    (raw_id,) = seed_events(conn, UNKNOWN_METHOD)
+    recorded = status_row(conn, raw_id)
+    before = event_row(conn, raw_id)
+    clear_quality(conn, raw_id)
+
+    result = reprocess(SETTINGS, conn, kind="event")
+
+    assert (result.changed, result.unchanged) == (1, 0)
+    assert set(result.columns) == {"outcome", "source"}
+    assert event_row(conn, raw_id) == before  # 이벤트 id와 내용은 그대로다
+    assert status_row(conn, raw_id) == recorded  # 신규 처리와 같은 품질이다
+    assert reprocess(SETTINGS, conn, kind="event").unchanged == 1
+
+
+def test_event_reprocess_records_fallback_for_a_base_event_without_quality(
+    conn: psycopg.Connection,
+) -> None:
+    (raw_id,) = seed_events(conn, UNSUPPORTED)
+    recorded = status_row(conn, raw_id)
+    before = event_row(conn, raw_id)
+    clear_quality(conn, raw_id)
+
+    result = reprocess(SETTINGS, conn, kind="event")
+
+    assert (result.changed, result.skipped) == (1, {})
+    assert event_row(conn, raw_id) == before
+    assert quality_row(conn, raw_id) == ("fallback", "unknown", [], "unsupported_event_mapping")
+    assert status_row(conn, raw_id) == recorded
+
+
+def test_event_reprocess_keeps_an_existing_class_when_the_new_result_is_fallback(
+    conn: psycopg.Connection,
+) -> None:
+    (raw_id,) = seed_events(conn, UNKNOWN_METHOD)
+    before_event, before_status = event_row(conn, raw_id), status_row(conn, raw_id)
+    for blank in (False, True):  # 기존 품질이 ok여도, 비어 있어도 보존한다
+        if blank:
+            clear_quality(conn, raw_id)
+            before_status = status_row(conn, raw_id)
+        set_original(
+            conn, raw_id, next(c for c in EVENT_CASES if c["case"] == UNSUPPORTED)["original"]
+        )
+
+        result = reprocess(SETTINGS, conn, kind="event")
+
+        assert (result.changed, result.skipped) == (0, {"worse": 1})
+        assert event_row(conn, raw_id) == before_event
+        assert status_row(conn, raw_id) == before_status
+
+
+def test_event_reprocess_keeps_ok_when_the_new_result_would_be_partial(
+    conn: psycopg.Connection,
+) -> None:
+    add_raw(
+        conn, [{"case": "modsec", "original": modsecurity_original(request_time=True)}], "event"
+    )
+    run(SETTINGS, conn, "seed")
+    raw_id = raw_id_of("modsec")
+    before_event, before_status = event_row(conn, raw_id), status_row(conn, raw_id)
+    assert quality_row(conn, raw_id)[:2] == ("ok", "modsecurity")
+    set_original(conn, raw_id, modsecurity_original(request_time=False))
+
+    result = reprocess(SETTINGS, conn, kind="event")
+
+    assert (result.changed, result.skipped) == (0, {"worse": 1})
+    assert result.by_source["modsecurity"]["skipped"] == 1
+    assert event_row(conn, raw_id) == before_event
+    assert status_row(conn, raw_id) == before_status
+
+
+def test_event_reprocess_matches_new_processing_for_the_same_raw_and_mapping(
+    conn: psycopg.Connection,
+) -> None:
+    add_raw(
+        conn, [{"case": "modsec", "original": modsecurity_original(request_time=False)}], "event"
+    )
+    run(SETTINGS, conn, "seed")
+    raw_id = raw_id_of("modsec")
+    recorded = quality_row(conn, raw_id)
+    assert recorded == (
+        "partial",
+        "modsecurity",
+        ["metadata.original_time"],
+        "missing_request_time_used_at_timestamp",
+    )
+    clear_quality(conn, raw_id)
+
+    reprocess(SETTINGS, conn, kind="event")
+
+    assert quality_row(conn, raw_id) == recorded
+
+
+def test_event_reprocess_upgrades_partial_to_ok_in_place(conn: psycopg.Connection) -> None:
+    add_raw(
+        conn, [{"case": "modsec", "original": modsecurity_original(request_time=False)}], "event"
+    )
+    run(SETTINGS, conn, "seed")
+    raw_id = raw_id_of("modsec")
+    event_id = event_row(conn, raw_id)[0]
+    result_id = status_row(conn, raw_id)[2]
+    set_original(conn, raw_id, modsecurity_original(request_time=True))
+
+    result = reprocess(SETTINGS, conn, kind="event")
+
+    assert result.changed == 1 and result.skipped == {}
+    assert event_row(conn, raw_id)[0] == event_id
+    assert status_row(conn, raw_id)[2] == result_id
+    assert quality_row(conn, raw_id) == ("ok", "modsecurity", [], None)
+
+
+def test_event_reprocess_dry_run_does_not_write_quality(conn: psycopg.Connection) -> None:
+    (raw_id,) = seed_events(conn, UNSUPPORTED)
+    clear_quality(conn, raw_id)
+    before = dump(conn)
+
+    result = reprocess(SETTINGS, conn, kind="event", dry_run=True)
+
+    assert (result.changed, result.dry_run) == (1, True)
+    assert dump(conn) == before
+
+
+def test_event_reprocess_failure_keeps_existing_result_and_quality(
+    conn: psycopg.Connection, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (raw_id,) = seed_events(conn, "web_nested_fields")
+    clear_quality(conn, raw_id)
+
+    def broken(*args: Any, **kwargs: Any) -> Any:
+        raise AssetLookupError
+
+    monkeypatch.setattr(run_module, "lookup_assets", broken)
+    # 엔티티가 달라지면 자산을 다시 조회한다. 기존 행을 일부러 어긋나게 만든다
+    conn.execute("UPDATE events SET entities = '[]' WHERE raw_id = %s", (raw_id,))
+    before = dump(conn)
+
+    result = reprocess(SETTINGS, conn, kind="event")
+
+    assert result.skipped == {"asset_lookup_failed": 1}
+    assert dump(conn) == before

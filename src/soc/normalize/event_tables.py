@@ -7,6 +7,7 @@
 """
 
 import math
+import re
 from dataclasses import dataclass
 from functools import cache
 from pathlib import Path
@@ -24,6 +25,8 @@ EVENT_CLASSES = (0, 2003, 3002, 4001, 4002, 4003, 6003)
 _MAPPING_KEYS = {"entries", "entities"}
 _CLASS_KEYS = _MAPPING_KEYS | {"class_uid", "summary"}
 _SOURCE_KEYS = _MAPPING_KEYS | {"class_uid", "detect"}
+# 소스 표 파일 이름은 normalize_status.source에 그대로 저장한다(#351). unknown·class_N은 코드가 쓴다
+_SOURCE_NAME = re.compile(r"^(?!unknown$|class_)[a-z][a-z0-9_]{0,63}$")
 
 
 @dataclass(frozen=True)
@@ -81,6 +84,8 @@ def _load(directory: Path) -> EventTables:
                 summaries[class_uid] = _parse_summary(class_uid, document)
                 classes[class_uid] = parse_table(path.stem, mapping)
             else:
+                if not _SOURCE_NAME.match(path.stem):
+                    raise MappingTableError("소스 표 이름은 소문자·숫자·밑줄이어야 한다")
                 mapping["detect"] = document.get("detect")
                 table = parse_table(path.stem, mapping)
                 if not table.detect:
