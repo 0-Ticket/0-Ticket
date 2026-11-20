@@ -35,9 +35,10 @@ supersedes: []
 
 ## 확인 방법
 
-- `uv run ruff format --check .`: 463개 통과. `uv run ruff check .`: 통과.
-- `uv run pytest`: 2638개 통과, 646개 제외.
-- `uv run pytest -m db`(로컬 Postgres 17.6 컨테이너, 임시 DB를 만들고 지움): 609개 통과. 로컬 `.env`의 DB 이름이 컨테이너에 없어 DB 이름만 `postgres`로 바꿔 접속했다.
+- (#351 머지(`b90cbe1`) 위로 rebase한 뒤 다시 실행한 결과다. 충돌은 없었다.)
+- `uv run ruff format --check .`: 467개 통과. `uv run ruff check .`: 통과.
+- `uv run pytest`: 2652개 통과, 660개 제외.
+- `uv run pytest -m db`(로컬 Postgres 17.6 컨테이너, 임시 DB를 만들고 지움): 623개 통과. 로컬 `.env`의 DB 이름이 컨테이너에 없어 DB 이름만 `postgres`로 바꿔 접속했다.
 - 구현 전에 새 샘플을 넣은 `tests/test_l2_scenarios_db.py`를 돌려 4개 실패를 확인했다(1c2, 1c4, 1d9, 1d12). 나머지 새 샘플(오류 없이 문자열 비교로 되돌아가는 값, 연결되면 안 되는 값)은 구현 전에도 통과해 구현 뒤에도 같은 결과로 고정한다.
 - 주요 테스트: `test_scenario_matches_the_graph_rules[1c2-ipv6-stored-noncanonical]`, `[1c4-ipv6-through-normalizer]`, `[1d1-not-an-ip-same-string]`~`[1d12-ipv4-mapped-same]`.
 - `pg_input_is_valid` 직접 확인(로컬 17.6): `not-an-ip`·빈 문자열·`1.2.3`·`192.0.2.1:443`은 거짓, `2001:db8::50/64`·`2001:0DB8:0:0:0:0:0:50`·`::ffff:192.0.2.1`은 참.
