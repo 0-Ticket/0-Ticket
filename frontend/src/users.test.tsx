@@ -235,6 +235,38 @@ test("permission edit keeps the values of items the actor cannot change", async 
   expect(body!.permissions).toHaveLength(target.permissions.length - 1);
 });
 
+test("an admin can grant the approval permissions one by one, while incident.close stays unavailable", async () => {
+  let body: { permissions: string[] } | null = null;
+  server.use(
+    list([analyst]),
+    catalog(),
+    meAs(auth.admin),
+    http.put(`*/api/users/${analyst.id}/permissions`, async ({ request }) => {
+      body = (await request.json()) as { permissions: string[] };
+      return HttpResponse.json(analyst);
+    }),
+  );
+  show("/users?status=active");
+  fireEvent.click(
+    await screen.findByRole("button", { name: analyst.username }),
+  );
+  const approve = await screen.findByRole("checkbox", {
+    name: /incident\.approve/,
+  });
+  const reject = screen.getByRole("checkbox", { name: /incident\.reject/ });
+  const close = screen.getByRole("checkbox", { name: /incident\.close/ });
+  expect(approve).toBeEnabled();
+  expect(reject).toBeEnabled();
+  expect(approve).not.toBeChecked(); // analyst에는 기본 부여가 없다
+  expect(close).toBeDisabled();
+  expect(screen.getAllByText("준비 중")).toHaveLength(1);
+  fireEvent.click(approve);
+  fireEvent.click(screen.getByRole("button", { name: "권한 저장" }));
+  await waitFor(() => expect(body).not.toBeNull());
+  expect(body!.permissions).toContain("incident.approve");
+  expect(body!.permissions).not.toContain("incident.reject");
+});
+
 test("an admin target cannot have its permissions edited", async () => {
   server.use(
     list([admin, { ...admin, id: "y", username: "other.admin" }]),

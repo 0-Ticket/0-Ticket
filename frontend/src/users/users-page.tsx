@@ -66,8 +66,10 @@ const labels: Record<string, string> = {
   "incident.reject": "Incident 반려",
   "incident.close": "Incident 종결",
 };
-// No API applies these yet (#284), so they can be shown but not changed.
-const NOT_READY = new Set([
+// No API applies these yet, so they can be shown but not changed. Approve and reject got their
+// routes in #365 (D-076); close has none.
+const NOT_READY = new Set(["incident.close"]);
+const INCIDENT_REVIEW = new Set([
   "incident.approve",
   "incident.reject",
   "incident.close",
@@ -79,7 +81,7 @@ const groups: [string, (name: string) => boolean][] = [
   ["조회", (n) => n.endsWith(".read")],
   ["정책 변경", (n) => n === "policy.update"],
   ["사용자 관리", (n) => n.startsWith("user.")],
-  ["Incident 처리", (n) => NOT_READY.has(n)],
+  ["Incident 처리", (n) => INCIDENT_REVIEW.has(n)],
 ];
 const emptyTitle: Record<string, string> = {
   pending: "승인 대기 사용자가 없어요",
