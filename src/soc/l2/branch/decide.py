@@ -17,6 +17,7 @@ _PROMPT = Path(__file__).resolve().parents[1] / "prompts" / "l2_classify.md"
 class Candidate:
     incident: dict[str, Any]
     paths: tuple[dict[str, Any], ...]
+    target_hosts: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -91,10 +92,13 @@ def resolve_decision(result: AgentResult, candidates: tuple[Candidate, ...]) -> 
 
 def _candidate_data(candidate: Candidate) -> dict[str, Any]:
     incident = candidate.incident
-    return {
+    data = {
         "incident_id": incident["id"],
         "title": incident["title"],
         "ticket_count": len(incident["ticket_ids"]),
         "duration_ms": incident["updated_at"] - incident["created_at"],
         "paths": list(candidate.paths),
     }
+    if candidate.target_hosts:  # 값이 없으면 키를 생략해 빈 값이 "다름"으로 읽히지 않게 한다
+        data["target_hosts"] = list(candidate.target_hosts)
+    return data

@@ -12,6 +12,8 @@ from soc.entities import normalize_entity_value
 
 _OPEN_STATUSES = ("analyzing", "awaiting_review", "human_handling", "held")
 _LOWER_TYPES = ("host", "domain", "file_hash", "user")
+# 모델 입력이 커지지 않게 후보 하나가 싣는 target host 값의 상한이다(#362).
+MAX_TARGET_HOSTS = 10
 _GRAPH_QUERY = """
 WITH peers AS (
     SELECT i.id AS incident_id, i.updated_at, i.title, i.summary, i.status, i.ticket_ids,
@@ -71,6 +73,7 @@ class GraphCandidate:
     incident_id: str
     paths: tuple[dict[str, Any], ...]
     incident: dict[str, Any]
+    target_hosts: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -111,6 +114,7 @@ def classify_graph(
         for source_id, item_source in sources.items()
     }
     incident_paths: dict[str, list[dict[str, Any]]] = {}
+    incident_hosts: dict[str, set[str]] = {}
     all_paths = []
     for match in matches:
         if match.get("kind") not in ("alert", "hunt"):
@@ -132,12 +136,18 @@ def classify_graph(
                 paths = incident_paths.setdefault(match["incident_id"], [])
                 if path not in paths:
                     paths.append(path)
+                incident_hosts.setdefault(match["incident_id"], set()).update(_target_hosts(match))
 
     if len(incident_paths) > max_candidates:
         return GraphResult((), "incomplete", "candidate_limit", tuple(all_paths))
     incidents = {match["incident_id"]: _incident(match) for match in matches}
     candidates = tuple(
-        GraphCandidate(incident_id, tuple(paths), incidents[incident_id])
+        GraphCandidate(
+            incident_id,
+            tuple(paths),
+            incidents[incident_id],
+            tuple(sorted(incident_hosts[incident_id])[:MAX_TARGET_HOSTS]),
+        )
         for incident_id, paths in sorted(incident_paths.items())
     )
     reason = "paths_found" if candidates else "no_path"
@@ -238,6 +248,15 @@ def _path(
     }
 
 
+def _target_hosts(match: dict[str, Any]) -> set[str]:
+    """경로로 연결된 알럿의 target host 값(계정 ID·인스턴스 ID 등)을 정규화해 모은다."""
+    return {
+        normalize_entity_value("host", entity["value"])
+        for entity in match.get("alert_entities", [])
+        if entity.get("type") == "host" and entity.get("role") == "target"
+    }
+
+
 def _match_row(row: dict[str, Any]) -> dict[str, Any]:
     data = dict(row)
     for field in ("created_at", "updated_at"):
@@ -263,6 +282,9 @@ def _match_row(row: dict[str, Any]) -> dict[str, Any]:
     data["incident"] = incident
     data["id"] = data["peer_id"]
     data["kind"] = data["peer_kind"]
+    # entities는 아래서 매칭된 엔티티 하나로 덮어쓰인다. 환경 비교용 전체 목록은 따로 둔다.
+    # Hunt는 제외한다.
+    data["alert_entities"] = row["entities"] if data["peer_kind"] == "alert" else []
     data["entities"] = [
         {"type": data["entity_type"], "value": data["entity_value"], "role": data["entity_role"]}
     ]

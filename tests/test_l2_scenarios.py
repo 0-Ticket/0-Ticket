@@ -127,11 +127,27 @@ def test_candidate_summary_has_paths_but_no_entity_roles() -> None:
 
     summary = task.data["candidates"][0]
     assert set(summary) == {"incident_id", "title", "ticket_count", "duration_ms", "paths"}
+    assert "target_hosts" not in summary
     entity_nodes = [
         node for path in summary["paths"] for node in path["nodes"] if node["kind"] == "entity"
     ]
     assert entity_nodes
     assert all("role" not in node for node in entity_nodes)
+
+
+def test_candidate_summary_adds_target_hosts_only_when_there_are_values() -> None:
+    candidate = candidate_for()
+    with_hosts = Candidate(candidate.incident, candidate.paths, ("111111111111", "i-0aaa"))
+
+    task = make_task(
+        BranchContext({"id": TICKET, "verdict": None}, (), (), None, (), 0),
+        (with_hosts, candidate),
+        {"coverage": "complete", "reason": "paths_found", "paths": []},
+    )
+
+    first, second = task.data["candidates"]
+    assert first["target_hosts"] == ["111111111111", "i-0aaa"]
+    assert "target_hosts" not in second
 
 
 @pytest.mark.parametrize(

@@ -166,3 +166,71 @@ def test_l3_hunt_non_src_entity_does_not_connect() -> None:
     result = classify_graph(data["ticket_id"], source, [match], max_candidates=5)
 
     assert result.candidates == ()
+
+
+def _host(value: str) -> dict:
+    return {"type": "host", "value": value, "role": "target"}
+
+
+def test_target_hosts_come_from_the_alert_entities_of_path_matches() -> None:
+    data = sample()
+    match = {
+        **data["matches"][0],
+        "alert_entities": [
+            _host("111111111111"),
+            _host("I-0AAAA"),
+            _host(" i-0aaaa "),
+            {"type": "host", "value": "shared-collector", "role": None},
+            {"type": "host", "value": "web-01", "role": "src"},
+            {"type": "ip", "value": "192.0.2.7", "role": "src"},
+        ],
+    }
+
+    result = classify_graph(data["ticket_id"], data["source"], [match], max_candidates=5)
+
+    assert result.candidates[0].target_hosts == ("111111111111", "i-0aaaa")
+
+
+def test_target_hosts_are_empty_without_alert_entities() -> None:
+    data = sample()
+
+    result = classify_graph(data["ticket_id"], data["source"], data["matches"], max_candidates=5)
+
+    assert result.candidates[0].target_hosts == ()
+
+
+def test_target_hosts_are_capped_after_sorting() -> None:
+    data = sample()
+    match = {
+        **data["matches"][0],
+        "alert_entities": [_host(f"h-{number:02d}") for number in reversed(range(15))],
+    }
+
+    result = classify_graph(data["ticket_id"], data["source"], [match], max_candidates=5)
+
+    assert result.candidates[0].target_hosts == tuple(f"h-{number:02d}" for number in range(10))
+
+
+def test_target_hosts_merge_matches_of_the_same_incident_only() -> None:
+    data = sample()
+    first = {**data["matches"][0], "alert_entities": [_host("acct-a")]}
+    second = {
+        **data["matches"][0],
+        "id": "alt_01a19f93-1150-7000-8000-000000000299",
+        "alert_entities": [_host("acct-b")],
+    }
+    other = {
+        **data["matches"][0],
+        "incident_id": "inc_01a19f93-1150-7000-8000-000000000205",
+        "alert_entities": [_host("acct-c")],
+    }
+
+    result = classify_graph(
+        data["ticket_id"], data["source"], [first, second, other], max_candidates=5
+    )
+
+    by_incident = {item.incident_id: item.target_hosts for item in result.candidates}
+    assert by_incident == {
+        "inc_01a19f93-1150-7000-8000-000000000201": ("acct-a", "acct-b"),
+        "inc_01a19f93-1150-7000-8000-000000000205": ("acct-c",),
+    }
