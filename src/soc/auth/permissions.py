@@ -19,8 +19,11 @@ READ = (
 # 가입 승인 때 analyst가 받는 권한
 ANALYST_DEFAULT = READ
 
-# 아직 적용할 승인 라우트가 없는 권한. 부여만 할 수 있고 후속 승인 API 이슈가 라우트에 붙인다
-UNUSED = frozenset({"incident.approve", "incident.reject", "incident.close"})
+# 승인·반려는 #365가 라우트에 붙였다(D-076). admin만 기본으로 갖고 analyst 기본 권한에는 없다
+APPROVAL = ("incident.approve", "incident.reject")
+
+# 아직 적용할 라우트가 없는 권한. 부여만 할 수 있고 후속 이슈가 라우트에 붙인다
+UNUSED = frozenset({"incident.close"})
 
 PERMISSIONS = (
     *READ,
@@ -28,5 +31,6 @@ PERMISSIONS = (
     "user.read",
     "user.approve",
     "user.permission",
+    *APPROVAL,
     *sorted(UNUSED),
 )

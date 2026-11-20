@@ -129,6 +129,8 @@
 | D-046 | 화면 폰트는 @fontsource 패키지(`@fontsource/inter`·`roboto-mono`·`michroma`·`jura` 5.3.0, OFL-1.1)로 번들하고 외부 폰트 CDN을 부르지 않는다 | 한글은 시스템 폰트로 대체한다(#274) |
 | D-074 | 화면에서 심각도(OCSF `severity_id` 0~6)는 1~6을 `N Level`(예: `6 Level`)로, 0은 `미상`으로 표시한다. 표시 문구는 `frontend/src/severity.ts`의 `severityLabel` 한 곳이 맡고, `null`은 "—", 0~6 밖의 값은 "미상"으로 처리한다 | 계획 274의 "N Level" 규칙을 그대로 유지한다. 한국어 라벨(정보·낮음·보통·높음·심각·치명)로 바꾸기로 했다가 같은 날 되돌렸다(#363). 색은 3단계(0 회색, 1~2 파랑, 3~4 호박, 5~6 빨강) 그대로이다. 열 제목과 카드 제목은 "위험도"를 유지한다 |
 | D-075 | 화면 작업의 검사는 `pnpm contracts:check`, `pnpm lint`, `pnpm test`, `pnpm build`이고, 디자인이 바뀐 PR에는 사람이 전·후 스크린샷을 붙인다. 스크린샷 비교 도구는 지금 쓰지 않는다 | D-017의 명령과 CI `frontend` job이 이미 같다. `.pen`은 암호화돼 diff로 못 보므로 스크린샷으로 확인한다. 비교 도구(Playwright 등)가 필요해지면 새 안건으로 올린다(#363) |
+| D-076 | Incident 승인·반려 API. `POST /api/incidents/{id}/approve`(권한 `incident.approve`)와 `POST /api/incidents/{id}/reject`(권한 `incident.reject`)는 Incident 행을 잠그고 `status = 'awaiting_review'`일 때만 적용한다. 그 밖의 상태는 409(`incident_not_awaiting_review`)와 현재 상태를 돌려주고, 같은 Incident에 겹친 요청은 하나만 성공한다. 승인은 `incidents.status`를 `confirmed`로 바꾸고 같은 트랜잭션에서 `cases`에 행을 만든다(제목·요약·엔티티는 Incident에서 복사, `severity`는 `assessed_severity` 우선, `confirmed_by`는 로그인 사용자의 `username`, `confirmed_at`은 현재 시각, `status`는 `open`, `assignee`는 비움). 반려는 `status`를 `analyzing`으로만 바꾸고 기존 L2 분석 워커가 재분석한다. 반려 사유는 받지 않는다. `incident.approve`·`incident.reject`는 admin에게만 기본으로 있고 analyst 기본 권한은 늘리지 않으며, 사용자 관리에서 개별 부여할 수 있다 | `cases.incident_id UNIQUE`가 중복 Case의 마지막 방어선이다. 반려 때 `review_round` 증가·한도(D-028의 `human_handling`)·반려 사실의 L2 입력 전달은 하지 않고 별도 이슈에서 한다. 그때까지 반려는 `review_round`를 올리지 않아 한도가 작동하지 않으며, 재분석 비용이 든다. Case가 생기면 유사 사례 검색 도구(D-053)의 `decided_by`가 `human`이 된다. `incident.close`와 Case 상태 변경 API는 만들지 않는다. 화면용 응답 모델만 바뀌고 `contracts/`의 데이터 계약은 그대로다. 공통 계약 변경이라 L1·L2·L3 담당 확인이 PR 전에 필요하다. 계획은 `docs/plans/365-pen-screens.md`(#365) |
+| D-077 | 화면 집계 기준. "승인 대기"는 `awaiting_review` Incident의 전체 수이고 로그인한 사용자별 기준은 없다(담당자 개념 없음, 옛 이름 "내 승인 대기"). 대시보드 Incident 심각도 Top 10은 `analyzing`·`awaiting_review`·`human_handling`·`held` 상태만 대상으로 하고 확정(`confirmed`)·기각(`dismissed`)은 뺀다 | 디자인 파일의 Top 10 샘플은 확정·기각 행도 보여 주지만 구현은 이 기준을 따르고 PR에 "디자인과 다른 곳"으로 표시한다. 기준은 `dashboard.py`의 쿼리와 테스트가 지킨다(#365) |
 
 ### 계정
 
@@ -172,6 +174,7 @@
 
 새 기록을 맨 위에 쓴다.
 
+- #365 · Incident 승인·반려 API(D-076)와 화면 집계 기준(D-077)을 확정으로 추가했다. 승인은 `awaiting_review`에서만 조건부로 적용하고 Case를 만들며 그 밖은 409, 반려는 `analyzing` 복귀(재분석은 기존 L2 워커, 한도·`review_round`·반려 사실 전달은 별도 이슈), 반려 사유 없음. `incident.approve`·`incident.reject`는 admin 기본이고 개별 부여가 되도록 권한 편집기의 `NOT_READY`를 푼다. "내 승인 대기"는 "승인 대기"(`awaiting_review` 전체 수)로 바꾸고 Top 10은 확정·기각 제외를 유지한다. 공통 계약 변경이라 L1·L2·L3 담당 확인이 PR 전에 필요하다. 사용자가 계획을 확정함.
 - #363 · 심각도 UI 라벨(D-074)을 번복했다. 같은 날 한국어 라벨(미상·정보·낮음·보통·높음·심각·치명)로 정했다가, 계획 274의 `N Level`(1~6)과 `미상`(0)을 유지하고 "위험도" 제목도 그대로 두기로 되돌렸다. 아래 #363 기록의 "274의 규칙 대체"는 더 이상 맞지 않고, 화면 검사 방법(D-075)과 `.pen` 커밋은 그대로다. 사용자가 정함.
 - #363 · 심각도 UI 라벨(D-074)과 화면 검사 방법(D-075)을 확정했다. 계획 274의 "N Level" 규칙을 대체하고, `.pen`을 `design/`에 커밋하기로 했다(274의 "커밋 안 함"을 대체). 사용자가 UI 기반 계획을 확정함.
 - #351 · 이벤트 품질 기록 및 재처리 규칙(D-073)을 확정했다. 선택 필드 처리 기준을 알럿과 맞추고, ModSecurity 대체 시각은 사유 코드로 기록한다. 재처리는 품질 하락 시 기존 결과를 보존하며 이미 Base Event인 행에는 품질을 채울 수 있다.

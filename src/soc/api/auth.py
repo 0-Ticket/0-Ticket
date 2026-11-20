@@ -16,7 +16,7 @@ from soc.auth import store
 from soc.auth.permissions import PERMISSIONS
 from soc.auth.store import AuthError, User
 
-# 라우트에 붙은 권한 이름. 목록의 모든 권한이 쓰이는지 테스트가 본다(승인류 3개는 예외)
+# 라우트에 붙은 권한 이름. 목록의 모든 권한이 쓰이는지 테스트가 본다(UNUSED는 예외)
 USED_PERMISSIONS: set[str] = set()
 
 _SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}

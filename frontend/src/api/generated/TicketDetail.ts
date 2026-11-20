@@ -62,10 +62,15 @@ export type CreatedAt = number;
  * UTC epoch 밀리초. 상한은 9999-12-30T23:59:59.999Z(+14시간 시간대로 읽어도 9999년 안)
  */
 export type UpdatedAt = number;
-export type Severity = number;
-export type SeedSource = string | null;
 export type Id1 = string;
 export type Title1 = string;
+export type Time = number;
+export type Severity = number;
+export type Alerts = AlertSummary[];
+export type Severity1 = number;
+export type SeedSource = string | null;
+export type Id2 = string;
+export type Title2 = string;
 export type Status1 =
   | "analyzing"
   | "awaiting_review"
@@ -73,13 +78,14 @@ export type Status1 =
   | "human_handling"
   | "dismissed"
   | "held";
-export type Severity1 = number;
+export type Severity2 = number;
 export type AssessedSeverity = number | null;
 export type DisplaySeverity = number;
 
 export interface TicketDetail {
   ticket: Ticket;
-  severity: Severity;
+  alerts: Alerts;
+  severity: Severity1;
   seed_source: SeedSource;
   incident: TicketIncident | null;
 }
@@ -121,13 +127,22 @@ export interface Details {
   [k: string]: unknown;
 }
 /**
+ * Ticket 상세의 원본 Alert 요약. Alert를 하나씩 조회하지 않게 한 번에 준다(#365).
+ */
+export interface AlertSummary {
+  id: Id1;
+  title: Title1;
+  time: Time;
+  severity: Severity;
+}
+/**
  * Ticket이 붙은 Incident 요약. 필드 이름과 계산은 IncidentItem과 같다(#345).
  */
 export interface TicketIncident {
-  id: Id1;
-  title: Title1;
+  id: Id2;
+  title: Title2;
   status: Status1;
-  severity: Severity1;
+  severity: Severity2;
   assessed_severity: AssessedSeverity;
   display_severity: DisplaySeverity;
 }

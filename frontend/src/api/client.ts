@@ -19,6 +19,7 @@ export class ApiError extends Error {
     public status: number,
     public code: string,
     public fields: string[] = [],
+    public state: string | null = null,
   ) {
     super(
       status === 404
@@ -46,12 +47,15 @@ async function request<T>(
   if (!response.ok) {
     const error = await response
       .json()
-      .then((v: { error?: unknown; fields?: unknown }) => v)
-      .catch(() => ({}) as { error?: unknown; fields?: unknown });
+      .then((v: { error?: unknown; fields?: unknown; status?: unknown }) => v)
+      .catch(
+        () => ({}) as { error?: unknown; fields?: unknown; status?: unknown },
+      );
     throw new ApiError(
       response.status,
       typeof error.error === "string" ? error.error : "unknown",
       Array.isArray(error.fields) ? error.fields.map(String) : [],
+      typeof error.status === "string" ? error.status : null,
     );
   }
   return response.status === 204

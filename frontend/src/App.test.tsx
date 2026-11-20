@@ -39,7 +39,7 @@ test("held incidents can be selected in the status filter", async () => {
     ).toBe("held"),
   );
 });
-test("Case waiting tab explicitly shows Incidents and disables decisions", async () => {
+test("Case waiting tab explicitly shows Incidents and offers decisions to an account that may review", async () => {
   dashboard();
   let requestStatus = "";
   server.use(
@@ -59,6 +59,7 @@ test("Case waiting tab explicitly shows Incidents and disables decisions", async
     http.get("*/api/incidents/:id", () =>
       HttpResponse.json({
         incident: seed.incidents[1],
+        tickets: [],
         artifacts: [],
         proposals: [],
         seed_source: "dev-seed-ui",
@@ -71,8 +72,8 @@ test("Case waiting tab explicitly shows Incidents and disables decisions", async
   expect(screen.getByText(/아직 Case가 아닌/)).toBeInTheDocument();
   fireEvent.click(screen.getByText(seed.incidents[1].title));
   expect(await screen.findByRole("dialog")).toBeInTheDocument();
-  expect(await screen.findByRole("button", { name: "승인" })).toBeDisabled();
-  expect(screen.getByRole("button", { name: "반려" })).toBeDisabled();
+  expect(await screen.findByRole("button", { name: "승인" })).toBeEnabled();
+  expect(screen.getByRole("button", { name: "반려" })).toBeEnabled();
 });
 test("untrusted raw text remains text, with no executable element or external link", async () => {
   dashboard();
@@ -132,7 +133,13 @@ test("L3 ticket offers Hunt navigation, and filters reset cursor", async () => {
       }),
     ),
     http.get("*/api/tickets/:id", () =>
-      HttpResponse.json({ ticket, severity: 0, seed_source: "dev-seed-ui" }),
+      HttpResponse.json({
+        ticket,
+        alerts: [],
+        severity: 0,
+        seed_source: "dev-seed-ui",
+        incident: null,
+      }),
     ),
   );
   show("/tickets");
@@ -498,6 +505,10 @@ test("Incident reports and response proposals remain text and link to source Tic
     http.get("*/api/incidents/:id", () =>
       HttpResponse.json({
         incident: { ...incident, ticket_ids: graphFixture.ticket_ids },
+        tickets: graphFixture.ticket_ids.map((id, i) => ({
+          id,
+          title: `원본 Ticket 제목 ${i + 1}`,
+        })),
         artifacts: [artifact],
         proposals: [
           {
@@ -513,7 +524,7 @@ test("Incident reports and response proposals remain text and link to source Tic
   );
   show(`/incidents?selected=${incident.id}`);
   const dialog = await screen.findByRole("dialog");
-  expect(await within(dialog).findByText("대응 방안 제안")).toBeInTheDocument();
+  expect(await within(dialog).findByText("대응")).toBeInTheDocument();
   expect(
     within(dialog).getByRole("heading", { name: "Ticket 연결 그래프" }),
   ).toBeInTheDocument();
@@ -538,8 +549,10 @@ test("Incident reports and response proposals remain text and link to source Tic
   expect(within(dialog).getByText(sample.original.message)).toBeInTheDocument();
   expect(dialog.querySelector("img, script")).toBeNull();
   expect(
-    within(dialog).getByRole("link", { name: "원본 Ticket 1" }),
-  ).toHaveAttribute("href", `/tickets?selected=${incident.ticket_ids[0]}`);
+    within(dialog).getByRole("link", {
+      name: "원본 Ticket 제목 1 Ticket 상세",
+    }),
+  ).toHaveAttribute("href", `/tickets?selected=${graphFixture.ticket_ids[0]}`);
   expect(
     within(dialog).getByRole("heading", { name: "분석 라운드 1" }),
   ).toBeInTheDocument();
@@ -560,6 +573,7 @@ test("Incident graph shows Ticket names without offering links when ticket.read 
     http.get("*/api/incidents/:id", () =>
       HttpResponse.json({
         incident: { ...seed.incidents[1], ticket_ids: graphFixture.ticket_ids },
+        tickets: graphFixture.ticket_ids.map((id) => ({ id, title: "제목" })),
         artifacts: [],
         proposals: [],
         ticket_graphs: graphFixture.ticket_graphs,
@@ -573,7 +587,7 @@ test("Incident graph shows Ticket names without offering links when ticket.read 
     await within(dialog).findByRole("region", { name: "Incident 관계도" }),
   ).toBeInTheDocument();
   expect(
-    within(dialog).queryByRole("link", { name: /원본 Ticket/ }),
+    within(dialog).queryByRole("link", { name: /Ticket 상세/ }),
   ).toBeNull();
   expect(dialog.textContent).toContain(graphFixture.ticket_ids[0]);
 });
@@ -716,7 +730,7 @@ test("page indicator shows the maximum from dashboard counts, or - when filtered
   fireEvent.click(
     within(screen.getByRole("group", { name: "상태 필터" })).getByRole(
       "button",
-      { name: "L1 대기" },
+      { name: "판정 대기" },
     ),
   );
   expect(await screen.findByText("1/2")).toBeInTheDocument();
@@ -742,7 +756,8 @@ test("dashboard flow has seven stages in scenario mode (design 21a)", async () =
   expect(stages).toHaveLength(7);
   expect(stages[1]).toHaveTextContent("Ticket 전환 판단 대기");
   expect(stages[1]).toHaveTextContent("1");
-  expect(stages[5]).toHaveTextContent("내 승인 대기");
+  expect(stages[5]).toHaveTextContent("승인 대기");
+  expect(stages[5]).not.toHaveTextContent("내 승인 대기");
   expect(stages[5]).toHaveTextContent("1");
 });
 
@@ -752,11 +767,22 @@ test("flow stages describe themselves on hover and focus (design B-2)", async ()
   const flow = await screen.findByRole("list", { name: "처리 흐름" });
   const stage = within(flow)
     .getAllByRole("listitem")
-    .find((li) => li.textContent?.includes("내 승인 대기"))!;
+    .find((li) => li.textContent?.includes("승인 대기"))!;
   const tip = within(stage).getByRole("tooltip", { hidden: true });
   expect(tip).toHaveTextContent(
     "분석이 끝나 사람이 승인·반려하기를 기다리는 Incident",
   );
   expect(stage).toHaveAttribute("aria-describedby", tip.id);
   expect(stage).toHaveAttribute("tabindex", "0");
+});
+
+test("ticket statuses are named as in the design", async () => {
+  const { statusNames } = await import("./constants");
+  expect([
+    statusNames.new,
+    statusNames.closed,
+    statusNames.held,
+    statusNames.escalated,
+    statusNames.linked,
+  ]).toEqual(["판정 대기", "오탐 종결", "보류", "L2 대기", "Incident 연결"]);
 });

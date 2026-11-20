@@ -8,12 +8,18 @@ import { Button } from "./components/ui/button";
 import { get } from "./api/client";
 import type { Resource, Detail } from "./api/client";
 import { useCan } from "./auth/session";
-import { Severity, Status } from "./badges";
+import { Status } from "./badges";
 import { resourcePermission, titles } from "./constants";
 import { ErrorState } from "./error-state";
-import { IncidentGraph } from "./incident-graph";
+import { IncidentSections, TicketSections } from "./detail-sections";
+import type { LinkTo } from "./detail-sections";
 
-function internalLink(id: string, resource: Resource, label: string) {
+function internalLink(
+  id: string,
+  resource: Resource,
+  label: string,
+  name?: string,
+) {
   if (
     !/^(alt|evt|raw|tkt|inc|hnt)_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(
       id,
@@ -22,78 +28,26 @@ function internalLink(id: string, resource: Resource, label: string) {
     return null;
   return (
     <Button key={id} variant="outline" size="sm" asChild>
-      <Link to={`/${resource}?selected=${id}`}>{label}</Link>
+      <Link to={`/${resource}?selected=${id}`} aria-label={name}>
+        {label}
+      </Link>
     </Button>
   );
 }
 function DetailBody({ data }: { data: Detail }) {
   const can = useCan();
   // A link to a screen the account cannot open is not offered.
-  const link = (id: string, resource: Resource, label: string) =>
+  const link: LinkTo = (id, resource, label, name) =>
     can(resourcePermission[resource])
-      ? internalLink(id, resource, label)
+      ? internalLink(id, resource, label, name)
       : null;
   return (
     <>
-      {"ticket" in data && (
-        <>
-          <Severity value={data.severity} />
-          <div className="links">
-            {data.ticket.alert_ids.map((id, i) =>
-              link(id, "alerts", `원본 Alert ${i + 1}`),
-            )}
-            {data.ticket.hunt_id &&
-              link(data.ticket.hunt_id, "hunts", "원본 Hunt")}
-          </div>
-          <h3>Ticket 판정과 근거</h3>
-          <JsonViewer value={data.ticket} />
-        </>
+      {"ticket" in data && "alerts" in data && (
+        <TicketSections data={data} link={link} />
       )}
       {"artifacts" in data && ( // TicketDetail도 incident 키가 있어 IncidentDetail만 가진 키로 가른다
-        <>
-          <div className="links">
-            {data.incident.ticket_ids.map((id, i) =>
-              link(id, "tickets", `원본 Ticket ${i + 1}`),
-            )}
-          </div>
-          <h3>Ticket 연결 그래프</h3>
-          <IncidentGraph
-            incident={data.incident}
-            ticketGraphs={data.ticket_graphs}
-          />
-          <h3>Incident</h3>
-          <JsonViewer value={data.incident} />
-          <h3>라운드별 분석 보고서</h3>
-          {data.artifacts.length ? (
-            data.artifacts.map((a) => (
-              <section key={a.id}>
-                <h4>분석 라운드 {a.analysis_round}</h4>
-                <JsonViewer value={a} />
-                {data.proposals
-                  .filter((p) => p.artifact_id === a.id)
-                  .map((p) => (
-                    <div className="proposal" key={p.id}>
-                      <strong>
-                        {p.kind === "response"
-                          ? "대응 방안 제안"
-                          : "탐지 룰 제안"}
-                      </strong>
-                      <pre>{p.detail}</pre>
-                    </div>
-                  ))}
-              </section>
-            ))
-          ) : (
-            <p>분석 보고서가 없습니다.</p>
-          )}
-          <div className="review-actions">
-            <p>승인·반려 기능은 아직 제공하지 않습니다.</p>
-            <Button disabled>승인</Button>
-            <Button disabled variant="outline">
-              반려
-            </Button>
-          </div>
-        </>
+        <IncidentSections data={data} link={link} />
       )}
       {"case" in data && (
         <>

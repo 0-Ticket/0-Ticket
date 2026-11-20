@@ -25,10 +25,10 @@ def test_permission_catalog_has_16_names_and_9_analyst_defaults() -> None:
     assert set(ANALYST_DEFAULT) <= set(PERMISSIONS)
     assert len(ANALYST_DEFAULT) == 9
     assert all(name.endswith(".read") and name != "user.read" for name in ANALYST_DEFAULT)
-    assert UNUSED == {"incident.approve", "incident.reject", "incident.close"}
+    assert UNUSED == {"incident.close"}
 
 
-def test_every_permission_but_the_approval_ones_guards_a_route() -> None:
+def test_every_permission_but_incident_close_guards_a_route() -> None:
     create_app(load_settings())
     assert set(PERMISSIONS) - api_auth.USED_PERMISSIONS == UNUSED
 
@@ -166,6 +166,8 @@ PERMISSION_TABLE = [
     ("GET", "/api/tickets/x", "ticket.read", None),
     ("GET", "/api/incidents", "incident.read", None),
     ("GET", "/api/incidents/x", "incident.read", None),
+    ("POST", "/api/incidents/x/approve", "incident.approve", None),
+    ("POST", "/api/incidents/x/reject", "incident.reject", None),
     ("GET", "/api/cases", "case.read", None),
     ("GET", "/api/cases/x", "case.read", None),
     ("GET", "/api/hunts", "hunt.read", None),

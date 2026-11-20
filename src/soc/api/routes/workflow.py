@@ -1,4 +1,4 @@
-"""Ticket → Incident → Case 읽기. 승인이나 상태 변경은 하지 않는다."""
+"""Ticket → Incident → Case 읽기와 Incident 승인·반려(#365, D-076). Case 상태 변경은 없다."""
 
 from typing import Annotated
 
@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, Query, Request
 
 from soc.api import db
 from soc.api import ui_read as read
+from soc.api import ui_write as write
 from soc.api.auth import require_permission
 from soc.api.routes.records import Cursor, Limit
 from soc.api.ui_models import (
@@ -15,13 +16,17 @@ from soc.api.ui_models import (
     IncidentDetail,
     IncidentPage,
     IncidentStatus,
+    ReviewResult,
     TicketDetail,
     TicketOrigin,
     TicketPage,
     TicketStatus,
 )
+from soc.auth.store import User
 
 router = APIRouter()
+Approver = Annotated[User, Depends(require_permission("incident.approve"))]
+Rejecter = Annotated[User, Depends(require_permission("incident.reject"))]
 
 
 @router.get(
@@ -67,8 +72,10 @@ def ticket(request: Request, ticket_id: str):
             (row["alert_ids"],),
         ).fetchone()["severity"]
         incident = read.ticket_incidents(conn, [ticket_id]).get(ticket_id)
+        alerts = read.alert_summaries(conn, row["alert_ids"])
     return dict(
         ticket=row,
+        alerts=alerts,
         severity=severity,
         seed_source=row["details"].get("seed_source"),
         incident=incident,
@@ -111,9 +118,10 @@ def incident(request: Request, incident_id: str):
             (incident_id,),
         ).fetchall()
         ticket_rows = conn.execute(
-            "SELECT id, details FROM tickets WHERE id = ANY(%s)", (row["ticket_ids"],)
+            "SELECT id, title, details FROM tickets WHERE id = ANY(%s)", (row["ticket_ids"],)
         ).fetchall()
     by_ticket = {item["id"]: item["details"].get("l2_branch") for item in ticket_rows}
+    titles = {item["id"]: item["title"] for item in ticket_rows}
     ticket_graphs = []
     for ticket_id in row["ticket_ids"]:
         graph = by_ticket.get(ticket_id)
@@ -127,11 +135,26 @@ def incident(request: Request, incident_id: str):
         )
     return dict(
         incident=row,
+        tickets=[{"id": i, "title": titles[i]} for i in row["ticket_ids"] if i in titles],
         artifacts=[read.times(x) for x in artifacts],
         proposals=[read.times(x) for x in proposals],
         ticket_graphs=ticket_graphs,
         seed_source=row["details"].get("seed_source"),
     )
+
+
+@router.post("/incidents/{incident_id}/approve", response_model=ReviewResult)
+def approve_incident(request: Request, incident_id: str, user: Approver):
+    read.check_id(incident_id, ("inc",))
+    with db.connect_write(request.app.state.settings) as conn:
+        return write.approve_incident(conn, incident_id, user.username)
+
+
+@router.post("/incidents/{incident_id}/reject", response_model=ReviewResult)
+def reject_incident(request: Request, incident_id: str, _user: Rejecter):
+    read.check_id(incident_id, ("inc",))
+    with db.connect_write(request.app.state.settings) as conn:
+        return write.reject_incident(conn, incident_id)
 
 
 @router.get(

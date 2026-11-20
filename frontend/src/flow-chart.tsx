@@ -31,7 +31,7 @@ export function stages(data: Dashboard, mode: "auto" | "scenario"): Stage[] {
             unit: "Alert",
             count: data.flow.l1_alerts_pending,
             needs: ["alert.read"],
-            // Design B-2 text.
+            // Highlighted like the design's stage that waits for a human (the design still says "내 승인 대기", D-077).
             tip: "Ticket으로 만들지 L1이 판단하기를 기다리는 Alert (시나리오 모드에서만 사용)",
           },
         ]
@@ -58,11 +58,11 @@ export function stages(data: Dashboard, mode: "auto" | "scenario"): Stage[] {
       needs: ["incident.read"],
     },
     {
-      label: "내 승인 대기",
+      label: "승인 대기", // 담당자 개념이 없어 사용자별이 아닌 awaiting_review 전체 수다(D-077)
       unit: "Incident",
       count: data.incident_status.awaiting_review ?? 0,
       needs: ["incident.read"],
-      // Design B-2 text.
+      // Highlighted like the design's stage that waits for a human (the design still says "내 승인 대기", D-077).
       tip: "분석이 끝나 사람이 승인·반려하기를 기다리는 Incident",
       mine: true,
     },

@@ -32,6 +32,14 @@ class NotFound(Exception):
     """없는 ID 또는 모양이 틀린 ID."""
 
 
+class NotAwaitingReview(Exception):
+    """승인·반려는 awaiting_review일 때만 된다(#365, D-076). 지금 상태를 알려 준다."""
+
+    def __init__(self, status: str) -> None:
+        super().__init__()
+        self.status = status
+
+
 # 요청 본문 검증 오류에서 이름을 그대로 알려도 되는 필드(입력값이 아니라 우리가 정한 이름)
 BODY_FIELDS = {
     "mode",
@@ -80,6 +88,12 @@ async def _not_found(request: Request, exc: NotFound) -> JSONResponse:
     return _error(404, "not_found")
 
 
+async def _not_awaiting_review(request: Request, exc: NotAwaitingReview) -> JSONResponse:
+    return JSONResponse(
+        {"error": "incident_not_awaiting_review", "status": exc.status}, status_code=409
+    )
+
+
 async def _auth(request: Request, exc: AuthError) -> JSONResponse:
     return _error(exc.status, exc.code)
 
@@ -113,6 +127,7 @@ def install(app: FastAPI) -> None:
     app.add_exception_handler(RequestValidationError, _validation)
     app.add_exception_handler(InvalidQuery, _invalid_query)
     app.add_exception_handler(NotFound, _not_found)
+    app.add_exception_handler(NotAwaitingReview, _not_awaiting_review)
     app.add_exception_handler(AuthError, _auth)
     app.add_exception_handler(HTTPException, _http)
     app.add_exception_handler(DbUnavailable, _db)

@@ -150,6 +150,17 @@ def detail(conn, table, prefix, record_id):
     return times(row)
 
 
+def alert_summaries(conn, alert_ids: list[str]) -> list[dict[str, Any]]:
+    """Ticket의 원본 Alert 요약(#365). 쿼리 한 번이고 alert_ids 순서를 따른다. 없는 Alert는 뺀다."""
+    if not alert_ids:
+        return []
+    rows = conn.execute(
+        "SELECT id, title, time, severity FROM alerts WHERE id = ANY(%s)", (alert_ids,)
+    ).fetchall()
+    by_id = {row["id"]: times(row) for row in rows}
+    return [by_id[i] for i in alert_ids if i in by_id]
+
+
 def ticket_incidents(conn, ticket_ids: list[str]) -> dict[str, dict[str, Any]]:
     """Ticket id → 붙은 Incident 요약(#345). 연결의 원본은 incidents.ticket_ids다.
 
