@@ -3,10 +3,11 @@
 기본 실행과 CI에서는 돌지 않는다. 환경변수 LLM_API_KEY가 없으면 건너뛴다. AI 도구는 이 테스트를
 실행하지 않는다. 비용이 든다.
 
-실행: DATABASE_URL=… LLM_API_KEY=… uv run pytest -m llm -s tests/test_l2_scenarios_llm.py
-- 대상은 cases.json에서 `llm_manual`이 참인 케이스(1a, 1b, 5)다.
+실행: DATABASE_URL=… LLM_API_KEY=… SCENARIO_LLM_RUNS=10 \
+  uv run pytest -m llm -s tests/test_l2_scenarios_llm.py
+- 대상은 cases.json에서 `llm_manual`이 참인 케이스(1a, 1b, 5, 5b, 5c)다.
   후보가 없는 케이스는 LLM을 부르지 않는다.
-- 케이스마다 SCENARIO_LLM_RUNS(기본 3)번 임시 DB를 새로 채워 워커를 돌리고
+- 케이스마다 SCENARIO_LLM_RUNS(기본 3, #362 기준은 10)번 임시 DB를 새로 채워 워커를 돌리고
   결과(판단, 기대값, 토큰 수)를 한 줄씩 낸다. -s로 보고 notes에 옮긴다.
   판단은 모델마다 달라 단언하지 않는다. 호출이 성공했는지만 본다.
 - 모델 연결은 config/local.toml의 [llm](키는 환경변수 LLM_API_KEY)이다. 키 값은 출력하지 않는다.

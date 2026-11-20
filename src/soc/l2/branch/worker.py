@@ -73,7 +73,8 @@ class L2BranchWorker:
                 max_incident_tickets=self.settings.max_incident_tickets,
             )
             candidates = tuple(
-                Candidate(candidate.incident, candidate.paths) for candidate in graph.candidates
+                Candidate(candidate.incident, candidate.paths, candidate.target_hosts)
+                for candidate in graph.candidates
             )
             if graph.coverage == "complete" and candidates:
                 result = self.run(make_task(context, candidates, graph.as_dict()))

@@ -109,3 +109,29 @@ def test_scenario_matches_the_graph_rules(temp_database: HiddenUrl, case: dict[s
     assert result == expect["result"]
     fallback = expect.get("fallback", None if expect["llm_called"] else expect["reason"])
     assert details["decision_fallback"] == fallback
+
+
+@pytest.mark.parametrize(
+    ("name", "expected"),
+    [
+        ("5-same-local-ip-different-environments", ["111111111111", "i-0aaaaaaaaaaaaaaaa"]),
+        ("5b-same-local-ip-same-environment", ["111111111111", "i-0aaaaaaaaaaaaaaaa"]),
+        ("5c-same-public-src-different-environments", ["111111111111", "i-0aaaaaaaaaaaaaaaa"]),
+        ("1a-same-source-same-src-ip", None),
+    ],
+)
+def test_candidate_input_carries_the_path_alerts_target_hosts(
+    temp_database: HiddenUrl, name: str, expected: list[str] | None
+) -> None:
+    case = next(item for item in CASES if item["case"] == name)
+    migrate(temp_database)
+    with psycopg.connect(temp_database, autocommit=True) as conn:
+        built = build_case(conn, case)
+        fake = FakeRun("new")
+        L2BranchWorker(temp_database, SETTINGS, run=fake, clock=lambda: to_datetime(NOW)).handle(
+            built.current_ticket_id
+        )
+
+    summary = fake.tasks[0].data["candidates"][0]
+    assert summary.get("target_hosts") == expected
+    assert ("target_hosts" in summary) == (expected is not None)
