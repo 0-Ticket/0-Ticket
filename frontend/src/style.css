@@ -1068,40 +1068,159 @@ td {
   z-index: 1;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  align-items: center;
+  gap: 2px;
   width: 200px;
   height: 92px;
-  padding: 10px 12px;
-  overflow: auto;
-  border: 1px solid #cfd9e8;
-  border-radius: 9px;
-  background: #fff;
-  box-shadow: 0 2px 5px #1e31500d;
+  padding-top: 10px;
+  overflow: hidden;
+  text-align: center;
   font-size: 10px;
   line-height: 1.4;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.incident-graph-node .marker {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  margin-bottom: 4px;
+  border-radius: 50%;
+  background: #f26a2e;
+  box-shadow: 0 0 0 3px #fff;
 }
 .incident-graph-node strong {
   color: #526277;
-  font-size: 10px;
+  font-size: 9px;
+  letter-spacing: 0.6px;
   text-transform: uppercase;
 }
 .incident-graph-node span {
-  font-family: "Roboto Mono", monospace;
+  max-width: 180px;
+  color: #1d365e;
+  font-size: 11px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.incident-graph-node.incident .marker {
+  width: 30px;
+  height: 30px;
+  margin: 3px 0 7px;
+  border-radius: 4px;
+  background: #6d4ae6;
+  transform: rotate(45deg);
+}
+.incident-graph-node.alert .marker {
+  background: #dc4c56;
+}
+.incident-graph-node.hunt .marker {
+  background: #7c5cdb;
+}
+.incident-graph-node.entity .marker {
+  background: #2f9e6b;
+}
+.incident-graph-node.selected .marker {
+  box-shadow:
+    0 0 0 3px #fff,
+    0 0 0 5px #447ee3;
+}
+.incident-graph-node.dim,
+.incident-graph-lines g.dim {
+  opacity: 0.2;
+}
+.incident-graph-chips {
+  display: flex;
+  gap: 6px;
+}
+.incident-graph-modebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 11px;
+  color: #63738b;
+}
+.incident-graph-modebar [role="group"] {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid #dce5f0;
+  border-radius: 8px;
+  background: #f4f7fb;
+}
+.incident-graph-modebar button {
+  padding: 4px 12px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 11px;
+  color: #63738b;
+}
+.incident-graph-modebar button[aria-pressed="true"] {
+  background: #fff;
+  color: #1d365e;
+  font-weight: 600;
+  box-shadow: 0 1px 3px #1e315014;
+}
+.incident-graph-modebar button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.incident-graph-legend .dot::before {
+  width: 10px;
+  height: 10px;
+  border: 0;
+  border-radius: 50%;
+  background: #f26a2e;
+}
+.incident-graph-legend .dot.incident::before {
+  border-radius: 2px;
+  background: #6d4ae6;
+  transform: rotate(45deg) scale(0.85);
+}
+.incident-graph-inspector {
+  display: grid;
+  gap: 4px;
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid #e5ebf4;
+  border-radius: 10px;
+  background: #fbfcfe;
+}
+.incident-graph-inspector h4 {
+  margin: 2px 0 0;
+  font-size: 14px;
   overflow-wrap: anywhere;
 }
-.incident-graph-node.incident {
-  border-color: #315d9f;
-  background: #eaf1fc;
+.incident-graph-inspector code {
+  color: #7b8ca5;
+  font-size: 11px;
+  overflow-wrap: anywhere;
 }
-.incident-graph-node.incident strong {
-  color: #234b87;
+.incident-graph-inspector dl {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 8px 0 0;
 }
-.incident-graph-node.entity {
-  border-color: #73b99b;
-  background: #edf8f2;
+.incident-graph-inspector dt {
+  color: #7b8ca5;
+  font-size: 10px;
 }
-.incident-graph-node.entity strong {
-  color: #247b54;
+.incident-graph-inspector dd {
+  margin: 2px 0 0;
+  color: #1d365e;
+  font-size: 16px;
+  font-weight: 700;
+}
+.incident-graph-statuses .status-title {
+  display: block;
+  margin-left: 0;
+  font-family: inherit;
+  color: #1d365e;
+  font-weight: 600;
 }
 .incident-graph h4 {
   margin: 18px 0 8px;

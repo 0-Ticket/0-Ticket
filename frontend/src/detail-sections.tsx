@@ -194,7 +194,11 @@ export function IncidentSections({
       </ul>
       <Entities entities={incident.entities} />
       <h3>Ticket 연결 그래프</h3>
-      <IncidentGraph incident={incident} ticketGraphs={data.ticket_graphs} />
+      <IncidentGraph
+        incident={incident}
+        ticketGraphs={data.ticket_graphs}
+        titles={Object.fromEntries(tickets.map((t) => [t.id, t.title]))}
+      />
       {recommendations.length > 0 && (
         <>
           <h3>권고 조치 · {recommendations.length}건</h3>
