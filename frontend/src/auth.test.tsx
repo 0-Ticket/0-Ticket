@@ -423,7 +423,7 @@ test("the dashboard shows only what the account may read", async () => {
     .map((li) => li.textContent ?? "");
   expect(stages.some((t) => t.includes("L2 분석 대기"))).toBe(true);
   expect(stages.some((t) => t.includes("정규화 대기"))).toBe(false);
-  expect(stages.some((t) => t.includes("내 승인 대기"))).toBe(false);
+  expect(stages.some((t) => t.includes("승인 대기"))).toBe(false);
   expect(screen.getByText("Tickets by Risk Level")).toBeInTheDocument();
   expect(screen.queryByText("Threat Hunting")).toBeNull();
   expect(screen.queryByText("Incident Risk Top 10")).toBeNull();
