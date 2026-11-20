@@ -121,8 +121,8 @@ export function ListView({
           {resource === "tickets" && (
             <>
               <FilterChips
-                label="심각도"
-                name="심각도 필터"
+                label="위험도"
+                name="위험도 필터"
                 value={search.get("severity") ?? ""}
                 options={[6, 5, 4, 3, 2, 1, 0].map((i) => [
                   String(i),
@@ -159,7 +159,7 @@ export function ListView({
                 <tr>
                   <th>제목 / ID</th>
                   <th>상태</th>
-                  <th>심각도</th>
+                  <th>위험도</th>
                   <th>시각</th>
                 </tr>
               </thead>

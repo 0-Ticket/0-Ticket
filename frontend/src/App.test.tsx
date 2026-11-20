@@ -152,7 +152,7 @@ test("L3 ticket offers Hunt navigation, and filters reset cursor", async () => {
     ).toBe(ticket.id),
   );
   fireEvent.click(
-    within(screen.getByRole("group", { name: "심각도 필터" })).getByRole(
+    within(screen.getByRole("group", { name: "위험도 필터" })).getByRole(
       "button",
       { name: "미상" },
     ),
@@ -721,7 +721,7 @@ test("page indicator shows the maximum from dashboard counts, or - when filtered
   );
   expect(await screen.findByText("1/2")).toBeInTheDocument();
   fireEvent.click(
-    within(screen.getByRole("group", { name: "심각도 필터" })).getByRole(
+    within(screen.getByRole("group", { name: "위험도 필터" })).getByRole(
       "button",
       { name: "미상" },
     ),

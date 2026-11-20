@@ -36,7 +36,7 @@ test("the Ticket list shows every label in the badge and in the filter", async (
   show("/tickets");
   const table = await screen.findByRole("table");
   expect(
-    within(table).getByRole("columnheader", { name: "심각도" }),
+    within(table).getByRole("columnheader", { name: "위험도" }),
   ).toBeInTheDocument();
   const badges = within(table)
     .getAllByRole("row")
@@ -44,7 +44,7 @@ test("the Ticket list shows every label in the badge and in the filter", async (
     .map((row) => row.querySelector(".badge.severity")?.textContent);
   expect(badges).toEqual(labels);
   const chips = within(
-    screen.getByRole("group", { name: "심각도 필터" }),
+    screen.getByRole("group", { name: "위험도 필터" }),
   ).getAllByRole("button");
   expect(chips.map((chip) => chip.textContent)).toEqual(reversed);
 });
@@ -55,16 +55,16 @@ test("the dashboard shows the labels in the bars and the Top 10", async () => {
     { ...seed.incidents[1], assessed_severity: 3, display_severity: 3 },
   ]);
   show("/");
-  const bars = await screen.findByLabelText("Ticket 심각도 분포");
+  const bars = await screen.findByLabelText("Ticket 위험도 분포");
   const rows = [...bars.querySelectorAll(".risk-row > span:first-child")];
   expect(rows.map((row) => row.textContent)).toEqual(reversed);
   expect(
-    screen.getByRole("heading", { name: "심각도별 Ticket" }),
+    screen.getByRole("heading", { name: "Tickets by Risk Level" }),
   ).toBeInTheDocument();
   const top = screen
-    .getByRole("heading", { name: "Incident 심각도 Top 10" })
+    .getByRole("heading", { name: "Incident Risk Top 10" })
     .closest("article")!;
-  expect(within(top).getByText("심각도")).toBeInTheDocument();
+  expect(within(top).getByText("위험도")).toBeInTheDocument();
   const listed = [...top.querySelectorAll(".small-list .badge.severity")];
   expect(listed.map((badge) => badge.textContent)).toEqual([
     labels[6],
