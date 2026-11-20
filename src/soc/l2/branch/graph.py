@@ -45,6 +45,14 @@ WITH peers AS (
       AND entity->>'type' = seed.entity_type
       AND CASE WHEN seed.entity_type = ANY(%s)
                THEN lower(btrim(entity->>'value')) = seed.entity_value
+               -- 마스크 없는 IP끼리는 inet 정규형으로 비교하고 그 밖의 값은 문자열 비교로 되돌린다.
+               -- ::inet은 WHEN이 참인 가지에서만 계산돼 잘못된 문자열이 오류를 내지 않는다.
+               WHEN seed.entity_type = 'ip'
+                    AND position('/' IN btrim(entity->>'value')) = 0
+                    AND position('/' IN seed.entity_value) = 0
+                    AND pg_input_is_valid(btrim(entity->>'value'), 'inet')
+                    AND pg_input_is_valid(seed.entity_value, 'inet')
+               THEN btrim(entity->>'value')::inet = seed.entity_value::inet
                ELSE btrim(entity->>'value') = seed.entity_value END
 ), candidate_incidents AS (
     SELECT incident_id, max(updated_at) AS updated_at
