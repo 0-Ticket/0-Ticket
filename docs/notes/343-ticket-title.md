@@ -14,7 +14,7 @@ Ticket 계약에 필수 `title`(1~200자, 공백뿐인 값 불가)을 더했고 
 
 ## 계획과 달라진 점
 
-- **계약 pattern이 앞뒤를 고정한 모양이다.** 계획과 D-067은 `[^\t\n\u000b\f\r  　]`(고정하지 않음)로 적었다. 그러나 기존 테스트 `test_contracts.py::test_schema_patterns_are_anchored_at_both_ends`가 모든 계약 pattern이 `^`로 시작하고 `$`로 끝나기를 요구한다(`validate_contract`가 끝의 `$`를 `\Z`로 바꾸기 때문). 테스트를 풀지 않으려고 의미가 같은 `^[S]*[^S][\s\S]*$`(S는 공백 8종)로 썼다. "공백 목록 밖 글자가 하나 이상"이라는 뜻은 그대로다. 같은 입력으로 만든 BMP 전체 비교 테스트(`test_contract_pattern_uses_the_same_spaces_as_clean_title`)가 두 정규식(계약, DB CHECK)과 `TITLE_SPACES`가 같은 8종을 공백으로 보는지 지킨다. **D-067 본문에는 고정하지 않은 모양이 적혀 있다. 사람이 D-067의 pattern 표기를 고칠지 정해야 한다.**
+- **계약 pattern이 앞뒤를 고정한 모양이다.** 계획과 D-067은 `[^\t\n\u000b\f\r \u00a0\u3000]`(고정하지 않음)로 적었다. 그러나 기존 테스트 `test_contracts.py::test_schema_patterns_are_anchored_at_both_ends`가 모든 계약 pattern이 `^`로 시작하고 `$`로 끝나기를 요구한다(`validate_contract`가 끝의 `$`를 `\Z`로 바꾸기 때문). 테스트를 풀지 않으려고 의미가 같은 `^[S]*[^S][\s\S]*$`(S는 공백 8종)로 썼다. "공백 목록 밖 글자가 하나 이상"이라는 뜻은 그대로다. 같은 입력으로 만든 BMP 전체 비교 테스트(`test_contract_pattern_uses_the_same_spaces_as_clean_title`)가 두 정규식(계약, DB CHECK)과 `TITLE_SPACES`가 같은 8종을 공백으로 보는지 지킨다. D-067의 pattern 표기도 같은 모양으로 고쳤다(사람이 정함, 2026-11-20).
 - DB CHECK는 고정하지 않은 `title ~ E'[^…]'`다. PostgreSQL `~`는 검색이라 뜻이 같고, 값이 계약 pattern과 일치하는지는 위 테스트와 `test_title_check_and_clean_title_use_the_same_spaces`가 지킨다.
 - **L2 테스트 기대값은 고칠 것이 없었다.** L2 테스트는 입력을 Ticket 행에서 만들어서, 픽스처에 `title`만 넣으면 그대로 통과했다. 대신 `test_alert_promotion_then_ticket_decision_reaches_l2`에 `branch.ticket["title"]`(L2가 읽는 Ticket, 곧 모델 입력)이 alert 제목과 같다는 확인을 더했다.
 - **화면 코드는 바꾸지 않았다.** 목록 화면은 이미 `itemTitle(item)`(`api/client.ts`)이 `title`이 있으면 그것을 보여 주도록 되어 있어서, API가 `title`을 주자 ID 대신 제목이 보인다. 그래서 `App.test.tsx`의 L3 Ticket 테스트가 `/tkt_/`로 행을 찾던 것을 `ticket.title`로 고쳤다(계획의 "프론트 모의 데이터 보정"에 해당).

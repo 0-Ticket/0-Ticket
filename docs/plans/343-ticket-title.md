@@ -14,10 +14,10 @@ Ticket 계약에 필수 `title`(1~200자, 공백뿐인 값 불가)을 더하고,
 ## 방법
 
 1. **샘플과 테스트 먼저.** 손으로 만든 `tests/fixtures/tickets/title_cases.json`: 공백·개행·NBSP·U+3000, 목록 밖 공백(U+2003)만 있는 값, U+200B·U+0085·U+2028, 199/200/201자 경계, UTF-16에서 2칸인 글자(이모지), 빈 값·목록 안 공백뿐인 값, alert 정렬 케이스.
-2. **계약.** `contracts/ticket.schema.json`에 `title` 필수(string, minLength 1, maxLength 200, pattern `[^\t\n\u000b\f\r  　]`). 공백 목록(8종)은 `clean_title`과 같다. `scripts/generate_contracts.py`로 Python·TS를 다시 만든다(D-003). TS 생성물에는 pattern이 나오지 않는다.
+2. **계약.** `contracts/ticket.schema.json`에 `title` 필수(string, minLength 1, maxLength 200, pattern `[^\t\n\u000b\f\r \u00a0\u3000]`). 공백 목록(8종)은 `clean_title`과 같다. `scripts/generate_contracts.py`로 Python·TS를 다시 만든다(D-003). TS 생성물에는 pattern이 나오지 않는다.
 3. **제목 규칙은 `src/soc/ticketing.py` 한 곳**(L1·L3 공통).
    - `FALLBACK_TITLE = "(제목 없음)"`.
-   - 공백 목록 상수 하나(`[\t\n\v\f\r  　]`)를 정규식으로만 쓴다. `str.split()`·`strip()`은 쓰지 않는다. U+2003·U+0085·U+2028까지 공백으로 봐서 계약 pattern과 어긋나기 때문이다.
+   - 공백 목록 상수 하나(`[\t\n\v\f\r \u00a0\u3000]`)를 정규식으로만 쓴다. `str.split()`·`strip()`은 쓰지 않는다. U+2003·U+0085·U+2028까지 공백으로 봐서 계약 pattern과 어긋나기 때문이다.
    - `clean_title(text)`: 공백 목록의 연속을 한 칸으로 줄이고 앞뒤 한 칸을 뗀다. 목록 밖 글자가 없으면 폴백. 200자(코드포인트)를 넘으면 앞 199자 + `…`.
    - `ticket_title(alerts)`: 심각도 내림차순 → time 오름차순 → id 오름차순으로 첫 alert의 title에 `clean_title`을 적용한다. alert가 없으면 폴백. 현재 생성 경로는 alert 하나만 넘긴다.
    - L3: `clean_title(hunt["hypothesis"])`. LLM 출력이므로 데이터·텍스트로만 다룬다.
@@ -123,4 +123,4 @@ WHERE t.origin = 'l3' AND h.hypothesis !~ E'[^\\t\\n\\u000b\\f\\r \\u00a0\\u3000
 
 ## 바뀐 점
 
-(없음)
+- 2026-11-20 · 계약 pattern을 `[^S]`에서 같은 뜻의 `^[S]*[^S][\s\S]*$`(S는 공백 8종)로 바꿨다. 기존 테스트 `test_schema_patterns_are_anchored_at_both_ends`가 모든 계약 pattern의 앞뒤 고정을 요구하기 때문이다. 이 계획의 pattern 표기와 D-067도 같은 모양으로 맞췄다(사람이 정함).
