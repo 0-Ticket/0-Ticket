@@ -3,6 +3,7 @@
 import json
 from pathlib import Path
 
+from soc.contracts import validate_contract
 from soc.l2.analyze.context import calculate_window
 from soc.l2.analyze.store import build_records
 from soc.l2.analyze.tasks import analysis_citations, findings_citations, make_report_task
@@ -99,9 +100,91 @@ def test_build_records_filters_unknown_technique_and_unions_evidence() -> None:
         "agl_01a19f93-1150-7000-8000-000000000010",
     ]
     assert [(item["kind"], item["seq"]) for item in proposals] == [
-        ("detection_rule", 1),
-        ("response_action", 1),
+        ("detection", 1),
+        ("response", 2),
     ]
+    assert proposals[0]["detail"] == "의심 요청 뒤 자식 프로세스 실행을 탐지한다"
+    assert (proposals[0]["priority"], proposals[0]["title"]) == ("high", "자식 프로세스 실행 탐지")
+    assert proposals[0]["rationale"] == "요청 직후 웹 서버가 프로세스를 실행했다"
+    for proposal in proposals:
+        validate_contract("incident_proposal", proposal)
+
+
+def test_build_records_keeps_model_order_across_kinds_and_cleans_titles() -> None:
+    data = sample()
+    first, second = data["analysis"]["recommendations"]
+    analysis = {
+        **data["analysis"],
+        "recommendations": [
+            {**second, "title": " 서버 \n  점검\u3000필요 "},
+            first,
+            {**second, "title": "두 번째 대응"},
+        ],
+    }
+
+    _, proposals, _ = build_records(
+        INCIDENT_ID,
+        analysis_round=1,
+        findings=data["findings"],
+        analysis=analysis,
+        attack_names={"T1059.001": "PowerShell"},
+        now_ms=1_793_678_580_000,
+    )
+
+    assert [(item["seq"], item["kind"], item["title"]) for item in proposals] == [
+        (1, "response", "서버 점검 필요"),
+        (2, "detection", "자식 프로세스 실행 탐지"),
+        (3, "response", "두 번째 대응"),
+    ]
+
+
+def test_build_records_without_recommendations_makes_no_proposals() -> None:
+    data = sample()
+
+    _, proposals, _ = build_records(
+        INCIDENT_ID,
+        analysis_round=1,
+        findings=data["findings"],
+        analysis={**data["analysis"], "recommendations": []},
+        attack_names={},
+        now_ms=1_793_678_580_000,
+    )
+
+    assert proposals == []
+
+
+def test_report_prompt_states_title_summary_impact_and_recommendation_rules() -> None:
+    task = make_report_task(
+        INCIDENT_ID,
+        attempt=1,
+        findings=sample()["findings"],
+        incident={"id": INCIDENT_ID, "summary": None},
+        assets=[],
+        previous_artifact=None,
+        asset_lookup_failed=False,
+        context_evidence=(),
+    )
+    text = task.prompt.text
+
+    for expected in (
+        "title",  # 제목 규칙
+        "공격 유형",
+        "ID나 룰 코드만",
+        "무엇이, 언제, 어디서, 어떻게",  # 사건 요약
+        "영향받은 자산",  # 영향
+        "recommendations",
+        "response",
+        "detection",
+        "high",
+        "rationale",  # 근거 작성 규칙
+        "최대 10개",
+        "200자",
+        "2000자",
+        "1000자",
+    ):
+        assert expected in text, expected
+    assert "detection_rules" not in text
+    assert "response_actions" not in text
 
 
 def test_only_transient_report_failures_are_retried() -> None:

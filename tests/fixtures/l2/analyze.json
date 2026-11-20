@@ -17,6 +17,7 @@
   },
   "analysis": {
     "verdict": "succeeded",
+    "title": "web-01 대상 원격 명령 실행 성공",
     "summary": "침해가 확인됐다",
     "assessed_severity": 5,
     "techniques": [
@@ -28,8 +29,22 @@
     "impact": "웹 서버 프로세스가 실행됐다",
     "cause": "취약한 요청 처리가 악용됐다",
     "further_risk": "같은 경로의 재실행 가능성이 있다",
-    "detection_rules": ["의심 요청 뒤 자식 프로세스 실행을 탐지한다"],
-    "response_actions": ["담당자가 서버를 확인한다"],
+    "recommendations": [
+      {
+        "kind": "detection",
+        "priority": "high",
+        "title": "자식 프로세스 실행 탐지",
+        "detail": "의심 요청 뒤 자식 프로세스 실행을 탐지한다",
+        "rationale": "요청 직후 웹 서버가 프로세스를 실행했다"
+      },
+      {
+        "kind": "response",
+        "priority": "medium",
+        "title": "서버 점검",
+        "detail": "담당자가 서버를 확인한다",
+        "rationale": "침해가 확인된 호스트다"
+      }
+    ],
     "evidence_ids": ["agl_01a19f93-1150-7000-8000-000000000010"]
   }
 }
