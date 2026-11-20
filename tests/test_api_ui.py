@@ -273,3 +273,130 @@ def test_empty_dashboard_and_missing_details(temp_database, monkeypatch):
     ]:
         assert c.get("/api/" + path).json() == {"items": [], "next_cursor": None}
         assert c.get("/api/" + path + "/" + SEED[table][0]["id"]).status_code == 404
+
+
+# --- #345: Ticket 응답의 연결된 Incident 요약 -------------------------------------------------
+
+INCIDENTS = {i["id"]: i for i in SEED["incidents"]}
+TKT = {t["id"][-2:]: t["id"] for t in SEED["tickets"]}
+INC = {i["id"][-1]: i["id"] for i in SEED["incidents"]}
+
+
+def summary(incident_id):
+    inc = INCIDENTS[incident_id]
+    assessed = inc["assessed_severity"]
+    return {
+        "id": incident_id,
+        "title": inc["title"],
+        "status": inc["status"],
+        "severity": inc["severity"],
+        "assessed_severity": assessed,
+        "display_severity": inc["severity"] if assessed is None else assessed,
+    }
+
+
+def ticket_incidents(client):
+    """목록과 상세가 같은 값을 주는지 확인하면서 Ticket별 incident를 모은다."""
+    items = client.get("/api/tickets", params={"limit": 200}).json()["items"]
+    out = {x["id"]: x["incident"] for x in items}
+    for ticket_id, incident in out.items():
+        assert client.get("/api/tickets/" + ticket_id).json()["incident"] == incident
+    return out
+
+
+def set_ticket_ids(ui_db, incident_id, ticket_ids):
+    with psycopg.connect(ui_db, autocommit=True) as conn:
+        conn.execute("UPDATE incidents SET ticket_ids=%s WHERE id=%s", (ticket_ids, incident_id))
+
+
+@pytest.mark.db
+def test_ticket_incident_summary_and_representative_incident(ui_client):
+    got = ticket_incidents(ui_client)
+    # 05는 Incident 1(analyzing)과 4(human_handling), 06은 2와 5에 함께 붙은 시드다.
+    # id가 가장 큰 Incident 하나만 준다. 4는 assessed_severity 0이라 폴백하지 않는다.
+    assert got[TKT["05"]] == summary(INC["4"])
+    assert got[TKT["05"]]["display_severity"] == 0
+    assert got[TKT["06"]] == summary(INC["5"])
+    assert got[TKT["07"]] == summary(INC["3"])
+    unlinked = {TKT[n] for n in ("01", "02", "03", "04", "08")}
+    assert {k for k, v in got.items() if v is None} == unlinked
+
+
+@pytest.mark.db
+def test_ticket_incident_follows_ticket_ids_and_ignores_ticket_status(ui_client, ui_db):
+    # 운영 코드에는 Ticket을 Incident에서 빼거나 옮기는 동작이 없어 ticket_ids를 직접 바꾼다.
+    set_ticket_ids(ui_db, INC["4"], [TKT["08"]])  # 05가 4에서 빠지면 다음으로 큰 1(analyzing)
+    got = ticket_incidents(ui_client)
+    assert got[TKT["05"]] == summary(INC["1"])
+    assert got[TKT["05"]]["assessed_severity"] is None  # 분석 전 임시 제목은 status로 구분한다
+    assert got[TKT["05"]]["status"] == "analyzing"
+    assert got[TKT["08"]] == summary(INC["4"])  # escalated Ticket도 ticket_ids에 있으면 붙는다
+    set_ticket_ids(ui_db, INC["1"], [TKT["04"]])  # 05는 어느 Incident에도 없다
+    got = ticket_incidents(ui_client)
+    assert got[TKT["05"]] is None
+    assert got[TKT["04"]] == summary(INC["1"])
+    set_ticket_ids(ui_db, INC["5"], [TKT["06"], TKT["07"]])  # 07이 3에서 5로 옮겨진 쪽이 대표
+    assert ticket_incidents(ui_client)[TKT["07"]] == summary(INC["5"])
+
+
+@pytest.mark.db
+def test_ticket_list_query_count_does_not_grow_with_tickets(ui_client, ui_db, monkeypatch):
+    from contextlib import contextmanager
+
+    from soc.api import db as api_db
+
+    calls = []
+    real = api_db.connect
+
+    class Counting:
+        def __init__(self, conn):
+            self._conn = conn
+
+        def execute(self, query, *args, **kwargs):
+            calls.append(str(query))
+            return self._conn.execute(query, *args, **kwargs)
+
+        def __getattr__(self, name):
+            return getattr(self._conn, name)
+
+    @contextmanager
+    def counting(settings):
+        with real(settings) as conn:
+            yield Counting(conn)
+
+    monkeypatch.setattr(api_db, "connect", counting)
+
+    def add_tickets(start, count):
+        base = next(t for t in SEED["tickets"] if t["id"] == TKT["05"])
+        ids = []
+        with psycopg.connect(ui_db, autocommit=True) as conn:
+            for n in range(start, start + count):
+                row = {
+                    **base,
+                    "id": f"tkt_01a19f93-1266-7000-8000-{n:012d}",
+                    "alert_ids": [f"alt_01a19f93-1266-7000-8000-{n:012d}"],
+                }
+                insert_row(conn, "tickets", row)
+                ids.append(row["id"])
+            conn.execute(
+                "UPDATE incidents SET ticket_ids = ticket_ids || %s WHERE id=%s",
+                (ids, INC["3"]),
+            )
+
+    def list_queries():
+        calls.clear()
+        items = ui_client.get("/api/tickets", params={"limit": 200}).json()["items"]
+        return len(items), list(calls)
+
+    add_tickets(100, 3)
+    few_items, few = list_queries()
+    add_tickets(200, 27)
+    many_items, many = list_queries()
+    assert many_items == few_items + 27
+    assert len(few) == len(many) == 2  # 페이지 한 번 + Incident 한 번
+    assert "&&" in many[1] and "ticket_ids" in many[1]  # GIN 인덱스를 타는 조건
+    assert all(
+        x["incident"] == summary(INC["3"])
+        for x in ui_client.get("/api/tickets", params={"limit": 200}).json()["items"]
+        if x["id"] > TKT["08"]
+    )

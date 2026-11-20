@@ -38,7 +38,7 @@ def tickets(
     if cursor:
         read.check_id(cursor, ("tkt",), cursor=True)
     with db.connect(request.app.state.settings) as conn:
-        return read.read_page(
+        page = read.read_page(
             conn,
             "tickets",
             read.TICKET_COLUMNS,
@@ -47,6 +47,10 @@ def tickets(
             cursor,
             limit,
         )
+        incidents = read.ticket_incidents(conn, [item["id"] for item in page["items"]])
+    for item in page["items"]:
+        item["incident"] = incidents.get(item["id"])
+    return page
 
 
 @router.get(
@@ -62,7 +66,13 @@ def ticket(request: Request, ticket_id: str):
             "SELECT COALESCE(max(severity),0) AS severity FROM alerts WHERE id=ANY(%s)",
             (row["alert_ids"],),
         ).fetchone()["severity"]
-    return dict(ticket=row, severity=severity, seed_source=row["details"].get("seed_source"))
+        incident = read.ticket_incidents(conn, [ticket_id]).get(ticket_id)
+    return dict(
+        ticket=row,
+        severity=severity,
+        seed_source=row["details"].get("seed_source"),
+        incident=incident,
+    )
 
 
 @router.get(

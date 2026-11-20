@@ -24,6 +24,14 @@ INCIDENT_COLUMNS = (
     "COALESCE(i.assessed_severity,i.severity) AS display_severity, i.analysis_round, "
     "i.updated_at, i.details->>'seed_source' AS seed_source"
 )
+TICKET_INCIDENT_KEYS = (
+    "id",
+    "title",
+    "status",
+    "severity",
+    "assessed_severity",
+    "display_severity",
+)
 CASE_COLUMNS = (
     "c.id, c.incident_id, c.title, c.severity, c.status, c.confirmed_at, "
     "c.details->>'seed_source' AS seed_source"
@@ -140,3 +148,25 @@ def detail(conn, table, prefix, record_id):
     if row is None:
         raise NotFound
     return times(row)
+
+
+def ticket_incidents(conn, ticket_ids: list[str]) -> dict[str, dict[str, Any]]:
+    """Ticket id → 붙은 Incident 요약(#345). 연결의 원본은 incidents.ticket_ids다.
+
+    여러 Incident에 붙어 있으면 id가 가장 큰(가장 최근) 하나만 준다. `&&`는 GIN 인덱스를 탄다.
+    """
+    if not ticket_ids:
+        return {}
+    wanted = set(ticket_ids)
+    rows = conn.execute(
+        f"SELECT {INCIDENT_COLUMNS}, i.ticket_ids FROM incidents i "
+        "WHERE i.ticket_ids && %s::text[] ORDER BY i.id DESC",
+        (ticket_ids,),
+    ).fetchall()
+    out: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        summary = {key: row[key] for key in TICKET_INCIDENT_KEYS}
+        for ticket_id in row["ticket_ids"]:
+            if ticket_id in wanted:
+                out.setdefault(ticket_id, summary)
+    return out
