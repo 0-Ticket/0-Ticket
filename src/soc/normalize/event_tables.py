@@ -1,9 +1,9 @@
-"""이벤트 요약 정의(`mapping_tables/events/<클래스 번호>.yaml`)를 읽고 요약 문장을 만든다(D-068).
+"""이벤트 클래스·소스 매핑표를 읽고 요약 문장을 만든다(D-068, D-069).
 
-파일 하나는 클래스 하나의 `summary`를 가진다. `summary`는 OCSF 경로의 목록이고, 목록의 한 칸은
+숫자 이름의 클래스 표는 `summary`를 가진다. `summary`는 OCSF 경로의 목록이고, 목록의 한 칸은
 경로 하나이거나 대안 경로 목록이다(앞에서부터 처음 값이 있는 것을 쓴다). 값이 있는 칸을 공백으로
-이어 1순위 요약을 만든다. 알럿 매핑표 로더(`tables.py`)는 이 폴더를 읽지 않는다. 이벤트 매핑표
-이슈가 같은 파일에 `entries`·`entities`를 더한다.
+이어 1순위 요약을 만든다. 알럿 매핑표 로더(`tables.py`)는 이 폴더를 읽지 않는다.
+`entries`·`entities`를 추가한 클래스 표는 공통 ECS 층이고 숫자가 아닌 이름은 소스별 층이다.
 """
 
 import math
@@ -16,12 +16,14 @@ import yaml
 
 from soc.normalize.ocsf_schema import field_definition, has_class_definition
 from soc.normalize.paths import read_value
-from soc.normalize.tables import TABLE_DIR, MappingTableError
+from soc.normalize.tables import TABLE_DIR, MappingTableError, Table, parse_table
 
 EVENT_TABLE_DIR = TABLE_DIR / "events"
 # 요약 정의를 두는 클래스. 저장한 이벤트 클래스(D-067)에서 2004를 뺀 것이다
 EVENT_CLASSES = (0, 2003, 3002, 4001, 4002, 4003, 6003)
-_KEYS = {"class_uid", "summary"}
+_MAPPING_KEYS = {"entries", "entities"}
+_CLASS_KEYS = _MAPPING_KEYS | {"class_uid", "summary"}
+_SOURCE_KEYS = _MAPPING_KEYS | {"class_uid", "detect"}
 
 
 @dataclass(frozen=True)
@@ -37,44 +39,83 @@ class EventSummary:
     parts: tuple[tuple[str, ...], ...]
 
 
-def load_event_summaries(directory: Path | None = None) -> dict[int, EventSummary]:
-    """폴더의 모든 *.yaml을 읽어 클래스 번호별 요약 정의를 돌려준다. 같은 폴더는 한 번만 읽는다.
+@dataclass(frozen=True)
+class EventTables:
+    """클래스 공통 표, 소스 표와 그 클래스 번호, 클래스별 요약 정의."""
 
-    Args:
-        directory: 이벤트 표 폴더. 없으면 mapping_tables/events/.
+    classes: dict[int, Table]
+    sources: dict[str, Table]
+    source_classes: dict[str, int]
+    summaries: dict[int, EventSummary]
 
-    Raises:
-        MappingTableError: 형식이 틀렸거나 파일 이름이 `class_uid`와 다르다.
+
+def load_event_tables(directory: Path | None = None) -> EventTables:
+    """이벤트 표 폴더의 *.yaml을 읽는다. 기본은 mapping_tables/events/다.
+
+    같은 폴더는 한 번만 읽는다. 형식이나 클래스 연결이 틀리면 MappingTableError가 난다.
     """
     return _load(directory or EVENT_TABLE_DIR)
 
 
+def load_event_summaries(directory: Path | None = None) -> dict[int, EventSummary]:
+    """클래스 번호별 요약 정의를 돌려준다."""
+    return load_event_tables(directory).summaries
+
+
 @cache
-def _load(directory: Path) -> dict[int, EventSummary]:
+def _load(directory: Path) -> EventTables:
+    classes: dict[int, Table] = {}
+    sources: dict[str, Table] = {}
+    source_classes: dict[str, int] = {}
     summaries: dict[int, EventSummary] = {}
     for path in sorted(directory.glob("*.yaml")):
+        is_class = path.stem.isdecimal()
         try:
             document = yaml.safe_load(path.read_text(encoding="utf-8"))
-            summary = _parse(path.stem, document)
+            class_uid = _read_class_uid(document, is_class)
+            mapping = {key: value for key, value in document.items() if key in _MAPPING_KEYS}
+            if is_class:
+                if str(class_uid) != path.stem:
+                    raise MappingTableError("class_uid는 파일 이름과 같은 정수여야 한다")
+                mapping.setdefault("entries", [])
+                summaries[class_uid] = _parse_summary(class_uid, document)
+                classes[class_uid] = parse_table(path.stem, mapping)
+            else:
+                mapping["detect"] = document.get("detect")
+                table = parse_table(path.stem, mapping)
+                if not table.detect:
+                    raise MappingTableError("detect는 비어 있지 않은 목록이어야 한다")
+                sources[path.stem] = table
+                source_classes[path.stem] = class_uid
         except (yaml.YAMLError, UnicodeDecodeError) as error:
             raise MappingTableError(
                 f"{path.name}: YAML을 읽을 수 없다 ({type(error).__name__})"
             ) from None
         except MappingTableError as error:
             raise MappingTableError(f"{path.name}: {error}") from None
-        summaries[summary.class_uid] = summary
-    return summaries
+    for name, class_uid in source_classes.items():
+        if class_uid not in classes:
+            raise MappingTableError(f"{name}.yaml: 클래스 표 {class_uid}.yaml이 없다")
+    return EventTables(classes, sources, source_classes, summaries)
 
 
-def _parse(stem: str, document: Any) -> EventSummary:
+def _read_class_uid(document: Any, is_class: bool) -> int:
     if not isinstance(document, dict):
         raise MappingTableError("최상위가 객체여야 한다")
-    unknown = set(document) - _KEYS
+    unknown = set(document) - (_CLASS_KEYS if is_class else _SOURCE_KEYS)
     if unknown:
         raise MappingTableError("알 수 없는 키: " + ", ".join(sorted(map(str, unknown))))
     class_uid = document.get("class_uid")
-    if type(class_uid) is not int or str(class_uid) != stem:
-        raise MappingTableError("class_uid는 파일 이름과 같은 정수여야 한다")
+    if (
+        type(class_uid) is not int
+        or class_uid not in EVENT_CLASSES
+        or not has_class_definition(class_uid)
+    ):
+        raise MappingTableError("class_uid는 정의된 이벤트 클래스 번호여야 한다")
+    return class_uid
+
+
+def _parse_summary(class_uid: int, document: dict[str, Any]) -> EventSummary:
     cells = document.get("summary")
     if not isinstance(cells, list) or not cells:
         raise MappingTableError("summary는 비어 있지 않은 목록이어야 한다")

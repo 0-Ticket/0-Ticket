@@ -428,6 +428,44 @@ def test_event_reprocess_keeps_id_and_fills_message_and_activity_name(
     assert result.by_source == {"class_4002": {"changed": 1, "unchanged": 0, "skipped": 0}}
 
 
+@pytest.mark.parametrize("source", ["nginx", "modsecurity"])
+def test_event_reprocess_reclassifies_filebeat_base_event(
+    conn: psycopg.Connection, source: str
+) -> None:
+    original = json.loads((ROOT / "events" / f"{source}.json").read_text(encoding="utf-8"))
+    legacy_source = {
+        **original["_source"],
+        "event": {"dataset": original["_source"]["event"]["dataset"]},
+    }
+    legacy_original = {**original, "_source": legacy_source}
+    add_raw(conn, [{"case": source, "original": legacy_original}], kind="event")
+    run(SETTINGS, conn, "seed")
+    raw_id = raw_id_of(source)
+    before = event_row(conn, raw_id)
+    assert before[3] == before[7]["class_uid"] == 0
+    assert any(entity["type"] == "host" for entity in before[5])
+
+    conn.execute(
+        "UPDATE raw_records SET original_text = %s WHERE id = %s",
+        (json.dumps(original), raw_id),
+    )
+    status_before = status_row(conn, raw_id)
+
+    result = reprocess(SETTINGS, conn, kind="event")
+
+    after = event_row(conn, raw_id)
+    assert (result.kind, result.read, result.changed, result.unchanged) == ("event", 1, 1, 0)
+    assert after[:2] == before[:2]
+    assert after[2] == datetime(2026, 11, 19, 15, 49, 58, tzinfo=UTC)
+    assert after[3] == after[7]["class_uid"] == 4002
+    assert after[4] == "GET /catalog 200"
+    assert all(entity["type"] != "host" for entity in after[5])
+    assert status_row(conn, raw_id) == status_before
+    assert conn.execute("SELECT count(*) FROM events WHERE raw_id = %s", (raw_id,)).fetchone() == (
+        1,
+    )
+
+
 def test_event_reprocess_second_run_changes_nothing_and_dry_run_writes_nothing(
     conn: psycopg.Connection,
 ) -> None:

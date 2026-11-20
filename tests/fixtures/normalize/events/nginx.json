@@ -1,0 +1,29 @@
+{
+  "_index": ".ds-filebeat-synthetic-000001",
+  "_source": {
+    "@timestamp": "2026-11-19T15:49:58.000Z",
+    "event": {"module": "nginx", "dataset": "nginx.access"},
+    "source": {
+      "ip": "192.0.2.19",
+      "geo": {
+        "country_iso_code": "US",
+        "region_iso_code": "US-CA",
+        "city_name": "Example City",
+        "continent_name": "North America",
+        "location": {"lat": 35.25, "lon": -120.5}
+      },
+      "as": {"number": 64496, "organization": {"name": "Example Network"}}
+    },
+    "destination": {"domain": "example.com"},
+    "host": {"name": "synthetic-sensor"},
+    "agent": {"id": "synthetic-agent", "name": "synthetic-shipper"},
+    "user": {"name": "example-user"},
+    "url": {"domain": "example.com", "path": "/catalog", "original": "/catalog?sort=asc", "scheme": "https", "query": "sort=asc"},
+    "http": {
+      "version": "1.1",
+      "request": {"method": "get"},
+      "response": {"status_code": 200, "bytes": 512, "body": {"bytes": 256}}
+    },
+    "user_agent": {"original": "ExampleBrowser/1.0"}
+  }
+}

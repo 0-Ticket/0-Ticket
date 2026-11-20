@@ -125,12 +125,12 @@
         [
           "domain",
           "www.example.com",
-          null
+          "dst"
         ],
         [
           "url",
           "/login?next=1",
-          null
+          "dst"
         ]
       ]
     }
@@ -163,7 +163,7 @@
         [
           "url",
           "/admin",
-          null
+          "dst"
         ]
       ]
     }
