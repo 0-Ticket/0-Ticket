@@ -2,16 +2,43 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "incident_proposal.schema.json",
   "title": "IncidentProposal",
-  "description": "L2 Artifact에서 분리해 저장한 탐지 또는 대응 제안",
+  "description": "L2 Artifact에서 분리해 저장한 권고 조치(대응 또는 탐지 룰). 분석 출력의 recommendations 한 항목이다(D-072)",
   "type": "object",
   "additionalProperties": false,
-  "required": ["id", "artifact_id", "kind", "seq", "body", "created_at"],
+  "required": ["id", "artifact_id", "kind", "seq", "priority", "title", "detail", "rationale", "created_at"],
   "properties": {
     "id": {"$ref": "common/types.schema.json#/definitions/proposal_id"},
     "artifact_id": {"$ref": "common/types.schema.json#/definitions/artifact_id"},
-    "kind": {"type": "string", "enum": ["detection_rule", "response_action"]},
-    "seq": {"type": "integer", "minimum": 1, "maximum": 2147483647},
-    "body": {"type": "string", "minLength": 1},
+    "kind": {"type": "string", "enum": ["response", "detection"]},
+    "seq": {
+      "description": "한 Artifact의 권고 조치 목록 전체의 순서(1부터)",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 2147483647
+    },
+    "priority": {
+      "description": "옛 구조에서 옮긴 행(마이그레이션 0202)은 null",
+      "anyOf": [
+        {"type": "string", "enum": ["high", "medium", "low"]},
+        {"type": "null"}
+      ]
+    },
+    "title": {
+      "description": "한 줄. 공백(탭·LF·VT·FF·CR·공백·U+00A0·U+3000)뿐인 값은 허용하지 않는다. 옛 행은 본문 첫 줄을 정리한 값",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "pattern": "^[\\t\\n\\u000b\\f\\r \\u00a0\\u3000]*[^\\t\\n\\u000b\\f\\r \\u00a0\\u3000][\\s\\S]*$"
+    },
+    "detail": {
+      "description": "구체적인 조치. 탐지 룰이면 룰 내용. 길이 한도는 분석 출력 계약만 지킨다(옛 body가 더 길 수 있다)",
+      "type": "string",
+      "minLength": 1
+    },
+    "rationale": {
+      "description": "이 사건의 어떤 사실 때문에 필요한지. 옛 행은 null",
+      "type": ["string", "null"]
+    },
     "created_at": {"$ref": "common/types.schema.json#/definitions/epoch_ms"}
   }
 }
