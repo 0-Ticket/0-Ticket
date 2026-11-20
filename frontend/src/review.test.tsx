@@ -169,7 +169,9 @@ test("incident detail shows each ticket by title with a link to its detail", asy
   serve(detail());
   const dialog = await open();
   for (const t of tickets) {
-    expect(await within(dialog).findByText(t.title)).toBeInTheDocument();
+    expect(
+      (await within(dialog).findAllByText(t.title)).length,
+    ).toBeGreaterThan(0);
     expect(
       within(dialog).getByRole("link", { name: `${t.title} Ticket 상세` }),
     ).toHaveAttribute("href", `/tickets?selected=${t.id}`);

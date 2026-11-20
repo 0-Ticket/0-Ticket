@@ -12,10 +12,12 @@ supersedes: []
 
 - Incident 승인·반려 API(D-076): `POST /api/incidents/{id}/approve|reject`. Incident 행을 `FOR UPDATE`로 잠그고 `awaiting_review`일 때만 적용하며, 아니면 409(`incident_not_awaiting_review`와 현재 상태)다. 승인은 같은 트랜잭션에서 `cases`에 `open` 행을 만들고 Incident를 `confirmed`로 바꾼다. 반려는 `analyzing`으로만 바꾸고 기존 L2 워커가 재분석한다. `incident.approve`·`incident.reject`는 이제 라우트가 쓰는 권한이다(`UNUSED`는 `incident.close`만).
 - Ticket 상세 응답에 원본 Alert 요약(`alerts`: id·title·time·severity)을 쿼리 한 번으로 더했다. Incident 상세 응답에 소속 Ticket의 제목(`tickets`)을 더했다.
+- Incident 관계 그래프(Ticket 모드)를 디자인 구성에 맞췄다: 머리의 상태·Ticket 수 칩, Ticket/Entity 보기 전환(Entity는 비활성), 마름모 Incident·원형 Ticket 노드와 Ticket 제목 표시, 점 범례, 노드 호버 시 연결 강조, 클릭·Enter로 고르는 선택 노드 패널(연결 Ticket·관련 Alert 수). 배치 계산(`buildGraph`)과 저장 경로 규칙은 그대로다.
 - 화면: Ticket 상세(연결된 Incident, 원본 Alert 요약, 근거 검토, 엔티티, 이력), Incident 상세(사건 요약, 영향, 소속 Ticket 제목, 엔티티, 가장 최근 라운드의 권고 조치만, 분석 이력, 승인·반려 버튼), "내 승인 대기"→"승인 대기", Ticket 상태 이름(판정 대기·오탐 종결), 사용자 관리에서 `incident.approve`·`incident.reject` 개별 부여.
 
 ## 계획과 달라진 점
 
+- 그래프 대조는 처음 개발에서 빠뜨렸다가 사람이 지적한 뒤 추가했다(별도 커밋).
 - 커밋을 화면 그룹별로 더 잘게 나누지 못했다. 한 테스트 파일(`App.test.tsx`)이 여러 그룹의 변경을 함께 담아 Ticket·Incident·대시보드 화면을 한 커밋(`feat(frontend): align ticket, incident and dashboard screens …`)으로 합쳤다.
 - 제안은 API를 바꾸지 않고 화면이 가장 큰 `analysis_round`의 Artifact에 붙은 것만 보여 준다(계획대로). 최신 라운드는 `artifacts`에서 `analysis_round`가 가장 큰 것으로 고른다.
 - 승인·반려 오류 화면은 409에서 현재 상태 이름을 보여 주려고 `ApiError`에 `state`를 더했다(`api/client.ts`).
@@ -25,7 +27,7 @@ supersedes: []
 **아직 하지 않은 것(계획의 "바꿀 곳"·완료 기준 중)**
 
 - 디자인과 화면을 나란히 놓고 하는 시각 대조(간격·색·정렬)는 하지 않았다. 문구와 구조만 `.pen` 텍스트와 비교했다. 사이드바·사용자 영역·로그인·가입·가입 완료·비밀번호 변경·403·설정·사용자 관리·Ticket 정책·Alert/Event·Case·Hunting 화면은 문구 대조에서 계획에 쓴 차이(아래)만 확인했고 코드는 바꾸지 않았다.
-- 엔티티 그래프 노드 패널의 "자산 중요도"는 만들지 않았다. Incident 상세 응답에 자산 정보(`assets[].criticality`)가 없어 응답을 더 넓혀야 하고, 계획의 "바꿀 곳"에 없던 계약 변경이다.
+- 엔티티 그래프 노드 패널의 "자산 중요도"는 값이 없어 "—"로 둔다(Incident 상세 응답에 `assets[].criticality`가 없다). 디자인의 판정 칩(malicious)과 "Entity 공격 경로" 보기도 없다. 그래프 스타일(노드 색·크기·간격)은 디자인 스크린샷을 보고 어림잡은 값이며 브라우저에서 눈으로 확인하지 못했다.
 - 빈 상태·로딩·오류 상태가 화면마다 있는지는 새로 점검하지 않았다(기존 구현을 그대로 둔다).
 - 사람이 확인할 시나리오 9개, 화면 전·후 스크린샷, L1·L2·L3 담당 승인, PR 본문에 쓸 "디자인과 다른 곳"은 아직 하지 않았다.
 
