@@ -23,9 +23,9 @@ supersedes: []
 | 1a | A | 한 Incident | `paths_found`, 후보 1 | LLM 호출 → 사람이 확인(칸 아래) | 일치 | D-027 |
 | 1b | B | 한 Incident | `paths_found`, 후보 1 | LLM 호출 → 사람이 확인 | 일치 | D-027, D-059·D-062 (client_ip와 source.ip가 모두 src) |
 | 1c1 | A | 묶임 | `paths_found` | LLM 호출(가짜) | 일치 | SQL이 앞뒤 공백을 뗀다 |
-| 1c2 | A | 묶임 | **`no_path`** | 호출 안 함 | **불일치(결함)** | D-027 "정규화 값이 같을 때". 저장 값이 비정규 IPv6(`2001:0DB8:0:0:0:0:0:50`)면 현재 Ticket(`2001:db8::50`)과 안 맞는다. **별도 이슈에서 수정 예정(이슈 번호는 PR에서 기입), 해당 테스트는 strict xfail** |
+| 1c2 | A | 묶임 | **`no_path`** | 호출 안 함 | **불일치(결함) → #358에서 해결** | D-027 "정규화 값이 같을 때". 저장 값이 비정규 IPv6(`2001:0DB8:0:0:0:0:0:50`)면 현재 Ticket(`2001:db8::50`)과 안 맞았다. **#358에서 해결: 이제 `paths_found`이고 xfail 표시를 지웠다** |
 | 1c3 | A | 묶임 | `paths_found` | LLM 호출(가짜) | 일치 | 지금 쪽 값은 파이썬이 정규형으로 바꾼다 |
-| 1c4 | B | 묶임 | **`no_path`** | 호출 안 함 | **불일치(결함)** | 정규화기는 원본 IPv6 표기를 그대로 저장한다(#302). 1c2와 같은 원인. **별도 이슈에서 수정 예정(이슈 번호는 PR에서 기입), 해당 테스트는 strict xfail** |
+| 1c4 | B | 묶임 | **`no_path`** | 호출 안 함 | **불일치(결함) → #358에서 해결** | 정규화기는 원본 IPv6 표기를 그대로 저장한다(#302). 1c2와 같은 원인. **#358에서 해결: 이제 `paths_found`이고 xfail 표시를 지웠다** |
 | 2a | B | 묶여야 함 | `no_path` | 호출 안 함 | 불일치(규칙의 결과) | D-027·D-062: 공격자 IP가 한쪽 src, 다른 쪽 dst라 공유 src가 없다 |
 | 2b | B | 묶여야 함 | `no_path` | 호출 안 함 | 불일치(규칙의 결과) | D-064: OUTBOUND는 로컬이 src, 원격이 dst |
 | 3 | A | 분리 | `no_path` | 호출 안 함 | 일치 | D-027 |
@@ -65,7 +65,7 @@ supersedes: []
 
 ## 다음 사람이 알아야 할 것
 
-- **결함 수정은 이 이슈에서 하지 않았다.** `graph.py`의 SQL이 ip 값을 `btrim`만 해서 비교하고 파이썬은 `ipaddress` 정규형으로 비교한다. 고치는 방법은 SQL의 ip 비교를 정규형 기준으로 바꾸는 쪽(그래프 SQL 변경)으로 정했고, 저장 값을 바꾸는 방법(#302의 "원본 값 보존"과 충돌)은 쓰지 않는다. 원칙 7에 따라 L2 담당 승인이 필요해 별도 이슈에서 한다(이슈 번호는 PR에서 기입). 그 이슈가 xfail를 지운다. 마커는 `cases.json`에서 `classification`이 `불일치(결함)`인 케이스에 `test_l2_scenarios_db.py`의 `params()`가 붙이므로, 두 케이스의 `classification`을 `일치`로 바꾸면 된다. `entities.py`의 `entity_value_sql`도 "ip 정규형은 맞추지 않는다"는 같은 한계를 가진다. 이번에는 읽기만 했고 별도 이슈에서 함께 검토한다. 실제 IPv6 알럿이 얼마나 되는지는 측정하지 않았다.
+- **(#358에서 해결: 그래프 SQL의 ip 비교를 `inet` 정규형 기준으로 바꾸고 `entity_value_sql`은 삭제했다. 아래는 #356 당시 기록이다.)** **결함 수정은 이 이슈에서 하지 않았다.** `graph.py`의 SQL이 ip 값을 `btrim`만 해서 비교하고 파이썬은 `ipaddress` 정규형으로 비교한다. 고치는 방법은 SQL의 ip 비교를 정규형 기준으로 바꾸는 쪽(그래프 SQL 변경)으로 정했고, 저장 값을 바꾸는 방법(#302의 "원본 값 보존"과 충돌)은 쓰지 않는다. 원칙 7에 따라 L2 담당 승인이 필요해 별도 이슈에서 한다(이슈 번호는 PR에서 기입). 그 이슈가 xfail를 지운다. 마커는 `cases.json`에서 `classification`이 `불일치(결함)`인 케이스에 `test_l2_scenarios_db.py`의 `params()`가 붙이므로, 두 케이스의 `classification`을 `일치`로 바꾸면 된다. `entities.py`의 `entity_value_sql`도 "ip 정규형은 맞추지 않는다"는 같은 한계를 가진다. 이번에는 읽기만 했고 별도 이슈에서 함께 검토한다. 실제 IPv6 알럿이 얼마나 되는지는 측정하지 않았다.
 - 이 이슈는 그래프 SQL, `alert_model_input`, `[l2.branch]` 설정 키를 바꾸지 않았다.
 - **케이스 2의 Suricata 샘플은 손으로 만든 것이다.** 이 결과는 정규화기 규칙 기준이다. Suricata의 role은 소스 전용 항목 없이 `common.yaml`의 ECS 항목(`source.ip` src, `destination.ip` dst)이 만들고, 실제 센서가 `source`·`destination` 방향을 이렇게 채우는지는 별도 확인이 필요하다. `suricata.yaml` 자체가 "suricata.eve.* 값은 샘플로 확인한 것이 없다"고 적고 있다.
 - ModSecurity 매핑표로는 나가는 통신을 만들 수 없다(client_ip src, host_ip·hostname dst만 있다). GuardDuty는 방향에 따라 src·dst가 바뀐다.
