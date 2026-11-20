@@ -502,8 +502,8 @@ test("Incident reports and response proposals remain text and link to source Tic
         proposals: [
           {
             ...seed.incident_proposals[0],
-            kind: "response_action",
-            body: sample.original.message,
+            kind: "response",
+            detail: sample.original.message,
           },
         ],
         ticket_graphs: graphFixture.ticket_graphs,

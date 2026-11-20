@@ -184,6 +184,7 @@ def test_migrate_creates_all_tables_on_empty_db(temp_database: str) -> None:
         "0109_ticket_title.sql",
         "0200_incident_artifacts.sql",
         "0201_incident_held.sql",
+        "0202_incident_recommendations.sql",
         "0300_threat_intel.sql",
         "0301_intel_local_lookup.sql",
         "0302_agent_reader_intel.sql",

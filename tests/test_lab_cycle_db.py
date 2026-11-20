@@ -213,14 +213,29 @@ def analyze_run(task: AgentTask) -> AgentResult:
     return ok(
         {
             "verdict": "attempted",
+            "title": "웹 게시판 대상 SQL 인젝션 시도",
             "summary": "웹 게시판을 노린 공격 시도가 있었다",
             "assessed_severity": 4,
             "techniques": [],
             "impact": "확인된 피해 없음",
             "cause": "공개 웹 게시판",
             "further_risk": "같은 출발지의 반복 시도",
-            "detection_rules": ["같은 출발지의 반복 차단을 탐지한다"],
-            "response_actions": ["담당자가 출발지 차단 여부를 검토한다"],
+            "recommendations": [
+                {
+                    "kind": "detection",
+                    "priority": "medium",
+                    "title": "반복 차단 탐지",
+                    "detail": "같은 출발지의 반복 차단을 탐지한다",
+                    "rationale": "같은 출발지가 반복해서 차단됐다",
+                },
+                {
+                    "kind": "response",
+                    "priority": "low",
+                    "title": "출발지 차단 검토",
+                    "detail": "담당자가 출발지 차단 여부를 검토한다",
+                    "rationale": "공격 시도가 반복됐다",
+                },
+            ],
             "evidence_ids": [alert_id],
         }
     )

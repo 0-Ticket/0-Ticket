@@ -12,6 +12,7 @@ from soc.entities import normalize_entity_value
 from soc.ids import new_id
 from soc.l2.analyze.tasks import analysis_citations, findings_citations
 from soc.l2.branch.read import _contract_row
+from soc.ticketing import FALLBACK_TITLE, clean_title
 
 
 @dataclass(frozen=True)
@@ -53,22 +54,20 @@ def build_records(
         ),
         "created_at": now_ms,
     }
-    proposals = []
-    for kind, field in (
-        ("detection_rule", "detection_rules"),
-        ("response_action", "response_actions"),
-    ):
-        proposals.extend(
-            {
-                "id": new_id("prp"),
-                "artifact_id": artifact_id,
-                "kind": kind,
-                "seq": seq,
-                "body": body,
-                "created_at": now_ms,
-            }
-            for seq, body in enumerate(analysis[field], 1)
-        )
+    proposals = [
+        {
+            "id": new_id("prp"),
+            "artifact_id": artifact_id,
+            "kind": item["kind"],
+            "seq": seq,
+            "priority": item["priority"],
+            "title": clean_title(item["title"]),
+            "detail": item["detail"],
+            "rationale": item["rationale"],
+            "created_at": now_ms,
+        }
+        for seq, item in enumerate(analysis["recommendations"], 1)
+    ]
     validate_contract("incident_artifact", artifact)
     for proposal in proposals:
         validate_contract("incident_proposal", proposal)
@@ -110,8 +109,11 @@ def save_success(
             asset_lookup_failed=asset_lookup_failed,
             dropped_techniques=dropped,
         )
+        # 제목은 부수 값이라 계약이 아니라 여기서 정리한다. 쓸 수 없으면 이전 제목을 유지한다(D-072)
+        title = clean_title(analysis["title"])
         updated = {
             **incident,
+            "title": incident["title"] if title == FALLBACK_TITLE else title,
             "summary": analysis["summary"],
             "status": (
                 "analyzing"
@@ -238,14 +240,18 @@ def _insert_artifact(conn: psycopg.Connection, artifact: dict[str, Any]) -> None
 
 def _insert_proposal(conn: psycopg.Connection, proposal: dict[str, Any]) -> None:
     conn.execute(
-        "INSERT INTO incident_proposals (id, artifact_id, kind, seq, body, created_at) "
-        "VALUES (%s, %s, %s, %s, %s, %s)",
+        "INSERT INTO incident_proposals "
+        "(id, artifact_id, kind, seq, priority, title, detail, rationale, created_at) "
+        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
         (
             proposal["id"],
             proposal["artifact_id"],
             proposal["kind"],
             proposal["seq"],
-            proposal["body"],
+            proposal["priority"],
+            proposal["title"],
+            proposal["detail"],
+            proposal["rationale"],
             to_datetime(proposal["created_at"]),
         ),
     )
@@ -253,10 +259,11 @@ def _insert_proposal(conn: psycopg.Connection, proposal: dict[str, Any]) -> None
 
 def _update_incident(conn: psycopg.Connection, incident: dict[str, Any]) -> None:
     conn.execute(
-        "UPDATE incidents SET summary = %s, status = %s, entities = %s, "
+        "UPDATE incidents SET title = %s, summary = %s, status = %s, entities = %s, "
         "assessed_severity = %s, analysis_round = %s, updated_at = %s, details = %s "
         "WHERE id = %s",
         (
+            incident["title"],
             incident["summary"],
             incident["status"],
             Jsonb(incident["entities"]),

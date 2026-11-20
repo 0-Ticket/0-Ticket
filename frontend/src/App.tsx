@@ -520,11 +520,11 @@ function DetailBody({ data }: { data: Detail }) {
                   .map((p) => (
                     <div className="proposal" key={p.id}>
                       <strong>
-                        {p.kind === "response_action"
+                        {p.kind === "response"
                           ? "대응 방안 제안"
                           : "탐지 룰 제안"}
                       </strong>
-                      <pre>{p.body}</pre>
+                      <pre>{p.detail}</pre>
                     </div>
                   ))}
               </section>

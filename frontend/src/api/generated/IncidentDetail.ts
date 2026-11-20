@@ -108,9 +108,27 @@ export type CreatedAt1 = number;
 export type Artifacts = IncidentArtifact[];
 export type Id3 = string;
 export type ArtifactId = string;
-export type Kind = "detection_rule" | "response_action";
+export type Kind = "response" | "detection";
+/**
+ * 한 Artifact의 권고 조치 목록 전체의 순서(1부터)
+ */
 export type Seq = number;
-export type Body = string;
+/**
+ * 옛 구조에서 옮긴 행(마이그레이션 0202)은 null
+ */
+export type Priority = ("high" | "medium" | "low") | null;
+/**
+ * 한 줄. 공백(탭·LF·VT·FF·CR·공백·U+00A0·U+3000)뿐인 값은 허용하지 않는다. 옛 행은 본문 첫 줄을 정리한 값
+ */
+export type Title1 = string;
+/**
+ * 구체적인 조치. 탐지 룰이면 룰 내용. 길이 한도는 분석 출력 계약만 지킨다(옛 body가 더 길 수 있다)
+ */
+export type Detail = string;
+/**
+ * 이 사건의 어떤 사실 때문에 필요한지. 옛 행은 null
+ */
+export type Rationale = string | null;
 /**
  * UTC epoch 밀리초. 상한은 9999-12-30T23:59:59.999Z(+14시간 시간대로 읽어도 9999년 안)
  */
@@ -200,7 +218,10 @@ export interface IncidentProposal {
   artifact_id: ArtifactId;
   kind: Kind;
   seq: Seq;
-  body: Body;
+  priority: Priority;
+  title: Title1;
+  detail: Detail;
+  rationale: Rationale;
   created_at: CreatedAt2;
 }
 export interface IncidentTicketGraph {

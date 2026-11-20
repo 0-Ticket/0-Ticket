@@ -15,7 +15,7 @@ from soc.agent.compose import compose_instructions
 from soc.agent.llm import input_chars
 from soc.agent.runner import wrap_data
 from soc.asset_lookup import AssetLookupError
-from soc.contracts import to_datetime
+from soc.contracts import to_datetime, validate_contract
 from soc.db.migrate import MIGRATIONS_DIR, migrate
 from soc.ids import new_id
 from soc.l2.analyze import context as analyze_context
@@ -25,6 +25,7 @@ from soc.l2.branch import build_branch
 from soc.l2.branch.read import read_branch_data
 from soc.l2.branch.worker import L2BranchWorker
 from soc.l2.config import AnalyzeSettings, BranchSettings
+from soc.ticketing import FALLBACK_TITLE
 
 pytestmark = pytest.mark.db
 
@@ -222,6 +223,7 @@ def analysis_outputs(sample: dict[str, Any]) -> tuple[dict[str, Any], dict[str, 
         },
         {
             "verdict": "succeeded",
+            "title": "web-01 대상 원격 명령 실행 성공",
             "summary": "침해가 확인됐다",
             "assessed_severity": 5,
             "techniques": [
@@ -231,8 +233,22 @@ def analysis_outputs(sample: dict[str, Any]) -> tuple[dict[str, Any], dict[str, 
             "impact": "프로세스 실행",
             "cause": "취약한 요청 처리",
             "further_risk": "재실행 가능성",
-            "detection_rules": ["요청 뒤 프로세스 실행을 탐지한다"],
-            "response_actions": ["담당자가 서버를 확인한다"],
+            "recommendations": [
+                {
+                    "kind": "response",
+                    "priority": "medium",
+                    "title": "서버 점검",
+                    "detail": "담당자가 서버를 확인한다",
+                    "rationale": "침해가 확인된 호스트다",
+                },
+                {
+                    "kind": "detection",
+                    "priority": "high",
+                    "title": "프로세스 실행 탐지",
+                    "detail": "요청 뒤 프로세스 실행을 탐지한다",
+                    "rationale": "요청 직후 웹 서버가 프로세스를 실행했다",
+                },
+            ],
             "evidence_ids": [],
         },
     )
@@ -845,7 +861,7 @@ def test_analyze_worker_saves_artifact_proposals_and_incident_atomically(
         artifact = conn.execute(
             "SELECT * FROM incident_artifacts WHERE incident_id = %s", (incident_id,)
         ).fetchone()
-        proposals = conn.execute("SELECT * FROM incident_proposals ORDER BY kind, seq").fetchall()
+        proposals = conn.execute("SELECT * FROM incident_proposals ORDER BY seq").fetchall()
     assert [task.task for task in tasks] == ["l2_investigate", "l2_report"]
     assert set(tasks[0].allowed_evidence_ids) >= {
         sample["alerts"][0]["id"],
@@ -870,10 +886,15 @@ def test_analyze_worker_saves_artifact_proposals_and_incident_atomically(
         sample["events"][0]["id"],
         sample["agent_logs"][0]["id"],
     }
-    assert [(row["kind"], row["seq"], row["body"]) for row in proposals] == [
-        ("detection_rule", 1, analysis["detection_rules"][0]),
-        ("response_action", 1, analysis["response_actions"][0]),
+    # 대응·탐지가 한 목록에 섞여 모델이 낸 순서(seq 1..n)대로 저장된다. 룰 내용은 detail에 남는다
+    assert [
+        (row["kind"], row["seq"], row["priority"], row["title"], row["detail"], row["rationale"])
+        for row in proposals
+    ] == [
+        (item["kind"], seq, item["priority"], item["title"], item["detail"], item["rationale"])
+        for seq, item in enumerate(analysis["recommendations"], 1)
     ]
+    assert incident["title"] == analysis["title"]
 
 
 def test_analyze_worker_retries_only_report_without_repeating_investigation(
@@ -1228,3 +1249,186 @@ def test_analysis_verdict_sets_terminal_status(
         assert conn.execute(
             "SELECT status FROM incidents WHERE id = %s", (incident_id,)
         ).fetchone() == (expected_status,)
+
+
+def run_analysis(
+    database_url: str, sample: dict[str, Any], incident_id: str, **analysis_changes: Any
+) -> dict[str, Any]:
+    """가짜 모델로 한 번 분석한다. 모델이 낸 보고 출력을 돌려준다."""
+    findings, analysis = analysis_outputs(sample)
+    analysis = {**analysis, **analysis_changes}
+    validate_contract("incident_analysis", analysis)  # 가짜 모델도 계약이 허용하는 출력만 낸다
+    analyze_worker(
+        database_url, lambda task: ok(findings if task.task == "l2_investigate" else analysis)
+    ).handle(incident_id)
+    return analysis
+
+
+def incident_row(database_url: str, incident_id: str) -> dict[str, Any]:
+    with psycopg.connect(database_url, row_factory=psycopg.rows.dict_row) as conn:
+        row = conn.execute("SELECT * FROM incidents WHERE id = %s", (incident_id,)).fetchone()
+    assert row is not None
+    return row
+
+
+def test_analysis_overwrites_the_provisional_title_with_the_cleaned_ai_title(
+    l2_database: tuple[str, dict[str, Any]],
+) -> None:
+    database_url, sample = l2_database
+    incident_id = prepare_analyzing_incident(database_url, sample)
+    provisional = sample["incidents"][0]["title"]
+    assert incident_row(database_url, incident_id)["title"] == provisional
+
+    run_analysis(database_url, sample, incident_id, title="  web-01 대상 \n SQL\u3000인젝션 시도 ")
+
+    assert incident_row(database_url, incident_id)["title"] == "web-01 대상 SQL 인젝션 시도"
+
+
+def test_analysis_clips_a_long_ai_title_like_a_ticket_title(
+    l2_database: tuple[str, dict[str, Any]],
+) -> None:
+    database_url, sample = l2_database
+    incident_id = prepare_analyzing_incident(database_url, sample)
+
+    run_analysis(database_url, sample, incident_id, title="가" * 300)
+
+    assert incident_row(database_url, incident_id)["title"] == "가" * 199 + "…"
+
+
+@pytest.mark.parametrize("title", ["", "   ", "\t\n\u00a0\u3000", FALLBACK_TITLE])
+def test_unusable_ai_title_keeps_the_provisional_title_and_saves_the_round_once(
+    l2_database: tuple[str, dict[str, Any]], title: str
+) -> None:
+    """빈 제목은 계약 오류가 아니다. 라운드가 한 번에 저장되고 다시 분석하지 않는다(D-059)."""
+    database_url, sample = l2_database
+    incident_id = prepare_analyzing_incident(database_url, sample)
+    run_calls: list[str] = []
+    findings, analysis = analysis_outputs(sample)
+    analysis = {**analysis, "title": title}
+    validate_contract("incident_analysis", analysis)
+
+    def run(task: Any) -> AgentResult:
+        run_calls.append(task.task)
+        return ok(findings if task.task == "l2_investigate" else analysis)
+
+    analyzer = analyze_worker(database_url, run)
+    analyzer.handle(incident_id)
+    analyzer.handle(incident_id)  # 이미 awaiting_review라 아무 일도 하지 않는다
+
+    row = incident_row(database_url, incident_id)
+    assert row["title"] == sample["incidents"][0]["title"]
+    assert row["status"] == "awaiting_review"
+    assert row["analysis_round"] == 1
+    assert row["details"]["l2_analyze"]["failure_streak"] == 0
+    assert run_calls == ["l2_investigate", "l2_report"]
+    with psycopg.connect(database_url) as conn:
+        assert conn.execute("SELECT count(*) FROM incident_artifacts").fetchone() == (1,)
+
+
+def test_failed_analysis_keeps_the_provisional_title(
+    l2_database: tuple[str, dict[str, Any]],
+) -> None:
+    database_url, sample = l2_database
+    incident_id = prepare_analyzing_incident(database_url, sample)
+
+    analyze_worker(database_url, lambda _: failed("provider_error")).handle(incident_id)
+
+    assert incident_row(database_url, incident_id)["title"] == sample["incidents"][0]["title"]
+
+
+def test_reanalysis_updates_the_title_again(l2_database: tuple[str, dict[str, Any]]) -> None:
+    database_url, sample = l2_database
+    incident_id = prepare_analyzing_incident(database_url, sample)
+
+    run_analysis(database_url, sample, incident_id, title="첫 분석 제목")
+    with psycopg.connect(database_url) as conn:
+        conn.execute("UPDATE incidents SET status = 'analyzing' WHERE id = %s", (incident_id,))
+    run_analysis(database_url, sample, incident_id, title="재분석 제목")
+
+    assert incident_row(database_url, incident_id)["title"] == "재분석 제목"
+
+
+def test_reanalysis_with_an_unusable_title_keeps_the_previous_ai_title(
+    l2_database: tuple[str, dict[str, Any]],
+) -> None:
+    database_url, sample = l2_database
+    incident_id = prepare_analyzing_incident(database_url, sample)
+
+    run_analysis(database_url, sample, incident_id, title="첫 분석 제목")
+    with psycopg.connect(database_url) as conn:
+        conn.execute("UPDATE incidents SET status = 'analyzing' WHERE id = %s", (incident_id,))
+    run_analysis(database_url, sample, incident_id, title="   ")
+
+    assert incident_row(database_url, incident_id)["title"] == "첫 분석 제목"
+
+
+def test_not_threat_analysis_also_updates_the_title(
+    l2_database: tuple[str, dict[str, Any]],
+) -> None:
+    database_url, sample = l2_database
+    incident_id = prepare_analyzing_incident(database_url, sample)
+
+    run_analysis(
+        database_url,
+        sample,
+        incident_id,
+        verdict="not_threat",
+        title="정상 점검 요청",
+        recommendations=[],
+    )
+
+    row = incident_row(database_url, incident_id)
+    assert (row["status"], row["title"]) == ("dismissed", "정상 점검 요청")
+
+
+def test_recommendation_titles_are_cleaned_and_stored_in_list_order(
+    l2_database: tuple[str, dict[str, Any]],
+) -> None:
+    database_url, sample = l2_database
+    incident_id = prepare_analyzing_incident(database_url, sample)
+    _, analysis = analysis_outputs(sample)
+    recommendations = [
+        {**analysis["recommendations"][0], "title": " 서버 \n  점검\u3000필요 "},
+        analysis["recommendations"][1],
+    ]
+
+    run_analysis(database_url, sample, incident_id, recommendations=recommendations)
+
+    with psycopg.connect(database_url) as conn:
+        rows = conn.execute("SELECT seq, title FROM incident_proposals ORDER BY seq").fetchall()
+    assert rows == [(1, "서버 점검 필요"), (2, analysis["recommendations"][1]["title"])]
+
+
+def test_branch_candidate_shows_the_ai_title_after_analysis(
+    l2_database: tuple[str, dict[str, Any]],
+) -> None:
+    """분석이 끝나면 브랜치 판단 LLM이 보는 후보 Incident 제목이 AI 제목으로 바뀐다(D-072)."""
+    database_url, sample = l2_database
+    target_id = prepare_graph_candidate(database_url, sample)
+    peer_id = sample["tickets"][0]["id"]
+    with psycopg.connect(database_url) as conn:
+        conn.execute(
+            "INSERT INTO attack_techniques (attack_version, technique_id, name, tactics) "
+            "VALUES ('20.0', 'T1059.001', 'PowerShell', ARRAY['execution'])"
+        )
+    seen: list[dict[str, Any]] = []
+
+    def choose(task: Any) -> AgentResult:
+        seen.extend(task.data["candidates"])
+        return ok(
+            {
+                "decision": "existing",
+                "incident_id": target_id,
+                "confidence": 0.9,
+                "reason": "같은 출발지",
+                "similar_ticket_ids": [peer_id],
+            }
+        )
+
+    run_analysis(database_url, sample, target_id)
+    worker(database_url, run=choose).handle(sample["tickets"][1]["id"])
+
+    assert [item["incident_id"] for item in seen] == [target_id]
+    assert seen[0]["title"] == "web-01 대상 원격 명령 실행 성공"
+    assert seen[0]["title"] != sample["incidents"][0]["title"]
+    assert seen[0]["ticket_count"] == 1

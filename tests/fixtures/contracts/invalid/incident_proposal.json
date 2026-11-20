@@ -1,14 +1,189 @@
 [
   {
-    "case": "empty_body",
-    "violations": [{"path": "body", "rule": "minLength"}],
+    "case": "empty_detail",
+    "violations": [
+      {
+        "path": "detail",
+        "rule": "minLength"
+      }
+    ],
     "data": {
       "id": "prp_01a19f93-1150-7000-8000-000000000013",
       "artifact_id": "art_01a19f93-1150-7000-8000-000000000011",
+      "created_at": 1793678580000,
+      "kind": "detection",
+      "seq": 1,
+      "priority": "high",
+      "title": "의심 요청 뒤 자식 프로세스 실행 탐지",
+      "detail": "",
+      "rationale": "요청 직후 웹 서버가 셸을 실행했다"
+    }
+  },
+  {
+    "case": "empty_title",
+    "violations": [
+      {
+        "path": "title",
+        "rule": "minLength"
+      },
+      {
+        "path": "title",
+        "rule": "pattern"
+      }
+    ],
+    "data": {
+      "id": "prp_01a19f93-1150-7000-8000-000000000013",
+      "artifact_id": "art_01a19f93-1150-7000-8000-000000000011",
+      "created_at": 1793678580000,
+      "kind": "detection",
+      "seq": 1,
+      "priority": "high",
+      "title": "",
+      "detail": "의심 요청 뒤 자식 프로세스 실행을 탐지한다",
+      "rationale": "요청 직후 웹 서버가 셸을 실행했다"
+    }
+  },
+  {
+    "case": "space_only_title",
+    "violations": [
+      {
+        "path": "title",
+        "rule": "pattern"
+      }
+    ],
+    "data": {
+      "id": "prp_01a19f93-1150-7000-8000-000000000013",
+      "artifact_id": "art_01a19f93-1150-7000-8000-000000000011",
+      "created_at": 1793678580000,
+      "kind": "detection",
+      "seq": 1,
+      "priority": "high",
+      "title": "  　",
+      "detail": "의심 요청 뒤 자식 프로세스 실행을 탐지한다",
+      "rationale": "요청 직후 웹 서버가 셸을 실행했다"
+    }
+  },
+  {
+    "case": "title_201_chars",
+    "violations": [
+      {
+        "path": "title",
+        "rule": "maxLength"
+      }
+    ],
+    "data": {
+      "id": "prp_01a19f93-1150-7000-8000-000000000013",
+      "artifact_id": "art_01a19f93-1150-7000-8000-000000000011",
+      "created_at": 1793678580000,
+      "kind": "detection",
+      "seq": 1,
+      "priority": "high",
+      "title": "가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가",
+      "detail": "의심 요청 뒤 자식 프로세스 실행을 탐지한다",
+      "rationale": "요청 직후 웹 서버가 셸을 실행했다"
+    }
+  },
+  {
+    "case": "old_kind_detection_rule",
+    "violations": [
+      {
+        "path": "kind",
+        "rule": "enum"
+      }
+    ],
+    "data": {
+      "id": "prp_01a19f93-1150-7000-8000-000000000013",
+      "artifact_id": "art_01a19f93-1150-7000-8000-000000000011",
+      "created_at": 1793678580000,
+      "kind": "detection_rule",
+      "seq": 1,
+      "priority": "high",
+      "title": "의심 요청 뒤 자식 프로세스 실행 탐지",
+      "detail": "의심 요청 뒤 자식 프로세스 실행을 탐지한다",
+      "rationale": "요청 직후 웹 서버가 셸을 실행했다"
+    }
+  },
+  {
+    "case": "old_kind_response_action",
+    "violations": [
+      {
+        "path": "kind",
+        "rule": "enum"
+      }
+    ],
+    "data": {
+      "id": "prp_01a19f93-1150-7000-8000-000000000013",
+      "artifact_id": "art_01a19f93-1150-7000-8000-000000000011",
+      "created_at": 1793678580000,
       "kind": "response_action",
       "seq": 1,
-      "body": "",
-      "created_at": 1793678580000
+      "priority": "high",
+      "title": "의심 요청 뒤 자식 프로세스 실행 탐지",
+      "detail": "의심 요청 뒤 자식 프로세스 실행을 탐지한다",
+      "rationale": "요청 직후 웹 서버가 셸을 실행했다"
+    }
+  },
+  {
+    "case": "bad_priority",
+    "violations": [
+      {
+        "path": "priority",
+        "rule": "enum"
+      }
+    ],
+    "data": {
+      "id": "prp_01a19f93-1150-7000-8000-000000000013",
+      "artifact_id": "art_01a19f93-1150-7000-8000-000000000011",
+      "created_at": 1793678580000,
+      "kind": "detection",
+      "seq": 1,
+      "priority": "critical",
+      "title": "의심 요청 뒤 자식 프로세스 실행 탐지",
+      "detail": "의심 요청 뒤 자식 프로세스 실행을 탐지한다",
+      "rationale": "요청 직후 웹 서버가 셸을 실행했다"
+    }
+  },
+  {
+    "case": "missing_title",
+    "violations": [
+      {
+        "path": "title",
+        "rule": "required"
+      }
+    ],
+    "data": {
+      "id": "prp_01a19f93-1150-7000-8000-000000000013",
+      "artifact_id": "art_01a19f93-1150-7000-8000-000000000011",
+      "created_at": 1793678580000,
+      "kind": "detection",
+      "seq": 1,
+      "priority": "high",
+      "detail": "의심 요청 뒤 자식 프로세스 실행을 탐지한다",
+      "rationale": "요청 직후 웹 서버가 셸을 실행했다"
+    }
+  },
+  {
+    "case": "old_body_field",
+    "violations": [
+      {
+        "path": "(root)",
+        "rule": "additionalProperties"
+      },
+      {
+        "path": "detail",
+        "rule": "required"
+      }
+    ],
+    "data": {
+      "id": "prp_01a19f93-1150-7000-8000-000000000013",
+      "artifact_id": "art_01a19f93-1150-7000-8000-000000000011",
+      "created_at": 1793678580000,
+      "kind": "detection",
+      "seq": 1,
+      "priority": "high",
+      "title": "의심 요청 뒤 자식 프로세스 실행 탐지",
+      "rationale": "요청 직후 웹 서버가 셸을 실행했다",
+      "body": "의심 요청 뒤 자식 프로세스 실행을 탐지한다"
     }
   }
 ]
