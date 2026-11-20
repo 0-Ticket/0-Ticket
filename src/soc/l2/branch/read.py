@@ -11,7 +11,7 @@ from soc.contracts.alert import contract_data
 
 _TIME_FIELDS = {
     "alert": (),  # 조립 Alert JSON의 시각은 ocsf가 이미 epoch 밀리초로 가진다
-    "event": ("time",),
+    "event": (),  # 조립 Event JSON의 시각도 ocsf가 이미 epoch 밀리초로 가진다
     "ticket": ("created_at", "updated_at"),
     "incident": ("created_at", "updated_at"),
     "hunt": ("verified_at", "created_at", "updated_at"),
@@ -64,7 +64,7 @@ def read_branch_data(
     event_ids = [item for item in evidence_ids if item.startswith("evt_")]
     event_rows = _fetch_by_ids(conn, "events", event_ids)
     events = _contract_rows("event", event_rows, event_ids)
-    existing = {event["id"] for event in events}
+    existing = {event["details"]["id"] for event in events}
     existing |= _existing_ids(
         conn, "alerts", [item for item in evidence_ids if item.startswith("alt_")]
     )

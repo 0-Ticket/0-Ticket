@@ -1,342 +1,927 @@
 {
  "attributes": {
   "activity_id": {
-   "enum": [
-    "0",
-    "1",
-    "10",
-    "11",
-    "12",
-    "13",
-    "14",
-    "15",
-    "16",
-    "17",
-    "18",
-    "19",
-    "2",
-    "20",
-    "21",
-    "22",
-    "23",
-    "24",
-    "25",
-    "26",
-    "27",
-    "28",
-    "29",
-    "3",
-    "30",
-    "31",
-    "32",
-    "33",
-    "34",
-    "35",
-    "36",
-    "37",
-    "38",
-    "39",
-    "4",
-    "40",
-    "5",
-    "6",
-    "7",
-    "8",
-    "9",
-    "99"
+   "caption": "Activity ID",
+   "description": "The normalized identifier of the activity that triggered the event. Each event class defines its own set of activity values. Use <code>0</code> (Unknown) when the activity cannot be determined. Use <code>99</code> (Other) when the activity does not match any defined value, in which case <code>activity_name</code> must be populated with the source-specific label.",
+   "enum": {
+    "0": {
+     "caption": "Unknown",
+     "description": "The event activity is unknown."
+    },
+    "1": {
+     "caption": "Connect",
+     "description": "The CONNECT method establishes a tunnel to the server identified by the target resource."
+    },
+    "10": {
+     "caption": "ACL",
+     "description": "The ACL method modifies the access control list of the specified resource."
+    },
+    "11": {
+     "caption": "Baseline Control",
+     "description": "The BASELINE-CONTROL method places the specified collection resource under baseline control."
+    },
+    "12": {
+     "caption": "Bind",
+     "description": "The BIND method adds a binding to the specified collection resource."
+    },
+    "13": {
+     "caption": "Check In",
+     "description": "The CHECKIN method creates a new version from a checked-out version-controlled resource."
+    },
+    "14": {
+     "caption": "Check Out",
+     "description": "The CHECKOUT method prepares a version-controlled resource for modification."
+    },
+    "15": {
+     "caption": "Copy",
+     "description": "The COPY method duplicates the specified resource."
+    },
+    "16": {
+     "caption": "Label",
+     "description": "The LABEL method adds, sets, or removes labels on a version-controlled resource."
+    },
+    "17": {
+     "caption": "Link",
+     "description": "The LINK method establishes one or more links between resources."
+    },
+    "18": {
+     "caption": "Lock",
+     "description": "The LOCK method acquires or refreshes a lock on the specified resource."
+    },
+    "19": {
+     "caption": "Merge",
+     "description": "The MERGE method merges changes from another resource into the specified resource."
+    },
+    "2": {
+     "caption": "Delete",
+     "description": "The DELETE method deletes the specified resource."
+    },
+    "20": {
+     "caption": "Make Activity",
+     "description": "The MKACTIVITY method creates a new activity resource."
+    },
+    "21": {
+     "caption": "Make Calendar",
+     "description": "The MKCALENDAR method creates a new calendar collection resource."
+    },
+    "22": {
+     "caption": "Make Collection",
+     "description": "The MKCOL method creates a new collection resource."
+    },
+    "23": {
+     "caption": "Make Redirect Reference",
+     "description": "The MKREDIRECTREF method creates a new redirect reference resource."
+    },
+    "24": {
+     "caption": "Make Workspace",
+     "description": "The MKWORKSPACE method creates a new workspace resource."
+    },
+    "25": {
+     "caption": "Move",
+     "description": "The MOVE method atomically duplicates and deletes the specified resource."
+    },
+    "26": {
+     "caption": "Order Patch",
+     "description": "The ORDERPATCH method changes the ordering of members in an ordered collection."
+    },
+    "27": {
+     "caption": "PRI",
+     "description": "The PRI method appears in the HTTP/2 connection preface to confirm the protocol."
+    },
+    "28": {
+     "caption": "Property Find",
+     "description": "The PROPFIND method retrieves properties defined on the specified resource."
+    },
+    "29": {
+     "caption": "Property Patch",
+     "description": "The PROPPATCH method sets and/or removes properties defined on the specified resource."
+    },
+    "3": {
+     "caption": "Get",
+     "description": "The GET method requests a representation of the specified resource. Requests using GET should only retrieve data."
+    },
+    "30": {
+     "caption": "Query",
+     "description": "The QUERY method performs a safe query request that can include a request body."
+    },
+    "31": {
+     "caption": "Rebind",
+     "description": "The REBIND method moves a binding from one collection to another."
+    },
+    "32": {
+     "caption": "Report",
+     "description": "The REPORT method retrieves a report about the specified resource."
+    },
+    "33": {
+     "caption": "Search",
+     "description": "The SEARCH method searches a resource or collection using the request payload."
+    },
+    "34": {
+     "caption": "Unbind",
+     "description": "The UNBIND method removes a binding from the specified collection resource."
+    },
+    "35": {
+     "caption": "Un-Check Out",
+     "description": "The UNCHECKOUT method cancels a checkout and restores the resource to its previous state."
+    },
+    "36": {
+     "caption": "Unlink",
+     "description": "The UNLINK method removes one or more links between resources."
+    },
+    "37": {
+     "caption": "Unlock",
+     "description": "The UNLOCK method releases a lock on the specified resource."
+    },
+    "38": {
+     "caption": "Update",
+     "description": "The UPDATE method updates a version-controlled resource to match a specified version."
+    },
+    "39": {
+     "caption": "Update Redirect Reference",
+     "description": "The UPDATEREDIRECTREF method changes the target of a redirect reference resource."
+    },
+    "4": {
+     "caption": "Head",
+     "description": "The HEAD method asks for a response identical to a GET request, but without the response body."
+    },
+    "40": {
+     "caption": "Version Control",
+     "description": "The VERSION-CONTROL method places the specified resource under version control."
+    },
+    "5": {
+     "caption": "Options",
+     "description": "The OPTIONS method describes the communication options for the target resource."
+    },
+    "6": {
+     "caption": "Post",
+     "description": "The POST method submits an entity to the specified resource, often causing a change in state or side effects on the server."
+    },
+    "7": {
+     "caption": "Put",
+     "description": "The PUT method replaces all current representations of the target resource with the request payload."
+    },
+    "8": {
+     "caption": "Trace",
+     "description": "The TRACE method performs a message loop-back test along the path to the target resource."
+    },
+    "9": {
+     "caption": "Patch",
+     "description": "The PATCH method applies partial modifications to a resource."
+    },
+    "99": {
+     "caption": "Other",
+     "description": "The event activity is not mapped. See the <code>activity_name</code> attribute, which contains a data source specific value."
+    }
+   },
+   "group": "classification",
+   "references": [
+    {
+     "description": "IANA HTTP Method Registry",
+     "url": "https://www.iana.org/assignments/http-methods/http-methods.xhtml"
+    }
    ],
    "requirement": "required",
-   "type": "integer_t"
+   "sibling": "activity_name",
+   "suppress_checks": [
+    "sibling_convention"
+   ],
+   "type": "integer_t",
+   "type_name": "Integer"
   },
   "activity_name": {
+   "caption": "Activity",
+   "description": "The event activity name, as defined by the <code>activity_id</code>. When <code>activity_id</code> is <code>99</code> (Other), this attribute <b>must</b> contain the source-specific activity label. For all other <code>activity_id</code> values, this must match the caption defined for that <code>activity_id</code> enum value.",
+   "group": "classification",
    "requirement": "optional",
-   "type": "string_t"
+   "type": "string_t",
+   "type_name": "String"
   },
   "app_name": {
+   "caption": "Application Name",
+   "description": "The network application name identified by tools such as NBAR or App ID (e.g., youtube, facebook, webex). This represents a specific network application that uses standard protocols (such as https or quic) to deliver its service.",
+   "group": "context",
    "requirement": "optional",
-   "type": "string_t"
+   "type": "string_t",
+   "type_name": "String"
   },
   "app_protocol_name": {
+   "caption": "Application Protocol Name",
+   "description": "The application-layer (Layer 7) protocol name identified by deep packet inspection or packet parsing (e.g., <code>https</code>, <code>quic</code>, <code>ssh</code>, <code>dns</code>), expressed as an IANA-registered service name from the IANA Service Name and Transport Protocol Port Number Registry.\n\n<p><b>Note:</b> Port numbers alone are not always a reliable indicator of the actual application protocol in use.</p>",
+   "group": "context",
+   "references": [
+    {
+     "description": "IANA Service Name and Transport Protocol Port Number Registry",
+     "url": "https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.xhtml"
+    }
+   ],
    "requirement": "optional",
-   "type": "string_t"
+   "type": "string_t",
+   "type_name": "String"
   },
   "category_name": {
+   "caption": "Category",
+   "description": "The event category name, as defined by category_uid value: <code>Network Activity</code>.",
+   "group": "classification",
    "requirement": "optional",
-   "type": "string_t"
+   "type": "string_t",
+   "type_name": "String"
   },
   "category_uid": {
-   "enum": [
-    "4"
-   ],
+   "caption": "Category ID",
+   "description": "The category unique identifier of the event. Each event class belongs to exactly one category. Producers and mappers must set this to the category defined by the event class being used.",
+   "enum": {
+    "4": {
+     "caption": "Network Activity",
+     "description": "Network Activity events.",
+     "uid": 4
+    }
+   },
+   "group": "classification",
    "requirement": "required",
-   "type": "integer_t"
+   "sibling": "category_name",
+   "type": "integer_t",
+   "type_name": "Integer"
   },
   "class_name": {
+   "caption": "Class",
+   "description": "The event class name, as defined by class_uid value: <code>HTTP Activity</code>.",
+   "group": "classification",
    "requirement": "optional",
-   "type": "string_t"
+   "type": "string_t",
+   "type_name": "String"
   },
   "class_uid": {
-   "enum": [
-    "4002"
-   ],
+   "caption": "Class ID",
+   "description": "The unique identifier of a class. A class describes the attributes available in an event. Producers and mappers must set this to the <code>uid</code> defined in the event class definition. For example, <code>Detection Finding</code> is <code>2004</code>.",
+   "enum": {
+    "4002": {
+     "caption": "HTTP Activity",
+     "description": "HTTP Activity events report HTTP connection and traffic information."
+    }
+   },
+   "group": "classification",
    "requirement": "required",
-   "type": "integer_t"
+   "sibling": "class_name",
+   "type": "integer_t",
+   "type_name": "Integer"
   },
   "connection_info": {
+   "caption": "Connection Info",
+   "description": "The network connection information.",
+   "group": "primary",
+   "object_name": "Network Connection Information",
    "object_type": "network_connection_info",
    "requirement": "recommended",
    "type": "object_t"
   },
   "count": {
+   "caption": "Count",
+   "description": "The number of events aggregated into this single record. Only populate for aggregate events. When set, <code>start_time</code> and <code>end_time</code> should also be provided to define the aggregation window.",
+   "group": "occurrence",
    "requirement": "optional",
-   "type": "integer_t"
+   "type": "integer_t",
+   "type_name": "Integer"
   },
   "cumulative_traffic": {
+   "caption": "Cumulative Traffic",
+   "description": "The cumulative (running total) network traffic aggregated from the start of a flow or session. Use when reporting: (1) total accumulated bytes/packets since flow initiation, (2) combined aggregation models where both incremental deltas and running totals are reported together (populate both <code>traffic</code> for the delta and this attribute for the cumulative total), or (3) final summary metrics when a long-lived connection closes. This represents the sum of all activity from flow start to the current observation, not a delta or point-in-time value.",
+   "group": "context",
+   "object_name": "Network Traffic",
    "object_type": "network_traffic",
    "requirement": "optional",
    "type": "object_t"
   },
   "dst_endpoint": {
+   "caption": "Destination Endpoint",
+   "description": "The responder (server) in a network connection.",
+   "group": "primary",
+   "object_name": "Network Endpoint",
    "object_type": "network_endpoint",
    "requirement": "recommended",
    "type": "object_t"
   },
   "duration": {
+   "caption": "Duration Milliseconds",
+   "description": "The elapsed time of the aggregation window in milliseconds, from <code>start_time</code> to <code>end_time</code>. Only populate for aggregate events (<code>count</code> &gt; 1). The value should equal <code>end_time - start_time</code>.",
+   "group": "occurrence",
    "requirement": "optional",
-   "type": "long_t"
+   "type": "long_t",
+   "type_name": "Long"
   },
   "end_time": {
+   "caption": "End Time",
+   "description": "The time of the most recent event in an aggregate (<code>count</code> &gt; 1). Do not populate for discrete, point-in-time events - use <code>time</code> alone. Subclasses such as findings may redefine this for their own time-range semantics.",
+   "group": "occurrence",
    "requirement": "optional",
-   "type": "timestamp_t"
+   "type": "timestamp_t",
+   "type_name": "Timestamp"
   },
   "enrichments": {
+   "caption": "Enrichments",
+   "description": "The additional information from an external data source, which is associated with the event or a finding. For example add location information for the IP address in the DNS answers:</p><code>[{\"name\": \"answers.ip\", \"value\": \"92.24.47.250\", \"type\": \"location\", \"data\": {\"city\": \"Socotra\", \"continent\": \"Asia\", \"coordinates\": [-25.4153, 17.0743], \"country\": \"YE\", \"desc\": \"Yemen\"}}]</code>",
+   "group": "context",
    "is_array": true,
+   "object_name": "Enrichment",
    "object_type": "enrichment",
    "requirement": "optional",
    "type": "object_t"
   },
   "file": {
+   "caption": "File",
+   "description": "The file that is the target of the HTTP activity.",
+   "group": "context",
+   "object_name": "File",
    "object_type": "file",
    "requirement": "optional",
    "type": "object_t"
   },
   "http_cookies": {
+   "caption": "HTTP Cookies",
+   "description": "The cookies object describes details about HTTP cookies",
+   "group": "primary",
    "is_array": true,
+   "object_name": "HTTP Cookie",
    "object_type": "http_cookie",
    "requirement": "recommended",
    "type": "object_t"
   },
   "http_request": {
+   "caption": "HTTP Request",
+   "description": "The HTTP Request Object documents attributes of a request made to a web server.",
+   "group": "primary",
+   "object_name": "HTTP Request",
    "object_type": "http_request",
    "requirement": "recommended",
    "type": "object_t"
   },
   "http_response": {
+   "caption": "HTTP Response",
+   "description": "The HTTP Response from a web server to a requester.",
+   "group": "primary",
+   "object_name": "HTTP Response",
    "object_type": "http_response",
    "requirement": "recommended",
    "type": "object_t"
   },
   "http_status": {
+   "@deprecated": {
+    "message": "Use the <code>http_response.code</code> attribute instead.",
+    "since": "1.1.0",
+    "superseded_by": [
+     "http_response.code"
+    ]
+   },
+   "caption": "HTTP Status",
+   "description": "The Hypertext Transfer Protocol (HTTP) status code returned to the client.",
+   "group": "primary",
+   "references": [
+    {
+     "description": "HTTP Status Codes",
+     "url": "https://www.iana.org/assignments/http-status-codes/http-status-codes.xhtml"
+    }
+   ],
    "requirement": "recommended",
-   "type": "integer_t"
+   "type": "integer_t",
+   "type_name": "Integer"
   },
   "ja4_fingerprint_list": {
+   "caption": "JA4+ Fingerprints",
+   "description": "A list of the JA4+ network fingerprints.",
+   "group": "context",
    "is_array": true,
+   "object_name": "JA4+ Fingerprint",
    "object_type": "ja4_fingerprint",
    "requirement": "optional",
    "type": "object_t"
   },
   "message": {
+   "caption": "Message",
+   "description": "A human-readable description of the event, as defined by the source. This should be a concise, meaningful summary suitable for display in a UI or alert notification - not a raw log line. For example: <code>\"User john_doe logged in from 10.0.0.1.\"</code> rather than a raw syslog string.",
+   "group": "primary",
    "requirement": "recommended",
-   "type": "string_t"
+   "type": "string_t",
+   "type_name": "String"
   },
   "metadata": {
+   "caption": "Metadata",
+   "description": "The metadata object describes the event producer, schema version, and processing information. Producers and mappers <b>must</b> populate <code>metadata.product</code> to identify the data source, and <code>metadata.version</code> to indicate the OCSF schema version used. Consumers rely on this to interpret the event correctly.",
+   "group": "context",
+   "object_name": "Metadata",
    "object_type": "metadata",
    "requirement": "required",
    "type": "object_t"
   },
   "network_observation_point": {
+   "caption": "Network Observation Point",
+   "description": "The network endpoint that observes or inspects network traffic as a third-party system, used when the observer is neither the source nor the destination of the communication (when <code>observation_point_id</code> = 3). Examples include network taps, span ports, inline security devices, or packet capture systems that monitor traffic between other endpoints.",
+   "group": "context",
+   "object_name": "Network Endpoint",
    "object_type": "network_endpoint",
    "requirement": "optional",
    "type": "object_t"
   },
   "observables": {
+   "caption": "Observables",
+   "description": "The observables array surfaces key indicators and entities from the event or finding in a single, consistent location for downstream correlation and detection. Each entry references an attribute path within the event (e.g., <code>src_endpoint.ip</code>) along with its type and value, enabling consumers to extract IOCs without parsing the full event structure.",
+   "group": "primary",
    "is_array": true,
+   "object_name": "Observable",
    "object_type": "observable",
+   "references": [
+    {
+     "description": "OCSF Observables FAQ",
+     "url": "https://github.com/ocsf/ocsf-docs/blob/main/articles/defining-and-using-observables.md"
+    }
+   ],
    "requirement": "recommended",
    "type": "object_t"
   },
   "observation_point": {
+   "caption": "Observation Point",
+   "description": "Indicates whether the source network endpoint, destination network endpoint, or neither served as the observation point for the activity. The value is normalized to the caption of the <code>observation_point_id</code>.",
+   "group": "context",
    "requirement": "optional",
-   "type": "string_t"
+   "type": "string_t",
+   "type_name": "String"
   },
   "observation_point_id": {
-   "enum": [
-    "0",
-    "1",
-    "2",
-    "3",
-    "4",
-    "99"
-   ],
+   "caption": "Observation Point ID",
+   "description": "The normalized identifier of the observation point. The observation point identifier indicates whether the source network endpoint, destination network endpoint, or neither served as the observation point for the activity.",
+   "enum": {
+    "0": {
+     "caption": "Unknown",
+     "description": "The observation point is unknown."
+    },
+    "1": {
+     "caption": "Source",
+     "description": "The source network endpoint is the observation point."
+    },
+    "2": {
+     "caption": "Destination",
+     "description": "The destination network endpoint is the observation point."
+    },
+    "3": {
+     "caption": "Neither",
+     "description": "Neither the source nor destination network endpoint is the observation point. Refer to the <code>network_observation_point</code> attribute for details."
+    },
+    "4": {
+     "caption": "Both",
+     "description": "Both the source and destination network endpoint are the observation point. This typically occurs in localhost or internal communications where the source and destination are the same endpoint, often resulting in a <code>connection_info.direction</code> of <code>Local</code>."
+    },
+    "99": {
+     "caption": "Other",
+     "description": "The observation point is not mapped. See the <code>observation_point</code> attribute for a data source specific value."
+    }
+   },
+   "group": "context",
    "requirement": "optional",
-   "type": "integer_t"
+   "sibling": "observation_point",
+   "type": "integer_t",
+   "type_name": "Integer"
   },
   "packet_list": {
+   "caption": "Packets",
+   "description": "The list of packet objects describing captured network packets.",
+   "group": "context",
    "is_array": true,
+   "object_name": "Packet",
    "object_type": "packet",
    "requirement": "optional",
    "type": "object_t"
   },
   "proxy": {
+   "@deprecated": {
+    "message": "Use the <code>proxy_endpoint</code> attribute instead.",
+    "since": "1.1.0",
+    "superseded_by": [
+     "proxy_endpoint"
+    ]
+   },
+   "caption": "Proxy",
+   "description": "The proxy (server) in a network connection.",
+   "group": "primary",
+   "object_name": "Network Proxy Endpoint",
    "object_type": "network_proxy",
    "requirement": "recommended",
    "type": "object_t"
   },
   "raw_data": {
+   "caption": "Raw Data",
+   "description": "The original event/finding data as received from the source, before normalization into OCSF. Populate this with the verbatim log line, JSON payload, or other native format for forensic and debugging purposes. This field is not intended for structured querying - use the normalized OCSF attributes instead.",
+   "group": "context",
    "requirement": "optional",
-   "type": "string_t"
+   "type": "string_t",
+   "type_name": "String"
   },
   "raw_data_hash": {
+   "caption": "Raw Data Hash",
+   "description": "A fingerprint (hash) of the <code>raw_data</code> content. Use this to verify the integrity of the original event data or to deduplicate events.",
+   "group": "context",
+   "object_name": "Fingerprint",
    "object_type": "fingerprint",
    "requirement": "optional",
    "type": "object_t"
   },
   "raw_data_size": {
+   "caption": "Raw Data Size",
+   "description": "The size of the original event data (as captured in <code>raw_data</code>) in bytes, before OCSF normalization. Useful for metering and capacity planning.",
+   "group": "context",
    "requirement": "optional",
-   "type": "long_t"
+   "type": "long_t",
+   "type_name": "Long"
   },
   "severity": {
+   "caption": "Severity",
+   "description": "The event/finding severity label, normalized to the caption of the <code>severity_id</code> value. When <code>severity_id</code> is <code>99</code> (Other), this attribute <b>must</b> contain the source-specific severity label. For all other values, this should match the caption defined for that <code>severity_id</code> enum value (e.g., <code>\"High\"</code> for <code>severity_id: 4</code>).",
+   "group": "classification",
    "requirement": "optional",
-   "type": "string_t"
+   "type": "string_t",
+   "type_name": "String"
   },
   "severity_id": {
-   "enum": [
-    "0",
-    "1",
-    "2",
-    "3",
-    "4",
-    "5",
-    "6",
-    "99"
-   ],
+   "caption": "Severity ID",
+   "description": "<p>The normalized identifier of the event/finding severity.</p>The normalized severity is a measurement the effort and expense required to manage and resolve an event or incident. Smaller numerical values represent lower impact events, and larger numerical values represent higher impact events.",
+   "enum": {
+    "0": {
+     "caption": "Unknown",
+     "description": "The event/finding severity is unknown."
+    },
+    "1": {
+     "caption": "Informational",
+     "description": "Informational message. No action required."
+    },
+    "2": {
+     "caption": "Low",
+     "description": "The user decides if action is needed."
+    },
+    "3": {
+     "caption": "Medium",
+     "description": "Action is required but the situation is not serious at this time."
+    },
+    "4": {
+     "caption": "High",
+     "description": "Action is required immediately."
+    },
+    "5": {
+     "caption": "Critical",
+     "description": "Action is required immediately and the scope is broad."
+    },
+    "6": {
+     "caption": "Fatal",
+     "description": "An error occurred but it is too late to take remedial action."
+    },
+    "99": {
+     "caption": "Other",
+     "description": "The event/finding severity is not mapped. See the <code>severity</code> attribute, which contains a data source specific value."
+    }
+   },
+   "group": "classification",
    "requirement": "required",
-   "type": "integer_t"
+   "sibling": "severity",
+   "type": "integer_t",
+   "type_name": "Integer"
   },
   "src_endpoint": {
+   "caption": "Source Endpoint",
+   "description": "The initiator (client) of the network connection.",
+   "group": "primary",
+   "object_name": "Network Endpoint",
    "object_type": "network_endpoint",
    "requirement": "recommended",
    "type": "object_t"
   },
   "start_time": {
+   "caption": "Start Time",
+   "description": "The time of the earliest event in an aggregate (<code>count</code> &gt; 1). Do not populate for discrete, point-in-time events - use <code>time</code> alone. Subclasses such as findings may redefine this for their own time-range semantics.",
+   "group": "occurrence",
    "requirement": "optional",
-   "type": "timestamp_t"
+   "type": "timestamp_t",
+   "type_name": "Timestamp"
   },
   "status": {
+   "caption": "Status",
+   "description": "The event status label, normalized to the caption of the <code>status_id</code> value. When <code>status_id</code> is <code>99</code> (Other), this attribute <b>must</b> contain the source-specific status label. For all other values, this must match the caption defined for that <code>status_id</code> enum value (e.g., <code>\"Success\"</code> for <code>status_id: 1</code>).",
+   "group": "primary",
    "requirement": "recommended",
-   "type": "string_t"
+   "type": "string_t",
+   "type_name": "String"
   },
   "status_code": {
+   "caption": "Status Code",
+   "description": "The source-specific status or error code as reported by the event source. For example, a Windows logon failure code (<code>0x18</code>), an HTTP response code (<code>403</code>), or an AWS API error code. This preserves the original code for detailed troubleshooting beyond what <code>status_id</code> conveys.",
+   "group": "primary",
    "requirement": "recommended",
-   "type": "string_t"
+   "type": "string_t",
+   "type_name": "String"
   },
   "status_detail": {
+   "caption": "Status Detail",
+   "description": "A human-readable description providing additional context about the event outcome. Use this to convey details that go beyond the normalized <code>status_id</code> and source-specific <code>status_code</code>, such as a failure reason or error message. For example: <code>\"Account locked after 5 failed attempts.\"</code>.",
+   "group": "primary",
    "requirement": "recommended",
-   "type": "string_t"
+   "type": "string_t",
+   "type_name": "String"
   },
   "status_id": {
-   "enum": [
-    "0",
-    "1",
-    "2",
-    "99"
-   ],
+   "caption": "Status ID",
+   "description": "The normalized status of the event outcome. Use this family of attributes to convey the outcome of the activity described by the event. Producers should map their source outcome to <code>1</code> (Success) or <code>2</code> (Failure). Use <code>0</code> (Unknown) when the outcome cannot be determined, and <code>99</code> (Other) with a populated <code>status</code> string when the source value does not map cleanly.",
+   "enum": {
+    "0": {
+     "caption": "Unknown",
+     "description": "The status is unknown."
+    },
+    "1": {
+     "caption": "Success",
+     "description": "The activity completed successfully."
+    },
+    "2": {
+     "caption": "Failure",
+     "description": "The activity failed."
+    },
+    "99": {
+     "caption": "Other",
+     "description": "The status is not mapped. See the <code>status</code> attribute, which contains a data source specific value."
+    }
+   },
+   "group": "primary",
    "requirement": "recommended",
-   "type": "integer_t"
+   "sibling": "status",
+   "type": "integer_t",
+   "type_name": "Integer"
   },
   "time": {
+   "caption": "Event Time",
+   "description": "The primary timestamp of the event - when the activity actually occurred at the source. This does not capture when the event record was created or serialized by the source system; for event lifecycle timestamps such as ingestion and processing, use <code>metadata.logged_time</code> and <code>metadata.processed_time</code> respectively, or the equivalent attributes in the <code>metadata.loggers</code> array when recording pipeline stages. For aggregate events (<code>count</code> &gt; 1), set this to <code>start_time</code> (the earliest OCSF <code>time</code> in the aggregate) to preserve causal ordering and consistent timeline alignment. Note: finding classes redefine <code>time</code> as the finding creation time rather than the activity occurrence time. This <b>must</b> be a UTC epoch value in milliseconds (e.g., <code>1776881335332</code>). Mappers should use the most precise and authoritative timestamp available from the source.",
+   "group": "occurrence",
    "requirement": "required",
-   "type": "timestamp_t"
+   "type": "timestamp_t",
+   "type_name": "Timestamp"
   },
   "timezone_offset": {
+   "caption": "Timezone Offset",
+   "description": "The number of minutes that the reported event <code>time</code> is ahead or behind UTC, in the range -1,080 to +1,080. This allows consumers to reconstruct the local time at the event source. For example, US Eastern Standard Time is <code>-300</code>. Populate this when the source provides local time zone information.",
+   "group": "occurrence",
    "requirement": "recommended",
-   "type": "integer_t"
+   "type": "integer_t",
+   "type_name": "Integer"
   },
   "tls": {
+   "caption": "TLS",
+   "description": "The Transport Layer Security (TLS) attributes.",
+   "group": "context",
+   "object_name": "Transport Layer Security (TLS)",
    "object_type": "tls",
    "requirement": "optional",
    "type": "object_t"
   },
   "traffic": {
+   "caption": "Traffic",
+   "description": "The network traffic for this observation period. Use when reporting: (1) delta values (bytes/packets transferred since the last observation), (2) instantaneous measurements at a specific point in time, or (3) standalone single-event metrics. This attribute represents a point-in-time measurement or incremental change, not a running total. For accumulated totals across multiple observations or the lifetime of a flow, use <code>cumulative_traffic</code> instead.",
+   "group": "primary",
+   "object_name": "Network Traffic",
    "object_type": "network_traffic",
    "requirement": "recommended",
    "type": "object_t"
   },
   "type_name": {
+   "caption": "Type Name",
+   "description": "The event/finding type name, combining the class and activity (e.g., <code>\"Detection Finding: Create\"</code>). The value must match the <code>class_name</code> and <code>activity_name</code> joined by <code>\": \"</code>.",
+   "group": "classification",
    "requirement": "optional",
-   "type": "string_t"
+   "type": "string_t",
+   "type_name": "String"
   },
   "type_uid": {
-   "enum": [
-    "400200",
-    "400201",
-    "400202",
-    "400203",
-    "400204",
-    "400205",
-    "400206",
-    "400207",
-    "400208",
-    "400209",
-    "400210",
-    "400211",
-    "400212",
-    "400213",
-    "400214",
-    "400215",
-    "400216",
-    "400217",
-    "400218",
-    "400219",
-    "400220",
-    "400221",
-    "400222",
-    "400223",
-    "400224",
-    "400225",
-    "400226",
-    "400227",
-    "400228",
-    "400229",
-    "400230",
-    "400231",
-    "400232",
-    "400233",
-    "400234",
-    "400235",
-    "400236",
-    "400237",
-    "400238",
-    "400239",
-    "400240",
-    "400299"
-   ],
+   "caption": "Type ID",
+   "description": "The event/finding type ID. It identifies the event's semantics and structure. Producers and mappers <b>must</b> compute this as <code>class_uid * 100 + activity_id</code>. It uniquely identifies the combination of event class and activity across the entire schema. For example, <code>Detection Finding: Create</code> is <code>200401</code>.",
+   "enum": {
+    "400200": {
+     "caption": "HTTP Activity: Unknown"
+    },
+    "400201": {
+     "caption": "HTTP Activity: Connect",
+     "description": "The CONNECT method establishes a tunnel to the server identified by the target resource."
+    },
+    "400202": {
+     "caption": "HTTP Activity: Delete",
+     "description": "The DELETE method deletes the specified resource."
+    },
+    "400203": {
+     "caption": "HTTP Activity: Get",
+     "description": "The GET method requests a representation of the specified resource. Requests using GET should only retrieve data."
+    },
+    "400204": {
+     "caption": "HTTP Activity: Head",
+     "description": "The HEAD method asks for a response identical to a GET request, but without the response body."
+    },
+    "400205": {
+     "caption": "HTTP Activity: Options",
+     "description": "The OPTIONS method describes the communication options for the target resource."
+    },
+    "400206": {
+     "caption": "HTTP Activity: Post",
+     "description": "The POST method submits an entity to the specified resource, often causing a change in state or side effects on the server."
+    },
+    "400207": {
+     "caption": "HTTP Activity: Put",
+     "description": "The PUT method replaces all current representations of the target resource with the request payload."
+    },
+    "400208": {
+     "caption": "HTTP Activity: Trace",
+     "description": "The TRACE method performs a message loop-back test along the path to the target resource."
+    },
+    "400209": {
+     "caption": "HTTP Activity: Patch",
+     "description": "The PATCH method applies partial modifications to a resource."
+    },
+    "400210": {
+     "caption": "HTTP Activity: ACL",
+     "description": "The ACL method modifies the access control list of the specified resource."
+    },
+    "400211": {
+     "caption": "HTTP Activity: Baseline Control",
+     "description": "The BASELINE-CONTROL method places the specified collection resource under baseline control."
+    },
+    "400212": {
+     "caption": "HTTP Activity: Bind",
+     "description": "The BIND method adds a binding to the specified collection resource."
+    },
+    "400213": {
+     "caption": "HTTP Activity: Check In",
+     "description": "The CHECKIN method creates a new version from a checked-out version-controlled resource."
+    },
+    "400214": {
+     "caption": "HTTP Activity: Check Out",
+     "description": "The CHECKOUT method prepares a version-controlled resource for modification."
+    },
+    "400215": {
+     "caption": "HTTP Activity: Copy",
+     "description": "The COPY method duplicates the specified resource."
+    },
+    "400216": {
+     "caption": "HTTP Activity: Label",
+     "description": "The LABEL method adds, sets, or removes labels on a version-controlled resource."
+    },
+    "400217": {
+     "caption": "HTTP Activity: Link",
+     "description": "The LINK method establishes one or more links between resources."
+    },
+    "400218": {
+     "caption": "HTTP Activity: Lock",
+     "description": "The LOCK method acquires or refreshes a lock on the specified resource."
+    },
+    "400219": {
+     "caption": "HTTP Activity: Merge",
+     "description": "The MERGE method merges changes from another resource into the specified resource."
+    },
+    "400220": {
+     "caption": "HTTP Activity: Make Activity",
+     "description": "The MKACTIVITY method creates a new activity resource."
+    },
+    "400221": {
+     "caption": "HTTP Activity: Make Calendar",
+     "description": "The MKCALENDAR method creates a new calendar collection resource."
+    },
+    "400222": {
+     "caption": "HTTP Activity: Make Collection",
+     "description": "The MKCOL method creates a new collection resource."
+    },
+    "400223": {
+     "caption": "HTTP Activity: Make Redirect Reference",
+     "description": "The MKREDIRECTREF method creates a new redirect reference resource."
+    },
+    "400224": {
+     "caption": "HTTP Activity: Make Workspace",
+     "description": "The MKWORKSPACE method creates a new workspace resource."
+    },
+    "400225": {
+     "caption": "HTTP Activity: Move",
+     "description": "The MOVE method atomically duplicates and deletes the specified resource."
+    },
+    "400226": {
+     "caption": "HTTP Activity: Order Patch",
+     "description": "The ORDERPATCH method changes the ordering of members in an ordered collection."
+    },
+    "400227": {
+     "caption": "HTTP Activity: PRI",
+     "description": "The PRI method appears in the HTTP/2 connection preface to confirm the protocol."
+    },
+    "400228": {
+     "caption": "HTTP Activity: Property Find",
+     "description": "The PROPFIND method retrieves properties defined on the specified resource."
+    },
+    "400229": {
+     "caption": "HTTP Activity: Property Patch",
+     "description": "The PROPPATCH method sets and/or removes properties defined on the specified resource."
+    },
+    "400230": {
+     "caption": "HTTP Activity: Query",
+     "description": "The QUERY method performs a safe query request that can include a request body."
+    },
+    "400231": {
+     "caption": "HTTP Activity: Rebind",
+     "description": "The REBIND method moves a binding from one collection to another."
+    },
+    "400232": {
+     "caption": "HTTP Activity: Report",
+     "description": "The REPORT method retrieves a report about the specified resource."
+    },
+    "400233": {
+     "caption": "HTTP Activity: Search",
+     "description": "The SEARCH method searches a resource or collection using the request payload."
+    },
+    "400234": {
+     "caption": "HTTP Activity: Unbind",
+     "description": "The UNBIND method removes a binding from the specified collection resource."
+    },
+    "400235": {
+     "caption": "HTTP Activity: Un-Check Out",
+     "description": "The UNCHECKOUT method cancels a checkout and restores the resource to its previous state."
+    },
+    "400236": {
+     "caption": "HTTP Activity: Unlink",
+     "description": "The UNLINK method removes one or more links between resources."
+    },
+    "400237": {
+     "caption": "HTTP Activity: Unlock",
+     "description": "The UNLOCK method releases a lock on the specified resource."
+    },
+    "400238": {
+     "caption": "HTTP Activity: Update",
+     "description": "The UPDATE method updates a version-controlled resource to match a specified version."
+    },
+    "400239": {
+     "caption": "HTTP Activity: Update Redirect Reference",
+     "description": "The UPDATEREDIRECTREF method changes the target of a redirect reference resource."
+    },
+    "400240": {
+     "caption": "HTTP Activity: Version Control",
+     "description": "The VERSION-CONTROL method places the specified resource under version control."
+    },
+    "400299": {
+     "caption": "HTTP Activity: Other"
+    }
+   },
+   "group": "classification",
    "requirement": "required",
-   "type": "long_t"
+   "sibling": "type_name",
+   "type": "long_t",
+   "type_name": "Long"
   },
   "unmapped": {
+   "caption": "Unmapped Data",
+   "description": "A container for source-specific attributes that do not map to any defined OCSF attribute. Use this to preserve valuable source data that would otherwise be lost during normalization. The keys and values are specific to the event source. <p><b>Note: </b>Consumers should not rely on a stable structure within this field. The preferred approach to unmapped attributes is to create a custom extension with the desired structure.</p>",
+   "group": "context",
+   "object_name": "Object",
    "object_type": "object",
+   "references": [
+    {
+     "description": "Schema FAQ: When should I use the unmapped attribute?",
+     "url": "https://github.com/ocsf/ocsf-docs/blob/main/faqs/schema-faq.md#when-should-i-use-the-unmapped-attribute"
+    },
+    {
+     "description": "OCSF Extensions",
+     "url": "https://github.com/ocsf/ocsf-schema/blob/main/CONTRIBUTING.md#ocsf-extensions"
+    }
+   ],
    "requirement": "optional",
    "type": "object_t"
   }
  },
+ "caption": "HTTP Activity",
+ "category": "network",
+ "category_name": "Network Activity",
+ "category_uid": 4,
  "constraints": {
   "at_least_one": [
    "http_request",
    "http_response"
   ]
  },
+ "description": "HTTP Activity events report HTTP connection and traffic information.",
+ "extends": "network",
  "name": "http_activity",
+ "profiles": [
+  "ai_operation",
+  "cloud",
+  "container",
+  "data_classification",
+  "datetime",
+  "host",
+  "linux/linux_users",
+  "load_balancer",
+  "macos/macos_users",
+  "network_proxy",
+  "osint",
+  "record_integrity",
+  "security_control",
+  "trace"
+ ],
+ "references": [
+  {
+   "description": "D3FEND™ Ontology d3f:HTTPEvent",
+   "url": "https://d3fend.mitre.org/event/d3f:HTTPEvent/"
+  }
+ ],
  "uid": 4002
 }

@@ -1,0 +1,84 @@
+# HTTP Activity. 목록에 없는 메서드는 http_method 대신 activity_name에 있다
+class_uid: 4002
+summary:
+  - [http_request.http_method, activity_name]
+  - [http_request.url.path, http_request.url.url_string]
+  - http_response.code
+
+entries:
+  - target: time
+    from: ["@timestamp"]
+    transform: time
+    required: true
+  - target: activity_name
+    from: [http.request.method]
+    transform: method_name
+  - target: src_endpoint.ip
+    from: [source.ip]
+  - target: src_endpoint.location.country
+    from: [source.geo.country_iso_code]
+  - target: src_endpoint.location.region
+    from: [source.geo.region_iso_code]
+  - target: src_endpoint.location.city
+    from: [source.geo.city_name]
+  - target: src_endpoint.location.coordinates
+    from: [source.geo.location]
+    transform: geo_coordinates
+  - target: src_endpoint.location.continent
+    from: [source.geo.continent_name]
+  - target: src_endpoint.autonomous_system.number
+    from: [source.as.number]
+    transform: to_int
+  - target: src_endpoint.autonomous_system.name
+    from: [source.as.organization.name]
+  - target: dst_endpoint.ip
+    from: [destination.ip]
+  - target: http_request.http_method
+    from: [http.request.method]
+    transform: http_method
+  - target: http_request.version
+    from: [http.version]
+  - target: http_request.user_agent
+    from: [user_agent.original]
+  - target: http_request.url.path
+    from: [url.path]
+  - target: http_request.url.url_string
+    from: [url.original]
+  - target: http_request.url.hostname
+    from: [url.domain]
+  - target: http_request.url.scheme
+    from: [url.scheme]
+  - target: http_request.url.query_string
+    from: [url.query]
+  - target: http_response.code
+    from: [http.response.status_code]
+    transform: to_int
+  - target: http_response.length
+    from: [http.response.bytes]
+    transform: to_int
+  - target: http_response.body_length
+    from: [http.response.body.bytes]
+    transform: to_int
+
+entities:
+  # 기존 웹 이벤트의 IP 문자열 보존 규칙을 따른다(#302). type·role은 알럿과 같다.
+  - type: ip
+    role: src
+    from: [source.ip]
+  - type: ip
+    role: dst
+    from: [destination.ip]
+  - type: user
+    role: actor
+    from: [user.name]
+  - type: domain
+    role: dst
+    from: [url.domain]
+    transform: domain_or_ip
+  - type: domain
+    role: dst
+    from: [destination.domain]
+    transform: domain_or_ip
+  - type: url
+    role: dst
+    from: [url.original]

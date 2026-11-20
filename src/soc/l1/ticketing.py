@@ -184,7 +184,7 @@ def _process_alert(
 
 def _make_ticket(alert: dict[str, Any], origin: str, now_ms: int) -> dict[str, Any]:
     # 시나리오 모드: 원본 alert 하나당 Ticket 하나이면 alert 제목이다. 여러 alert를 묶은 Ticket의
-    # AI 요약 제목은 계약이 묶음을 허용한 뒤 시나리오 로직 이슈에서 만든다(D-067, D-068).
+    # AI 요약 제목은 계약이 묶음을 허용한 뒤 시나리오 로직 이슈에서 만든다(D-070, D-071).
     return {
         "id": new_id("tkt"),
         "title": ticket_title([alert]),

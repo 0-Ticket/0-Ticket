@@ -42,7 +42,7 @@ def load_records() -> dict[str, list[dict[str, Any]]]:
     for alert in data["alerts"]:
         validate_contract("alert", contract_data("alert", alert))
     for event in data["events"]:
-        validate_contract("event", event)
+        validate_contract("event", contract_data("event", event))
     return data
 
 
@@ -201,9 +201,29 @@ def test_get_alert_returns_full_record_and_ledger_has_id(reader_url: str) -> Non
 def test_get_event_and_missing_id(reader_url: str) -> None:
     c = caller()
     out = call(c, "get_event", {"id": E[5]})
-    assert out["records"][0]["ocsf_class"] == 3002
+    record = out["records"][0]
+    assert record["class_uid"] == 3002 and record["details"]["id"] == E[5]  # OCSF 최상위(D-068)
+    assert "ocsf" not in record and "ocsf_class" not in record
+    assert E[5] in c.session.evidence_ids  # 근거 ID는 details.id에서 읽는다
     missing = call(c, "get_event", {"id": "evt_01a19f93-1150-7000-8000-0000000000ff"})
     assert missing["records"] == []
+
+
+def test_get_event_fills_message_from_the_summary_column_for_an_old_row(
+    migrated: str, reader_url: str
+) -> None:
+    """#347 이전에 저장된 행(ocsf에 message 없음)도 같은 요약을 돌려준다(D-068)."""
+    old = copy.deepcopy(load_records()["events"][0])
+    old["id"] = "evt_01a19f93-1150-7000-8000-0000000fa001"
+    old["raw_id"] = "raw_01a19f93-1150-7000-8000-0000000fa001"
+    old["summary"] = "GET /old 401"
+    del old["ocsf"]["message"]
+    insert_records(migrated, {"alerts": [], "events": [old]})
+
+    record = call(caller(), "get_event", {"id": old["id"]})["records"][0]
+
+    assert record["message"] == "GET /old 401"
+    assert record["details"]["id"] == old["id"]
 
 
 @pytest.mark.parametrize(
@@ -290,7 +310,7 @@ def test_query_events_filters(reader_url: str) -> None:
 def test_query_http_flow_reads_only_4002(reader_url: str) -> None:
     c = caller()
     out = call(c, "query_http_flow", RANGE)
-    assert ids(out) == [E[4], E[3], E[2], E[1]]  # 3002·1007은 나오지 않는다
+    assert ids(out) == [E[4], E[3], E[2], E[1]]  # 3002와 Base Event(0)는 나오지 않는다
     first = out["records"][-1]
     assert first == {
         "id": E[1],

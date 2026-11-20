@@ -265,11 +265,20 @@ def test_lab_shaped_alert_flows_to_incident_artifact_and_rerun_adds_nothing(
     # 2 정규화: 실패 0건
     normalized = normalize_run(NORMALIZE, conn, "lab-cycle")
     assert (normalized.succeeded, normalized.failed, normalized.failures) == (9, 0, {})
-    classes = q(conn, "SELECT ocsf_class, count(*) AS n FROM events GROUP BY ocsf_class").fetchall()
-    # 알려진 문제(docs/notes/264-lab-cycle.md "발견한 문제"): 정규화는 _index 이름으로만 웹 접근
-    # 로그를 가려, filebeat-*(.ds-filebeat-…)의 nginx 로그는 HTTP Activity(4002)가 아니라
-    # Base Event(0)가 된다. 정규화를 고치면 이 단언을 바꾼다.
-    assert {row["ocsf_class"]: row["n"] for row in classes} == {0: 5}
+    classes = q(
+        conn,
+        "SELECT r.original_text::jsonb ->> '_id' AS source_id, e.ocsf_class"
+        " FROM events e JOIN raw_records r ON r.id = e.raw_id",
+    ).fetchall()
+    # 같은 Filebeat 스트림에서도 모듈로 식별한 nginx만 HTTP Activity가 된다.
+    # 이 샘플의 ModSecurity에는 event.module이 없고 Suricata는 아직 매핑 대상이 아니다.
+    assert {row["source_id"]: row["ocsf_class"] for row in classes} == {
+        "lab-nginx-0001": 4002,
+        "lab-nginx-0002": 4002,
+        "lab-modsec-0001": 0,
+        "lab-nginx-0003": 4002,
+        "lab-suricata-0001": 0,
+    }
 
     query_alert = alert_by_title(conn, QUERY_RULE)
     assert query_alert["rule_id"] == "lab-rule-web-sqli"

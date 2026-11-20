@@ -29,7 +29,7 @@ Ticket 계약에 필수 `title`(1~200자, 공백뿐인 값 불가)을 더하고,
    - 파이썬과 SQL의 결과가 같은지는 같은 입력(`title_cases.json`)으로 비교하는 `db` 테스트가 지킨다.
 6. **API.** `ui_models.TicketItem.title`, `ui_read.TICKET_COLUMNS`에 `t.title`. 상세(`TicketDetail`)는 계약 `Ticket`이라 자동으로 포함된다. `frontend/src/api/generated/`를 갱신한다. 화면은 따로 고친다.
 7. **L2.** 코드는 바꾸지 않는다. `rows.ticket` 전체가 모델 입력에 들어가므로 `title`이 포함된다(`l2/analyze/context.py`, `l2/branch/context.py`). L2 테스트 기대값만 갱신한다.
-8. **결정 기록.** D-067(확정), D-068(추후). `_make_ticket` 근처에 시나리오 규칙 주석 한 줄.
+8. **결정 기록.** D-070(확정), D-071(추후). `_make_ticket` 근처에 시나리오 규칙 주석 한 줄.
 
 ## 바꿀 곳
 
@@ -54,7 +54,7 @@ Ticket 계약에 필수 `title`(1~200자, 공백뿐인 값 불가)을 더하고,
 ## 범위 밖
 
 - 화면 수정(목록·상세·Incident 화면이 title을 보여 주는 것).
-- 시나리오 모드의 묶음 Ticket 요약 제목(D-068로 남긴다). 생성 경로에서 alert가 2개 이상인 Ticket을 만드는 것.
+- 시나리오 모드의 묶음 Ticket 요약 제목(D-071로 남긴다). 생성 경로에서 alert가 2개 이상인 Ticket을 만드는 것.
 - Ticket 제목은 생성 시점 값이다. alert 제목이 재처리(D-063)로 바뀌어도 따라가지 않는다.
 - 유사 사례 색인 텍스트와 에이전트 읽기 권한(`soc_agent_reader`, 0007)은 바꾸지 않는다.
 
@@ -73,7 +73,7 @@ Ticket 계약에 필수 `title`(1~200자, 공백뿐인 값 불가)을 더하고,
 - [ ] `_TICKET_COLUMNS` 두 곳과 `_LOCK_ALERT`(title·severity·time)에 반영, 직접 INSERT 테스트 2곳과 시드·픽스처 JSON 수정
 - [ ] 목록 API 응답(`TicketItem`)과 상세 응답에 title이 있는 테스트, 프론트 생성 타입 갱신, 프론트 Ticket 모의 데이터 보정, `pnpm lint`·`pnpm test`·`pnpm build` 통과
 - [ ] L2 입력에 title이 들어가는 것을 반영한 L2 테스트 기대값 갱신
-- [ ] `docs/decisions.md`에 D-067(확정)·D-068(추후)과 기록 줄, `_make_ticket` 근처 주석
+- [ ] `docs/decisions.md`에 D-070(확정)·D-071(추후)과 기록 줄, `_make_ticket` 근처 주석
 - [x] L1·L2·L3·UI 담당 승인(계획 확정 전에 받음)
 - [ ] 키·비밀 값이 코드, 테스트, 로그, notes, PR에 없다
 - [ ] `uv run ruff format --check .`, `uv run ruff check .`, `uv run pytest`, `uv run pytest -m "db or qdrant"` 통과
@@ -89,7 +89,7 @@ Ticket 계약에 필수 `title`(1~200자, 공백뿐인 값 불가)을 더하고,
 - **제목을 만들 수 없을 때**: 고정 폴백 문구 `(제목 없음)`으로 통일하고 생성 코드와 백필이 같은 문구를 쓴다. 빈 제목이 `contract_error`로 같은 alert를 매번 다시 시도하는 일을 막는다(D-059).
 - **공백 기준**: "공백뿐인 값 불가"의 기준은 `\S`가 아니라 명시한 공백 목록 8종이다. `\S`는 유니코드 공백 전체를 공백으로 보는데 `clean_title`은 목록의 8종만 공백으로 봐서, U+2003 같은 글자만 있는 제목이 `clean_title`을 통과하고 계약에서 거부된다. 그러면 `run()`이 같은 alert를 매번 다시 시도해 D-059 문제가 다시 생긴다. 계약 pattern·DB CHECK·`clean_title`이 같은 목록을 쓴다(사람이 정함).
 - **백필**: 마이그레이션 0109 하나(nullable 추가 → UPDATE → NOT NULL + CHECK). alert가 있는 행은 규칙대로, L3 행은 `hunts.hypothesis`로, 가리키는 alert가 없는 행과 그 밖의 행은 폴백. 자르기 규칙이 파이썬과 SQL에서 같은지는 같은 입력으로 결과를 비교하는 테스트로 지킨다.
-- **시나리오 규칙 기록**: D-067(확정)에는 auto·l1·l3와 "시나리오 1:1이면 alert 제목"만 적는다. "묶음 Ticket의 AI 요약 제목"은 D-068(추후)로 두고, 계약이 묶음을 먼저 허용해야 한다고 덧붙인다.
+- **시나리오 규칙 기록**: D-070(확정)에는 auto·l1·l3와 "시나리오 1:1이면 alert 제목"만 적는다. "묶음 Ticket의 AI 요약 제목"은 D-071(추후)로 두고, 계약이 묶음을 먼저 허용해야 한다고 덧붙인다.
 - **L2 모델 입력**: `title`이 들어가는 것을 받아들이고 L2 테스트 기대값을 갱신한다. L2 담당 승인 범위에 포함한다.
 - **목록 API**: `TicketItem`에 title을 더한다(`ui_read.TICKET_COLUMNS`, 생성 TS 타입 갱신). 화면은 따로 고친다. UI 담당 확인 대상이다.
 - **프론트 모의 데이터**: `title`이 필수가 되면 타입 검사가 깨지므로 모의 데이터 보정을 이번 범위에 넣는다.
@@ -123,4 +123,5 @@ WHERE t.origin = 'l3' AND h.hypothesis !~ E'[^\\t\\n\\u000b\\f\\r \\u00a0\\u3000
 
 ## 바뀐 점
 
-- 2026-11-20 · 계약 pattern을 `[^S]`에서 같은 뜻의 `^[S]*[^S][\s\S]*$`(S는 공백 8종)로 바꿨다. 기존 테스트 `test_schema_patterns_are_anchored_at_both_ends`가 모든 계약 pattern의 앞뒤 고정을 요구하기 때문이다. 이 계획의 pattern 표기와 D-067도 같은 모양으로 맞췄다(사람이 정함).
+- 2026-11-20 · 계약 pattern을 `[^S]`에서 같은 뜻의 `^[S]*[^S][\s\S]*$`(S는 공백 8종)로 바꿨다. 기존 테스트 `test_schema_patterns_are_anchored_at_both_ends`가 모든 계약 pattern의 앞뒤 고정을 요구하기 때문이다. 이 계획의 pattern 표기와 D-070도 같은 모양으로 맞췄다(사람이 정함).
+- 2026-11-20 · main에 D-067(#340)·D-068(#347)·D-069(#349)가 먼저 들어와, 이 이슈의 결정 번호를 D-070(Ticket 제목)·D-071(시나리오 묶음 요약 제목, 추후)로 바꿨다. 이 계획 파일의 결정 번호는 모두 바뀐 번호다(사람이 정함).

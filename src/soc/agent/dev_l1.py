@@ -35,7 +35,7 @@ from soc.agent.types import AgentResult, AgentTask, TaskPrompt
 from soc.contracts import to_datetime, to_epoch_ms, validate_contract
 from soc.contracts.alert import contract_data
 from soc.ids import new_id
-from soc.normalize.mapping import alert_row, finding_ocsf
+from soc.normalize.mapping import alert_row, event_row, finding_ocsf, seed_event_ocsf
 
 SEED_PATH = Path(__file__).resolve().parents[3] / "tests" / "fixtures" / "l1_e2e" / "dev_seed.json"
 SEED_PROFILE = "dev-seed-l1"
@@ -123,17 +123,8 @@ def build_rows(seed_data: Mapping[str, Any], now_ms: int) -> SeedRows:
                 row = alert_row(new_id("alt"), raw["id"], ocsf, record["entities"])
                 rows.alerts.append(row)
             else:
-                row = {
-                    "id": new_id("evt"),
-                    "raw_id": raw["id"],
-                    "time": time_ms,
-                    "ocsf_class": record["ocsf"]["class_uid"],
-                    "summary": record["summary"],
-                    "entities": record["entities"],
-                    "assets": [],
-                    "ocsf": record["ocsf"],
-                    "details": {},
-                }
+                ocsf = seed_event_ocsf(record["ocsf"], time_ms, record["summary"])
+                row = event_row(new_id("evt"), raw["id"], ocsf, record["entities"])
                 rows.events.append(row)
             validate_contract("raw_record", raw)
             validate_contract(kind, contract_data(kind, row))

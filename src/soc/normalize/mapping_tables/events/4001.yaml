@@ -1,0 +1,6 @@
+# Network Activity
+class_uid: 4001
+summary:
+  - connection_info.protocol_name
+  - src_endpoint.ip
+  - dst_endpoint.ip

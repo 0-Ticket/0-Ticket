@@ -785,9 +785,6 @@
     {
       "id": "evt_01a19f93-1266-7000-8000-000000000001",
       "raw_id": "raw_01a19f93-1266-7000-8000-000000000100",
-      "time": 1793678577500,
-      "ocsf_class": 4002,
-      "summary": "GET /login.php 500",
       "entities": [
         {
           "type": "ip",
@@ -803,7 +800,18 @@
       "assets": [],
       "ocsf": {
         "class_uid": 4002,
+        "category_uid": 4,
+        "activity_id": 0,
+        "type_uid": 400200,
+        "severity_id": 1,
         "time": 1793678577500,
+        "metadata": {
+          "version": "1.9.0",
+          "product": {
+            "name": "Elasticsearch",
+            "vendor_name": "Elastic"
+          }
+        },
         "http_request": {
           "http_method": "GET",
           "url": {
@@ -812,7 +820,8 @@
         },
         "http_response": {
           "code": 500
-        }
+        },
+        "message": "GET /login.php 500"
       },
       "details": {
         "seed_source": "dev-seed-ui"

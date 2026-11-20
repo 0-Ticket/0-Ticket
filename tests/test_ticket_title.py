@@ -1,4 +1,4 @@
-"""Ticket 제목 규칙(#343, D-067). 샘플은 tests/fixtures/tickets/title_cases.json이다."""
+"""Ticket 제목 규칙(#343, D-070). 샘플은 tests/fixtures/tickets/title_cases.json이다."""
 
 import json
 import re

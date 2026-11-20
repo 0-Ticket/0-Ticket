@@ -1,4 +1,4 @@
-"""Ticket 정책 설정과 PostgreSQL 활성 행(#246), Ticket 제목 규칙(#343, D-067)."""
+"""Ticket 정책 설정과 PostgreSQL 활성 행(#246), Ticket 제목 규칙(#343, D-070)."""
 
 import re
 import tomllib
@@ -105,7 +105,7 @@ def _merge(base: dict[str, Any], over: dict[str, Any]) -> dict[str, Any]:
 
 
 def clean_title(text: str) -> str:
-    """제목 규칙(D-067): 공백 연속은 한 칸, 앞뒤 공백 제거, 200자(코드포인트) 초과는 199자 + `…`.
+    """제목 규칙(D-070): 공백 연속은 한 칸, 앞뒤 공백 제거, 200자(코드포인트) 초과는 199자 + `…`.
 
     공백 목록 밖 글자가 하나도 없으면 FALLBACK_TITLE이다.
     결과는 항상 Ticket 계약의 title을 통과한다.

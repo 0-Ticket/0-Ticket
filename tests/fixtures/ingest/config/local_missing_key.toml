@@ -1,0 +1,5 @@
+# 손으로 만든 샘플: 수집에 꼭 필요한 key가 없다(이것만 설정 오류다)
+[[ingest.sources]]
+kind = "event"
+time_field = "@timestamp"
+class = 4002

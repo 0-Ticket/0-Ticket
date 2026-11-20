@@ -283,7 +283,7 @@ def test_all_option_reads_rows_that_already_have_an_outcome(conn: psycopg.Connec
     assert "evidences" in after[9]
 
 
-def test_event_rows_are_never_touched(conn: psycopg.Connection) -> None:
+def test_event_rows_are_not_touched_by_alert_reprocess(conn: psycopg.Connection) -> None:
     seed(conn, SQLI)
     add_raw(conn, [EVENT], kind="event")
     run(SETTINGS, conn, "events")
@@ -373,3 +373,166 @@ def test_limit_counts_read_rows_in_time_then_id_order_and_since_uses_alert_time(
     assert (since.read, since.changed) == (2, 2)
     assert alert_row(conn, raw_id_of(LFI))[4] != OLD_TITLE
     assert alert_row(conn, raw_id_of(SQLI))[4] != OLD_TITLE
+
+
+# --- 이벤트 재처리(#347, D-068) ---
+EVENT_CASES = [
+    c
+    for c in json.loads((ROOT / "raw.json").read_text(encoding="utf-8"))
+    if c["kind"] == "event" and "error" not in c["expect"]
+]
+UNKNOWN_METHOD = "web_unlisted_method"
+
+
+def seed_events(conn: psycopg.Connection, *names: str) -> list[str]:
+    """샘플을 새 로직으로 정규화해 이벤트로 넣고 raw id 목록을 돌려준다."""
+    add_raw(conn, [next(c for c in EVENT_CASES if c["case"] == n) for n in names], kind="event")
+    run(SETTINGS, conn, "seed")
+    return [raw_id_of(name) for name in names]
+
+
+def age_event(conn: psycopg.Connection, raw_id: str) -> None:
+    """#347 이전 행처럼 만든다: ocsf에 message·activity_name이 없고 시각 컬럼이 어긋난다."""
+    conn.execute(
+        "UPDATE events SET ocsf = ocsf - 'message' - 'activity_name', entities = '[]',"
+        " summary = 'old summary' WHERE raw_id = %s",
+        (raw_id,),
+    )
+
+
+def event_row(conn: psycopg.Connection, raw_id: str) -> tuple[Any, ...]:
+    return conn.execute(
+        "SELECT id, raw_id, time, ocsf_class, summary, entities, assets, ocsf, details"
+        " FROM events WHERE raw_id = %s ORDER BY id LIMIT 1",
+        (raw_id,),
+    ).fetchone()
+
+
+def test_event_reprocess_keeps_id_and_fills_message_and_activity_name(
+    conn: psycopg.Connection,
+) -> None:
+    (raw_id,) = seed_events(conn, UNKNOWN_METHOD)
+    before = event_row(conn, raw_id)
+    age_event(conn, raw_id)
+    status_before = status_row(conn, raw_id)
+
+    result = reprocess(SETTINGS, conn, kind="event")
+
+    after = event_row(conn, raw_id)
+    assert (result.kind, result.read, result.changed, result.unchanged) == ("event", 1, 1, 0)
+    assert after[0] == before[0]  # 이벤트 id는 그대로
+    assert after[2:] == before[2:]  # 새 로직의 결과와 같아진다
+    assert after[7]["message"] == "BREW / 200" and after[7]["activity_name"] == "BREW"
+    assert status_row(conn, raw_id) == status_before  # normalize_status는 건드리지 않는다
+    assert set(result.columns) == {"summary", "ocsf"}  # 이 샘플은 엔티티가 없다
+    assert result.by_source == {"class_4002": {"changed": 1, "unchanged": 0, "skipped": 0}}
+
+
+@pytest.mark.parametrize("source", ["nginx", "modsecurity"])
+def test_event_reprocess_reclassifies_filebeat_base_event(
+    conn: psycopg.Connection, source: str
+) -> None:
+    original = json.loads((ROOT / "events" / f"{source}.json").read_text(encoding="utf-8"))
+    legacy_source = {
+        **original["_source"],
+        "event": {"dataset": original["_source"]["event"]["dataset"]},
+    }
+    legacy_original = {**original, "_source": legacy_source}
+    add_raw(conn, [{"case": source, "original": legacy_original}], kind="event")
+    run(SETTINGS, conn, "seed")
+    raw_id = raw_id_of(source)
+    before = event_row(conn, raw_id)
+    assert before[3] == before[7]["class_uid"] == 0
+    assert any(entity["type"] == "host" for entity in before[5])
+
+    conn.execute(
+        "UPDATE raw_records SET original_text = %s WHERE id = %s",
+        (json.dumps(original), raw_id),
+    )
+    status_before = status_row(conn, raw_id)
+
+    result = reprocess(SETTINGS, conn, kind="event")
+
+    after = event_row(conn, raw_id)
+    assert (result.kind, result.read, result.changed, result.unchanged) == ("event", 1, 1, 0)
+    assert after[:2] == before[:2]
+    assert after[2] == datetime(2026, 11, 19, 15, 49, 58, tzinfo=UTC)
+    assert after[3] == after[7]["class_uid"] == 4002
+    assert after[4] == "GET /catalog 200"
+    assert all(entity["type"] != "host" for entity in after[5])
+    assert status_row(conn, raw_id) == status_before
+    assert conn.execute("SELECT count(*) FROM events WHERE raw_id = %s", (raw_id,)).fetchone() == (
+        1,
+    )
+
+
+def test_event_reprocess_second_run_changes_nothing_and_dry_run_writes_nothing(
+    conn: psycopg.Connection,
+) -> None:
+    (raw_id,) = seed_events(conn, UNKNOWN_METHOD)
+    age_event(conn, raw_id)
+    aged = dump(conn)
+
+    dry = reprocess(SETTINGS, conn, kind="event", dry_run=True)
+
+    assert (dry.changed, dry.dry_run) == (1, True)
+    assert dump(conn) == aged
+    assert "dry-run read=1 would_update=1" in format_result(dry)
+    assert "duplicate_events=0" in format_result(dry)
+
+    assert reprocess(SETTINGS, conn, kind="event").changed == 1
+    again = reprocess(SETTINGS, conn, kind="event")
+    assert (again.changed, again.unchanged) == (0, 1)
+
+
+def test_event_reprocess_leaves_alerts_and_alert_reprocess_leaves_events(
+    conn: psycopg.Connection,
+) -> None:
+    (alert_raw,) = seed(conn, SQLI)
+    (event_raw,) = seed_events(conn, UNKNOWN_METHOD)
+    age(conn, alert_raw)
+    age_event(conn, event_raw)
+    alerts, events = alert_row(conn, alert_raw), event_row(conn, event_raw)
+
+    reprocess(SETTINGS, conn, kind="event")
+    assert alert_row(conn, alert_raw) == alerts  # 알럿은 그대로다
+    assert event_row(conn, event_raw) != events
+
+    age_event(conn, event_raw)
+    aged_events = event_row(conn, event_raw)
+    by_default = reprocess(SETTINGS, conn)  # 기본은 알럿이다
+    assert by_default.kind == "alert" and by_default.read == 1
+    assert event_row(conn, event_raw) == aged_events
+
+
+def test_event_reprocess_rejects_source_and_unknown_kind(conn: psycopg.Connection) -> None:
+    for kwargs in ({"kind": "event", "source": "suricata"}, {"kind": "log"}):
+        with pytest.raises(ValueError):
+            reprocess(SETTINGS, conn, **kwargs)
+
+
+def test_event_reprocess_skips_rows_it_cannot_normalize_and_counts_them(
+    conn: psycopg.Connection,
+) -> None:
+    (raw_id,) = seed_events(conn, UNKNOWN_METHOD)
+    conn.execute(
+        "UPDATE raw_records SET original_text = %s WHERE id = %s",
+        (json.dumps({"_index": "logs-nginx.access-x", "_id": "x"}), raw_id),
+    )
+    before = event_row(conn, raw_id)
+
+    result = reprocess(SETTINGS, conn, kind="event")
+
+    assert result.skipped == {"validation_failed": 1} and result.changed == 0
+    assert event_row(conn, raw_id) == before
+
+
+def test_event_reprocess_since_and_limit_select_rows(conn: psycopg.Connection) -> None:
+    names = ("web_nested_fields", "web_flat_keys", "cloud_read_call")
+    for raw_id in seed_events(conn, *names):
+        age_event(conn, raw_id)
+
+    assert reprocess(SETTINGS, conn, kind="event", limit=2, dry_run=True).read == 2
+    future = datetime(2100, 1, 1, tzinfo=UTC)
+    assert reprocess(SETTINGS, conn, kind="event", since=future, dry_run=True).read == 0
+    assert reprocess(SETTINGS, conn, kind="event").read == 3

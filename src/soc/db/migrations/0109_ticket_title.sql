@@ -1,4 +1,4 @@
--- Ticket 제목(#343, D-067). tickets.title을 더하고 기존 행을 채운다.
+-- Ticket 제목(#343, D-070). tickets.title을 더하고 기존 행을 채운다.
 --
 -- 제목 규칙은 soc.ticketing의 clean_title·ticket_title과 같다: 공백 8종(탭·LF·VT·FF·CR·공백·
 -- U+00A0·U+3000)의 연속을 한 칸으로 줄이고 앞뒤 한 칸을 떼며, 200자(코드포인트)를 넘으면

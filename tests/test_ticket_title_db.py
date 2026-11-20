@@ -1,4 +1,4 @@
-"""Ticket 제목: 마이그레이션 0109 백필·CHECK와 단발 분기의 폴백(#343, D-067)."""
+"""Ticket 제목: 마이그레이션 0109 백필·CHECK와 단발 분기의 폴백(#343, D-070)."""
 
 import re
 import shutil

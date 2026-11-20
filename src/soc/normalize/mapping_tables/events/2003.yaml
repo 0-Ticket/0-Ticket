@@ -1,0 +1,5 @@
+# Compliance Finding
+class_uid: 2003
+summary:
+  - finding_info.title
+  - status

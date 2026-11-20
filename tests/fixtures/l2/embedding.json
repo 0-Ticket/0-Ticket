@@ -20,7 +20,7 @@
       ],
       "events": [
         {
-          "summary": "일반 Ticket 근거"
+          "message": "일반 Ticket 근거"
         }
       ],
       "hunt": null,
@@ -34,7 +34,7 @@
       "alerts": [],
       "events": [
         {
-          "summary": "L3 Hunt 근거"
+          "message": "L3 Hunt 근거"
         }
       ],
       "hunt": {

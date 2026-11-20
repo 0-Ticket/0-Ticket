@@ -3,8 +3,8 @@
 from typing import Any
 
 
-def read_value(source: dict[str, Any], path: str) -> Any:
-    """평평한 점 키를 먼저, 없으면 중첩 경로를 따라 값을 읽는다. 없으면 None.
+def read_value(source: dict[str, Any], path: str, default: Any = None) -> Any:
+    """평평한 점 키를 먼저, 없으면 중첩 경로를 따라 값을 읽는다. 없으면 default.
 
     Args:
         source: raw.original["_source"]. 매핑표의 `$.` 경로는 hit 전체.
@@ -15,6 +15,6 @@ def read_value(source: dict[str, Any], path: str) -> Any:
     node: Any = source
     for part in path.split("."):
         if not isinstance(node, dict) or part not in node:
-            return None
+            return default
         node = node[part]
     return node

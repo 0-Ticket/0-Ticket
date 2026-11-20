@@ -70,6 +70,9 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args([] if argv is None else argv)
     try:
         settings = read_settings(load_config()["ingest"])
+        # 알 수 없는 키·정할 수 없는 class는 수집을 멈추지 않는다. 조용히 사라지지 않게 알린다(#340)
+        for warning in settings.warnings:
+            print(f"경고: {warning}", file=sys.stderr)
         since_ms = None
         if args.since is not None:
             try:

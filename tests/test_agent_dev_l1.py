@@ -28,6 +28,7 @@ from soc.contracts import validate_contract
 from soc.contracts.alert import contract_data
 from soc.l3.hunt.dev_seed import SEED_PROFILE as L3_SEED_PROFILE
 from soc.l3.hunt.dev_seed import load_seed as load_l3_seed
+from soc.normalize.ocsf_schema import validate_ocsf
 
 FIXTURE = Path(__file__).parent / "fixtures" / "l1_e2e" / "dev_seed.json"
 DOC_NETS = [ipaddress.ip_network(n) for n in ("192.0.2.0/24", "198.51.100.0/24", "203.0.113.0/24")]
@@ -151,7 +152,9 @@ def test_rows_pass_contracts_and_use_now() -> None:
         assert alert["details"] == {}  # 시드 표시는 RawRecord에만 둔다
         assert NOW_MS - DAY_MS < alert["time"] < NOW_MS
     for event in rows.events:
-        validate_contract("event", event)
+        validate_contract("event", contract_data("event", event))
+        validate_ocsf(event["ocsf"])
+        assert event["ocsf"]["message"] == event["summary"]
         assert event["details"] == {}
 
 

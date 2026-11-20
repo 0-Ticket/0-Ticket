@@ -1,0 +1,54 @@
+class_uid: 4002
+detect:
+  - field: [event.module]
+    equals: modsecurity
+
+entries:
+  # time_stamp가 없을 때 클래스 표의 @timestamp를 사용한다.
+  - target: time
+    from: [transaction.time_stamp]
+    transform: ctime_utc
+  - target: metadata.original_time
+    from: [transaction.time_stamp]
+  - target: metadata.correlation_uid
+    from: [transaction.unique_id]
+  - target: activity_name
+    from: [transaction.request.method]
+    transform: method_name
+  - target: src_endpoint.port
+    from: [transaction.client_port]
+    transform: to_int
+  - target: dst_endpoint.ip
+    from: [transaction.host_ip]
+  - target: dst_endpoint.port
+    from: [transaction.host_port]
+    transform: to_int
+  - target: http_request.http_method
+    from: [transaction.request.method]
+    transform: http_method
+  - target: http_request.version
+    from: [transaction.request.http_version]
+  - target: http_request.url.url_string
+    from: [transaction.request.uri]
+  - target: http_request.url.hostname
+    from: [transaction.request.hostname]
+  - target: http_request.user_agent
+    from: [transaction.request.headers.User-Agent]
+  - target: http_response.code
+    from: [transaction.response.http_code]
+    transform: to_int
+  - target: http_response.length
+    from: [transaction.response.headers.Content-Length, transaction.response.headers.content-length]
+    transform: to_int
+  - target: http_response.content_type
+    from: [transaction.response.headers.Content-Type, transaction.response.headers.content-type]
+
+entities:
+  - type: ip
+    role: dst
+    from: [transaction.host_ip]
+    transform: ip
+  - type: domain
+    role: dst
+    from: [transaction.request.hostname]
+    transform: domain_or_ip

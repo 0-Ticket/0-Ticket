@@ -1597,6 +1597,70 @@
    }
   ]
  },
+ "assessment": {
+  "attributes": {
+   "category": {
+    "caption": "Category",
+    "description": "The category that the assessment is part of. For example: <code>Prevention</code> or <code>Windows 10</code>.",
+    "requirement": "optional",
+    "type": "string_t",
+    "type_name": "String"
+   },
+   "desc": {
+    "caption": "Description",
+    "description": "The description of the assessment criteria, or a description of the specific configuration or signal the assessment is targeting.",
+    "requirement": "recommended",
+    "type": "string_t",
+    "type_name": "String"
+   },
+   "meets_criteria": {
+    "caption": "Meets Criteria",
+    "description": "Determines whether the assessment against the specific configuration or signal meets the assessments criteria. For example, if the assessment checks if a <code>Datastore</code> is encrypted or not, having encryption would be evaluated as <code>true</code>.",
+    "requirement": "required",
+    "type": "boolean_t",
+    "type_name": "Boolean"
+   },
+   "name": {
+    "caption": "Name",
+    "description": "The name of the configuration or signal being assessed. For example: <code>Kernel Mode Code Integrity (KMCI)</code> or <code>publicAccessibilityState</code>.",
+    "requirement": "recommended",
+    "type": "string_t",
+    "type_name": "String"
+   },
+   "policy": {
+    "caption": "Assessment Policy",
+    "description": "The details of any policy associated with an assessment.",
+    "object_name": "Policy",
+    "object_type": "policy",
+    "requirement": "optional",
+    "type": "object_t"
+   },
+   "uid": {
+    "caption": "Unique ID",
+    "description": "The unique identifier of the configuration or signal being assessed. For example: the <code>signal_id</code>.",
+    "requirement": "optional",
+    "type": "string_t",
+    "type_name": "String"
+   },
+   "uid_numeric": {
+    "caption": "Numeric Unique ID",
+    "description": "The <code>uid</code> attribute in numeric form where applicable.<br><strong>Note:</strong> Producers may populate <code>uid_numeric</code> only in addition to <code>uid</code> and not as an alternative to it.",
+    "requirement": "optional",
+    "type": "long_t",
+    "type_name": "Long"
+   }
+  },
+  "caption": "Assessment",
+  "constraints": {
+   "at_least_one": [
+    "name",
+    "uid"
+   ]
+  },
+  "description": "The Assessment object describes a point-in-time assessment, check, or evaluation of a specific configuration or signal against an asset, entity, person, or otherwise. For example, this can encapsulate <code>os_signals</code> from CrowdStrike Falcon Zero Trust Assessments, or account for <code>Datastore</code> configurations from Cyera, or capture details of Microsoft Intune configuration policies.",
+  "extends": "_entity",
+  "name": "assessment"
+ },
  "attack": {
   "attributes": {
    "mitigation": {
@@ -1861,6 +1925,151 @@
    "container"
   ]
  },
+ "authentication_token": {
+  "attributes": {
+   "created_time": {
+    "caption": "Created Time",
+    "description": "The time that the authentication token was created or issued. This corresponds to the token issuance time, such as the <code>iat</code> (issued at) claim in OIDC tokens, the issue instant in SAML assertions, or the ticket start time in Kerberos tickets.",
+    "requirement": "recommended",
+    "type": "timestamp_t",
+    "type_name": "Timestamp"
+   },
+   "encryption_details": {
+    "caption": "Encryption Details",
+    "description": "The encryption details of the authentication token.",
+    "object_name": "Encryption Details",
+    "object_type": "encryption_details",
+    "requirement": "recommended",
+    "type": "object_t"
+   },
+   "expiration_time": {
+    "caption": "Expiration Time",
+    "description": "The expiration time of the authentication token.",
+    "requirement": "optional",
+    "type": "timestamp_t",
+    "type_name": "Timestamp"
+   },
+   "is_renewable": {
+    "caption": "Renewable",
+    "description": "Indicates whether the authentication token is renewable.",
+    "requirement": "optional",
+    "type": "boolean_t",
+    "type_name": "Boolean"
+   },
+   "kerberos_flags": {
+    "caption": "Kerberos Flags",
+    "description": "A bitmask, either in hexadecimal or decimal form, which encodes various attributes or permissions associated with a Kerberos ticket. These flags delineate specific characteristics of the ticket, such as its renewability or forwardability.",
+    "references": [
+     {
+      "description": "RFC 4120: 5.2.8.  KerberosFlags",
+      "url": "https://www.rfc-editor.org/rfc/rfc4120#section-5.2.8"
+     },
+     {
+      "description": "Microsoft Windows Security 4769 (see 'Ticket Options')",
+      "url": "https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4769"
+     }
+    ],
+    "requirement": "recommended",
+    "type": "string_t",
+    "type_name": "String"
+   },
+   "modified_time": {
+    "caption": "Modified Time",
+    "description": "The last time the token was updated.",
+    "requirement": "optional",
+    "type": "timestamp_t",
+    "type_name": "Timestamp"
+   },
+   "name": {
+    "caption": "Name",
+    "description": "The human-friendly name of a token or key, if available, such as the <code>name</code> from the Okta API Token API.",
+    "requirement": "optional",
+    "type": "string_t",
+    "type_name": "String"
+   },
+   "tenant_uid": {
+    "caption": "Tenant UID",
+    "description": "The unique identifier of the tenant or organization that owns the token or key, or the tenant context in which the token is authorized for use. This is particularly relevant in multi-tenant Identity Provider scenarios where tokens are scoped to specific tenants.",
+    "requirement": "optional",
+    "type": "string_t",
+    "type_name": "String"
+   },
+   "type": {
+    "caption": "Type",
+    "description": "The type of the authentication token.",
+    "requirement": "recommended",
+    "type": "string_t",
+    "type_name": "String"
+   },
+   "type_id": {
+    "caption": "Type ID",
+    "description": "The normalized authentication token type identifier. This attribute restricts the base <code>token.type_id</code> enum to only protocol-specific authentication token types (values 0, 1-5, 99). API tokens and client tokens (values 6-7) are not valid for <code>authentication_token</code> - use the base <code>token</code> object for those types.",
+    "enum": {
+     "0": {
+      "caption": "Unknown",
+      "description": "The Authentication token type is unknown."
+     },
+     "1": {
+      "caption": "Ticket Granting Ticket",
+      "description": "Ticket Granting Ticket (TGT) for Kerberos."
+     },
+     "2": {
+      "caption": "Service Ticket",
+      "description": "Service Ticket (ST) for Kerberos."
+     },
+     "3": {
+      "caption": "Identity Token",
+      "description": "Identity (ID) Token for OIDC."
+     },
+     "4": {
+      "caption": "Refresh Token",
+      "description": "Refresh Token for OIDC."
+     },
+     "5": {
+      "caption": "SAML Assertion",
+      "description": "Authentication Assertion for SAML."
+     },
+     "6": {
+      "caption": "Client Token",
+      "description": "Client Token issued by an Identity Provider (IdP) for application authentication. Use this value for IdP-issued tokens used for service-to-service authentication. Examples: Microsoft Entra ID Application Registration client secrets, Okta API tokens, Auth0 Machine-to-Machine tokens. Key characteristic: These tokens are issued by Identity Providers, not by individual services."
+     },
+     "7": {
+      "caption": "API Token",
+      "description": "A generic API token or API key used for authenticating API requests. Use this value for service-specific API authentication tokens that are NOT issued by Identity Providers. Examples: REST API keys, GraphQL API keys, Stripe API keys, Twilio API keys, AWS API keys. Key characteristic: These tokens are issued by individual services/platforms, not by Identity Providers."
+     },
+     "99": {
+      "caption": "Other",
+      "description": "The type is not mapped. See the <code>type</code> attribute, which contains a data source specific value."
+     }
+    },
+    "requirement": "recommended",
+    "sibling": "type",
+    "type": "integer_t",
+    "type_name": "Integer"
+   },
+   "uid": {
+    "caption": "Unique ID",
+    "description": "The unique ID of a token or key, if available, such as the <code>Secret ID</code> of Entra ID Application Registration Client Secrets.",
+    "requirement": "optional",
+    "type": "string_t",
+    "type_name": "String"
+   },
+   "zone": {
+    "caption": "Network Zone",
+    "description": "The network zone or geographic region that the token or key is authorized to be used from. This may represent network-based access restrictions, geographic limitations, or other zone-based authorization policies. Examples include Okta's network zone restrictions or cloud provider region restrictions.",
+    "requirement": "optional",
+    "type": "string_t",
+    "type_name": "String"
+   }
+  },
+  "caption": "Authentication Token",
+  "description": "The Authentication Token object extends the base <code>token</code> object and represents standardized authentication tokens, tickets, or assertions that conform to established authentication protocols such as Kerberos, OIDC, and SAML. This object inherits all attributes from <code>token</code> and adds protocol-specific attributes (e.g., <code>kerberos_flags</code>, <code>encryption_details</code>) for authentication events. Use this object in authentication events to represent protocol-specific tokens: Kerberos Ticket Granting Tickets (TGT) and Service Tickets (ST), OIDC Identity Tokens and Refresh Tokens, and SAML Assertions. These tokens are issued by authentication servers and identity providers and carry protocol-specific metadata, lifecycle information, and security attributes defined by their respective specifications. When to use this object: Use <code>authentication_token</code> when representing protocol-specific authentication tokens (type_id values 1-5: Kerberos TGT/ST, OIDC ID/Refresh tokens, SAML assertions) in authentication events. When NOT to use this object: Do NOT use <code>authentication_token</code> for API tokens or client tokens (type_id values 6-7) used in API activity events - use the base <code>token</code> object instead. Do NOT use <code>authentication_token</code> for generic API keys - use the base <code>token</code> object instead.",
+  "extends": "token",
+  "name": "authentication_token",
+  "profiles": [
+   "datetime"
+  ]
+ },
  "authorization": {
   "attributes": {
    "decision": {
@@ -2044,6 +2253,231 @@
    }
   ]
  },
+ "check": {
+  "attributes": {
+   "desc": {
+    "caption": "Description",
+    "description": "The detailed description of the compliance check, explaining the security requirement, vulnerability, or configuration being assessed. For example, CIS: <code>The cramfs filesystem type is a compressed read-only Linux filesystem. Removing support for unneeded filesystem types reduces the local attack surface.</code> or DISA STIG: <code>Unauthorized access to the information system by foreign entities may result in loss or compromise of data.</code>",
+    "references": [
+     {
+      "description": "CIS Benchmark Rationales",
+      "url": "https://www.cisecurity.org/cis-benchmarks"
+     },
+     {
+      "description": "DISA STIG Vulnerability Discussions",
+      "url": "https://public.cyber.mil/stigs/downloads"
+     }
+    ],
+    "requirement": "optional",
+    "type": "string_t",
+    "type_name": "String"
+   },
+   "name": {
+    "caption": "Name",
+    "description": "The name or title of the compliance check. For example, CIS: <code>Ensure mounting of cramfs filesystems is disabled</code> or DISA STIG: <code>The Ubuntu operating system must implement DoD-approved encryption to protect the confidentiality of remote access sessions</code>.",
+    "references": [
+     {
+      "description": "CIS Benchmark Rules",
+      "url": "https://www.cisecurity.org/cis-benchmarks"
+     },
+     {
+      "description": "DISA STIG Requirements",
+      "url": "https://public.cyber.mil/stigs/downloads"
+     }
+    ],
+    "requirement": "recommended",
+    "type": "string_t",
+    "type_name": "String"
+   },
+   "resource": {
+    "caption": "Resource",
+    "description": "Describes details about the resource that this check evaluated.",
+    "object_name": "Resource Details",
+    "object_type": "resource_details",
+    "requirement": "optional",
+    "type": "object_t"
+   },
+   "severity": {
+    "caption": "Severity",
+    "description": "The severity level as defined in the source document. For example CIS Benchmarks, valid values are: <code>Level 1</code> (security-forward, essential settings), <code>Level 2</code> (security-focused environment, more restrictive), or <code>Scored/Not Scored</code> (whether compliance can be automatically checked). For DISA STIG, valid values are: <code>CAT I</code> (maps to severity_id 5/Critical), <code>CAT II</code> (maps to severity_id 4/High), or <code>CAT III</code> (maps to severity_id 3/Medium).",
+    "references": [
+     {
+      "description": "CIS Benchmarks Levels",
+      "url": "https://www.cisecurity.org/cis-benchmarks"
+     },
+     {
+      "description": "DISA STIGs Category Guide",
+      "url": "https://public.cyber.mil/stigs"
+     }
+    ],
+    "requirement": "optional",
+    "type": "string_t",
+    "type_name": "String"
+   },
+   "severity_id": {
+    "caption": "Severity ID",
+    "description": "The normalized severity identifier that maps severity levels to standard severity levels. For example CIS Benchmark: <code>Level 2</code> maps to <code>4</code> (High), <code>Level 1</code> maps to <code>3</code> (Medium). For DISA STIG: <code>CAT I</code> maps to <code>5</code> (Critical), <code>CAT II</code> maps to <code>4</code> (High), and <code>CAT III</code> maps to <code>3</code> (Medium).",
+    "enum": {
+     "0": {
+      "caption": "Unknown",
+      "description": "The severity is unknown."
+     },
+     "1": {
+      "caption": "Informational",
+      "description": "Informational message. No action required."
+     },
+     "2": {
+      "caption": "Low",
+      "description": "The user decides if action is needed."
+     },
+     "3": {
+      "caption": "Medium",
+      "description": "Maps to CIS Benchmark <code>Level 1</code> - Essential security settings recommended for all systems, or DISA STIG <code>CAT III</code> - Action is required but the situation is not serious at this time."
+     },
+     "4": {
+      "caption": "High",
+      "description": "Maps to CIS Benchmark <code>Level 2</code> - More restrictive and security-focused settings for sensitive environments, or DISA STIG <code>CAT II</code> - Action is required immediately."
+     },
+     "5": {
+      "caption": "Critical",
+      "description": "Maps to DISA STIG <code>CAT I</code> - Action is required immediately and the scope is broad."
+     },
+     "6": {
+      "caption": "Fatal",
+      "description": "An error occurred but it is too late to take remedial action."
+     },
+     "99": {
+      "caption": "Other",
+      "description": "The severity is not mapped. See the <code>severity</code> attribute, which contains a data source specific value."
+     }
+    },
+    "requirement": "optional",
+    "sibling": "severity",
+    "type": "integer_t",
+    "type_name": "Integer"
+   },
+   "standards": {
+    "caption": "Compliance Standards: List",
+    "description": "The regulatory or industry standard this check is associated with. E.g., <code>PCI DSS 3.2.1</code>, <code>HIPAA Security Rule</code>, <code>NIST SP 800-53 Rev. 5</code>, or <code>ISO/IEC 27001:2013</code>.",
+    "is_array": true,
+    "references": [
+     {
+      "description": "PCI DSS 3.2.1",
+      "url": "https://www.pcisecuritystandards.org/document_library"
+     },
+     {
+      "description": "HIPAA Security Rule",
+      "url": "https://www.hhs.gov/hipaa/for-professionals/security/laws-regulations/index.html"
+     },
+     {
+      "description": "NIST SP 800-53 Rev. 5",
+      "url": "https://csrc.nist.gov/publications/detail/sp/800-53/rev-5/final"
+     },
+     {
+      "description": "ISO/IEC 27001:2013",
+      "url": "https://www.iso.org/standard/54534.html"
+     }
+    ],
+    "requirement": "recommended",
+    "type": "string_t",
+    "type_name": "String"
+   },
+   "status": {
+    "caption": "Status",
+    "description": "The resultant status of the compliance check normalized to the caption of the <code>status_id</code> value. For example, CIS Benchmark: <code>Pass</code> when all requirements are met, <code>Fail</code> when requirements are not met, or DISA STIG: <code>NotAFinding</code> (maps to status_id 1/Pass), <code>Open</code> (maps to status_id 3/Fail).",
+    "references": [
+     {
+      "description": "CIS Benchmark Compliance Status",
+      "url": "https://www.cisecurity.org/cis-benchmarks"
+     },
+     {
+      "description": "DISA STIG Status Types",
+      "url": "https://public.cyber.mil/stigs/srg-stig-tools/"
+     }
+    ],
+    "requirement": "recommended",
+    "type": "string_t",
+    "type_name": "String"
+   },
+   "status_id": {
+    "caption": "Status ID",
+    "description": "The normalized status identifier of the compliance check.",
+    "enum": {
+     "0": {
+      "caption": "Unknown",
+      "description": "The status is unknown."
+     },
+     "1": {
+      "caption": "Pass",
+      "description": "The compliance check passed for all the evaluated resources."
+     },
+     "2": {
+      "caption": "Warning",
+      "description": "The compliance check did not yield a result due to missing information."
+     },
+     "3": {
+      "caption": "Fail",
+      "description": "The compliance check failed for at least one of the evaluated resources."
+     },
+     "99": {
+      "caption": "Other",
+      "description": "The event status is not mapped. See the <code>status</code> attribute, which contains a data source specific value."
+     }
+    },
+    "requirement": "recommended",
+    "sibling": "status",
+    "type": "integer_t",
+    "type_name": "Integer"
+   },
+   "uid": {
+    "caption": "Unique ID",
+    "description": "The unique identifier of the compliance check within its standard or framework. For example, CIS Benchmark identifier <code>1.1.1.1</code>, DISA STIG identifier <code>V-230234</code>, or NIST control identifier <code>AC-17(2)</code>.",
+    "references": [
+     {
+      "description": "CIS Benchmark ID Format",
+      "url": "https://www.cisecurity.org/cis-benchmarks"
+     },
+     {
+      "description": "DISA STIG ID Format",
+      "url": "https://public.cyber.mil/stigs/downloads"
+     },
+     {
+      "description": "NIST SP 800-53 Control IDs",
+      "url": "https://csrc.nist.gov/publications/detail/sp/800-53/rev-5/final"
+     }
+    ],
+    "requirement": "recommended",
+    "type": "string_t",
+    "type_name": "String"
+   },
+   "version": {
+    "caption": "Version",
+    "description": "The check version. For example, CIS Benchmark: <code>1.1.0</code> for Amazon Linux 2 or DISA STIG: <code>V2R1</code> for Windows 10.",
+    "references": [
+     {
+      "description": "CIS Benchmark Versioning",
+      "url": "https://www.cisecurity.org/cis-benchmarks"
+     },
+     {
+      "description": "DISA STIG Version Numbering",
+      "url": "https://public.cyber.mil/stigs/downloads"
+     }
+    ],
+    "requirement": "optional",
+    "type": "string_t",
+    "type_name": "String"
+   }
+  },
+  "caption": "Check",
+  "description": "The check object defines a specific, testable compliance verification point that evaluates a target device against a standard, framework, or custom requirement. While checks are typically associated with formal standards (like CIS, NIST, or ISO), they can also represent custom or organizational requirements. When mapped to controls, checks can evaluate specific control_parameters to determine compliance status, but neither the control mapping nor control_parameters are required for a valid check.",
+  "extends": "object",
+  "name": "check",
+  "profiles": [
+   "cloud",
+   "container",
+   "data_classification"
+  ]
+ },
  "cis_control": {
   "attributes": {
    "desc": {
@@ -2077,6 +2511,243 @@
     "description": "CIS Controls",
     "url": "https://www.cisecurity.org/controls"
    }
+  ]
+ },
+ "compliance": {
+  "attributes": {
+   "assessments": {
+    "caption": "Assessments",
+    "description": "A list of assessments associated with the compliance requirements evaluation.",
+    "is_array": true,
+    "object_name": "Assessment",
+    "object_type": "assessment",
+    "requirement": "optional",
+    "type": "object_t"
+   },
+   "category": {
+    "caption": "Category",
+    "description": "The category a control framework pertains to, as reported by the source tool, such as <code>Asset Management</code> or <code>Risk Assessment</code>.",
+    "requirement": "optional",
+    "type": "string_t",
+    "type_name": "String"
+   },
+   "checks": {
+    "caption": "Compliance Checks",
+    "description": "A list of compliance checks associated with specific industry standards or frameworks. Each check represents an individual rule or requirement that has been evaluated against a target device. Checks typically include details such as the check name (e.g., CIS: 'Ensure mounting of cramfs filesystems is disabled' or DISA STIG descriptive titles), unique identifiers (such as CIS identifier '1.1.1.1' or DISA STIG identifier 'V-230234'), descriptions (detailed explanations of security requirements or vulnerability discussions), and version information.",
+    "is_array": true,
+    "object_name": "Check",
+    "object_type": "check",
+    "references": [
+     {
+      "description": "Center for Internet Security Benchmarks",
+      "url": "https://www.cisecurity.org/cis-benchmarks/"
+     },
+     {
+      "description": "DISA Security Technical Implementation Guides (STIGs)",
+      "url": "https://public.cyber.mil/stigs/"
+     }
+    ],
+    "requirement": "optional",
+    "type": "object_t"
+   },
+   "compliance_references": {
+    "@deprecated": {
+     "message": "Use the <code>checks</code> attribute instead.",
+     "since": "1.5.0",
+     "superseded_by": [
+      "checks"
+     ]
+    },
+    "caption": "Compliance Standard References",
+    "description": "A list of reference KB articles that provide information to help organizations understand, interpret, and implement compliance standards. They provide guidance, best practices, and examples.",
+    "is_array": true,
+    "object_name": "KB Article",
+    "object_type": "kb_article",
+    "requirement": "optional",
+    "type": "object_t"
+   },
+   "compliance_standards": {
+    "@deprecated": {
+     "message": "Use the <code>checks</code> attribute instead.",
+     "since": "1.5.0",
+     "superseded_by": [
+      "checks"
+     ]
+    },
+    "caption": "Compliance Standards: Details",
+    "description": "A list of established guidelines or criteria that define specific requirements an organization must follow.",
+    "is_array": true,
+    "object_name": "KB Article",
+    "object_type": "kb_article",
+    "requirement": "optional",
+    "type": "object_t"
+   },
+   "control": {
+    "caption": "Security Control",
+    "description": "A Control is a prescriptive, actionable set of specifications that strengthens device posture. The control specifies required security measures, while the specific implementation values are defined in control_parameters. E.g., CIS AWS Foundations Benchmark 1.2.0 - Control 2.1 - Ensure CloudTrail is enabled in all regions",
+    "references": [
+     {
+      "description": "CIS AWS Foundations Benchmark 1.2.0",
+      "url": "https://www.cisecurity.org/benchmark/amazon_web_services"
+     },
+     {
+      "description": "CloudTrail Documentation",
+      "url": "https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-user-guide.html"
+     }
+    ],
+    "requirement": "recommended",
+    "type": "string_t",
+    "type_name": "String"
+   },
+   "control_parameters": {
+    "caption": "Control Parameters",
+    "description": "The list of control parameters evaluated in a Compliance check. E.g., parameters for CloudTrail configuration might include <code>multiRegionTrailEnabled: true</code>, <code>logFileValidationEnabled: true</code>, and <code>requiredRegions: [us-east-1, us-west-2]</code>",
+    "is_array": true,
+    "object_name": "Key:Value object",
+    "object_type": "key_value_object",
+    "references": [
+     {
+      "description": "AWS CloudTrail Configuration Parameters",
+      "url": "https://docs.aws.amazon.com/awscloudtrail/latest/APIReference/API_CreateTrail.html"
+     },
+     {
+      "description": "AWS Multi-Region CloudTrail Best Practices",
+      "url": "https://docs.aws.amazon.com/awscloudtrail/latest/userguide/receive-cloudtrail-log-files-from-multiple-regions.html"
+     },
+     {
+      "description": "CloudTrail Log File Validation",
+      "url": "https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-log-file-validation-intro.html"
+     }
+    ],
+    "requirement": "optional",
+    "type": "object_t"
+   },
+   "desc": {
+    "caption": "Description",
+    "description": "The description or criteria of a control.",
+    "requirement": "optional",
+    "type": "string_t",
+    "type_name": "String"
+   },
+   "requirements": {
+    "caption": "Compliance Requirements",
+    "description": "The specific compliance requirements being evaluated. E.g., <code>PCI DSS Requirement 8.2.3 - Passwords must meet minimum complexity requirements</code> or <code>HIPAA Security Rule 164.312(a)(2)(iv) - Implement encryption and decryption mechanisms</code>",
+    "is_array": true,
+    "references": [
+     {
+      "description": "PCI DSS Standards",
+      "url": "https://www.pcisecuritystandards.org/document_library"
+     },
+     {
+      "description": "HIPAA Security Rule",
+      "url": "https://www.hhs.gov/hipaa/for-professionals/security/laws-regulations/index.html"
+     }
+    ],
+    "requirement": "optional",
+    "type": "string_t",
+    "type_name": "String"
+   },
+   "standards": {
+    "caption": "Compliance Standards: List",
+    "description": "The regulatory or industry standards being evaluated for compliance.",
+    "is_array": true,
+    "references": [
+     {
+      "description": "PCI DSS 3.2.1",
+      "url": "https://www.pcisecuritystandards.org/document_library"
+     },
+     {
+      "description": "HIPAA Security Rule",
+      "url": "https://www.hhs.gov/hipaa/for-professionals/security/laws-regulations/index.html"
+     },
+     {
+      "description": "NIST SP 800-53 Rev. 5",
+      "url": "https://csrc.nist.gov/publications/detail/sp/800-53/rev-5/final"
+     },
+     {
+      "description": "ISO/IEC 27001:2013",
+      "url": "https://www.iso.org/standard/54534.html"
+     }
+    ],
+    "requirement": "recommended",
+    "type": "string_t",
+    "type_name": "String"
+   },
+   "status": {
+    "caption": "Status",
+    "description": "The resultant status of the compliance check normalized to the caption of the <code>status_id</code> value. In the case of 'Other', it is defined by the event source.",
+    "requirement": "recommended",
+    "type": "string_t",
+    "type_name": "String"
+   },
+   "status_code": {
+    "caption": "Status Code",
+    "description": "The resultant status code of the compliance check.",
+    "requirement": "optional",
+    "type": "string_t",
+    "type_name": "String"
+   },
+   "status_detail": {
+    "@deprecated": {
+     "message": "Use the <code>status_details</code> attribute instead.",
+     "since": "1.4.0",
+     "superseded_by": [
+      "status_details"
+     ]
+    },
+    "caption": "Status Detail",
+    "description": "The contextual description of the <code>status, status_code</code> values.",
+    "requirement": "optional",
+    "type": "string_t",
+    "type_name": "String"
+   },
+   "status_details": {
+    "caption": "Status Details",
+    "description": "A list of contextual descriptions of the <code>status, status_code</code> values.",
+    "is_array": true,
+    "requirement": "optional",
+    "type": "string_t",
+    "type_name": "String"
+   },
+   "status_id": {
+    "caption": "Status ID",
+    "description": "The normalized status identifier of the compliance check.",
+    "enum": {
+     "0": {
+      "caption": "Unknown",
+      "description": "The status is unknown."
+     },
+     "1": {
+      "caption": "Pass",
+      "description": "The compliance check passed for all the evaluated resources."
+     },
+     "2": {
+      "caption": "Warning",
+      "description": "The compliance check did not yield a result due to missing information."
+     },
+     "3": {
+      "caption": "Fail",
+      "description": "The compliance check failed for at least one of the evaluated resources."
+     },
+     "99": {
+      "caption": "Other",
+      "description": "The status is not mapped. See the <code>status</code> attribute, which contains a data source specific value."
+     }
+    },
+    "requirement": "recommended",
+    "sibling": "status",
+    "type": "integer_t",
+    "type_name": "Integer"
+   }
+  },
+  "caption": "Compliance",
+  "description": "The Compliance object contains information about Industry and Regulatory Framework standards, controls and requirements or details about custom assessments utilized in a compliance evaluation. Standards define broad security frameworks, controls represent specific security requirements within those frameworks, and checks are the testable verification points used to determine if controls are properly implemented.",
+  "extends": "object",
+  "name": "compliance",
+  "profiles": [
+   "cloud",
+   "container",
+   "data_classification"
   ]
  },
  "container": {
@@ -4381,6 +5052,138 @@
   "extends": "object",
   "name": "display"
  },
+ "dns_answer": {
+  "attributes": {
+   "class": {
+    "caption": "Resource Record Class",
+    "description": "The class of DNS data contained in this resource record. See RFC 1035. For example: <code>IN</code>.",
+    "requirement": "recommended",
+    "type": "string_t",
+    "type_name": "String"
+   },
+   "flag_ids": {
+    "@deprecated": {
+     "message": "Use <code>dns_activity.flag_ids</code> instead.",
+     "since": "1.9.0",
+     "superseded_by": [
+      "dns_activity.flag_ids"
+     ]
+    },
+    "caption": "DNS Header Flags",
+    "description": "The list of DNS answer header flag IDs.",
+    "enum": {
+     "0": {
+      "caption": "Unknown",
+      "description": "The flag is unknown."
+     },
+     "1": {
+      "caption": "Authoritative Answer"
+     },
+     "2": {
+      "caption": "Truncated Response"
+     },
+     "3": {
+      "caption": "Recursion Desired"
+     },
+     "4": {
+      "caption": "Recursion Available"
+     },
+     "5": {
+      "caption": "Authentic Data"
+     },
+     "6": {
+      "caption": "Checking Disabled"
+     },
+     "99": {
+      "caption": "Other",
+      "description": "The flag is not mapped. See the <code>flags</code> attribute, which contains a data source specific value."
+     }
+    },
+    "is_array": true,
+    "requirement": "recommended",
+    "sibling": "flags",
+    "type": "integer_t",
+    "type_name": "Integer"
+   },
+   "flags": {
+    "@deprecated": {
+     "message": "Use <code>dns_activity.flags</code> instead.",
+     "since": "1.9.0",
+     "superseded_by": [
+      "dns_activity.flags"
+     ]
+    },
+    "caption": "DNS Header Flags",
+    "description": "The list of DNS answer header flags.",
+    "is_array": true,
+    "requirement": "optional",
+    "type": "string_t",
+    "type_name": "String"
+   },
+   "hostname": {
+    "caption": "Hostname",
+    "description": "The owner name of the resource record. For example: <code>www.example.com</code>.",
+    "requirement": "recommended",
+    "type": "hostname_t",
+    "type_name": "Hostname"
+   },
+   "packet_uid": {
+    "@deprecated": {
+     "message": "Use <code>dns_activity.transaction_id</code> instead.",
+     "since": "1.9.0",
+     "superseded_by": [
+      "dns_activity.transaction_id"
+     ]
+    },
+    "caption": "Packet UID",
+    "description": "The DNS packet identifier assigned by the program that generated the query. The identifier is copied to the response.",
+    "requirement": "recommended",
+    "type": "integer_t",
+    "type_name": "Integer"
+   },
+   "rdata": {
+    "caption": "DNS RData",
+    "description": "The data describing the DNS resource. The meaning of this data depends on the type and class of the resource record.",
+    "requirement": "required",
+    "type": "string_t",
+    "type_name": "String"
+   },
+   "ttl": {
+    "caption": "TTL",
+    "description": "The time interval that the resource record may be cached. Zero value means that the resource record can only be used for the transaction in progress, and should not be cached.",
+    "requirement": "recommended",
+    "type": "integer_t",
+    "type_name": "Integer"
+   },
+   "type": {
+    "caption": "Resource Record Type",
+    "description": "The type of data contained in this resource record. See RFC 1035. For example: <code>CNAME</code>.",
+    "references": [
+     {
+      "description": "RFC 1035 — DNS Implementation and Specification.",
+      "url": "https://www.rfc-editor.org/rfc/rfc1035.txt"
+     }
+    ],
+    "requirement": "recommended",
+    "type": "string_t",
+    "type_name": "String"
+   }
+  },
+  "caption": "DNS Answer",
+  "description": "The DNS Answer object represents a specific response provided by the Domain Name System (DNS) when querying for information about a domain or performing a DNS operation. It encapsulates the relevant details and data returned by the DNS server in response to a query.",
+  "extends": "dns_resource_record",
+  "name": "dns_answer",
+  "references": [
+   {
+    "description": "D3FEND™ Ontology d3f:InboundInternetDNSResponseTraffic.",
+    "url": "https://d3fend.mitre.org/dao/artifact/d3f:InboundInternetDNSResponseTraffic/"
+   },
+   {
+    "description": "RFC 1035 — DNS Implementation and Specification.",
+    "url": "https://www.rfc-editor.org/rfc/rfc1035.txt"
+   }
+  ]
+ },
  "dns_query": {
   "attributes": {
    "class": {
@@ -4498,6 +5301,96 @@
    {
     "description": "D3FEND™ Ontology d3f:DNSLookup.",
     "url": "https://d3fend.mitre.org/dao/artifact/d3f:DNSLookup/"
+   }
+  ]
+ },
+ "dns_resource_record": {
+  "attributes": {
+   "class": {
+    "caption": "Resource Record Class",
+    "description": "The class of DNS data contained in this resource record. See RFC 1035. For example: <code>IN</code>.",
+    "requirement": "recommended",
+    "type": "string_t",
+    "type_name": "String"
+   },
+   "hostname": {
+    "caption": "Hostname",
+    "description": "The owner name of the resource record. For example: <code>www.example.com</code>.",
+    "requirement": "recommended",
+    "type": "hostname_t",
+    "type_name": "Hostname"
+   },
+   "rdata": {
+    "caption": "DNS RData",
+    "description": "The data describing the DNS resource. The meaning of this data depends on the type and class of the resource record.",
+    "requirement": "required",
+    "type": "string_t",
+    "type_name": "String"
+   },
+   "ttl": {
+    "caption": "TTL",
+    "description": "The time interval that the resource record may be cached. Zero value means that the resource record can only be used for the transaction in progress, and should not be cached.",
+    "requirement": "recommended",
+    "type": "integer_t",
+    "type_name": "Integer"
+   },
+   "type": {
+    "caption": "Resource Record Type",
+    "description": "The type of data contained in this resource record. See RFC 1035. For example: <code>CNAME</code>.",
+    "references": [
+     {
+      "description": "RFC 1035 — DNS Implementation and Specification.",
+      "url": "https://www.rfc-editor.org/rfc/rfc1035.txt"
+     }
+    ],
+    "requirement": "recommended",
+    "type": "string_t",
+    "type_name": "String"
+   }
+  },
+  "caption": "DNS Resource Record",
+  "description": "The DNS Resource Record object represents a single resource record as defined in RFC 1035. It is used in the Answer, Authority, and Additional sections of a DNS message.",
+  "extends": "object",
+  "name": "dns_resource_record",
+  "references": [
+   {
+    "description": "RFC 1035 — DNS Implementation and Specification.",
+    "url": "https://www.rfc-editor.org/rfc/rfc1035.txt"
+   }
+  ]
+ },
+ "dns_section": {
+  "attributes": {
+   "records": {
+    "caption": "Resource Records",
+    "description": "The resource records contained in this DNS section.",
+    "is_array": true,
+    "object_name": "DNS Resource Record",
+    "object_type": "dns_resource_record",
+    "requirement": "required",
+    "type": "object_t"
+   },
+   "tsig": {
+    "caption": "TSIG",
+    "description": "The TSIG (Transaction Signature) record present in this DNS section, used to authenticate the entire DNS message. Per RFC 2845, at most one TSIG record is permitted per DNS message.",
+    "object_name": "TSIG",
+    "object_type": "tsig",
+    "requirement": "optional",
+    "type": "object_t"
+   }
+  },
+  "caption": "DNS Section",
+  "description": "The DNS Section object represents a DNS message section that carries supplementary resource records alongside an optional TSIG record. It is used for both the client Additional section (<code>query_additional</code>) and the server Additional section (<code>response_additional</code>) of a DNS message. A DNS message has at most one TSIG record, which authenticates the entire message.",
+  "extends": "object",
+  "name": "dns_section",
+  "references": [
+   {
+    "description": "RFC 1035 — DNS Implementation and Specification.",
+    "url": "https://www.rfc-editor.org/rfc/rfc1035.txt"
+   },
+   {
+    "description": "RFC 2845 — Secret Key Transaction Authentication for DNS (TSIG).",
+    "url": "https://www.rfc-editor.org/rfc/rfc2845"
    }
   ]
  },
@@ -7111,6 +8004,107 @@
    {
     "description": "D3FEND™ Ontology d3f:AccessControlGroup.",
     "url": "https://d3fend.mitre.org/dao/artifact/d3f:AccessControlGroup/"
+   }
+  ]
+ },
+ "http_cookie": {
+  "attributes": {
+   "domain": {
+    "caption": "Domain",
+    "description": "The domain name for the server from which the http_cookie is served.",
+    "requirement": "optional",
+    "type": "string_t",
+    "type_name": "String"
+   },
+   "expiration_time": {
+    "caption": "Expiration Time",
+    "description": "The expiration time of the HTTP cookie.",
+    "requirement": "optional",
+    "type": "timestamp_t",
+    "type_name": "Timestamp"
+   },
+   "http_only": {
+    "@deprecated": {
+     "message": "Use the <code>is_http_only</code> attribute instead.",
+     "since": "1.1.0",
+     "superseded_by": [
+      "is_http_only"
+     ]
+    },
+    "caption": "HTTP Only",
+    "description": "A cookie attribute to make it inaccessible via JavaScript",
+    "requirement": "optional",
+    "type": "boolean_t",
+    "type_name": "Boolean"
+   },
+   "is_http_only": {
+    "caption": "HTTP Only",
+    "description": "This attribute prevents the cookie from being accessed via JavaScript.",
+    "requirement": "optional",
+    "type": "boolean_t",
+    "type_name": "Boolean"
+   },
+   "is_secure": {
+    "caption": "Secure",
+    "description": "The cookie attribute indicates that cookies are sent to the server only when the request is encrypted using the HTTPS protocol.",
+    "requirement": "optional",
+    "type": "boolean_t",
+    "type_name": "Boolean"
+   },
+   "name": {
+    "caption": "Name",
+    "description": "The HTTP cookie name.",
+    "requirement": "required",
+    "type": "string_t",
+    "type_name": "String"
+   },
+   "path": {
+    "caption": "Path",
+    "description": "The path of the HTTP cookie.",
+    "requirement": "optional",
+    "type": "string_t",
+    "type_name": "String"
+   },
+   "samesite": {
+    "caption": "SameSite",
+    "description": "The cookie attribute that lets servers specify whether/when cookies are sent with cross-site requests. Values are: Strict, Lax or None",
+    "requirement": "optional",
+    "type": "string_t",
+    "type_name": "String"
+   },
+   "secure": {
+    "@deprecated": {
+     "message": "Use the <code>is_secure</code> attribute instead.",
+     "since": "1.1.0",
+     "superseded_by": [
+      "is_secure"
+     ]
+    },
+    "caption": "Secure",
+    "description": "The cookie attribute to only send cookies to the server with an encrypted request over the HTTPS protocol.",
+    "requirement": "optional",
+    "type": "boolean_t",
+    "type_name": "Boolean"
+   },
+   "value": {
+    "caption": "Value",
+    "description": "The HTTP cookie value.",
+    "requirement": "required",
+    "type": "string_t",
+    "type_name": "String"
+   }
+  },
+  "caption": "HTTP Cookie",
+  "description": "The HTTP Cookie object, also known as a web cookie or browser cookie, contains details and values pertaining to a small piece of data that a server sends to a user's web browser. This data is then stored by the browser and sent back to the server with subsequent requests, allowing the server to remember and track certain information about the user's browsing session or preferences.",
+  "extends": "object",
+  "name": "http_cookie",
+  "profiles": [
+   "datetime"
+  ],
+  "references": [
+   {
+    "description": "D3FEND™ Ontology d3f:SessionCookie.",
+    "url": "https://d3fend.mitre.org/dao/artifact/d3f:SessionCookie/"
    }
   ]
  },
@@ -11139,6 +12133,115 @@
    }
   ]
  },
+ "network_traffic": {
+  "attributes": {
+   "bytes": {
+    "caption": "Total Bytes",
+    "description": "The total number of bytes transferred in both directions (sum of bytes_in and bytes_out).",
+    "requirement": "recommended",
+    "type": "long_t",
+    "type_name": "Long"
+   },
+   "bytes_in": {
+    "caption": "Bytes In",
+    "description": "The number of bytes sent from the destination to the source (inbound direction).",
+    "requirement": "optional",
+    "type": "long_t",
+    "type_name": "Long"
+   },
+   "bytes_missed": {
+    "caption": "Bytes Missed",
+    "description": "The number of bytes that were missed during observation, typically due to packet loss or sampling limitations.",
+    "requirement": "optional",
+    "type": "long_t",
+    "type_name": "Long"
+   },
+   "bytes_out": {
+    "caption": "Bytes Out",
+    "description": "The number of bytes sent from the source to the destination (outbound direction).",
+    "requirement": "optional",
+    "type": "long_t",
+    "type_name": "Long"
+   },
+   "chunks": {
+    "caption": "Chunks",
+    "description": "The total number of chunks transferred in both directions (sum of chunks_in and chunks_out).",
+    "requirement": "optional",
+    "type": "long_t",
+    "type_name": "Long"
+   },
+   "chunks_in": {
+    "caption": "Chunks In",
+    "description": "The number of chunks sent from the destination to the source (inbound direction).",
+    "requirement": "optional",
+    "type": "long_t",
+    "type_name": "Long"
+   },
+   "chunks_out": {
+    "caption": "Chunks Out",
+    "description": "The number of chunks sent from the source to the destination (outbound direction).",
+    "requirement": "optional",
+    "type": "long_t",
+    "type_name": "Long"
+   },
+   "end_time": {
+    "caption": "End Time",
+    "description": "The end time of the observation or reporting period.",
+    "requirement": "optional",
+    "type": "timestamp_t",
+    "type_name": "Timestamp"
+   },
+   "packets": {
+    "caption": "Total Packets",
+    "description": "The total number of packets transferred in both directions (sum of packets_in and packets_out).",
+    "requirement": "recommended",
+    "type": "long_t",
+    "type_name": "Long"
+   },
+   "packets_in": {
+    "caption": "Packets In",
+    "description": "The number of packets sent from the destination to the source (inbound direction).",
+    "requirement": "optional",
+    "type": "long_t",
+    "type_name": "Long"
+   },
+   "packets_out": {
+    "caption": "Packets Out",
+    "description": "The number of packets sent from the source to the destination (outbound direction).",
+    "requirement": "optional",
+    "type": "long_t",
+    "type_name": "Long"
+   },
+   "start_time": {
+    "caption": "Start Time",
+    "description": "The start time of the observation or reporting period.",
+    "requirement": "optional",
+    "type": "timestamp_t",
+    "type_name": "Timestamp"
+   },
+   "timespan": {
+    "caption": "Time Span",
+    "description": "The time span object representing the duration of the observation or reporting period.",
+    "object_name": "Time Span",
+    "object_type": "timespan",
+    "requirement": "optional",
+    "type": "object_t"
+   }
+  },
+  "caption": "Network Traffic",
+  "description": "The Network Traffic object describes characteristics of network traffic over a time period. The metrics represent network data transferred between source and destination during an observation window.",
+  "extends": "object",
+  "name": "network_traffic",
+  "profiles": [
+   "datetime"
+  ],
+  "references": [
+   {
+    "description": "D3FEND™ Ontology d3f:NetworkTraffic",
+    "url": "https://d3fend.mitre.org/dao/artifact/d3f:NetworkTraffic/"
+   }
+  ]
+ },
  "node": {
   "attributes": {
    "data": {
@@ -11930,6 +13033,195 @@
    {
     "description": "D3FEND™ Ontology d3f:SoftwarePackage.",
     "url": "https://d3fend.mitre.org/dao/artifact/d3f:SoftwarePackage/"
+   }
+  ]
+ },
+ "packet": {
+  "attributes": {
+   "encoding": {
+    "caption": "Encoding",
+    "description": "The human-readable name of the encoding used to represent the packet data in the <code>value</code> field. This should match the caption associated with <code>encoding_id</code>. If <code>encoding_id</code> is 99 (Other), this field contains the original data source–specific encoding value.",
+    "requirement": "optional",
+    "type": "string_t",
+    "type_name": "String"
+   },
+   "encoding_id": {
+    "caption": "Encoding ID",
+    "description": "The normalized identifier of the encoding method used to represent the packet data as a string.",
+    "enum": {
+     "0": {
+      "caption": "Unknown",
+      "description": "The encoding format of the packet data is not known."
+     },
+     "1": {
+      "caption": "Base64",
+      "description": "The packet data is encoded using Base64."
+     },
+     "2": {
+      "caption": "Hexadecimal",
+      "description": "The packet data is encoded as a hexadecimal string representation of the raw bytes."
+     },
+     "3": {
+      "caption": "URL Encoded",
+      "description": "The packet data is encoded using percent-encoding (URL encoding)."
+     },
+     "99": {
+      "caption": "Other",
+      "description": "The encoding method is not mapped. Refer to the <code>encoding</code> field for the original source-specific value."
+     }
+    },
+    "requirement": "recommended",
+    "sibling": "encoding",
+    "type": "integer_t",
+    "type_name": "Integer"
+   },
+   "end_offset": {
+    "caption": "End Offset",
+    "description": "The ending byte position of this packet within a capture file or stream.",
+    "requirement": "optional",
+    "type": "long_t",
+    "type_name": "Long"
+   },
+   "format": {
+    "caption": "Format",
+    "description": "The human-readable name of the packet capture file format in which the packet is stored. This should match the caption associated with <code>format_id</code>. If <code>format_id</code> is 99 (Other), this field contains the original data source–specific format value.",
+    "requirement": "optional",
+    "type": "string_t",
+    "type_name": "String"
+   },
+   "format_id": {
+    "caption": "Format ID",
+    "description": "The normalized identifier of the packet capture format.",
+    "enum": {
+     "0": {
+      "caption": "Unknown",
+      "description": "The packet format is unknown."
+     },
+     "1": {
+      "caption": "PCAP",
+      "description": "Standard libpcap/tcpdump packet capture file format."
+     },
+     "2": {
+      "caption": "PCAPNG",
+      "description": "Next-generation PCAP format that supports multiple interfaces and enhanced metadata."
+     },
+     "3": {
+      "caption": "Snoop",
+      "description": "Solaris/Unix capture format."
+     },
+     "4": {
+      "caption": "ERF",
+      "description": "Extensible Record Format used by Endace network monitoring hardware."
+     },
+     "5": {
+      "caption": "NetMon",
+      "description": "Microsoft Network Monitor capture file format."
+     },
+     "6": {
+      "caption": "5Views",
+      "description": "Accellent 5Views packet capture format."
+     },
+     "99": {
+      "caption": "Other",
+      "description": "The packet format is not mapped. Refer to the <code>format</code> field for the original source-specific value."
+     }
+    },
+    "requirement": "recommended",
+    "sibling": "format",
+    "type": "integer_t",
+    "type_name": "Integer"
+   },
+   "sequence_number": {
+    "caption": "Sequence Number",
+    "description": "The relative order number of this packet within its capture context (such as a PCAP file, network session, or reconstructed stream). This represents chronological capture order, distinct from both protocol-level sequencing (such as TCP sequence numbers).",
+    "requirement": "optional",
+    "type": "long_t",
+    "type_name": "Long"
+   },
+   "source": {
+    "caption": "Source",
+    "description": "The human-readable name describing how or where the packet was obtained. This should match the caption associated with <code>source_id</code>. If <code>source_id</code> is 99 (Other), this field contains the original data source–specific value.",
+    "requirement": "optional",
+    "type": "string_t",
+    "type_name": "String"
+   },
+   "source_id": {
+    "caption": "Source ID",
+    "description": "A normalized numeric identifier that specifies how the packet was obtained or generated.",
+    "enum": {
+     "0": {
+      "caption": "Unknown",
+      "description": "The packet source is unknown."
+     },
+     "1": {
+      "caption": "Wire",
+      "description": "The packet was captured directly from a network interface."
+     },
+     "2": {
+      "caption": "Stream",
+      "description": "The packet was reconstructed or derived from a stream of packets."
+     },
+     "3": {
+      "caption": "Decoder",
+      "description": "The packet was generated or extracted by a protocol decoder or analysis engine."
+     },
+     "4": {
+      "caption": "TAP",
+      "description": "The packet was captured from a physical network Test Access Point (TAP) device used for passive monitoring."
+     },
+     "5": {
+      "caption": "SPAN",
+      "description": "The packet was captured from a switch Switched Port Analyzer (SPAN) or mirror port."
+     },
+     "6": {
+      "caption": "Endpoint",
+      "description": "The packet was captured by a host-based agent or endpoint detection and response (EDR) sensor."
+     },
+     "7": {
+      "caption": "Virtual",
+      "description": "The packet was captured from a virtual network interface, virtual switch, or container network."
+     },
+     "99": {
+      "caption": "Other",
+      "description": "The packet source is not mapped. Refer to the <code>source</code> field for the original source-specific value."
+     }
+    },
+    "requirement": "recommended",
+    "sibling": "source",
+    "type": "integer_t",
+    "type_name": "Integer"
+   },
+   "start_offset": {
+    "caption": "Start Offset",
+    "description": "The starting byte position of this packet within a capture file or stream.",
+    "requirement": "optional",
+    "type": "long_t",
+    "type_name": "Long"
+   },
+   "value": {
+    "caption": "Value",
+    "description": "The actual packet data, represented as a string. The format of this string is determined by the specified <code>encoding_id</code> (e.g., Base64, Hexadecimal, or URL Encoded).",
+    "requirement": "required",
+    "type": "string_t",
+    "type_name": "String"
+   }
+  },
+  "caption": "Packet",
+  "description": "The Packet object represents a single captured network packet and its associated metadata. It describes where the packet came from, how it is stored or encoded, and how it can be located within a capture file or stream. This object does not interpret protocol content; it only represents the captured packet data and its positioning information.",
+  "extends": "object",
+  "name": "packet",
+  "references": [
+   {
+    "description": "D3FEND™ Ontology d3f:NetworkPacket.",
+    "url": "https://d3fend.mitre.org/dao/artifact/d3f:NetworkPacket/"
+   },
+   {
+    "description": "D3FEND™ Ontology d3f:PacketCaptureFile.",
+    "url": "https://d3fend.mitre.org/dao/artifact/d3f:PacketCaptureFile/"
+   },
+   {
+    "description": "D3FEND™ Ontology d3f:PacketLog.",
+    "url": "https://d3fend.mitre.org/dao/artifact/d3f:PacketLog/"
    }
   ]
  },
@@ -15437,6 +16729,78 @@
   "profiles": [
    "data_classification",
    "datetime"
+  ]
+ },
+ "tsig": {
+  "attributes": {
+   "algorithm": {
+    "caption": "Algorithm",
+    "description": "The HMAC algorithm used to compute the MAC. For example: <code>hmac-sha256</code>.",
+    "requirement": "recommended",
+    "type": "string_t",
+    "type_name": "String"
+   },
+   "error": {
+    "caption": "TSIG Error",
+    "description": "The TSIG error, normalized to the caption of the <code>error_id</code> value. In the case of 'Other', it is defined by the event source.",
+    "requirement": "optional",
+    "type": "string_t",
+    "type_name": "String"
+   },
+   "error_id": {
+    "caption": "TSIG Error ID",
+    "description": "The normalized TSIG-specific error code as defined in RFC 2845 and RFC 6895. This is independent of the DNS message header RCODE.",
+    "enum": {
+     "0": {
+      "caption": "NoError",
+      "description": "No error."
+     },
+     "16": {
+      "caption": "BADSIG",
+      "description": "TSIG signature failure."
+     },
+     "17": {
+      "caption": "BADKEY",
+      "description": "Key not recognized."
+     },
+     "18": {
+      "caption": "BADTIME",
+      "description": "Signature out of time window."
+     },
+     "99": {
+      "caption": "Other",
+      "description": "The TSIG error code is not listed. See the <code>error</code> attribute, which contains a data source specific value."
+     }
+    },
+    "requirement": "recommended",
+    "sibling": "error",
+    "type": "integer_t",
+    "type_name": "Integer"
+   },
+   "key_name": {
+    "caption": "Key Name",
+    "description": "The name of the shared secret key used to sign the DNS message. For example: <code>my-tsig-key.example.com.</code>",
+    "requirement": "recommended",
+    "type": "string_t",
+    "type_name": "String"
+   }
+  },
+  "caption": "TSIG",
+  "constraints": {
+   "at_least_one": [
+    "algorithm",
+    "key_name",
+    "error_id"
+   ]
+  },
+  "description": "The TSIG (Transaction Signature) object represents a TSIG resource record as defined in RFC 2845. TSIG uses a shared secret key and one-way hash function to authenticate DNS messages. Per RFC 2845, at most one TSIG record is permitted per DNS message.",
+  "extends": "object",
+  "name": "tsig",
+  "references": [
+   {
+    "description": "RFC 2845 — Secret Key Transaction Authentication for DNS (TSIG).",
+    "url": "https://www.rfc-editor.org/rfc/rfc2845"
+   }
   ]
  },
  "url": {

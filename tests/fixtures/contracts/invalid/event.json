@@ -1,76 +1,244 @@
 [
   {
-    "case": "ocsf_class_mismatch",
-    "violations": [{"path": "ocsf.class_uid", "rule": "equals_ocsf_class"}],
+    "case": "class_not_stored",
+    "violations": [
+      {
+        "path": "class_uid",
+        "rule": "enum"
+      }
+    ],
     "data": {
-      "id": "evt_01a19f93-1150-7000-8000-000000000001",
-      "raw_id": "raw_01a19f93-1150-7000-8000-000000000101",
+      "class_uid": 1007,
+      "severity_id": 1,
       "time": 1793678577500,
-      "ocsf_class": 4002,
-      "summary": "GET /login.php 500",
-      "entities": [],
-      "assets": [],
-      "ocsf": {"class_uid": 4001},
-      "details": {}
+      "message": "GET /login.php 500",
+      "details": {
+        "id": "evt_01a19f93-1150-7000-8000-000000000001",
+        "raw_id": "raw_01a19f93-1150-7000-8000-000000000101",
+        "entities": [],
+        "assets": []
+      }
     }
   },
   {
-    "case": "ocsf_class_above_int32",
-    "violations": [{"path": "ocsf_class", "rule": "maximum"}],
+    "case": "class_above_int32",
+    "violations": [
+      {
+        "path": "class_uid",
+        "rule": "enum"
+      }
+    ],
     "data": {
-      "id": "evt_01a19f93-1150-7000-8000-000000000001",
-      "raw_id": "raw_01a19f93-1150-7000-8000-000000000101",
+      "class_uid": 2147483648,
+      "severity_id": 1,
       "time": 1793678577500,
-      "ocsf_class": 2147483648,
-      "summary": "GET /login.php 500",
-      "entities": [],
-      "assets": [],
-      "ocsf": {"class_uid": 2147483648},
-      "details": {}
+      "message": "GET /login.php 500",
+      "details": {
+        "id": "evt_01a19f93-1150-7000-8000-000000000001",
+        "raw_id": "raw_01a19f93-1150-7000-8000-000000000101",
+        "entities": [],
+        "assets": []
+      }
     }
   },
   {
-    "case": "missing_summary",
-    "violations": [{"path": "summary", "rule": "required"}],
+    "case": "class_uid_float",
+    "violations": [
+      {
+        "path": "class_uid",
+        "rule": "type"
+      }
+    ],
     "data": {
-      "id": "evt_01a19f93-1150-7000-8000-000000000001",
-      "raw_id": "raw_01a19f93-1150-7000-8000-000000000101",
+      "class_uid": 4002.0,
+      "severity_id": 1,
       "time": 1793678577500,
-      "ocsf_class": 4002,
-      "entities": [],
-      "assets": [],
-      "ocsf": {"class_uid": 4002},
-      "details": {}
+      "message": "GET /login.php 500",
+      "details": {
+        "id": "evt_01a19f93-1150-7000-8000-000000000001",
+        "raw_id": "raw_01a19f93-1150-7000-8000-000000000101",
+        "entities": [],
+        "assets": []
+      }
+    }
+  },
+  {
+    "case": "missing_details",
+    "violations": [
+      {
+        "path": "details",
+        "rule": "required"
+      }
+    ],
+    "data": {
+      "class_uid": 4002,
+      "severity_id": 1,
+      "time": 1793678577500,
+      "message": "GET /login.php 500"
+    }
+  },
+  {
+    "case": "missing_time",
+    "violations": [
+      {
+        "path": "time",
+        "rule": "required"
+      }
+    ],
+    "data": {
+      "class_uid": 4002,
+      "severity_id": 1,
+      "message": "GET /login.php 500",
+      "details": {
+        "id": "evt_01a19f93-1150-7000-8000-000000000001",
+        "raw_id": "raw_01a19f93-1150-7000-8000-000000000101",
+        "entities": [],
+        "assets": []
+      }
+    }
+  },
+  {
+    "case": "missing_severity_id",
+    "violations": [
+      {
+        "path": "severity_id",
+        "rule": "required"
+      }
+    ],
+    "data": {
+      "class_uid": 4002,
+      "time": 1793678577500,
+      "message": "GET /login.php 500",
+      "details": {
+        "id": "evt_01a19f93-1150-7000-8000-000000000001",
+        "raw_id": "raw_01a19f93-1150-7000-8000-000000000101",
+        "entities": [],
+        "assets": []
+      }
+    }
+  },
+  {
+    "case": "missing_details_id",
+    "violations": [
+      {
+        "path": "details.id",
+        "rule": "required"
+      }
+    ],
+    "data": {
+      "class_uid": 4002,
+      "severity_id": 1,
+      "time": 1793678577500,
+      "message": "GET /login.php 500",
+      "details": {
+        "raw_id": "raw_01a19f93-1150-7000-8000-000000000101",
+        "entities": [],
+        "assets": []
+      }
     }
   },
   {
     "case": "raw_id_wrong_prefix",
-    "violations": [{"path": "raw_id", "rule": "pattern"}],
+    "violations": [
+      {
+        "path": "details.raw_id",
+        "rule": "pattern"
+      }
+    ],
     "data": {
-      "id": "evt_01a19f93-1150-7000-8000-000000000001",
-      "raw_id": "alt_01a19f93-1150-7000-8000-000000000101",
+      "class_uid": 4002,
+      "severity_id": 1,
       "time": 1793678577500,
-      "ocsf_class": 4002,
-      "summary": "GET /login.php 500",
-      "entities": [],
-      "assets": [],
-      "ocsf": {"class_uid": 4002},
-      "details": {}
+      "message": "GET /login.php 500",
+      "details": {
+        "id": "evt_01a19f93-1150-7000-8000-000000000001",
+        "raw_id": "alt_01a19f93-1150-7000-8000-000000000101",
+        "entities": [],
+        "assets": []
+      }
     }
   },
   {
-    "case": "ocsf_class_uid_float",
-    "violations": [{"path": "ocsf.class_uid", "rule": "type"}],
+    "case": "severity_id_out_of_range",
+    "violations": [
+      {
+        "path": "severity_id",
+        "rule": "enum"
+      }
+    ],
     "data": {
-      "id": "evt_01a19f93-1150-7000-8000-000000000001",
-      "raw_id": "raw_01a19f93-1150-7000-8000-000000000101",
+      "class_uid": 4002,
+      "severity_id": 7,
       "time": 1793678577500,
-      "ocsf_class": 4002,
-      "summary": "GET /login.php 500",
-      "entities": [],
-      "assets": [],
-      "ocsf": {"class_uid": 4002.0},
-      "details": {}
+      "message": "GET /login.php 500",
+      "details": {
+        "id": "evt_01a19f93-1150-7000-8000-000000000001",
+        "raw_id": "raw_01a19f93-1150-7000-8000-000000000101",
+        "entities": [],
+        "assets": []
+      }
+    }
+  },
+  {
+    "case": "missing_message",
+    "violations": [
+      {
+        "path": "message",
+        "rule": "required"
+      }
+    ],
+    "data": {
+      "class_uid": 4002,
+      "severity_id": 1,
+      "details": {
+        "id": "evt_01a19f93-1150-7000-8000-000000000001",
+        "raw_id": "raw_01a19f93-1150-7000-8000-000000000101",
+        "entities": [],
+        "assets": []
+      },
+      "time": 1793678577500
+    }
+  },
+  {
+    "case": "empty_message",
+    "violations": [
+      {
+        "path": "message",
+        "rule": "pattern"
+      }
+    ],
+    "data": {
+      "class_uid": 4002,
+      "severity_id": 1,
+      "message": "",
+      "details": {
+        "id": "evt_01a19f93-1150-7000-8000-000000000001",
+        "raw_id": "raw_01a19f93-1150-7000-8000-000000000101",
+        "entities": [],
+        "assets": []
+      },
+      "time": 1793678577500
+    }
+  },
+  {
+    "case": "blank_message",
+    "violations": [
+      {
+        "path": "message",
+        "rule": "pattern"
+      }
+    ],
+    "data": {
+      "class_uid": 4002,
+      "severity_id": 1,
+      "message": "  ",
+      "details": {
+        "id": "evt_01a19f93-1150-7000-8000-000000000001",
+        "raw_id": "raw_01a19f93-1150-7000-8000-000000000101",
+        "entities": [],
+        "assets": []
+      },
+      "time": 1793678577500
     }
   }
 ]

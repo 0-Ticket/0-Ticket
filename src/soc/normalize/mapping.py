@@ -11,17 +11,21 @@ from typing import Any
 
 from soc.contracts import to_epoch_ms
 from soc.contracts.alert import alert_rule_id, alert_severity, alert_time, alert_title
+from soc.contracts.event import EMPTY_SUMMARY, event_class, event_summary, event_time
 from soc.ids import new_id
 from soc.normalize.errors import NormalizeError
+from soc.normalize.event_tables import load_event_tables, summary_text
 from soc.normalize.mask import mask_headers
 from soc.normalize.paths import read_value as _value
 from soc.normalize.tables import (
     COMMON,
+    Table,
     apply_entities,
     apply_table,
     load_tables,
     matching_source,
 )
+from soc.normalize.transforms import HTTP_ACTIVITY_IDS
 from soc.tools.local_intel import normalize_technique_id
 
 OCSF_VERSION = "1.9.0"
@@ -29,17 +33,6 @@ OCSF_VERSION = "1.9.0"
 _WEB_INDEX = re.compile(r"^(?:\.ds-)?logs-(?:nginx|apache)\.access-")
 _CLOUD_INDEX = re.compile(r"^(?:\.ds-)?logs-(?:aws\.cloudtrail|azure\.activitylogs|gcp\.audit)-")
 
-HTTP_ACTIVITY_IDS = {
-    "CONNECT": 1,
-    "DELETE": 2,
-    "GET": 3,
-    "HEAD": 4,
-    "OPTIONS": 5,
-    "POST": 6,
-    "PUT": 7,
-    "TRACE": 8,
-    "PATCH": 9,
-}
 API_ACTIVITY_PREFIXES = (
     ("Create", 1),
     ("Run", 1),
@@ -63,9 +56,9 @@ ENTITY_FIELDS = (
     ("url.domain", "domain", None),
     ("url.original", "url", None),
 )
+_ABSENT = object()
 UNKNOWN_ID = 0
 OTHER_ID = 99
-MAX_DIGITS = 9
 # OCSF observable type_id(1.9.0): Hostname 1, IP Address 2, User Name 4, URL String 6, Hash 8,
 # Process Name 9
 OBSERVABLE_TYPE_IDS = {
@@ -78,6 +71,8 @@ OBSERVABLE_TYPE_IDS = {
     "process": 9,
 }
 ANALYTIC_RULE = 1
+# 이벤트 클래스(D-067)가 속한 OCSF 카테고리 번호
+EVENT_CATEGORIES = {0: 0, 2003: 2, 3002: 3, 4001: 4, 4002: 4, 4003: 4, 6003: 6}
 # common 표에서 값을 얻지 못하면 해석할 수 없는 알럿으로 보고 폴백하는 target과 사유(D-059).
 # 순서대로 본다
 _FALLBACK_TARGETS = (
@@ -135,7 +130,7 @@ class _Fallback(Exception):
 
 
 def normalize(raw: RawRow) -> Result:
-    """원본 종류와 인덱스 이름으로 알맞은 변환을 고른다.
+    """원본 종류와 이벤트 소스 표를 보고 변환을 고른다. 소스가 없으면 인덱스를 본다.
 
     Args:
         raw: 정규화할 원본 한 행.
@@ -145,11 +140,24 @@ def normalize(raw: RawRow) -> Result:
     """
     if raw.kind == "alert":
         return _alert(raw)
-    index = raw.original.get("_index")
-    index = index if isinstance(index, str) else ""
-    if _WEB_INDEX.match(index):
-        return _web_event(raw)
-    if _CLOUD_INDEX.match(index):
+    tables = load_event_tables()
+    name = matching_source(tables.sources, raw.original)
+    if name is not None:
+        class_uid = tables.source_classes[name]
+    else:
+        index = raw.original.get("_index")
+        index = index if isinstance(index, str) else ""
+        if _WEB_INDEX.match(index):
+            class_uid = 4002
+        elif _CLOUD_INDEX.match(index):
+            class_uid = 6003
+        else:
+            class_uid = 0
+    if class_uid == 4002:
+        return _web_event(
+            raw, tables.classes[class_uid], tables.sources.get(name) if name else None
+        )
+    if class_uid == 6003:
         return _cloud_event(raw)
     return _base_event(raw)
 
@@ -421,6 +429,83 @@ def alert_row(
     }
 
 
+def seed_event_ocsf(record: dict[str, Any], time_ms: int, message: str) -> dict[str, Any]:
+    """시드 샘플의 ocsf(class_uid·activity_id와 클래스별 속성)로 이벤트 OCSF 문서를 만든다.
+
+    category_uid·type_uid·severity_id·metadata·time·message는 정규화와 같은 방식으로 채운다.
+
+    Args:
+        record: 샘플의 ocsf. class_uid를 가지고 activity_id는 없으면 0이다.
+        time_ms: 활동 발생 시각(epoch 밀리초).
+        message: 한 줄 요약(events.summary의 원본).
+    """
+    class_uid = record["class_uid"]
+    extra = {key: value for key, value in record.items() if key not in ("class_uid", "activity_id")}
+    document = _ocsf(
+        class_uid,
+        EVENT_CATEGORIES[class_uid],
+        record.get("activity_id", UNKNOWN_ID),
+        time_ms,
+        1,
+        extra,
+    )
+    return {**document, "message": message}
+
+
+def derive_event_columns(ocsf: dict[str, Any]) -> dict[str, Any]:
+    """ocsf 문서에서 events의 time·ocsf_class·summary를 만든다(D-068). 파생은 이 함수 하나다.
+
+    읽는 규칙은 `soc.contracts.event`의 헬퍼와 같다. time은 start_time, 없으면 time이고
+    summary는 message다.
+
+    Args:
+        ocsf: 이벤트의 OCSF 문서.
+    """
+    return {
+        "time": event_time(ocsf),
+        "ocsf_class": event_class(ocsf),
+        "summary": event_summary(ocsf),
+    }
+
+
+def with_derived_event_columns(row: dict[str, Any]) -> dict[str, Any]:
+    """ocsf만 가진 events 행(시드 샘플)에 파생 컬럼 time·ocsf_class·summary를 채운다.
+
+    Args:
+        row: ocsf를 가진 events 행.
+    """
+    return {**row, **derive_event_columns(row["ocsf"])}
+
+
+def event_row(
+    event_id: str,
+    raw_id: str,
+    ocsf: dict[str, Any],
+    entities: list[dict[str, Any]],
+    details: dict[str, Any] | None = None,
+    assets: list[Any] | None = None,
+) -> dict[str, Any]:
+    """events 행 하나를 만든다. 컬럼 값은 ocsf에서 파생하고 그 밖의 칸은 받은 값이다.
+
+    Args:
+        event_id: events.id.
+        raw_id: raw_records.id.
+        ocsf: 이벤트의 OCSF 문서. 원본이다.
+        entities: Event 엔티티 목록.
+        details: OCSF 속성이 아닌 값. 없으면 빈 객체.
+        assets: 자산 목록. 정규화 뒤 자산 조회가 채우므로 기본은 빈 목록이다.
+    """
+    return {
+        "id": event_id,
+        "raw_id": raw_id,
+        **derive_event_columns(ocsf),
+        "entities": entities,
+        "assets": assets or [],
+        "ocsf": ocsf,
+        "details": details or {},
+    }
+
+
 def _optional_time_ms(source: dict[str, Any], path: str) -> int | None:
     """시각 필드를 epoch 밀리초로 바꾼다. 없거나 읽을 수 없으면 None.
 
@@ -434,35 +519,40 @@ def _optional_time_ms(source: dict[str, Any], path: str) -> int | None:
         return None
 
 
-def _web_event(raw: RawRow) -> Result:
-    """웹 접근 로그 이벤트를 HTTP Activity(4002)로 바꾼다.
-
-    Args:
-        raw: nginx 또는 apache 접근 로그 인덱스의 이벤트 원본.
-    """
+def _web_event(raw: RawRow, common: Table, specific: Table | None) -> Result:
+    """HTTP 클래스 표에 소스 표의 값을 더해 4002 이벤트를 만든다."""
     source = _source(raw)
-    method = _text(source, "http.request.method")
-    method = method.upper() if method else None
-    path = _text(source, "url.path")
-    url_string = _text(source, "url.original")
-    code = _integer(source, "http.response.status_code")
-    extra = {
-        "src_endpoint": {"ip": _text(source, "source.ip")},
-        "dst_endpoint": {"ip": _text(source, "destination.ip")},
-        "http_request": {
-            "http_method": method if method in HTTP_ACTIVITY_IDS else None,
-            "url": {
-                "path": path,
-                "url_string": url_string,
-                "hostname": _text(source, "url.domain"),
-            },
-            "user_agent": _text(source, "user_agent.original"),
-        },
-        "http_response": {"code": code},
-    }
-    activity_id = HTTP_ACTIVITY_IDS.get(method, OTHER_ID) if method else UNKNOWN_ID
-    summary = _summary(source, method, path or url_string, code)
-    return _event(raw, source, 4002, 4, activity_id, extra, summary)
+    values = apply_table(common, raw.original).values
+    found = apply_entities(common, raw.original)
+    if specific is not None:
+        overlay = apply_table(specific, raw.original)
+        for target in overlay.errors:
+            values.pop(target, None)
+        # 명시적인 null·잘못된 값도 원래 시각을 읽지 못한 경우다.
+        # 소스의 시각 필드가 아예 없을 때만 클래스 표 시각을 사용한다.
+        if "time" not in overlay.values:
+            for entry in specific.entries:
+                if entry.target == "time" and any(
+                    _value(source, path, _ABSENT) is not _ABSENT for path in entry.sources
+                ):
+                    raise NormalizeError("validation_failed")
+        if "activity_name" in overlay.values:
+            values.pop("http_request.http_method", None)
+        values.update(overlay.values)
+        apply_entities(specific, raw.original, found)
+
+    time_ms = values.pop("time", None)
+    if time_ms is None:
+        raise NormalizeError("validation_failed")
+    method = values.get("http_request.http_method")
+    if method is not None:
+        activity_id = HTTP_ACTIVITY_IDS[method]
+        values.pop("activity_name", None)
+    else:
+        activity_id = OTHER_ID if "activity_name" in values else UNKNOWN_ID
+    return _event(
+        raw, source, 4002, 4, activity_id, _nested(values), time_ms=time_ms, entities=found.entities
+    )
 
 
 def _cloud_event(raw: RawRow) -> Result:
@@ -493,8 +583,9 @@ def _cloud_event(raw: RawRow) -> Result:
             (id_ for prefix, id_ in API_ACTIVITY_PREFIXES if operation.startswith(prefix)),
             OTHER_ID,
         )
-    summary = _summary(source, operation, _text(source, "user.name"))
-    return _event(raw, source, 6003, 6, activity_id, extra, summary)
+    if activity_id == OTHER_ID:
+        extra["activity_name"] = operation
+    return _event(raw, source, 6003, 6, activity_id, extra)
 
 
 def _base_event(raw: RawRow) -> Result:
@@ -504,15 +595,12 @@ def _base_event(raw: RawRow) -> Result:
         raw: 웹·클라우드 인덱스가 아닌 이벤트 원본.
     """
     source = _source(raw)
-    return _event(
-        raw,
-        source,
-        0,
-        0,
-        UNKNOWN_ID,
-        {"unmapped": {"destination": {"ip": _text(source, "destination.ip")}}},
-        _summary(source, _text(source, "event.action")),
-    )
+    extra: dict[str, Any] = {"unmapped": {"destination": {"ip": _text(source, "destination.ip")}}}
+    action = _text(source, "event.action")
+    activity_id = OTHER_ID if action else UNKNOWN_ID
+    if action:  # 출처의 활동 이름은 OCSF가 정한 자리(activity_id 99와 activity_name)에 둔다
+        extra["activity_name"] = action
+    return _event(raw, source, 0, 0, activity_id, extra)
 
 
 def _event(
@@ -522,9 +610,11 @@ def _event(
     category_uid: int,
     activity_id: int,
     extra: dict[str, Any],
-    summary: str,
+    *,
+    time_ms: int | None = None,
+    entities: list[dict[str, Any]] | None = None,
 ) -> Result:
-    """OCSF 객체를 만들고 events 행으로 감싼다.
+    """OCSF 객체를 만들고 events 행으로 감싼다. 요약은 message에 넣는다(D-068).
 
     Args:
         raw: 원본 한 행.
@@ -533,21 +623,17 @@ def _event(
         category_uid: 클래스가 속한 OCSF 카테고리 번호.
         activity_id: OCSF activity_id.
         extra: 클래스별 OCSF 속성. 비어 있는 값은 버린다.
-        summary: events.summary에 넣을 한 줄 설명.
     """
-    time_ms = _time_ms(source, "@timestamp")
+    if time_ms is None:
+        time_ms = _time_ms(source, "@timestamp")
+    if entities is None:
+        entities = _entities(source)
     ocsf = _ocsf(class_uid, category_uid, activity_id, time_ms, 1, extra)
-    row = {
-        "id": new_id("evt"),
-        "raw_id": raw.id,
-        "time": time_ms,
-        "ocsf_class": class_uid,
-        "summary": summary,
-        "entities": _entities(source),
-        "assets": [],
-        "ocsf": ocsf,
-        "details": {},
-    }
+    # 요약: 1순위 클래스별 정의(mapping_tables/events), 2순위 event.dataset, 3순위 "event"
+    ocsf["message"] = (
+        summary_text(class_uid, ocsf) or _text(source, "event.dataset") or EMPTY_SUMMARY
+    )
+    row = event_row(new_id("evt"), raw.id, ocsf, entities)
     return Result("event", row)
 
 
@@ -569,6 +655,7 @@ def _ocsf(
         severity_id: OCSF severity_id.
         extra: 클래스별 OCSF 속성. 비어 있는 값은 버린다.
     """
+    fields = _compact(extra)
     return {
         "class_uid": class_uid,
         "category_uid": category_uid,
@@ -576,11 +663,12 @@ def _ocsf(
         "type_uid": class_uid * 100 + activity_id,
         "severity_id": severity_id,
         "time": time_ms,
+        **fields,
         "metadata": {
+            **fields.get("metadata", {}),
             "version": OCSF_VERSION,
             "product": {"name": "Elasticsearch", "vendor_name": "Elastic"},
         },
-        **_compact(extra),
     }
 
 
@@ -596,17 +684,6 @@ def _entities(source: dict[str, Any]) -> list[dict[str, Any]]:
         if value is not None:
             entities.append({"type": entity_type, "value": value, "role": role})
     return entities
-
-
-def _summary(source: dict[str, Any], *parts: object) -> str:
-    """값이 있는 부분을 공백으로 이어 한 줄로 만든다. 모두 비면 event.dataset을 쓴다.
-
-    Args:
-        source: raw.original["_source"].
-        parts: 요약에 넣을 값들. None이나 빈 문자열은 건너뛴다.
-    """
-    text = " ".join(str(part) for part in parts if part)
-    return text or _text(source, "event.dataset") or "event"
 
 
 def _source(raw: RawRow) -> dict[str, Any]:
@@ -633,23 +710,6 @@ def _text(source: dict[str, Any], path: str) -> str | None:
     """
     value = _value(source, path)
     return value if isinstance(value, str) and value.strip() else None
-
-
-def _integer(source: dict[str, Any], path: str) -> int | None:
-    """정수 값 또는 ASCII 숫자만 든 짧은 문자열을 정수로 돌려준다. 그 밖은 None.
-
-    Args:
-        source: raw.original["_source"].
-        path: 점으로 이은 필드 이름.
-    """
-    value = _value(source, path)
-    if isinstance(value, bool):
-        return None
-    if isinstance(value, int):
-        return value
-    if isinstance(value, str) and value.isascii() and value.isdigit() and len(value) <= MAX_DIGITS:
-        return int(value)
-    return None
 
 
 def _time_ms(source: dict[str, Any], *paths: str) -> int:

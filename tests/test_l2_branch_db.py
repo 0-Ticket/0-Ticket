@@ -111,7 +111,7 @@ def test_reads_ticket_evidence_without_incidents(
         rows = read_branch_data(conn, sample["tickets"][0]["id"])
 
     assert [row["details"]["id"] for row in rows.alerts] == [sample["alerts"][0]["id"]]
-    assert [row["id"] for row in rows.events] == [sample["events"][0]["id"]]
+    assert [row["details"]["id"] for row in rows.events] == [sample["events"][0]["id"]]
     assert rows.evidence_ids == (
         sample["alerts"][0]["id"],
         sample["events"][0]["id"],
@@ -129,7 +129,7 @@ def test_l3_ticket_reads_hunt_evidence_and_builds_context(
 
     assert context.alerts == ()
     assert context.hunt == sample["hunts"][0]
-    assert [event["id"] for event in context.events] == [sample["events"][1]["id"]]
+    assert [event["details"]["id"] for event in context.events] == [sample["events"][1]["id"]]
     assert context.missing_evidence_count == 1
 
 
