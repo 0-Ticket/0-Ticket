@@ -75,8 +75,18 @@ class TicketPage(_Model):
     next_cursor: str | None
 
 
+class AlertSummary(_Model):
+    """Ticket 상세의 원본 Alert 요약. Alert를 하나씩 조회하지 않게 한 번에 준다(#365)."""
+
+    id: str
+    title: str
+    time: int
+    severity: int = Field(ge=0, le=6)
+
+
 class TicketDetail(_Model):
     ticket: Ticket
+    alerts: list[AlertSummary]
     severity: int
     seed_source: str | None
     incident: TicketIncident | None
@@ -126,8 +136,16 @@ class IncidentTicketGraph(_Model):
     paths: list[GraphPath]
 
 
+class IncidentTicket(_Model):
+    """Incident 상세의 소속 Ticket. 제목은 Ticket이 만들어질 때의 값이다(D-070)."""
+
+    id: str
+    title: str
+
+
 class IncidentDetail(_Model):
     incident: Incident
+    tickets: list[IncidentTicket]
     artifacts: list[IncidentArtifact]
     proposals: list[IncidentProposal]
     ticket_graphs: list[IncidentTicketGraph] = Field(default_factory=list)
