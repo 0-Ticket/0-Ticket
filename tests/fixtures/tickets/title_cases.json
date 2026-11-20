@@ -7,7 +7,7 @@
     },
     {
       "case": "collapse_mixed_spaces",
-      "input": "  a\n\tb 　c  ",
+      "input": "  a\n\tb\u00a0\u3000c  ",
       "expected": "a b c"
     },
     {
@@ -27,12 +27,12 @@
     },
     {
       "case": "nbsp_and_ideographic_space_only",
-      "input": " 　",
+      "input": "\u00a0\u3000",
       "expected": "(제목 없음)"
     },
     {
       "case": "all_eight_spaces_only",
-      "input": "\t\n\u000b\f\r  　",
+      "input": "\t\n\u000b\f\r \u00a0\u3000",
       "expected": "(제목 없음)"
     },
     {

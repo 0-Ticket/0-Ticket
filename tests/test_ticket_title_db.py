@@ -178,7 +178,7 @@ def test_title_check_rejects_empty_and_space_only_and_keeps_other_whitespace(
             (ticket_id(n), title, [alert_id(n)], NOW, NOW),
         )
 
-    for n, bad in enumerate(["", " ", "\t\n", " 　", " \t\n\u000b\f\r 　"], 1):
+    for n, bad in enumerate(["", " ", "\t\n", "\u00a0\u3000", " \t\n\u000b\f\r\u00a0\u3000"], 1):
         with pytest.raises(psycopg.errors.CheckViolation):
             insert(n, bad)
     with pytest.raises(psycopg.errors.NotNullViolation):
@@ -207,7 +207,7 @@ def test_title_check_and_clean_title_use_the_same_spaces(conn: psycopg.Connectio
     ("alert_title", "expected"),
     [
         ("", FALLBACK_TITLE),
-        (" \t ", FALLBACK_TITLE),
+        (" \t\u00a0", FALLBACK_TITLE),
         (" ", " "),
         ("  Unusual   service\nlogin ", "Unusual service login"),
     ],

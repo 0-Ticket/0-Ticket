@@ -356,7 +356,7 @@
     ],
     "data": {
       "id": "tkt_01a19f93-1150-7000-8000-000000000010",
-      "title": " \t\n\u000b\f\r 　",
+      "title": " \t\n\u000b\f\r\u00a0\u3000",
       "origin": "auto",
       "status": "new",
       "alert_ids": [
