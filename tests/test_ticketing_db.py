@@ -126,14 +126,16 @@ def insert_ticket(
     hunt_id: str | None = None,
     entities: list[dict[str, Any]] | None = None,
     verdict: dict[str, Any] | None = None,
+    title: str = "fixture title",
 ) -> None:
     conn.execute(
         "INSERT INTO tickets"
-        " (id, origin, status, alert_ids, hunt_id, entities, verdict,"
+        " (id, title, origin, status, alert_ids, hunt_id, entities, verdict,"
         " created_at, updated_at, details)"
-        " VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, '{}')",
+        " VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, '{}')",
         (
             ticket_id,
+            title,
             origin,
             status,
             alert_ids,

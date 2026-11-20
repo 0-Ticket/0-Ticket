@@ -149,10 +149,14 @@ def test_alert_promotion_then_ticket_decision_reaches_l2(db: str, conn: psycopg.
         "SELECT id, status, alert_ids, entities FROM tickets WHERE origin = 'l1'"
     ).fetchone()
     assert status == "new" and ids == [alert_id]
+    alert_title = conn.execute("SELECT title FROM alerts WHERE id = %s", (alert_id,)).fetchone()[0]
+    ticket_title = conn.execute("SELECT title FROM tickets WHERE id = %s", (ticket_id,)).fetchone()
+    assert ticket_title == (alert_title,)  # 승격으로 만든 origin=l1 Ticket도 alert 제목을 쓴다
     assert ticket_id in runner.poll(10)
     runner.handle(ticket_id)
     branch = read_branch_data(conn, ticket_id)
     assert branch.ticket["status"] == "escalated"
+    assert branch.ticket["title"] == alert_title  # L2가 읽는 Ticket(모델 입력)에 title이 들어 있다
     assert branch.ticket["verdict"] == verdict(alert_id)
     assert branch.ticket["entities"] == entities
     assert branch.alerts[0]["details"]["id"] == alert_id

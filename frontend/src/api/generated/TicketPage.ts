@@ -1,6 +1,7 @@
 /* Generated. Do not edit. Run pnpm contracts. */
 
 export type Id = string;
+export type Title = string;
 export type Origin = "auto" | "scenario" | "l1" | "l3";
 export type Status = "new" | "closed" | "held" | "escalated" | "linked";
 export type Severity = number;
@@ -16,6 +17,7 @@ export interface TicketPage {
 }
 export interface TicketItem {
   id: Id;
+  title: Title;
   origin: Origin;
   status: Status;
   severity: Severity;

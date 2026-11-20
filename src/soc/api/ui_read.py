@@ -15,7 +15,8 @@ UUID7 = r"[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
 SEED_NAMES = ("dev-seed", "dev-seed-l1", "dev-seed-ui")
 TICKET_SEVERITY = "(SELECT COALESCE(max(a.severity),0) FROM alerts a WHERE a.id = ANY(t.alert_ids))"
 TICKET_COLUMNS = (
-    f"t.id, t.origin, t.status, {TICKET_SEVERITY} AS severity, t.created_at, t.updated_at, "
+    f"t.id, t.title, t.origin, t.status, {TICKET_SEVERITY} AS severity, "
+    "t.created_at, t.updated_at, "
     "t.details->>'seed_source' AS seed_source"
 )
 INCIDENT_COLUMNS = (

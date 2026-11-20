@@ -181,6 +181,7 @@ def test_migrate_creates_all_tables_on_empty_db(temp_database: str) -> None:
         "0106_raw_original_text.sql",
         "0107_ingest_quarantine.sql",
         "0108_normalize_outcome.sql",
+        "0109_ticket_title.sql",
         "0200_incident_artifacts.sql",
         "0201_incident_held.sql",
         "0300_threat_intel.sql",
@@ -840,8 +841,9 @@ def test_tickets_from_different_hunts_and_other_origins_coexist(migrated: str) -
             if sample["data"]["origin"] != "l3":
                 insert(conn, "tickets", sample["data"])
 
+        expected = sum(1 for s in load("valid", "ticket") if s["data"]["origin"] != "l3")
         count = conn.execute("SELECT count(*) FROM tickets WHERE hunt_id IS NULL").fetchone()
-        assert count == (4,)
+        assert count == (expected,)
 
 
 def test_ticket_hunt_must_exist(migrated: str) -> None:

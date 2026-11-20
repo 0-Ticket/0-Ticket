@@ -944,6 +944,7 @@
   "tickets": [
     {
       "id": "tkt_01a19f93-1266-7000-8000-000000000001",
+      "title": "샘플 Alert 0",
       "origin": "auto",
       "status": "new",
       "alert_ids": [
@@ -971,6 +972,7 @@
     },
     {
       "id": "tkt_01a19f93-1266-7000-8000-000000000002",
+      "title": "샘플 Alert 1",
       "origin": "scenario",
       "status": "held",
       "alert_ids": [
@@ -998,6 +1000,7 @@
     },
     {
       "id": "tkt_01a19f93-1266-7000-8000-000000000003",
+      "title": "샘플 Alert 2",
       "origin": "l1",
       "status": "closed",
       "alert_ids": [
@@ -1025,6 +1028,7 @@
     },
     {
       "id": "tkt_01a19f93-1266-7000-8000-000000000004",
+      "title": "샘플 Alert 3",
       "origin": "auto",
       "status": "escalated",
       "alert_ids": [
@@ -1052,6 +1056,7 @@
     },
     {
       "id": "tkt_01a19f93-1266-7000-8000-000000000005",
+      "title": "샘플 Alert 4",
       "origin": "scenario",
       "status": "linked",
       "alert_ids": [
@@ -1079,6 +1084,7 @@
     },
     {
       "id": "tkt_01a19f93-1266-7000-8000-000000000006",
+      "title": "샘플 Alert 5",
       "origin": "l1",
       "status": "linked",
       "alert_ids": [
@@ -1106,6 +1112,7 @@
     },
     {
       "id": "tkt_01a19f93-1266-7000-8000-000000000007",
+      "title": "샘플 Alert 6",
       "origin": "auto",
       "status": "linked",
       "alert_ids": [
@@ -1133,6 +1140,7 @@
     },
     {
       "id": "tkt_01a19f93-1266-7000-8000-000000000008",
+      "title": "[dev-seed-ui] 웹셸 업로드 뒤 명령 실행이 있었을 것이다",
       "origin": "l3",
       "status": "escalated",
       "alert_ids": [],

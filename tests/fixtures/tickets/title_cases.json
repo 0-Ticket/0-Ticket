@@ -1,0 +1,268 @@
+{
+  "clean": [
+    {
+      "case": "plain",
+      "input": "abc",
+      "expected": "abc"
+    },
+    {
+      "case": "collapse_mixed_spaces",
+      "input": "  a\n\tb\u00a0\u3000c  ",
+      "expected": "a b c"
+    },
+    {
+      "case": "collapse_vt_ff_cr",
+      "input": "a\u000b\f\rb",
+      "expected": "a b"
+    },
+    {
+      "case": "empty",
+      "input": "",
+      "expected": "(제목 없음)"
+    },
+    {
+      "case": "ascii_spaces_only",
+      "input": " \n",
+      "expected": "(제목 없음)"
+    },
+    {
+      "case": "nbsp_and_ideographic_space_only",
+      "input": "\u00a0\u3000",
+      "expected": "(제목 없음)"
+    },
+    {
+      "case": "all_eight_spaces_only",
+      "input": "\t\n\u000b\f\r \u00a0\u3000",
+      "expected": "(제목 없음)"
+    },
+    {
+      "case": "u2003_only_is_kept",
+      "input": " ",
+      "expected": " "
+    },
+    {
+      "case": "u2003_around_text_is_kept",
+      "input": "  a ",
+      "expected": "  a "
+    },
+    {
+      "case": "zero_width_space_is_kept",
+      "input": "​",
+      "expected": "​"
+    },
+    {
+      "case": "next_line_and_line_separator_are_kept",
+      "input": " ",
+      "expected": " "
+    },
+    {
+      "case": "200_chars_kept",
+      "input": {
+        "repeat": "가",
+        "times": 200,
+        "tail": ""
+      },
+      "expected": {
+        "repeat": "가",
+        "times": 200,
+        "tail": ""
+      }
+    },
+    {
+      "case": "201_chars_cut_to_199_and_ellipsis",
+      "input": {
+        "repeat": "가",
+        "times": 201,
+        "tail": ""
+      },
+      "expected": {
+        "repeat": "가",
+        "times": 199,
+        "tail": "…"
+      }
+    },
+    {
+      "case": "200_emoji_kept",
+      "input": {
+        "repeat": "😀",
+        "times": 200,
+        "tail": ""
+      },
+      "expected": {
+        "repeat": "😀",
+        "times": 200,
+        "tail": ""
+      }
+    },
+    {
+      "case": "201_emoji_cut_by_code_point",
+      "input": {
+        "repeat": "😀",
+        "times": 201,
+        "tail": ""
+      },
+      "expected": {
+        "repeat": "😀",
+        "times": 199,
+        "tail": "…"
+      }
+    },
+    {
+      "case": "250_chars_cut",
+      "input": {
+        "repeat": "가",
+        "times": 250,
+        "tail": ""
+      },
+      "expected": {
+        "repeat": "가",
+        "times": 199,
+        "tail": "…"
+      }
+    },
+    {
+      "case": "trim_before_counting",
+      "input": {
+        "repeat": "b",
+        "times": 205,
+        "lead": " "
+      },
+      "expected": {
+        "repeat": "b",
+        "times": 199,
+        "tail": "…"
+      }
+    },
+    {
+      "case": "spaces_collapse_before_counting",
+      "input": {
+        "repeat": "a b",
+        "times": 70,
+        "join": " \n "
+      },
+      "expected": "a b a b a b a b a b a b a b a b a b a b a b a b a b a b a b a b a b a b a b a b a b a b a b a b a b a b a b a b a b a b a b a b a b a b a b a b a b a b a b a b a b a b a b a b a b a b a b a b a b a b…"
+    }
+  ],
+  "pick": [
+    {
+      "case": "single_alert",
+      "alerts": [
+        {
+          "id": "alt_01a19f93-1150-7000-8000-000000000001",
+          "severity": 3,
+          "time": 1000,
+          "title": "  Port   scan\n"
+        }
+      ],
+      "expected": "Port scan"
+    },
+    {
+      "case": "highest_severity_wins",
+      "alerts": [
+        {
+          "id": "alt_01a19f93-1150-7000-8000-000000000001",
+          "severity": 2,
+          "time": 1000,
+          "title": "low"
+        },
+        {
+          "id": "alt_01a19f93-1150-7000-8000-000000000002",
+          "severity": 5,
+          "time": 3000,
+          "title": "high"
+        },
+        {
+          "id": "alt_01a19f93-1150-7000-8000-000000000003",
+          "severity": 3,
+          "time": 2000,
+          "title": "mid"
+        }
+      ],
+      "expected": "high"
+    },
+    {
+      "case": "same_severity_earlier_time_wins",
+      "alerts": [
+        {
+          "id": "alt_01a19f93-1150-7000-8000-000000000001",
+          "severity": 4,
+          "time": 3000,
+          "title": "later"
+        },
+        {
+          "id": "alt_01a19f93-1150-7000-8000-000000000002",
+          "severity": 4,
+          "time": 1000,
+          "title": "earlier"
+        },
+        {
+          "id": "alt_01a19f93-1150-7000-8000-000000000003",
+          "severity": 4,
+          "time": 2000,
+          "title": "middle"
+        }
+      ],
+      "expected": "earlier"
+    },
+    {
+      "case": "same_severity_and_time_lower_id_wins",
+      "alerts": [
+        {
+          "id": "alt_01a19f93-1150-7000-8000-000000000009",
+          "severity": 4,
+          "time": 1000,
+          "title": "nine"
+        },
+        {
+          "id": "alt_01a19f93-1150-7000-8000-000000000002",
+          "severity": 4,
+          "time": 1000,
+          "title": "two"
+        },
+        {
+          "id": "alt_01a19f93-1150-7000-8000-000000000005",
+          "severity": 4,
+          "time": 1000,
+          "title": "five"
+        }
+      ],
+      "expected": "two"
+    },
+    {
+      "case": "no_alerts",
+      "alerts": [],
+      "expected": "(제목 없음)"
+    },
+    {
+      "case": "blank_title",
+      "alerts": [
+        {
+          "id": "alt_01a19f93-1150-7000-8000-000000000001",
+          "severity": 3,
+          "time": 1000,
+          "title": " \t "
+        }
+      ],
+      "expected": "(제목 없음)"
+    },
+    {
+      "case": "title_cut",
+      "alerts": [
+        {
+          "id": "alt_01a19f93-1150-7000-8000-000000000001",
+          "severity": 3,
+          "time": 1000,
+          "title": {
+            "repeat": "가",
+            "times": 201
+          }
+        }
+      ],
+      "expected": {
+        "repeat": "가",
+        "times": 199,
+        "tail": "…"
+      }
+    }
+  ]
+}

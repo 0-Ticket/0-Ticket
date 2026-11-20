@@ -176,6 +176,7 @@
   "tickets": [
     {
       "id": "tkt_01a19f93-1150-7000-8000-000000000101",
+      "title": "인공 분류 샘플",
       "origin": "auto",
       "status": "escalated",
       "alert_ids": [
@@ -237,6 +238,7 @@
     },
     {
       "id": "tkt_01a19f93-1150-7000-8000-000000000102",
+      "title": "인공 DNS 비콘 가설",
       "origin": "l3",
       "status": "escalated",
       "alert_ids": [],

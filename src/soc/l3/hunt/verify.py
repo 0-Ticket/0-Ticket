@@ -19,6 +19,7 @@ from soc.ids import new_id
 from soc.l3.hunt import store
 from soc.l3.hunt.prompts import load_prompt
 from soc.l3.hunt.settings import ConfigError, HuntSettings, read_hunt_settings
+from soc.ticketing import clean_title
 
 Run = Callable[[AgentTask], AgentResult]
 RECORD_PREFIXES = ("alt_", "evt_")
@@ -192,6 +193,7 @@ def _ticket(hunt: dict[str, Any], now_ms: int) -> dict[str, Any]:
     """L3 Ticket. Alert 없이 Hunt를 가리키고, L2는 hunt_id로 Hunt의 근거를 따라간다."""
     return {
         "id": new_id("tkt"),
+        "title": clean_title(hunt["hypothesis"]),  # LLM 출력이라 데이터·텍스트로만 쓴다
         "origin": "l3",
         "status": "escalated",
         "alert_ids": [],

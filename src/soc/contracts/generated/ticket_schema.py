@@ -18,6 +18,15 @@ class Ticket(BaseModel):
         str,
         Field(pattern="^tkt_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"),
     ]
+    title: Annotated[
+        str,
+        Field(
+            description='사건 제목. auto·scenario·l1은 소속 alert 제목, l3는 Hunt 가설 문장을 공백 정리해 자른 값(D-070). 1~200자이고 공백(탭·LF·VT·FF·CR·공백·U+00A0·U+3000)뿐인 값은 허용하지 않는다. pattern은 "공백 목록 밖 글자가 하나 이상"이라는 뜻이고(앞뒤를 고정하는 계약 규칙 때문에 ^…$로 쓴다) 공백 목록은 soc.ticketing.TITLE_SPACES·DB CHECK와 같다',
+            max_length=200,
+            min_length=1,
+            pattern="^[\\t\\n\\u000b\\f\\r \\u00a0\\u3000]*[^\\t\\n\\u000b\\f\\r \\u00a0\\u3000][\\s\\S]*$",
+        ),
+    ]
     origin: Annotated[
         Literal["auto", "scenario", "l1", "l3"],
         Field(

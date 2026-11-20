@@ -21,6 +21,7 @@ from soc.ticketing import (
     TicketingPolicy,
     load_policy,
     read_active_policy,
+    ticket_title,
 )
 
 _CANDIDATE_IDS = """
@@ -37,7 +38,7 @@ ORDER BY a.time, a.id
 """
 
 _LOCK_ALERT = """
-SELECT a.id, a.rule_id, a.entities
+SELECT a.id, a.rule_id, a.entities, a.title, a.severity, a.time
 FROM alerts AS a
 JOIN normalize_status AS s ON s.result_id = a.id
 WHERE a.id = %s
@@ -49,6 +50,7 @@ FOR UPDATE OF a SKIP LOCKED
 
 _TICKET_COLUMNS = (
     "id",
+    "title",
     "origin",
     "status",
     "alert_ids",
@@ -150,9 +152,11 @@ def _process_alert(
         if row is None:
             return AlertOutcome("skipped")
         if isinstance(row, Mapping):
-            alert = {"id": row["id"], "rule_id": row["rule_id"], "entities": row["entities"]}
+            alert = dict(row)
         else:
-            alert = dict(zip(("id", "rule_id", "entities"), row, strict=True))
+            alert = dict(
+                zip(("id", "rule_id", "entities", "title", "severity", "time"), row, strict=True)
+            )
 
         existing = _existing_ticket(conn, alert_id)
         if existing is not None:
@@ -179,8 +183,11 @@ def _process_alert(
 
 
 def _make_ticket(alert: dict[str, Any], origin: str, now_ms: int) -> dict[str, Any]:
+    # 시나리오 모드: 원본 alert 하나당 Ticket 하나이면 alert 제목이다. 여러 alert를 묶은 Ticket의
+    # AI 요약 제목은 계약이 묶음을 허용한 뒤 시나리오 로직 이슈에서 만든다(D-070, D-071).
     return {
         "id": new_id("tkt"),
+        "title": ticket_title([alert]),
         "origin": origin,
         "status": "new",
         "alert_ids": [alert["id"]],

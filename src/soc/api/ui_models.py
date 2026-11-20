@@ -49,6 +49,7 @@ class RawDetail(_Model):
 
 class TicketItem(_Model):
     id: str
+    title: str
     origin: TicketOrigin
     status: TicketStatus
     severity: int = Field(ge=0, le=6)

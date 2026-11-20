@@ -6,6 +6,10 @@
 export type Ticket = {
   id: string;
   /**
+   * 사건 제목. auto·scenario·l1은 소속 alert 제목, l3는 Hunt 가설 문장을 공백 정리해 자른 값(D-070). 1~200자이고 공백(탭·LF·VT·FF·CR·공백·U+00A0·U+3000)뿐인 값은 허용하지 않는다. pattern은 "공백 목록 밖 글자가 하나 이상"이라는 뜻이고(앞뒤를 고정하는 계약 규칙 때문에 ^…$로 쓴다) 공백 목록은 soc.ticketing.TITLE_SPACES·DB CHECK와 같다
+   */
+  title: string;
+  /**
    * auto: 기본 모드, scenario: 시나리오 일치, l1: L1 1차 판정으로 승격, l3: L3 헌팅 발견
    */
   origin: "auto" | "scenario" | "l1" | "l3";

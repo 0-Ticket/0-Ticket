@@ -34,6 +34,7 @@ _HUNT_JSONB = ("entities", "details")
 
 _TICKET_COLUMNS = (
     "id",
+    "title",
     "origin",
     "status",
     "alert_ids",

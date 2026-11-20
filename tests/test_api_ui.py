@@ -149,6 +149,8 @@ def test_ticket_filters_and_full_detail(ui_client):
     assert item["severity"] == 0 and "verdict" not in item
     body = ui_client.get("/api/tickets/" + item["id"]).json()
     validate_contract("ticket", body["ticket"])
+    seeded = next(t["title"] for t in SEED["tickets"] if t["id"] == item["id"])
+    assert item["title"] == body["ticket"]["title"] == seeded  # 목록과 상세가 같은 값을 준다
     assert body["ticket"]["alert_ids"] == [] and body["ticket"]["hunt_id"]
     assert ui_client.get("/api/tickets", params={"severity": 6}).json()["items"][0]["severity"] == 6
     first = ui_client.get("/api/tickets", params={"limit": 2}).json()
