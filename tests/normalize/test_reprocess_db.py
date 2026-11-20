@@ -119,8 +119,8 @@ def dump(conn: psycopg.Connection) -> dict[str, list[tuple[Any, ...]]]:
 def add_ticket(conn: psycopg.Connection, alert_id: str) -> None:
     now = to_datetime(1793754000000)
     conn.execute(
-        "INSERT INTO tickets (id, origin, status, alert_ids, entities, created_at, updated_at,"
-        " details) VALUES (%s, 'auto', 'new', %s, '[]', %s, %s, '{}')",
+        "INSERT INTO tickets (id, title, origin, status, alert_ids, entities, created_at,"
+        " updated_at, details) VALUES (%s, 'fixture title', 'auto', 'new', %s, '[]', %s, %s, '{}')",
         (new_id("tkt"), [alert_id], now, now),
     )
 

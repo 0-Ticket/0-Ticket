@@ -1,7 +1,8 @@
-"""Ticket 정책 설정과 PostgreSQL 활성 행(#246)."""
+"""Ticket 정책 설정과 PostgreSQL 활성 행(#246), Ticket 제목 규칙(#343, D-067)."""
 
+import re
 import tomllib
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -11,6 +12,16 @@ import psycopg
 CONFIG_DIR = Path(__file__).resolve().parents[2] / "config"
 POLICY_KEYS = frozenset({"mode", "scenario_rule_ids"})
 POLICY_MODES = frozenset({"auto", "scenario"})
+
+# 제목에서 공백으로 보는 8종: 탭·LF·VT·FF·CR·공백·U+00A0·U+3000. 계약 pattern(ticket.schema.json)과
+# 마이그레이션 0109의 CHECK가 같은 목록이다. str.split()·strip()은 U+2003·U+0085·U+2028까지
+# 공백으로 봐서 계약과 어긋나므로 쓰지 않는다.
+# 어긋나면 run()이 같은 alert를 계속 다시 시도한다(D-059).
+TITLE_SPACES = "\t\n\u000b\f\r \u00a0\u3000"
+TITLE_MAX_LENGTH = 200
+FALLBACK_TITLE = "(제목 없음)"
+_SPACE_RUN = re.compile(f"[{TITLE_SPACES}]+")
+_NON_SPACE = re.compile(f"[^{TITLE_SPACES}]")
 
 
 class ConfigError(ValueError):
@@ -91,3 +102,27 @@ def _merge(base: dict[str, Any], over: dict[str, Any]) -> dict[str, Any]:
         else:
             out[key] = value
     return out
+
+
+def clean_title(text: str) -> str:
+    """제목 규칙(D-067): 공백 연속은 한 칸, 앞뒤 공백 제거, 200자(코드포인트) 초과는 199자 + `…`.
+
+    공백 목록 밖 글자가 하나도 없으면 FALLBACK_TITLE이다.
+    결과는 항상 Ticket 계약의 title을 통과한다.
+    """
+    normalized = _SPACE_RUN.sub(" ", text).strip(" ")
+    if _NON_SPACE.search(normalized) is None:
+        return FALLBACK_TITLE
+    if len(normalized) > TITLE_MAX_LENGTH:
+        return normalized[: TITLE_MAX_LENGTH - 1] + "…"
+    return normalized
+
+
+def ticket_title(alerts: Iterable[Mapping[str, Any]]) -> str:
+    """소속 Alert들의 제목으로 Ticket 제목을 만든다. 심각도가 가장 높은 Alert의 제목을 쓴다.
+
+    심각도가 같으면 time이 이른 것, 그것도 같으면 id가 작은 것이다. Alert가 없으면 FALLBACK_TITLE.
+    auto·scenario·l1 Ticket은 Alert가 정확히 하나라(0104) 생성 경로는 하나만 넘긴다.
+    """
+    ordered = sorted(alerts, key=lambda a: (-a["severity"], a["time"], a["id"]))
+    return clean_title(ordered[0]["title"]) if ordered else FALLBACK_TITLE
