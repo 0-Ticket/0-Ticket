@@ -17,6 +17,7 @@ from soc.db.migrate import migrate
 from soc.ids import new_id
 from soc.l1.ticketing import run as run_ticketing
 from soc.normalize import run as run_module
+from soc.normalize import store as store_module
 from soc.normalize.__main__ import main
 from soc.normalize.config import Settings
 from soc.normalize.errors import NormalizeError
@@ -28,6 +29,11 @@ pytestmark = pytest.mark.db
 
 ROOT = Path(__file__).parent.parent / "fixtures" / "normalize"
 ALERTS = json.loads((ROOT / "alert_skeleton.json").read_text(encoding="utf-8"))
+EVENT_CASES = [
+    c
+    for c in json.loads((ROOT / "raw.json").read_text(encoding="utf-8"))
+    if c["kind"] == "event" and "error" not in c["expect"]
+]
 EVENT = next(
     case
     for case in json.loads((ROOT / "raw.json").read_text(encoding="utf-8"))
@@ -108,12 +114,121 @@ def test_every_sample_is_stored_with_its_outcome_and_the_original_is_untouched(
     assert originals_hash(conn) == before
 
 
-def test_events_keep_null_outcome_and_source(conn: psycopg.Connection) -> None:
+def test_events_record_outcome_and_source(conn: psycopg.Connection) -> None:
     ids = add_raw(conn, [EVENT], kind="event")
 
     run(SETTINGS, conn, "owner-1")
 
-    assert status_of(conn, ids[EVENT["case"]]) == ("succeeded", None, None, [], None)
+    assert status_of(conn, ids[EVENT["case"]]) == ("succeeded", None, "ok", [], "class_4002")
+
+
+def test_unsupported_event_is_recorded_as_a_base_event_fallback(conn: psycopg.Connection) -> None:
+    case = next(c for c in EVENT_CASES if c["case"] == "event_without_supported_class")
+    ids = add_raw(conn, [case], kind="event")
+
+    run(SETTINGS, conn, "owner-1")
+
+    assert status_of(conn, ids[case["case"]]) == (
+        "succeeded",
+        "unsupported_event_mapping",
+        "fallback",
+        [],
+        "unknown",
+    )
+
+
+def test_event_that_fails_validation_is_failed_with_null_outcome(
+    conn: psycopg.Connection, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    ids = add_raw(conn, [EVENT], kind="event")
+
+    def reject(ocsf: dict[str, Any]) -> None:
+        raise NormalizeError("schema_failed")
+
+    monkeypatch.setattr(run_module, "validate_ocsf", reject)
+
+    result = run(SETTINGS, conn, "owner-1")
+
+    assert result.failures == {"schema_failed": 1}
+    assert status_of(conn, ids[EVENT["case"]]) == ("failed", "schema_failed", None, [], None)
+    assert conn.execute("SELECT count(*) FROM events").fetchone() == (0,)
+
+
+def test_event_save_and_status_are_written_together(
+    conn: psycopg.Connection, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    ids = add_raw(conn, [EVENT], kind="event")
+
+    def broken(*args: Any) -> None:
+        raise psycopg.errors.DataError
+
+    monkeypatch.setattr(store_module, "_insert_result", broken)
+
+    result = run(SETTINGS, conn, "owner-1")
+
+    assert result.failures == {"db_error": 1}
+    assert status_of(conn, ids[EVENT["case"]])[2:] == (None, [], None)
+
+
+def test_report_separates_alert_and_event_by_kind_even_with_the_same_source_name(
+    conn: psycopg.Connection,
+) -> None:
+    modsec_alert = next(c for c in ALERTS if c["case"] == "modsecurity_sqli_keeps_cookie_out")
+    original = json.loads((ROOT / "events" / "modsecurity.json").read_text(encoding="utf-8"))
+    no_request_time = json.loads(json.dumps(original))
+    del no_request_time["_source"]["transaction"]["time_stamp"]
+    unrecorded = json.loads(json.dumps(original))
+    unrecorded["_source"]["transaction"]["unique_id"] = "synthetic-request-002"
+    add_raw(conn, [modsec_alert])
+    ids = add_raw(
+        conn,
+        [
+            {"case": "ok", "original": original},
+            {"case": "partial", "original": no_request_time},
+            {"case": "unrecorded", "original": unrecorded},
+        ],
+        kind="event",
+    )
+    run(SETTINGS, conn, "owner-1")
+    # 품질이 기록되지 않은 행은 집계에 넣지 않는다
+    conn.execute(
+        "UPDATE normalize_status SET outcome = NULL, source = NULL, missing_fields = '{}',"
+        " error_code = NULL WHERE raw_id = %s",
+        (ids["unrecorded"],),
+    )
+
+    alerts = report_lines(conn)
+    events = report_lines(conn, "event")
+
+    assert [line for line in alerts if "total" in line] == [
+        "modsecurity total=1 ok=1 partial=0 fallback=0"
+    ]
+    assert [line for line in events if "total" in line] == [
+        "modsecurity total=2 ok=1 partial=1 fallback=0"
+    ]
+    assert "modsecurity missing metadata.original_time=1/2" in events
+    assert not any("metadata.original_time" in line for line in alerts)
+
+
+def test_event_report_command_and_empty_message(
+    conn: psycopg.Connection,
+    temp_database: HiddenUrl,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setenv("DATABASE_URL", temp_database)
+
+    assert main(["report", "--kind", "event"]) == 0
+    assert "Event 정규화 결과가 없다" in capsys.readouterr().out
+    add_raw(conn, [EVENT], kind="event")
+    run(SETTINGS, conn, "owner-1")
+    assert main(["report", "--kind", "event"]) == 0
+    assert "class_4002 total=1 ok=1 partial=0 fallback=0" in capsys.readouterr().out
+    assert main(["report", "--kind", "alert"]) == 0
+    assert "Alert 정규화 결과가 없다" in capsys.readouterr().out
+    with pytest.raises(SystemExit) as raised:
+        main(["report", "--kind", "log"])
+    assert raised.value.code == 2
 
 
 def test_a_mapping_that_fails_validation_is_kept_as_a_fallback_alert(
@@ -216,3 +331,30 @@ def test_the_outcome_column_only_takes_known_values(conn: psycopg.Connection) ->
         conn.execute("UPDATE normalize_status SET outcome = 'great'")
     with pytest.raises(psycopg.errors.CheckViolation):
         conn.execute("UPDATE normalize_status SET source = 'snort'")
+
+
+def test_source_constraint_depends_on_the_result_kind(conn: psycopg.Connection) -> None:
+    alert_raw = add_raw(conn, ALERTS[:1])[ALERTS[0]["case"]]
+    event_raw = add_raw(conn, [EVENT], kind="event")[EVENT["case"]]
+    for raw_id in (alert_raw, event_raw):
+        conn.execute("INSERT INTO normalize_status (raw_id) VALUES (%s)", (raw_id,))
+    set_result = (
+        "UPDATE normalize_status SET status = 'succeeded', result_kind = %s, result_id = %s,"
+        " source = %s WHERE raw_id = %s"
+    )
+
+    conn.execute(set_result, ("event", "evt_1", "nginx", event_raw))
+    conn.execute(
+        "UPDATE normalize_status SET source = 'class_6003' WHERE raw_id = %s", (event_raw,)
+    )
+    for bad in ("Nginx", "bad name", "1abc", ""):
+        with pytest.raises(psycopg.errors.CheckViolation):
+            conn.execute(
+                "UPDATE normalize_status SET source = %s WHERE raw_id = %s", (bad, event_raw)
+            )
+    conn.execute(set_result, ("alert", "alt_1", "suricata", alert_raw))
+    for bad in ("nginx", "class_4002"):
+        with pytest.raises(psycopg.errors.CheckViolation):
+            conn.execute(
+                "UPDATE normalize_status SET source = %s WHERE raw_id = %s", (bad, alert_raw)
+            )

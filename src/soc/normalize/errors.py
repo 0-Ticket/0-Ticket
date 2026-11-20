@@ -17,6 +17,9 @@ FALLBACK_REASONS = (
     "bad_time",
     "validation_failed",
 )
+# 이벤트의 사유(#351). 알럿 목록과 따로 둔다
+EVENT_PARTIAL_REASONS = ("missing_request_time_used_at_timestamp",)
+EVENT_FALLBACK_REASONS = ("unsupported_event_mapping",)
 
 
 class NormalizeError(Exception):

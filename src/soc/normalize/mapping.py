@@ -29,6 +29,9 @@ from soc.normalize.transforms import HTTP_ACTIVITY_IDS
 from soc.tools.local_intel import normalize_technique_id
 
 OCSF_VERSION = "1.9.0"
+# 소스 표가 요청 시각을 얻지 못해 클래스 표의 @timestamp를 쓴 경우의 누락 경로와 사유(#351)
+REQUEST_TIME_GAP = "metadata.original_time"
+REQUEST_TIME_CODE = "missing_request_time_used_at_timestamp"
 
 _WEB_INDEX = re.compile(r"^(?:\.ds-)?logs-(?:nginx|apache)\.access-")
 _CLOUD_INDEX = re.compile(r"^(?:\.ds-)?logs-(?:aws\.cloudtrail|azure\.activitylogs|gcp\.audit)-")
@@ -106,10 +109,12 @@ class Result:
     Attributes:
         kind: 결과 종류. "alert"이면 alerts, "event"이면 events 테이블에 저장한다.
         row: 계약 모양의 dict. assets는 빈 목록이며 자산 조회 뒤에 채운다.
-        outcome: 결과 품질. Alert만 "ok"·"partial"·"fallback"이고 Event는 None이다.
-        error_code: partial·fallback의 사유 코드(errors.PARTIAL_REASONS, FALLBACK_REASONS).
+        outcome: 결과 품질. "ok"·"partial"·"fallback".
+        error_code: partial·fallback의 사유 코드(errors의 PARTIAL_REASONS, FALLBACK_REASONS,
+            EVENT_PARTIAL_REASONS, EVENT_FALLBACK_REASONS).
         missing_fields: 얻지 못한 OCSF 경로 목록.
-        source: 알럿 소스 이름. suricata·modsecurity·guardduty·unknown. Event는 None이다.
+        source: 소스 이름. Alert는 suricata·modsecurity·guardduty·unknown. Event는 일치한 소스 표
+            이름, 인덱스 규칙이면 class_4002·class_6003, 지원 매핑이 없으면 unknown.
     """
 
     kind: str
@@ -155,10 +160,10 @@ def normalize(raw: RawRow) -> Result:
             class_uid = 0
     if class_uid == 4002:
         return _web_event(
-            raw, tables.classes[class_uid], tables.sources.get(name) if name else None
+            raw, tables.classes[class_uid], tables.sources.get(name) if name else None, name
         )
     if class_uid == 6003:
-        return _cloud_event(raw)
+        return _cloud_event(raw, name)
     return _base_event(raw)
 
 
@@ -519,13 +524,19 @@ def _optional_time_ms(source: dict[str, Any], path: str) -> int | None:
         return None
 
 
-def _web_event(raw: RawRow, common: Table, specific: Table | None) -> Result:
-    """HTTP 클래스 표에 소스 표의 값을 더해 4002 이벤트를 만든다."""
+def _web_event(raw: RawRow, common: Table, specific: Table | None, name: str | None) -> Result:
+    """HTTP 클래스 표에 소스 표의 값을 더해 4002 이벤트를 만든다.
+
+    소스 표가 시각 항목을 가졌는데 그 필드가 아예 없어 클래스 표의 시각을 쓰면 partial이다.
+    """
     source = _source(raw)
-    values = apply_table(common, raw.original).values
+    applied = apply_table(common, raw.original)
+    values, missing = applied.values, applied.missing
     found = apply_entities(common, raw.original)
+    time_fallback = False
     if specific is not None:
         overlay = apply_table(specific, raw.original)
+        missing = [*missing, *overlay.missing]
         for target in overlay.errors:
             values.pop(target, None)
         # 명시적인 null·잘못된 값도 원래 시각을 읽지 못한 경우다.
@@ -536,6 +547,7 @@ def _web_event(raw: RawRow, common: Table, specific: Table | None) -> Result:
                     _value(source, path, _ABSENT) is not _ABSENT for path in entry.sources
                 ):
                     raise NormalizeError("validation_failed")
+            time_fallback = any(entry.target == "time" for entry in specific.entries)
         if "activity_name" in overlay.values:
             values.pop("http_request.http_method", None)
         values.update(overlay.values)
@@ -550,16 +562,31 @@ def _web_event(raw: RawRow, common: Table, specific: Table | None) -> Result:
         values.pop("activity_name", None)
     else:
         activity_id = OTHER_ID if "activity_name" in values else UNKNOWN_ID
+    # 다른 표가 값을 채운 항목은 누락이 아니다. 시각은 위에서 얻었다
+    gaps = [t for t in dict.fromkeys(missing) if t not in values and t != "time"]
+    if time_fallback:
+        gaps.append(REQUEST_TIME_GAP)
     return _event(
-        raw, source, 4002, 4, activity_id, _nested(values), time_ms=time_ms, entities=found.entities
+        raw,
+        source,
+        4002,
+        4,
+        activity_id,
+        _nested(values),
+        time_ms=time_ms,
+        entities=found.entities,
+        source_name=name or "class_4002",
+        missing=gaps,
+        error_code=REQUEST_TIME_CODE if time_fallback else None,
     )
 
 
-def _cloud_event(raw: RawRow) -> Result:
+def _cloud_event(raw: RawRow, name: str | None) -> Result:
     """클라우드 감사 로그 이벤트를 API Activity(6003)로 바꾼다.
 
     Args:
         raw: CloudTrail, Azure 활동 로그, GCP 감사 로그 인덱스의 이벤트 원본.
+        name: 일치한 소스 표 이름. 인덱스 규칙으로 골랐으면 None.
     """
     source = _source(raw)
     operation = _text(source, "event.action")
@@ -585,7 +612,7 @@ def _cloud_event(raw: RawRow) -> Result:
         )
     if activity_id == OTHER_ID:
         extra["activity_name"] = operation
-    return _event(raw, source, 6003, 6, activity_id, extra)
+    return _event(raw, source, 6003, 6, activity_id, extra, source_name=name or "class_6003")
 
 
 def _base_event(raw: RawRow) -> Result:
@@ -600,7 +627,17 @@ def _base_event(raw: RawRow) -> Result:
     activity_id = OTHER_ID if action else UNKNOWN_ID
     if action:  # 출처의 활동 이름은 OCSF가 정한 자리(activity_id 99와 activity_name)에 둔다
         extra["activity_name"] = action
-    return _event(raw, source, 0, 0, activity_id, extra)
+    return _event(
+        raw,
+        source,
+        0,
+        0,
+        activity_id,
+        extra,
+        source_name="unknown",
+        error_code="unsupported_event_mapping",
+        fallback=True,
+    )
 
 
 def _event(
@@ -613,6 +650,10 @@ def _event(
     *,
     time_ms: int | None = None,
     entities: list[dict[str, Any]] | None = None,
+    source_name: str,
+    missing: list[str] | None = None,
+    error_code: str | None = None,
+    fallback: bool = False,
 ) -> Result:
     """OCSF 객체를 만들고 events 행으로 감싼다. 요약은 message에 넣는다(D-068).
 
@@ -623,6 +664,10 @@ def _event(
         category_uid: 클래스가 속한 OCSF 카테고리 번호.
         activity_id: OCSF activity_id.
         extra: 클래스별 OCSF 속성. 비어 있는 값은 버린다.
+        source_name: 결과 품질의 소스 이름(소스 표 이름, class_N, unknown).
+        missing: 품질 판정에 필요한데 얻지 못한 OCSF 경로.
+        error_code: partial·fallback의 사유 코드.
+        fallback: 지원 매핑이 없어 Base Event로 만들었는지.
     """
     if time_ms is None:
         time_ms = _time_ms(source, "@timestamp")
@@ -634,7 +679,8 @@ def _event(
         summary_text(class_uid, ocsf) or _text(source, "event.dataset") or EMPTY_SUMMARY
     )
     row = event_row(new_id("evt"), raw.id, ocsf, entities)
-    return Result("event", row)
+    outcome = "fallback" if fallback else "partial" if missing else "ok"
+    return Result("event", row, outcome, error_code, tuple(missing or ()), source_name)
 
 
 def _ocsf(

@@ -2,8 +2,9 @@
 
 alerts(또는 events)와 normalize_status를 직접 읽는다(임대 경로 claim_*_batch는 쓰지 않는다). id·
 raw_id·triage와 status·result_id·result_kind는 바꾸지 않고, 정규화가 만드는 값 중 달라진 것만
-UPDATE한다. 이벤트는 outcome·source를 기록하지 않으므로 normalize_status를 바꾸지 않고 outcome
-비교도 하지 않는다. 출력에는 건수와 항목 종류만 있고 원문 값은 없다.
+UPDATE한다. 이벤트도 알럿과 같이 outcome·source·missing_fields·error_code를 비교해 한 트랜잭션에서
+함께 갱신하고(#351), 품질이 하락하면 기존 결과를 보존한다. 출력에는 건수와 항목 종류만 있고
+원문 값은 없다.
 """
 
 import json
@@ -39,7 +40,7 @@ ORDER BY a.time, a.id
 LIMIT %s
 """
 
-# 이벤트는 outcome이 없어 정규화된 행 전부가 대상이다. since·limit만 건다
+# 이벤트는 품질이 비어 있는 행도 갱신 대상이라 정규화된 행 전부가 대상이다. since·limit만 건다
 _EVENT_CANDIDATES = """
 SELECT s.raw_id FROM normalize_status s JOIN events e ON e.id = s.result_id
 WHERE s.result_kind = 'event' AND s.status = 'succeeded'
@@ -49,7 +50,8 @@ LIMIT %s
 """
 
 _EVENT_CURRENT = """
-SELECT e.id, e.time, e.ocsf_class, e.summary, e.entities, e.assets, e.ocsf, e.details
+SELECT e.id, e.time, e.ocsf_class, e.summary, e.entities, e.assets, e.ocsf, e.details,
+       s.outcome, s.source, s.missing_fields, s.error_code
 FROM normalize_status s JOIN events e ON e.id = s.result_id
 WHERE s.raw_id = %s AND s.result_kind = 'event' AND s.status = 'succeeded'
 """
@@ -117,7 +119,7 @@ def reprocess(
         limit: 읽을(정규화할) 최대 행 수. alerts.time, id 오름차순.
         dry_run: 어떤 테이블에도 쓰지 않고 잠그지도 않는다.
         all_rows: outcome과 관계없이 기존 알럿 전체를 읽는다. 폴백·outcome 하락은 그대로 건너뛴다.
-            이벤트는 outcome이 없어 늘 전체를 읽는다.
+            이벤트는 품질이 빈 행도 갱신하므로 늘 전체를 읽는다.
         kind: 다시 정규화할 종류. "alert"(기본) 또는 "event".
 
     Raises:
@@ -209,7 +211,7 @@ def _one(
     if "entities" in changed_alert:
         _count_entities(result, old["entities"], row["entities"])
     if not dry_run:
-        _update(conn, raw_id, alert_id, changed_alert, changed_status)
+        _update(conn, raw_id, "alerts", alert_id, changed_alert, changed_status)
 
 
 def _one_event(
@@ -221,40 +223,58 @@ def _one_event(
 ) -> None:
     """이벤트 원본 한 건을 다시 정규화해 기존 행과 비교하고, 달라졌으면 갱신한다.
 
-    outcome·source는 기록하지 않으므로 normalize_status는 읽지도 바꾸지도 않는다.
+    새 품질이 기존보다 낮으면 건너뛴다(worse). 새 결과가 fallback인데 기존 이벤트가 Base Event(0)가
+    아니면 기존 outcome이 비어 있어도 보존한다. 열린 트랜잭션 안이다.
     """
     lock = sql.SQL("" if dry_run else " FOR UPDATE OF e, s")
     current = conn.execute(sql.SQL(_EVENT_CURRENT) + lock, (raw_id,)).fetchone()
     raw = _read_raw(conn, raw_id)
     if current is None or raw is None:
         return  # 읽은 뒤 다른 곳에서 바뀌었다. 다음 실행이 다시 본다
-    (event_id, *old_event) = current
+    (event_id, *old_event, old_outcome, old_source, old_missing, old_code) = current
     old = dict(zip(_EVENT_COLUMNS, old_event, strict=True))
     mapped = normalize(raw)
+    new_source = mapped.source or "unknown"
+    base_downgrade = mapped.outcome == "fallback" and old["ocsf_class"] != 0
+    lower = old_outcome is not None and _RANK[mapped.outcome or "ok"] < _RANK[old_outcome]
+    if base_downgrade or lower:
+        _count_skip(result, new_source, "worse")
+        return
     row = _checked_row(settings, conn, mapped, (old["entities"], old["assets"]))
-    changed = {
+    changed_event = {
         column: row[column]
         for column in _EVENT_COLUMNS
         if _differs(column, old[column], row[column])
     }
+    new_status = {
+        "outcome": mapped.outcome,
+        "source": mapped.source,
+        "missing_fields": list(mapped.missing_fields),
+        "error_code": mapped.error_code,
+    }
+    old_status = {
+        "outcome": old_outcome,
+        "source": old_source,
+        "missing_fields": list(old_missing),
+        "error_code": old_code,
+    }
+    changed_status = {c: v for c, v in new_status.items() if v != old_status[c]}
     result.duplicates += conn.execute(
         "SELECT count(*) FROM events WHERE raw_id = %s AND id <> %s", (raw_id, event_id)
     ).fetchone()[0]
-    counts = result.by_source.setdefault(
-        f"class_{row['ocsf_class']}", {"changed": 0, "unchanged": 0, "skipped": 0}
-    )
-    if not changed:
+    counts = result.by_source.setdefault(new_source, {"changed": 0, "unchanged": 0, "skipped": 0})
+    if not changed_event and not changed_status:
         result.unchanged += 1
         counts["unchanged"] += 1
         return
     result.changed += 1
     counts["changed"] += 1
-    for column in changed:
+    for column in (*changed_event, *changed_status):
         result.columns[column] = result.columns.get(column, 0) + 1
-    if "entities" in changed:
+    if "entities" in changed_event:
         _count_entities(result, old["entities"], row["entities"])
     if not dry_run:
-        _update_row(conn, "events", event_id, changed)
+        _update(conn, raw_id, "events", event_id, changed_event, changed_status)
 
 
 def _read_raw(conn: psycopg.Connection, raw_id: str) -> RawRow | None:
@@ -291,27 +311,26 @@ def _count_entities(result: ReprocessResult, old: list[Any], new: list[Any]) -> 
             result.entity_changes[key] = result.entity_changes.get(key, 0) + number
 
 
-def _update_row(conn: psycopg.Connection, table: str, row_id: str, changes: dict[str, Any]) -> None:
-    """한 테이블의 행 하나에서 달라진 컬럼만 UPDATE한다. 열린 트랜잭션 안이고 행은 잠겨 있다."""
-    assignments = sql.SQL(", ").join(
-        sql.SQL("{} = {}").format(sql.Identifier(column), sql.Placeholder()) for column in changes
-    )
-    query = sql.SQL("UPDATE {} SET {} WHERE id = {}").format(
-        sql.Identifier(table), assignments, sql.Placeholder()
-    )
-    conn.execute(query, [*(_db_value(c, v) for c, v in changes.items()), row_id])
-
-
 def _update(
     conn: psycopg.Connection,
     raw_id: str,
-    alert_id: str,
-    alert: dict[str, Any],
+    table: str,
+    row_id: str,
+    result_changes: dict[str, Any],
     status: dict[str, Any],
 ) -> None:
-    """달라진 컬럼만 UPDATE한다. 열린 트랜잭션 안이고 행은 이미 잠겨 있다."""
-    for table, changes, key, value in (
-        ("alerts", alert, "id", alert_id),
+    """달라진 컬럼만 UPDATE한다. 열린 트랜잭션 안이고 행은 이미 잠겨 있다.
+
+    Args:
+        conn: 열린 트랜잭션 안의 연결.
+        raw_id: normalize_status의 raw_id.
+        table: 결과 테이블. "alerts" 또는 "events".
+        row_id: 결과 행의 id.
+        result_changes: 결과 행에서 달라진 컬럼.
+        status: normalize_status에서 달라진 컬럼.
+    """
+    for target, changes, key, value in (
+        (table, result_changes, "id", row_id),
         ("normalize_status", status, "raw_id", raw_id),
     ):
         if not changes:
@@ -321,7 +340,7 @@ def _update(
             for column in changes
         )
         query = sql.SQL("UPDATE {} SET {} WHERE {} = {}").format(
-            sql.Identifier(table), assignments, sql.Identifier(key), sql.Placeholder()
+            sql.Identifier(target), assignments, sql.Identifier(key), sql.Placeholder()
         )
         conn.execute(query, [*(_db_value(c, v) for c, v in changes.items()), value])
 
