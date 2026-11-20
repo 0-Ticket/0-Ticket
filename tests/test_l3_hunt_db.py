@@ -247,11 +247,21 @@ def verifier(db: str, run: Callable[[AgentTask], AgentResult], **hunt: Any) -> H
 
 def tickets_of(conn: psycopg.Connection, hunt_id: str) -> list[dict[str, Any]]:
     rows = conn.execute(
-        "SELECT id, origin, status, alert_ids, hunt_id, entities, verdict, details"
+        "SELECT id, title, origin, status, alert_ids, hunt_id, entities, verdict, details"
         " FROM tickets WHERE hunt_id = %s",
         (hunt_id,),
     ).fetchall()
-    keys = ("id", "origin", "status", "alert_ids", "hunt_id", "entities", "verdict", "details")
+    keys = (
+        "id",
+        "title",
+        "origin",
+        "status",
+        "alert_ids",
+        "hunt_id",
+        "entities",
+        "verdict",
+        "details",
+    )
     return [dict(zip(keys, row, strict=True)) for row in rows]
 
 
@@ -394,6 +404,7 @@ def test_confirmed_hunt_creates_l3_ticket(db: str, conn: psycopg.Connection) -> 
     assert hunt["details"]["model_only_entities"] == [IP_DST]
     assert hunt["details"]["missing_evidence_rows"] == 0
     (ticket,) = tickets_of(conn, hunt_id)
+    assert ticket["title"] == "공개 웹 서버의 업로드 기능으로 웹셸이 올라왔다"  # 가설 문장
     assert ticket["origin"] == "l3"
     assert ticket["status"] == "escalated"
     assert ticket["alert_ids"] == []
@@ -529,6 +540,7 @@ def test_existing_ticket_for_hunt_is_kept(db: str, conn: psycopg.Connection) -> 
     hunt_id = add_hunt(conn)
     existing = {
         "id": new_id("tkt"),
+        "title": "fixture title",
         "origin": "l3",
         "status": "escalated",
         "alert_ids": [],
