@@ -134,6 +134,13 @@ class IncidentDetail(_Model):
     seed_source: str | None
 
 
+class ReviewResult(_Model):
+    """승인·반려 결과. 승인이면 만든 Case의 id, 반려이면 null(#365, D-076)."""
+
+    incident: IncidentItem
+    case_id: str | None
+
+
 class CaseItem(_Model):
     id: str
     incident_id: str

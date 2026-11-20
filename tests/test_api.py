@@ -37,7 +37,13 @@ def write_config(directory: Path, text: str) -> Path:
 
 UI_ROUTERS = (dashboard.router, records.router, workflow.router)
 READ_ONLY_ROUTERS = (hunts.router, threat_news.router, *UI_ROUTERS)
-READ_ONLY_PATHS = ["/api" + r.path for router in READ_ONLY_ROUTERS for r in router.routes]
+ALL_ROUTES = [route for router in READ_ONLY_ROUTERS for route in router.routes]
+# 조회 라우터에서 쓰기는 Incident 승인·반려 둘뿐이다(#365, D-076)
+REVIEW_OPERATIONS = {
+    "/api/incidents/{incident_id}/approve": ["post"],
+    "/api/incidents/{incident_id}/reject": ["post"],
+}
+READ_ONLY_PATHS = ["/api" + r.path for r in ALL_ROUTES if r.methods == {"GET"}]
 
 # 로그인·가입·사용자 관리(#284). 경로마다 메서드를 고정한다
 AUTH_OPERATIONS = {
@@ -56,18 +62,20 @@ AUTH_OPERATIONS = {
     "/api/users/{user_id}/permissions": ["put"],
 }
 
-API_PATHS = sorted([*READ_ONLY_PATHS, "/api/ticketing-policy", *AUTH_OPERATIONS])
+API_PATHS = sorted(
+    [*READ_ONLY_PATHS, "/api/ticketing-policy", *AUTH_OPERATIONS, *REVIEW_OPERATIONS]
+)
 
 
 def test_api_routes_are_connected_and_nothing_else_is_open() -> None:
     app = create_app(load_settings())
     # openapi_url=None이라 앱 바로 아래에는 라우트가 없다. OpenAPI 문서는 /api/openapi.json이다
     assert [r for r in app.routes if isinstance(r, Route)] == []
-    # 조회 라우터(hunts·threat-news·화면 조회)는 읽기 전용이다. 정책 라우터만 GET과 PUT을 가진다
-    read_only = [route for router in READ_ONLY_ROUTERS for route in router.routes]
-    assert all(isinstance(r, APIRoute) for r in read_only)
-    assert all(r.methods == {"GET"} for r in read_only)
-    assert all(r.include_in_schema for r in read_only)
+    # 조회 라우터(hunts·threat-news·화면 조회)는 읽기 전용이다. 쓰기는 승인·반려 둘과 정책 PUT뿐이다
+    assert all(isinstance(r, APIRoute) for r in ALL_ROUTES)
+    assert all(r.include_in_schema for r in ALL_ROUTES)
+    writes = {"/api" + r.path: sorted(m.lower() for m in r.methods) for r in ALL_ROUTES}
+    assert {p: m for p, m in writes.items() if m != ["get"]} == REVIEW_OPERATIONS
     assert sorted(r.methods for r in ticketing_policy.router.routes) == [{"GET"}, {"PUT"}]
     # 앱에 실제로 붙은 모양은 OpenAPI 문서로 본다
     paths = app.openapi()["paths"]
@@ -75,6 +83,8 @@ def test_api_routes_are_connected_and_nothing_else_is_open() -> None:
     for path, operations in paths.items():
         if path in AUTH_OPERATIONS:
             expected = AUTH_OPERATIONS[path]
+        elif path in REVIEW_OPERATIONS:
+            expected = REVIEW_OPERATIONS[path]
         elif path == "/api/ticketing-policy":
             expected = ["get", "put"]
         else:

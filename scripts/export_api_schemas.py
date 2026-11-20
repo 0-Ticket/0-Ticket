@@ -14,6 +14,7 @@ NAMES = {
         "TicketDetail",
         "IncidentPage",
         "IncidentDetail",
+        "ReviewResult",
         "CasePage",
         "CaseDetail",
         "Dashboard",
