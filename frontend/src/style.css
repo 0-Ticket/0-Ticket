@@ -2032,3 +2032,68 @@ td {
   background: #447ee366;
   outline: none;
 }
+.summary-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  border: 1px solid #e5ebf4;
+  border-radius: 10px;
+  padding: 12px 15px;
+}
+.summary-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.summary-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  border: 1px solid #e5ebf4;
+  border-radius: 10px;
+  padding: 10px 15px;
+}
+.summary-list code {
+  font-family: "Roboto Mono", monospace;
+  font-size: 11px;
+  color: #7b8ca5;
+  overflow-wrap: anywhere;
+}
+.detail-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.detail-table th,
+.detail-table td {
+  text-align: left;
+  padding: 7px 10px;
+  border-bottom: 1px solid #edf0f6;
+  overflow-wrap: anywhere;
+}
+.verdict {
+  border: 1px solid #e5ebf4;
+  border-radius: 10px;
+  padding: 4px 15px 12px;
+}
+.verdict code {
+  font-family: "Roboto Mono", monospace;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.proposal .kind {
+  font-size: 11px;
+  color: #7b8ca5;
+  margin-right: 8px;
+}
+.proposal > span {
+  font-size: 11px;
+  margin-right: 8px;
+}
+.review-error {
+  color: #b42318;
+}
