@@ -136,7 +136,8 @@ test("L3 ticket offers Hunt navigation, and filters reset cursor", async () => {
     ),
   );
   show("/tickets");
-  fireEvent.click(await screen.findByRole("button", { name: /tkt_/ }));
+  // 목록은 ID 대신 Ticket 제목을 보여 준다(#343)
+  fireEvent.click(await screen.findByRole("button", { name: ticket.title }));
   expect(
     await screen.findByRole("link", { name: "원본 Hunt" }),
   ).toHaveAttribute("href", `/hunts?selected=${ticket.hunt_id}`);
