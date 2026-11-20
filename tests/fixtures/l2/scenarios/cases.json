@@ -1,0 +1,649 @@
+{
+  "now": 1793764800000,
+  "common_source": {
+    "@timestamp": "2026-11-20T06:00:00.000Z",
+    "kibana.alert.start": "2026-11-20T06:00:01.000Z",
+    "kibana.alert.original_time": "2026-11-20T05:59:50.000Z",
+    "kibana.alert.severity": "high",
+    "kibana.alert.risk_score": 73,
+    "kibana.alert.rule.name": "scenario rule",
+    "kibana.alert.rule.rule_id": "scenario-rule"
+  },
+  "cases": [
+    {
+      "case": "1a-same-source-same-src-ip",
+      "title": "같은 소스의 알럿 여러 개가 같은 공격자 IP를 src로 가진다",
+      "input": "A",
+      "peers": [
+        {
+          "name": "peer",
+          "tickets": [
+            {"alerts": [{"entities": [["ip", "203.0.113.50", "src"], ["ip", "192.0.2.10", "dst"]]}]},
+            {"alerts": [{"entities": [["ip", "203.0.113.50", "src"], ["ip", "192.0.2.11", "dst"]]}]}
+          ]
+        }
+      ],
+      "current": [{"entities": [["ip", "203.0.113.50", "src"], ["ip", "192.0.2.10", "dst"]]}],
+      "desired": "같은 공격자의 알럿이라 한 Incident로 묶인다",
+      "basis": "D-027: 양쪽 role이 src이고 타입·정규화 값이 같으면 후보 경로를 만든다",
+      "expect": {"coverage": "complete", "reason": "paths_found", "candidates": ["peer"], "llm_called": true, "result": "new"},
+      "classification": "일치",
+      "llm_manual": true,
+      "llm_expected": "existing"
+    },
+    {
+      "case": "1b-cross-source-same-src-ip",
+      "title": "ModSecurity와 Suricata에서 같은 공격자 IP가 둘 다 src로 정규화된다",
+      "input": "B",
+      "peers": [
+        {
+          "name": "peer",
+          "tickets": [
+            {
+              "alerts": [
+                {
+                  "template": "modsecurity",
+                  "source": {
+                    "event": {"module": "modsecurity"},
+                    "source": {"ip": "203.0.113.50"},
+                    "transaction": {
+                      "client_ip": "203.0.113.50",
+                      "host_ip": "192.0.2.10",
+                      "request": {"hostname": "www.example.com"}
+                    }
+                  },
+                  "expect_entities": [
+                    ["ip", "203.0.113.50", "src"],
+                    ["ip", "192.0.2.10", "dst"],
+                    ["domain", "www.example.com", "dst"]
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "current": [
+        {
+          "template": "suricata",
+          "source": {
+            "event": {"module": "suricata"},
+            "source": {"ip": "203.0.113.50"},
+            "destination": {"ip": "192.0.2.10"}
+          },
+          "expect_entities": [["ip", "203.0.113.50", "src"], ["ip", "192.0.2.10", "dst"]]
+        }
+      ],
+      "desired": "같은 공격자의 서로 다른 소스 알럿이라 한 Incident로 묶인다",
+      "basis": "D-027, D-059·D-062: 정규화기가 ModSecurity client_ip와 Suricata source.ip를 모두 src로 만든다",
+      "expect": {"coverage": "complete", "reason": "paths_found", "candidates": ["peer"], "llm_called": true, "result": "new"},
+      "classification": "일치",
+      "llm_manual": true,
+      "llm_expected": "existing"
+    },
+    {
+      "case": "1c1-ipv4-padded-value",
+      "title": "같은 공격자인데 한쪽 저장 값에 앞뒤 공백이 있다",
+      "input": "A",
+      "peers": [
+        {
+          "name": "peer",
+          "tickets": [{"alerts": [{"entities": [["ip", " 203.0.113.50 ", "src"]]}]}]
+        }
+      ],
+      "current": [{"entities": [["ip", "203.0.113.50", "src"]]}],
+      "desired": "값 표기 차이만 있으므로 묶인다",
+      "basis": "D-027: 정규화 값이 같을 때 연결한다. SQL은 btrim으로 공백을 뗀다",
+      "expect": {"coverage": "complete", "reason": "paths_found", "candidates": ["peer"], "llm_called": true, "result": "new"},
+      "classification": "일치"
+    },
+    {
+      "case": "1c2-ipv6-stored-noncanonical",
+      "title": "같은 공격자인데 이전 Incident에는 IPv6가 0 채움·대문자 표기로 저장돼 있다",
+      "input": "A",
+      "peers": [
+        {
+          "name": "peer",
+          "tickets": [{"alerts": [{"entities": [["ip", "2001:0DB8:0:0:0:0:0:50", "src"]]}]}]
+        }
+      ],
+      "current": [{"entities": [["ip", "2001:db8::50", "src"]]}],
+      "desired": "같은 IP의 표기 차이이므로 묶인다",
+      "basis": "D-027: 타입·정규화 값이 같을 때. normalize_entity_value는 ip를 ipaddress 정규형으로 바꾸지만 graph.py SQL은 저장 값에 btrim만 적용한다",
+      "expect": {"coverage": "complete", "reason": "paths_found", "candidates": ["peer"], "llm_called": true, "result": "new"},
+      "classification": "불일치(결함)"
+    },
+    {
+      "case": "1c3-ipv6-current-noncanonical",
+      "title": "같은 공격자인데 지금 Ticket의 IPv6가 0 채움·대문자 표기다",
+      "input": "A",
+      "peers": [
+        {
+          "name": "peer",
+          "tickets": [{"alerts": [{"entities": [["ip", "2001:db8::50", "src"]]}]}]
+        }
+      ],
+      "current": [{"entities": [["ip", "2001:0DB8:0:0:0:0:0:50", "src"]]}],
+      "desired": "같은 IP의 표기 차이이므로 묶인다",
+      "basis": "D-027: 지금 쪽 값은 파이썬에서 정규형으로 바꾸므로 저장 값이 정규형이면 맞는다",
+      "expect": {"coverage": "complete", "reason": "paths_found", "candidates": ["peer"], "llm_called": true, "result": "new"},
+      "classification": "일치"
+    },
+    {
+      "case": "1c4-ipv6-through-normalizer",
+      "title": "원본 hit의 IPv6 표기가 다른 두 Suricata 알럿을 정규화기로 만든다",
+      "input": "B",
+      "peers": [
+        {
+          "name": "peer",
+          "tickets": [
+            {
+              "alerts": [
+                {
+                  "template": "suricata",
+                  "source": {
+                    "event": {"module": "suricata"},
+                    "source": {"ip": "2001:0DB8:0:0:0:0:0:50"},
+                    "destination": {"ip": "192.0.2.10"}
+                  },
+                  "expect_entities": [["ip", "2001:0DB8:0:0:0:0:0:50", "src"], ["ip", "192.0.2.10", "dst"]]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "current": [
+        {
+          "template": "suricata",
+          "source": {
+            "event": {"module": "suricata"},
+            "source": {"ip": "2001:db8::50"},
+            "destination": {"ip": "192.0.2.10"}
+          },
+          "expect_entities": [["ip", "2001:db8::50", "src"], ["ip", "192.0.2.10", "dst"]]
+        }
+      ],
+      "desired": "같은 IP의 표기 차이이므로 묶인다",
+      "basis": "D-027, D-059, #302: 정규화기는 원본 IPv6 표기를 그대로 저장한다(정규형으로 바꾸지 않는다). 그래서 1c2와 같은 저장 값이 실제 정규화 결과로도 생긴다",
+      "expect": {"coverage": "complete", "reason": "paths_found", "candidates": ["peer"], "llm_called": true, "result": "new"},
+      "classification": "불일치(결함)"
+    },
+    {
+      "case": "2a-webshell-chain-suricata-outbound",
+      "title": "웹쉘 체인: 들어오는 ModSecurity 알럿과 침해 호스트에서 나가는 Suricata 알럿",
+      "input": "B",
+      "peers": [
+        {
+          "name": "peer",
+          "tickets": [
+            {
+              "alerts": [
+                {
+                  "template": "modsecurity",
+                  "source": {
+                    "event": {"module": "modsecurity"},
+                    "source": {"ip": "203.0.113.50"},
+                    "transaction": {
+                      "client_ip": "203.0.113.50",
+                      "host_ip": "192.0.2.10",
+                      "request": {"hostname": "www.example.com"}
+                    }
+                  },
+                  "expect_entities": [
+                    ["ip", "203.0.113.50", "src"],
+                    ["ip", "192.0.2.10", "dst"],
+                    ["domain", "www.example.com", "dst"]
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "current": [
+        {
+          "template": "suricata",
+          "source": {
+            "event": {"module": "suricata"},
+            "source": {"ip": "192.0.2.10"},
+            "destination": {"ip": "203.0.113.50"}
+          },
+          "expect_entities": [["ip", "192.0.2.10", "src"], ["ip", "203.0.113.50", "dst"]]
+        }
+      ],
+      "desired": "같은 공격 체인(침해 후 나가는 통신)이라 묶여야 한다",
+      "basis": "D-027·D-062: 양쪽이 모두 src일 때만 연결한다. 공격자 IP는 한쪽에서 src, 다른 쪽에서 dst라 공유되는 src가 없다. Suricata 샘플은 손으로 만든 것이라 이 결과는 정규화기 규칙 기준이고 실제 센서가 방향을 이렇게 채우는지는 별도 확인이 필요하다",
+      "expect": {"coverage": "complete", "reason": "no_path", "candidates": [], "llm_called": false, "result": "new"},
+      "classification": "불일치(규칙의 결과)"
+    },
+    {
+      "case": "2b-webshell-chain-guardduty-outbound",
+      "title": "웹쉘 체인: 들어오는 ModSecurity 알럿과 GuardDuty OUTBOUND 알럿",
+      "input": "B",
+      "peers": [
+        {
+          "name": "peer",
+          "tickets": [
+            {
+              "alerts": [
+                {
+                  "template": "modsecurity",
+                  "source": {
+                    "event": {"module": "modsecurity"},
+                    "source": {"ip": "203.0.113.50"},
+                    "transaction": {
+                      "client_ip": "203.0.113.50",
+                      "host_ip": "192.0.2.10",
+                      "request": {"hostname": "www.example.com"}
+                    }
+                  },
+                  "expect_entities": [
+                    ["ip", "203.0.113.50", "src"],
+                    ["ip", "192.0.2.10", "dst"],
+                    ["domain", "www.example.com", "dst"]
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "current": [
+        {
+          "template": "guardduty",
+          "source": {
+            "event": {"dataset": "aws.guardduty", "provider": "guardduty.amazonaws.com"},
+            "guardduty": {
+              "type": "UnauthorizedAccess:EC2/TorClient",
+              "title": "outbound to attacker",
+              "description": "outbound connection from the compromised instance",
+              "accountId": "111111111111",
+              "service": {
+                "action": {
+                  "networkConnectionAction": {
+                    "connectionDirection": "OUTBOUND",
+                    "localIpDetails": {"ipAddressV4": "192.0.2.10"},
+                    "remoteIpDetails": {"ipAddressV4": "203.0.113.50"}
+                  }
+                }
+              },
+              "resource": {"instanceDetails": {"instanceId": "i-0aaaaaaaaaaaaaaaa"}}
+            }
+          },
+          "expect_entities": [
+            ["host", "i-0aaaaaaaaaaaaaaaa", "target"],
+            ["host", "111111111111", "target"],
+            ["ip", "192.0.2.10", "src"],
+            ["ip", "203.0.113.50", "dst"]
+          ]
+        }
+      ],
+      "desired": "같은 공격 체인이라 묶여야 한다",
+      "basis": "D-064: OUTBOUND에서는 로컬(피해 호스트) IP가 src, 원격(공격자) IP가 dst다. 공유되는 src가 없다",
+      "expect": {"coverage": "complete", "reason": "no_path", "candidates": [], "llm_called": false, "result": "new"},
+      "classification": "불일치(규칙의 결과)"
+    },
+    {
+      "case": "3-different-attackers",
+      "title": "서로 다른 공격자와 무관한 Ticket",
+      "input": "A",
+      "peers": [
+        {
+          "name": "peer",
+          "tickets": [{"alerts": [{"entities": [["ip", "203.0.113.50", "src"], ["ip", "192.0.2.10", "dst"]]}]}]
+        }
+      ],
+      "current": [{"entities": [["ip", "203.0.113.60", "src"], ["ip", "192.0.2.20", "dst"]]}],
+      "desired": "별도 Incident",
+      "basis": "D-027: 공유되는 src 엔티티가 없다",
+      "expect": {"coverage": "complete", "reason": "no_path", "candidates": [], "llm_called": false, "result": "new"},
+      "classification": "일치"
+    },
+    {
+      "case": "4-non-src-roles-only",
+      "title": "dst·target·actor·null role만 공유한다",
+      "input": "A",
+      "peers": [
+        {
+          "name": "peer",
+          "tickets": [
+            {
+              "alerts": [
+                {
+                  "entities": [
+                    ["ip", "192.0.2.10", "dst"],
+                    ["host", "web-01", "target"],
+                    ["user", "admin", "actor"],
+                    ["domain", "www.example.com", null],
+                    ["url", "/login", null]
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "current": [
+        {
+          "entities": [
+            ["ip", "192.0.2.10", "dst"],
+            ["host", "web-01", "target"],
+            ["user", "admin", "actor"],
+            ["domain", "www.example.com", null],
+            ["url", "/login", null]
+          ]
+        }
+      ],
+      "desired": "src가 아닌 role만 겹치면 연결하지 않는다",
+      "basis": "D-027, #329: 양쪽이 모두 src일 때만 연결한다. 기존 단위 테스트와 같은 결과를 DB 경로로 확인한다",
+      "expect": {"coverage": "complete", "reason": "no_path", "candidates": [], "llm_called": false, "result": "new"},
+      "classification": "일치"
+    },
+    {
+      "case": "5-same-local-ip-different-environments",
+      "title": "서로 다른 환경의 같은 로컬 IP가 GuardDuty OUTBOUND에서 src가 된다 (198.51.100.21은 사설 IP 상당)",
+      "input": "B",
+      "peers": [
+        {
+          "name": "peer",
+          "tickets": [
+            {
+              "alerts": [
+                {
+                  "template": "guardduty",
+                  "source": {
+                    "event": {"dataset": "aws.guardduty", "provider": "guardduty.amazonaws.com"},
+                    "guardduty": {
+                      "type": "UnauthorizedAccess:EC2/TorClient",
+                      "title": "outbound environment one",
+                      "description": "outbound connection in the first environment",
+                      "accountId": "111111111111",
+                      "service": {
+                        "action": {
+                          "networkConnectionAction": {
+                            "connectionDirection": "OUTBOUND",
+                            "localIpDetails": {"ipAddressV4": "198.51.100.21"},
+                            "remoteIpDetails": {"ipAddressV4": "203.0.113.9"}
+                          }
+                        }
+                      },
+                      "resource": {"instanceDetails": {"instanceId": "i-0aaaaaaaaaaaaaaaa"}}
+                    }
+                  },
+                  "expect_entities": [
+                    ["host", "i-0aaaaaaaaaaaaaaaa", "target"],
+                    ["host", "111111111111", "target"],
+                    ["ip", "198.51.100.21", "src"],
+                    ["ip", "203.0.113.9", "dst"]
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "current": [
+        {
+          "template": "guardduty",
+          "source": {
+            "event": {"dataset": "aws.guardduty", "provider": "guardduty.amazonaws.com"},
+            "guardduty": {
+              "type": "UnauthorizedAccess:EC2/TorClient",
+              "title": "outbound environment two",
+              "description": "outbound connection in the second environment",
+              "accountId": "222222222222",
+              "service": {
+                "action": {
+                  "networkConnectionAction": {
+                    "connectionDirection": "OUTBOUND",
+                    "localIpDetails": {"ipAddressV4": "198.51.100.21"},
+                    "remoteIpDetails": {"ipAddressV4": "203.0.113.77"}
+                  }
+                }
+              },
+              "resource": {"instanceDetails": {"instanceId": "i-0bbbbbbbbbbbbbbbb"}}
+            }
+          },
+          "expect_entities": [
+            ["host", "i-0bbbbbbbbbbbbbbbb", "target"],
+            ["host", "222222222222", "target"],
+            ["ip", "198.51.100.21", "src"],
+            ["ip", "203.0.113.77", "dst"]
+          ]
+        }
+      ],
+      "desired": "다른 계정·인스턴스의 알럿이라 분리된다",
+      "basis": "D-064: OUTBOUND의 로컬 IP가 src가 되고 #329가 사설·공개 IP 구분을 없앴다. 그래프는 후보 경로를 만들고 에이전트가 거르는지가 관건이다",
+      "expect": {"coverage": "complete", "reason": "paths_found", "candidates": ["peer"], "llm_called": true, "result": "new"},
+      "classification": "불일치(규칙의 결과)",
+      "llm_manual": true,
+      "llm_expected": "new"
+    },
+    {
+      "case": "6a-full-incident-excluded",
+      "title": "Incident당 Ticket 10개가 가득 찼다",
+      "input": "A",
+      "peers": [
+        {
+          "name": "peer",
+          "tickets": [{"copies": 10, "alerts": [{"entities": [["ip", "203.0.113.50", "src"]]}]}]
+        }
+      ],
+      "current": [{"entities": [["ip", "203.0.113.50", "src"]]}],
+      "desired": "가득 찬 Incident는 후보에서 빠지고 새 Incident가 된다",
+      "basis": "D-027: max_incident_tickets=10, 가득 찬 Incident는 후보 수 제한 전에 제외한다",
+      "expect": {"coverage": "complete", "reason": "no_path", "candidates": [], "llm_called": false, "result": "new"},
+      "classification": "일치"
+    },
+    {
+      "case": "6b-candidate-limit",
+      "title": "후보 Incident가 max_candidates(5)를 넘는다",
+      "input": "A",
+      "peers": [
+        {
+          "name": "peer",
+          "copies": 6,
+          "tickets": [{"alerts": [{"entities": [["ip", "203.0.113.50", "src"]]}]}]
+        }
+      ],
+      "current": [{"entities": [["ip", "203.0.113.50", "src"]]}],
+      "desired": "탐색 불완전으로 기록하고 새 Incident가 된다",
+      "basis": "D-027: 한도에 걸리면 경로 없음과 구분해 incomplete/candidate_limit으로 보존하고 새 Incident를 만든다",
+      "expect": {"coverage": "incomplete", "reason": "candidate_limit", "candidates": [], "llm_called": false, "result": "new"},
+      "classification": "일치"
+    },
+    {
+      "case": "6c-incident-fills-during-model-run",
+      "title": "모델이 기존 Incident를 고르는 사이 그 Incident가 가득 찬다",
+      "input": "A",
+      "peers": [
+        {
+          "name": "peer",
+          "tickets": [{"copies": 9, "alerts": [{"entities": [["ip", "203.0.113.50", "src"]]}]}]
+        }
+      ],
+      "current": [{"entities": [["ip", "203.0.113.50", "src"]]}],
+      "race_fill": "peer",
+      "fake_decision": "existing",
+      "desired": "저장 직전에 다시 확인해 새 Incident를 만들고 incident_full을 기록한다",
+      "basis": "D-027: 저장 직전 잠근 뒤에도 상한을 재확인한다",
+      "expect": {"coverage": "complete", "reason": "paths_found", "candidates": ["peer"], "llm_called": true, "result": "new", "fallback": "incident_full"},
+      "classification": "일치"
+    },
+    {
+      "case": "7a-new-structure-keeps-src-link",
+      "title": "새 구조: 수집기 host가 사라져도 같은 공격자 src로 연결된다",
+      "input": "B",
+      "peers": [
+        {
+          "name": "peer",
+          "tickets": [
+            {
+              "alerts": [
+                {
+                  "template": "suricata",
+                  "source": {
+                    "event": {"module": "suricata"},
+                    "host": {"name": "collector-01"},
+                    "source": {"ip": "203.0.113.50"},
+                    "destination": {"ip": "192.0.2.10"}
+                  },
+                  "expect_entities": [["ip", "203.0.113.50", "src"], ["ip", "192.0.2.10", "dst"]]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "current": [
+        {
+          "template": "suricata",
+          "source": {
+            "event": {"module": "suricata"},
+            "host": {"name": "collector-01"},
+            "source": {"ip": "203.0.113.50"},
+            "destination": {"ip": "192.0.2.11"}
+          },
+          "expect_entities": [["ip", "203.0.113.50", "src"], ["ip", "192.0.2.11", "dst"]]
+        }
+      ],
+      "desired": "같은 공격자라 묶인다",
+      "basis": "#326: 새 Alert는 host.name을 엔티티로 올리지 않지만 src IP 연결은 그대로다",
+      "expect": {"coverage": "complete", "reason": "paths_found", "candidates": ["peer"], "llm_called": true, "result": "new"},
+      "classification": "일치"
+    },
+    {
+      "case": "7b-new-structure-shared-collector-only",
+      "title": "새 구조: 공격자가 다르고 수집기·피해 호스트만 같다",
+      "input": "B",
+      "peers": [
+        {
+          "name": "peer",
+          "tickets": [
+            {
+              "alerts": [
+                {
+                  "template": "suricata",
+                  "source": {
+                    "event": {"module": "suricata"},
+                    "host": {"name": "collector-01"},
+                    "source": {"ip": "203.0.113.50"},
+                    "destination": {"ip": "192.0.2.10"}
+                  },
+                  "expect_entities": [["ip", "203.0.113.50", "src"], ["ip", "192.0.2.10", "dst"]]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "current": [
+        {
+          "template": "suricata",
+          "source": {
+            "event": {"module": "suricata"},
+            "host": {"name": "collector-01"},
+            "source": {"ip": "203.0.113.60"},
+            "destination": {"ip": "192.0.2.10"}
+          },
+          "expect_entities": [["ip", "203.0.113.60", "src"], ["ip", "192.0.2.10", "dst"]]
+        }
+      ],
+      "desired": "공격자가 다르므로 분리된다",
+      "basis": "D-027, #329: dst와 수집기 host는 연결 근거가 아니다",
+      "expect": {"coverage": "complete", "reason": "no_path", "candidates": [], "llm_called": false, "result": "new"},
+      "classification": "일치"
+    },
+    {
+      "case": "7b-old-structure-shared-collector-only",
+      "title": "옛 구조 엔티티 행: 같은 상황(host가 role null로 있고 domain·url role도 null)",
+      "input": "A",
+      "peers": [
+        {
+          "name": "peer",
+          "tickets": [
+            {
+              "alerts": [
+                {
+                  "entities": [
+                    ["host", "collector-01", null],
+                    ["ip", "203.0.113.50", "src"],
+                    ["ip", "192.0.2.10", "dst"],
+                    ["domain", "www.example.com", null],
+                    ["url", "/login", null]
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "current": [
+        {
+          "entities": [
+            ["host", "collector-01", null],
+            ["ip", "203.0.113.60", "src"],
+            ["ip", "192.0.2.10", "dst"],
+            ["domain", "www.example.com", null],
+            ["url", "/login", null]
+          ]
+        }
+      ],
+      "desired": "공격자가 다르므로 분리된다",
+      "basis": "#329 이후 role이 src가 아닌 host·domain·url은 연결하지 않는다. 옛 행도 같은 결과다. #329 이전에는 host 허브로 묶였지만 기존 관계는 소급 변경하지 않았다",
+      "expect": {"coverage": "complete", "reason": "no_path", "candidates": [], "llm_called": false, "result": "new"},
+      "classification": "일치"
+    },
+    {
+      "case": "7c-no-src-entity",
+      "title": "IP가 없는 GuardDuty 알럿 두 건이 같은 사용자 계정(actor)과 계정 ID를 공유한다",
+      "input": "B",
+      "peers": [
+        {
+          "name": "peer",
+          "tickets": [
+            {
+              "alerts": [
+                {
+                  "template": "guardduty",
+                  "source": {
+                    "event": {"dataset": "aws.guardduty", "provider": "guardduty.amazonaws.com"},
+                    "guardduty": {
+                      "type": "Policy:IAMUser/RootCredentialUsage",
+                      "title": "root credential usage",
+                      "description": "root credential usage without a remote ip",
+                      "accountId": "111111111111",
+                      "resource": {"accessKeyDetails": {"userName": "Root"}}
+                    }
+                  },
+                  "expect_entities": [["user", "Root", "actor"], ["host", "111111111111", "target"]]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "current": [
+        {
+          "template": "guardduty",
+          "source": {
+            "event": {"dataset": "aws.guardduty", "provider": "guardduty.amazonaws.com"},
+            "guardduty": {
+              "type": "Policy:IAMUser/RootCredentialUsage",
+              "title": "root credential usage again",
+              "description": "root credential usage without a remote ip",
+              "accountId": "111111111111",
+              "resource": {"accessKeyDetails": {"userName": "Root"}}
+            }
+          },
+          "expect_entities": [["user", "Root", "actor"], ["host", "111111111111", "target"]]
+        }
+      ],
+      "desired": "같은 계정의 연속된 오남용이라 묶여야 한다",
+      "basis": "D-027: src 엔티티가 없으면 어떤 Ticket과도 연결할 수 없다. actor·target은 연결 근거가 아니다",
+      "expect": {"coverage": "complete", "reason": "no_path", "candidates": [], "llm_called": false, "result": "new"},
+      "classification": "불일치(규칙의 결과)"
+    }
+  ]
+}
