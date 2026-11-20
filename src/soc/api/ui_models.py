@@ -47,6 +47,17 @@ class RawDetail(_Model):
     seed_source: str | None
 
 
+class TicketIncident(_Model):
+    """Ticket이 붙은 Incident 요약. 필드 이름과 계산은 IncidentItem과 같다(#345)."""
+
+    id: str
+    title: str
+    status: IncidentStatus
+    severity: int
+    assessed_severity: int | None
+    display_severity: int
+
+
 class TicketItem(_Model):
     id: str
     title: str
@@ -56,6 +67,7 @@ class TicketItem(_Model):
     created_at: int
     updated_at: int
     seed_source: str | None
+    incident: TicketIncident | None
 
 
 class TicketPage(_Model):
@@ -67,6 +79,7 @@ class TicketDetail(_Model):
     ticket: Ticket
     severity: int
     seed_source: str | None
+    incident: TicketIncident | None
 
 
 class IncidentItem(_Model):
