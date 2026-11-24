@@ -6,10 +6,30 @@ from types import SimpleNamespace
 
 from soc.agent import AgentResult
 from soc.l2.branch import candidates as candidate_module
+from soc.l2.branch import index as index_module
 from soc.l2.branch.decide import Candidate
 from soc.l2.branch.worker import L2BranchWorker
 from soc.l2.config import BranchSettings
 from soc.store.qdrant import SearchHit
+
+
+def test_index_cli_reports_failures_without_connection_details(monkeypatch, capsys) -> None:
+    monkeypatch.setenv("DATABASE_URL", "postgresql://user:private@localhost/db")
+
+    def fail(*_args):
+        raise RuntimeError("private")
+
+    monkeypatch.setattr(index_module, "resume", fail)
+    assert index_module.main(["resume", "tkt_example"]) == 1
+    assert "private" not in capsys.readouterr().err
+
+    monkeypatch.setattr("soc.store.config.load_config", lambda: {"store": {}})
+    monkeypatch.setattr(index_module, "read_settings", lambda _: None)
+    monkeypatch.setattr(index_module, "get_service", lambda _: None)
+    monkeypatch.setattr(
+        index_module, "reindex", lambda *_args, **_kwargs: {"processed": 1, "failed": 1}
+    )
+    assert index_module.main(["reindex"]) == 1
 
 
 def test_tied_score_pages_are_reloaded_without_missing_hits(monkeypatch) -> None:

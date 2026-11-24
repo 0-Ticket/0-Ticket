@@ -2,6 +2,7 @@
 
 import argparse
 import os
+import sys
 from dataclasses import dataclass
 from typing import Any
 
@@ -149,30 +150,34 @@ def resume(database_url: str, ticket_id: str) -> bool:
     return row is not None
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="L2 Ticket 분류 색인 관리")
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("check")
     reindex_cmd = sub.add_parser("reindex")
     reindex_cmd.add_argument("--recreate", action="store_true")
     sub.add_parser("resume").add_argument("ticket_id")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     database_url = os.environ.get("DATABASE_URL")
     if not database_url:
         parser.error("DATABASE_URL이 필요하다")
-    if args.command == "resume":
-        print("resumed" if resume(database_url, args.ticket_id) else "not_l2_held")
-        return 0
-    from soc.store.config import load_config
+    try:
+        if args.command == "resume":
+            print("resumed" if resume(database_url, args.ticket_id) else "not_l2_held")
+            return 0
+        from soc.store.config import load_config
 
-    service = get_service(read_settings(load_config()["store"]))
-    result = (
-        check(database_url, service)
-        if args.command == "check"
-        else reindex(database_url, service, recreate=args.recreate)
-    )
+        service = get_service(read_settings(load_config()["store"]))
+        result = (
+            check(database_url, service)
+            if args.command == "check"
+            else reindex(database_url, service, recreate=args.recreate)
+        )
+    except Exception as exc:
+        print(f"분류 색인 명령 실패({type(exc).__name__})", file=sys.stderr)
+        return 1
     print(result)
-    return 0
+    return 1 if any(result.get(key, 0) for key in ("missing", "stale", "failed")) else 0
 
 
 if __name__ == "__main__":
