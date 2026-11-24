@@ -152,6 +152,10 @@ export type To = string;
 export type Kind2 = string;
 export type Edges = GraphEdge[];
 export type Paths = GraphPath[];
+export type VectorOnly = boolean;
+export type CandidateCount = number;
+export type VectorScore = number | null;
+export type RepresentativeTicketId = string | null;
 export type TicketGraphs = IncidentTicketGraph[];
 export type SeedSource = string | null;
 
@@ -240,6 +244,10 @@ export interface IncidentTicketGraph {
   coverage: Coverage;
   reason: Reason;
   paths: Paths;
+  vector_only?: VectorOnly;
+  candidate_count?: CandidateCount;
+  vector_score?: VectorScore;
+  representative_ticket_id?: RepresentativeTicketId;
 }
 export interface GraphPath {
   incident_id: IncidentId1;

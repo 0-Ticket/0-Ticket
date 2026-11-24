@@ -11,6 +11,36 @@ const incident = {
 } as unknown as IncidentDetail["incident"];
 const graphs = sample.ticket_graphs as IncidentDetail["ticket_graphs"];
 
+test("shows a vector-only membership without inventing a graph path", () => {
+  const candidate = {
+    ...graphs![0],
+    paths: [],
+    vector_only: true,
+    vector_score: 0.81234,
+    representative_ticket_id: sample.ticket_ids[1],
+  };
+  render(<IncidentGraph incident={incident} ticketGraphs={[candidate]} />);
+  expect(
+    screen.getByText(
+      /유사 Ticket 후보로 연결 \(유사도 0\.812, 그래프 경로 없음\)/,
+    ),
+  ).toBeInTheDocument();
+});
+
+test("shows rejected vector candidates on a new incident", () => {
+  render(
+    <IncidentGraph
+      incident={incident}
+      ticketGraphs={[
+        { ...graphs![0], paths: [], reason: "no_path", candidate_count: 2 },
+      ]}
+    />,
+  );
+  expect(
+    screen.getByText(/유사 Ticket 후보 검토 완료 \(그래프 경로 없음\)/),
+  ).toBeInTheDocument();
+});
+
 test("merges shared entities and edges while keeping membership and historical states distinct", () => {
   const { container } = render(
     <IncidentGraph incident={incident} ticketGraphs={graphs} />,
