@@ -29,6 +29,7 @@ supersedes: []
 - 과거 Ticket·Incident 관계는 자동으로 바꾸지 않는다. 배포 뒤 `reindex --recreate` 완료와 `check`의 missing/stale 0을 확인해야 분류가 재개된다.
 - `config/local.toml`이 `[l2.branch]`를 덮어쓰면 새 하한·호출·실패 설정을 확인해야 한다.
 - 실제 LLM을 쓰는 수동 회귀 테스트(`tests/test_l2_scenarios_llm.py`)는 `LLM_API_KEY`가 없어 실행하지 못했다. 손제작 36건의 그래프 회귀, 모델 출력 검증, DB 저장 테스트와 실제 임베딩 재현율 테스트로 코드 경로를 확인했다.
+- 화면 문구를 바꾼 PR에는 사람이 전·후 스크린샷을 붙여야 한다(D-075).
 
 ## 확인 방법
 
@@ -37,3 +38,4 @@ supersedes: []
 - `pnpm contracts:check`, `pnpm lint`, `pnpm test`(123건), `pnpm build`: 통과. 린트의 기존 Fast Refresh 경고 1건과 빌드 번들 크기 경고가 남았다.
 - `uv run ruff format --check .`, `uv run ruff check .`: 통과.
 - `uv run pytest -q -m "db or qdrant"`: 689건 통과. Qdrant 클라이언트의 서버 버전 확인 경고 1건이 남았다.
+- db 마커 테스트는 `DATABASE_URL`의 호스트를 `127.0.0.1`로 둬야 한다. Windows에서 `localhost`는 `::1`로 먼저 풀리고 compose의 postgres는 `127.0.0.1`에만 바인딩해서, psycopg가 타임아웃 없이 무한 대기한다. `QDRANT_URL`도 같은 이유로 `http://127.0.0.1:6333`이다.
