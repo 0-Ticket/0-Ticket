@@ -1,0 +1,64 @@
+{
+  "cases": [
+    {
+      "name": "same_webshell",
+      "same_attack": true,
+      "ticket": {
+        "title": "웹 요청 탐지",
+        "entities": [
+          {"type": "ip", "role": "src", "value": "203.0.113.8"},
+          {"type": "host", "role": "target", "value": "web.example.com"}
+        ],
+        "verdict": {"reason": "모델 판정 이유는 색인에서 제외"}
+      },
+      "alerts": [
+        {
+          "finding_info": {"title": "웹 요청 탐지", "analytic": {"uid": "web-rule"}},
+          "message": "웹셸 명령 요청이 탐지됨",
+          "details": {"entities": []}
+        }
+      ],
+      "events": [{"message": "HTTP GET /files/shell.php cmd=id"}]
+    },
+    {
+      "name": "same_webshell_followup",
+      "same_attack": true,
+      "ticket": {
+        "title": "웹 요청 탐지",
+        "entities": [
+          {"type": "ip", "role": "src", "value": "203.0.113.8"},
+          {"type": "host", "role": "target", "value": "web.example.com"}
+        ],
+        "verdict": {"reason": "다른 모델 이유도 제외"}
+      },
+      "alerts": [
+        {
+          "finding_info": {"title": "웹 요청 탐지", "analytic": {"uid": "web-rule"}},
+          "message": "웹셸 명령 요청이 탐지됨",
+          "details": {"entities": []}
+        }
+      ],
+      "events": [{"message": "HTTP GET /files/shell.php cmd=pwd"}]
+    },
+    {
+      "name": "different_sqli_same_source",
+      "same_attack": false,
+      "ticket": {
+        "title": "웹 요청 탐지",
+        "entities": [
+          {"type": "ip", "role": "src", "value": "203.0.113.8"},
+          {"type": "host", "role": "target", "value": "web.example.com"}
+        ],
+        "verdict": {"reason": "주입 공격 판정 이유도 제외"}
+      },
+      "alerts": [
+        {
+          "finding_info": {"title": "웹 요청 탐지", "analytic": {"uid": "web-rule"}},
+          "message": "SQL 주입 요청이 탐지됨",
+          "details": {"entities": []}
+        }
+      ],
+      "events": [{"message": "HTTP GET /board/content.php UNION SELECT"}]
+    }
+  ]
+}
