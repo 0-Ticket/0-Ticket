@@ -23,7 +23,7 @@ WITH peers AS (
     FROM incidents i
     JOIN tickets t ON t.id = ANY(i.ticket_ids) AND t.status = 'linked'
     JOIN alerts a ON a.id = ANY(t.alert_ids)
-    WHERE i.status = ANY(%s) AND i.updated_at BETWEEN %s AND %s
+    WHERE i.status = ANY(%s) AND i.updated_at BETWEEN %s AND %s AND i.id = ANY(%s)
       AND cardinality(i.ticket_ids) < %s
     UNION ALL
     SELECT i.id, i.updated_at, i.title, i.summary, i.status, i.ticket_ids,
@@ -33,7 +33,7 @@ WITH peers AS (
     FROM incidents i
     JOIN tickets t ON t.id = ANY(i.ticket_ids) AND t.status = 'linked' AND t.hunt_id IS NOT NULL
     JOIN hunts h ON h.id = t.hunt_id
-    WHERE i.status = ANY(%s) AND i.updated_at BETWEEN %s AND %s
+    WHERE i.status = ANY(%s) AND i.updated_at BETWEEN %s AND %s AND i.id = ANY(%s)
       AND cardinality(i.ticket_ids) < %s
 ), matches AS (
     SELECT p.*, seed.source_kind, seed.source_id, entity->>'type' AS entity_type,
@@ -56,14 +56,8 @@ WITH peers AS (
                     AND pg_input_is_valid(seed.entity_value, 'inet')
                THEN btrim(entity->>'value')::inet = seed.entity_value::inet
                ELSE btrim(entity->>'value') = seed.entity_value END
-), candidate_incidents AS (
-    SELECT incident_id, max(updated_at) AS updated_at
-    FROM matches
-    GROUP BY incident_id
-    ORDER BY max(updated_at) DESC, incident_id
-    LIMIT %s
 )
-SELECT m.* FROM matches m JOIN candidate_incidents c USING (incident_id)
+SELECT m.* FROM matches m
 ORDER BY m.updated_at DESC, m.incident_id, m.ticket_id, m.peer_id, m.entity_type, m.entity_value
 """
 
@@ -138,8 +132,6 @@ def classify_graph(
                     paths.append(path)
                 incident_hosts.setdefault(match["incident_id"], set()).update(_target_hosts(match))
 
-    if len(incident_paths) > max_candidates:
-        return GraphResult((), "incomplete", "candidate_limit", tuple(all_paths))
     incidents = {match["incident_id"]: _incident(match) for match in matches}
     candidates = tuple(
         GraphCandidate(
@@ -163,6 +155,7 @@ def read_graph(
     candidate_window_ms: int,
     max_candidates: int,
     max_incident_tickets: int,
+    incident_ids: tuple[str, ...] | None = None,
 ) -> GraphResult:
     """시간 창의 linked Ticket들을 엔티티로 연결한다. Event 테이블은 읽지 않는다."""
     source_entities = [
@@ -177,35 +170,39 @@ def read_graph(
         for entity in source["entities"]
         if entity["role"] == "src"
     ]
-    if not source_entities:
+    if incident_ids is None:
+        incident_ids = tuple(
+            row[0]
+            for row in conn.execute(
+                "SELECT id FROM incidents WHERE status = ANY(%s)", (list(_OPEN_STATUSES),)
+            ).fetchall()
+        )
+    if not source_entities or not incident_ids:
         return GraphResult((), "complete", "no_path", ())
     cutoff = now - timedelta(milliseconds=candidate_window_ms)
     params = (
         list(_OPEN_STATUSES),
         cutoff,
         now,
+        list(incident_ids),
         max_incident_tickets,
         list(_OPEN_STATUSES),
         cutoff,
         now,
+        list(incident_ids),
         max_incident_tickets,
         psycopg.types.json.Jsonb(source_entities),
         list(_LOWER_TYPES),
-        max_candidates + 1,
     )
     with conn.cursor(row_factory=dict_row) as cursor:
         rows = cursor.execute(_GRAPH_QUERY, params).fetchall()
     matches = [_match_row(row) for row in rows]
-    # The extra distinct Incident is a sentinel that proves the configured candidate bound was hit.
-    incident_ids = list(dict.fromkeys(row["incident_id"] for row in matches))
     result = classify_graph(
         ticket_id,
         sources,
         matches,
         max_candidates=max_candidates,
     )
-    if len(incident_ids) > max_candidates:
-        return GraphResult((), "incomplete", "candidate_limit", result.paths)
     return result
 
 

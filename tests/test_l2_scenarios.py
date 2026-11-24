@@ -126,7 +126,14 @@ def test_candidate_summary_has_paths_but_no_entity_roles() -> None:
     )
 
     summary = task.data["candidates"][0]
-    assert set(summary) == {"incident_id", "title", "ticket_count", "duration_ms", "paths"}
+    assert set(summary) == {
+        "incident_id",
+        "title",
+        "summary",
+        "ticket_count",
+        "duration_ms",
+        "paths",
+    }
     assert "target_hosts" not in summary
     entity_nodes = [
         node for path in summary["paths"] for node in path["nodes"] if node["kind"] == "entity"
@@ -163,11 +170,11 @@ def test_candidate_summary_adds_target_hosts_only_when_there_are_values() -> Non
         ),
     ],
 )
-def test_bad_agent_answers_fall_back_to_a_new_incident(
+def test_bad_agent_answers_are_errors_for_retry(
     output: dict[str, Any] | None, failure: str | None, fallback: str
 ) -> None:
     decision = resolve_decision(result_of(output, failure), (candidate_for(),))
 
     assert decision.incident_id is None
-    assert decision.source == "rule_default"
+    assert decision.source == "error"
     assert decision.fallback == fallback

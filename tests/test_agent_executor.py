@@ -444,12 +444,17 @@ def test_default_config_executor_values(default_config_dir: Path) -> None:
     assert [section[s]["poll_limit"] for s in ("l1", "l2", "l3")] == [10, 10, 10]
     assert [section[s]["workers"] for s in ("l1", "l2", "l3")] == [
         ["soc.l1.judge:build_worker"],
-        ["soc.l2.branch:build_worker", "soc.l2.analyze:build_worker"],
+        [
+            "soc.l2.branch.index:build_worker",
+            "soc.l2.branch:build_worker",
+            "soc.l2.analyze:build_worker",
+        ],
         # L3 워커(#245). 생성이 먼저라 같은 라운드에서 검증된다
         ["soc.l3.hunt.generate:build_worker", "soc.l3.hunt.verify:build_worker"],
     ]
     workers = {
         "soc.l1.judge:build_worker": FakeWorker("l1", "l1"),
+        "soc.l2.branch.index:build_worker": FakeWorker("l2", "l2_branch_index"),
         "soc.l2.branch:build_worker": FakeWorker("l2", "l2"),
         "soc.l2.analyze:build_worker": FakeWorker("l2", "l2_analyze"),
     }

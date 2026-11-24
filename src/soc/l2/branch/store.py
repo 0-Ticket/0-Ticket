@@ -13,6 +13,7 @@ from soc.entities import normalize_entity_value
 from soc.ids import new_id
 from soc.l2.branch.context import BranchContext
 from soc.l2.branch.decide import Decision
+from soc.l2.branch.outbox import enqueue
 from soc.l2.branch.read import _contract_row
 
 _OPEN_STATUSES = ("analyzing", "awaiting_review", "human_handling", "held")
@@ -37,6 +38,7 @@ _INCIDENT_COLUMNS = (
 class SaveResult:
     saved: bool
     incident_id: str | None = None
+    reason: str | None = None
 
 
 def save_branch(
@@ -58,22 +60,36 @@ def save_branch(
         incident = None
         if decision.incident_id is not None:
             incident_row = _fetch_locked(conn, "incidents", decision.incident_id)
+            representatives = [
+                item["ticket_id"]
+                for item in branch_details.get("candidates", [])
+                if item.get("incident_id") == decision.incident_id
+            ]
             if (
                 incident_row is not None
                 and incident_row["status"] in _OPEN_STATUSES
                 and len(incident_row["ticket_ids"]) < max_incident_tickets
+                and representatives
+                and conn.execute(
+                    """SELECT EXISTS(SELECT 1 FROM tickets WHERE id = %s AND status = 'linked')""",
+                    (representatives[0],),
+                ).fetchone()[0]
+                and representatives[0] in incident_row["ticket_ids"]
             ):
                 incident = _contract_row("incident", incident_row)
             else:
-                branch_details = {
-                    **branch_details,
-                    "decision_source": "rule_default",
-                    "decision_fallback": (
+                return SaveResult(
+                    False,
+                    reason=(
                         "incident_full"
-                        if incident_row is not None and incident_row["status"] in _OPEN_STATUSES
+                        if incident_row is not None
+                        and incident_row["status"] in _OPEN_STATUSES
+                        and len(incident_row["ticket_ids"]) >= max_incident_tickets
                         else "incident_closed"
+                        if incident_row is None or incident_row["status"] not in _OPEN_STATUSES
+                        else "incident_membership_changed"
                     ),
-                }
+                )
 
         if incident is None:
             incident = _new_incident(context, ticket, now_ms)
@@ -96,6 +112,7 @@ def save_branch(
             "UPDATE tickets SET status = 'linked', updated_at = %s, details = %s WHERE id = %s",
             (to_datetime(now_ms), Jsonb(ticket["details"]), ticket["id"]),
         )
+        enqueue(conn, ticket["id"])
         return SaveResult(True, incident["id"])
 
 

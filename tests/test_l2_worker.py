@@ -1,4 +1,4 @@
-"""L2 분류 워커는 외부 저장소 없이 그래프 분류를 준비한다."""
+"""L2 분류 워커는 DB와 분류 색인 설정을 읽는다."""
 
 from typing import Any
 
@@ -6,6 +6,7 @@ import pytest
 
 from soc.l2.analyze import worker as analyze_worker
 from soc.l2.branch import worker
+from soc.store.config import load_config as load_store_config
 
 
 def config() -> dict[str, Any]:
@@ -15,12 +16,17 @@ def config() -> dict[str, Any]:
                 "candidate_window_ms": 1000,
                 "max_candidates": 5,
                 "max_incident_tickets": 10,
+                "min_score": 0.7725,
+                "max_calls_per_cycle": 3,
+                "max_failures": 3,
+                "failure_retry_delay_ms": 300_000,
             }
         },
+        "store": load_store_config()["store"],
     }
 
 
-def test_build_worker_needs_only_database_and_graph_limits(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_build_worker_reads_database_and_vector_settings(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DATABASE_URL", "postgresql://not-used")
 
     built = worker.build_worker(config())

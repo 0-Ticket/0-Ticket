@@ -21,6 +21,7 @@ from test_lab_cycle_db import (
     NORMALIZE,
     NOW,
     analyze_run,
+    branch_service,
     branch_worker,
     counts,
     ingest_once,
@@ -35,6 +36,7 @@ from soc.db.migrate import MigrationError, find_migrations, migrate, unapplied_m
 from soc.ids import new_id
 from soc.l1.judge import L1Worker
 from soc.l2.analyze.worker import L2AnalyzeWorker
+from soc.l2.branch.index import L2IndexWorker
 from soc.normalize.run import run as normalize_run
 from soc.pipeline import __main__ as pipeline_main
 from soc.pipeline.workers import NormalizeWorker, TicketingWorker
@@ -200,11 +202,15 @@ def run_pipeline(
 
 
 def l2_resolver(db: str, l1: Callable[..., Any]) -> Callable[[str], Any]:
+    service = branch_service()
+
     def resolve(path: str) -> Any:
         if path == "soc.l1.judge:build_worker":
             return lambda _c: L1Worker(db, 0.8, run=l1, clock=lambda: NOW)
+        if path == "soc.l2.branch.index:build_worker":
+            return lambda _c: L2IndexWorker(db, None, service=service)
         if path == "soc.l2.branch:build_worker":
-            return lambda _c: branch_worker(db)
+            return lambda _c: branch_worker(db, service)
         if path == "soc.l2.analyze:build_worker":
             return lambda _c: L2AnalyzeWorker(
                 db,

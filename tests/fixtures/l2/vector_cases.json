@@ -1,6 +1,44 @@
 {
   "cases": [
     {
+      "name": "same_webshell_from_waf",
+      "same_attack": true,
+      "ticket": {
+        "title": "원격 명령 호출 차단",
+        "entities": [
+          {"type": "ip", "role": "src", "value": "203.0.113.8"},
+          {"type": "host", "role": "target", "value": "web.example.com"}
+        ]
+      },
+      "alerts": [
+        {
+          "finding_info": {"title": "원격 명령 호출 차단", "analytic": {"uid": "waf-command"}},
+          "message": "PHP 웹셸의 cmd 파라미터 호출",
+          "details": {"entities": []}
+        }
+      ],
+      "events": [{"message": "HTTP GET /files/shell.php?cmd=whoami returned 403"}]
+    },
+    {
+      "name": "same_webshell_other_title",
+      "same_attack": true,
+      "ticket": {
+        "title": "의심스러운 HTTP 요청",
+        "entities": [
+          {"type": "ip", "role": "src", "value": "203.0.113.8"},
+          {"type": "host", "role": "target", "value": "web.example.com"}
+        ]
+      },
+      "alerts": [
+        {
+          "finding_info": {"title": "의심스러운 HTTP 요청", "analytic": {"uid": "http-anomaly"}},
+          "message": "웹셸로 시스템 명령을 전달한 요청",
+          "details": {"entities": []}
+        }
+      ],
+      "events": [{"message": "GET /files/shell.php with cmd=hostname, status 200"}]
+    },
+    {
       "name": "same_webshell",
       "same_attack": true,
       "ticket": {

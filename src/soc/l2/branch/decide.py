@@ -18,6 +18,8 @@ class Candidate:
     incident: dict[str, Any]
     paths: tuple[dict[str, Any], ...]
     target_hosts: tuple[str, ...] = ()
+    ticket_id: str | None = None
+    score: float | None = None
 
 
 @dataclass(frozen=True)
@@ -59,24 +61,24 @@ def make_task(
 
 
 def resolve_decision(result: AgentResult, candidates: tuple[Candidate, ...]) -> Decision:
-    """성공한 출력이 이번 후보와 맞는지 보고, 아니면 새 Incident 규칙으로 떨어뜨린다."""
+    """이번 후보와 출력이 맞는지 검증한다. 오류는 새 Incident 판정이 아니다."""
     if not result.ok:
-        return Decision(None, "rule_default", result.failure)
+        return Decision(None, "error", result.failure)
     output = result.output
     if not isinstance(output, dict):
-        return Decision(None, "rule_default", "decision_mismatch")
+        return Decision(None, "error", "decision_mismatch")
     decision = output.get("decision")
     incident_id = output.get("incident_id")
     if decision == "new":
         if incident_id is not None:
-            return Decision(None, "rule_default", "decision_mismatch")
+            return Decision(None, "error", "decision_mismatch")
     elif decision == "existing":
         if not isinstance(incident_id, str):
-            return Decision(None, "rule_default", "decision_mismatch")
+            return Decision(None, "error", "decision_mismatch")
         if incident_id not in {candidate.incident["id"] for candidate in candidates}:
-            return Decision(None, "rule_default", "not_in_candidates")
+            return Decision(None, "error", "not_in_candidates")
     else:
-        return Decision(None, "rule_default", "decision_mismatch")
+        return Decision(None, "error", "decision_mismatch")
     similar = output.get("similar_ticket_ids")
     shown = {
         node["id"]
@@ -85,8 +87,11 @@ def resolve_decision(result: AgentResult, candidates: tuple[Candidate, ...]) -> 
         for node in path["nodes"]
         if node["kind"] == "ticket"
     }
+    shown.update(c.ticket_id for c in candidates if c.ticket_id)
+    if decision == "new" and similar != []:
+        return Decision(None, "error", "similar_ticket_mismatch")
     if not isinstance(similar, list) or any(item not in shown for item in similar):
-        return Decision(None, "rule_default", "similar_ticket_mismatch")
+        return Decision(None, "error", "similar_ticket_mismatch")
     return Decision(incident_id, "agent", None)
 
 
@@ -95,10 +100,15 @@ def _candidate_data(candidate: Candidate) -> dict[str, Any]:
     data = {
         "incident_id": incident["id"],
         "title": incident["title"],
+        "summary": (incident.get("summary") or "")[:500],
         "ticket_count": len(incident["ticket_ids"]),
         "duration_ms": incident["updated_at"] - incident["created_at"],
-        "paths": list(candidate.paths),
+        "paths": list(candidate.paths[:5]),
     }
+    if candidate.ticket_id is not None:
+        data["representative_ticket_id"] = candidate.ticket_id
+    if candidate.score is not None:
+        data["similarity_score"] = candidate.score
     if candidate.target_hosts:  # 값이 없으면 키를 생략해 빈 값이 "다름"으로 읽히지 않게 한다
         data["target_hosts"] = list(candidate.target_hosts)
     return data

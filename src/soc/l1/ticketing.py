@@ -16,6 +16,7 @@ from psycopg.types.json import Jsonb
 from soc.api.db import DATABASE_URL_ENV
 from soc.contracts import ContractError, to_datetime, to_epoch_ms, validate_contract
 from soc.ids import new_id
+from soc.l2.branch.outbox import enqueue
 from soc.ticketing import (
     ConfigError,
     TicketingPolicy,
@@ -227,6 +228,7 @@ def _insert_ticket(conn: psycopg.Connection, ticket: dict[str, Any]) -> dict[str
         # 트랜잭션 안의 savepoint라면 실패 후 바깥 Alert 트랜잭션은 계속 쓸 수 있다.
         with conn.transaction():
             conn.execute(query, values)
+            enqueue(conn, ticket["id"])
     except psycopg.errors.UniqueViolation as exc:
         if exc.diag.constraint_name != _TICKET_UNIQUE_INDEX:
             raise

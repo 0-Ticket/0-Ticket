@@ -15,6 +15,7 @@ from soc.agent import AgentResult, AgentTask, run_agent
 from soc.agent.types import TaskPrompt
 from soc.contracts import to_datetime, to_epoch_ms, validate_contract
 from soc.l1.ticketing import _insert_ticket, _make_ticket
+from soc.l2.branch.outbox import enqueue
 from soc.similar.index import make_indexer
 from soc.tools import services
 from soc.tools.similar_cases import SERVICE as SERVICE_NAME
@@ -276,6 +277,7 @@ class L1Worker:
                     subject_id,
                 ),
             )
+            enqueue(conn, subject_id)
 
 
 def build_worker(config: dict[str, Any]) -> L1Worker:

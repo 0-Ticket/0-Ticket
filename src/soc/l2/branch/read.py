@@ -32,7 +32,7 @@ def read_branch_data(
     conn: psycopg.Connection,
     ticket_id: str,
     *,
-    expected_status: str = "escalated",
+    expected_status: str | None = "escalated",
 ) -> BranchRows:
     """Ticket 하나와 Alert·Event·Hunt 근거를 읽는다. Incident는 읽지 않는다."""
 
@@ -40,7 +40,7 @@ def read_branch_data(
     if ticket_row is None:
         raise LookupError("Ticket을 찾지 못했다")
     ticket = _contract_row("ticket", ticket_row)
-    if ticket["status"] != expected_status:
+    if expected_status is not None and ticket["status"] != expected_status:
         raise ValueError(f"Ticket status는 {expected_status}여야 한다")
 
     alerts = _contract_rows(

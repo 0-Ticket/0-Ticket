@@ -198,6 +198,9 @@ class VectorStore:
         vector: Sequence[float],
         top_k: int,
         filters: dict[str, FilterValue] | None = None,
+        *,
+        offset: int = 0,
+        score_threshold: float | None = None,
     ) -> tuple[SearchHit, ...]:
         """벡터로 가까운 point를 찾는다. filters가 있으면 payload 동등 조건 AND로 좁힌다.
 
@@ -217,12 +220,16 @@ class VectorStore:
         self._check_vector(vector)
         if top_k < 1:
             raise ValueError("top_k는 1 이상이어야 한다")
+        if offset < 0 or score_threshold is not None and not 0 <= score_threshold <= 1:
+            raise ValueError("offset 또는 score_threshold가 올바르지 않다")
         condition = build_filter(filters) if filters else None
         with _wrapped("검색하지 못했다", self._collection):
             found = self._client.query_points(
                 self._collection,
                 query=list(vector),
                 limit=top_k,
+                offset=offset,
+                score_threshold=score_threshold,
                 query_filter=condition,
                 with_payload=True,
             ).points
@@ -230,6 +237,19 @@ class VectorStore:
             SearchHit(point_id=str(p.id), score=float(p.score), payload=dict(p.payload or {}))
             for p in found
         )
+
+    def count(self) -> int:
+        """분류 색인 준비 확인에 쓰는 전체 point 수."""
+        with _wrapped("point 수를 확인하지 못했다", self._collection):
+            return int(self._client.count(self._collection, exact=True).count)
+
+    def point_payload(self, point_id: str) -> dict[str, Any] | None:
+        """정합성 점검용 point payload. 없으면 None."""
+        with _wrapped("point를 확인하지 못했다", self._collection):
+            rows = self._client.retrieve(
+                self._collection, ids=[point_id], with_payload=True, with_vectors=False
+            )
+        return dict(rows[0].payload or {}) if rows else None
 
     def delete_by_payload(self, key: str, value: FilterValue) -> None:
         """payload 키·값이 맞는 point를 모두 지운다. Qdrant 처리가 끝난 뒤 돌아온다.

@@ -1,6 +1,7 @@
 """마이그레이션 실행기에서 DB 없이 확인할 수 있는 것."""
 
 import functools
+import os
 from pathlib import Path
 
 import pytest
@@ -8,7 +9,7 @@ import pytest
 from soc.db.migrate import MIGRATIONS_DIR, MigrationError, find_migrations, main, migrate
 
 # 닫힌 포트라 접속은 바로 실패한다. 비밀번호는 가짜 값이다.
-UNREACHABLE_URL = "postgresql://someone:not-a-real-password@127.0.0.1:1/somedb"
+UNREACHABLE_URL = "postgresql://someone:not-a-real-password@127.0.0.1:1/somedb?connect_timeout=1"
 URL_PARTS = ("not-a-real-password", "someone", "127.0.0.1", "somedb")
 
 
@@ -66,7 +67,11 @@ def test_name_ending_in_newline_is_not_a_migration(tmp_path: Path) -> None:
 
     파일 이름에 \\n을 쓸 수 있는 OS(Linux·macOS)에서만 만들 수 있는 이름이다.
     """
-    write(tmp_path, "0001_x.sql\n")
+    if os.name == "nt":
+        with pytest.raises(OSError):
+            write(tmp_path, "0001_x.sql\n")
+    else:
+        write(tmp_path, "0001_x.sql\n")
     write(tmp_path, "0002_y.sql")
 
     assert [m.name for m in find_migrations(tmp_path)] == ["0002_y.sql"]

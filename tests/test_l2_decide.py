@@ -96,6 +96,25 @@ def test_result_accepts_ticket_shown_in_graph_path() -> None:
     assert decision.fallback is None
 
 
+def test_vector_only_representative_is_valid_evidence() -> None:
+    found = (Candidate(candidates()[0].incident, (), ticket_id=PEER, score=0.82),)
+    task = make_task(candidate_context(), found, {"coverage": "complete", "paths": []})
+    assert task.data["candidates"][0]["representative_ticket_id"] == PEER
+    assert task.data["candidates"][0]["similarity_score"] == 0.82
+    decision = resolve_decision(
+        result({"decision": "existing", "incident_id": INCIDENT, "similar_ticket_ids": [PEER]}),
+        found,
+    )
+    assert decision.incident_id == INCIDENT
+
+
+def test_new_requires_empty_similar_ticket_ids() -> None:
+    decision = resolve_decision(
+        result({"decision": "new", "incident_id": None, "similar_ticket_ids": [PEER]}), candidates()
+    )
+    assert decision.source == "error"
+
+
 def test_fake_model_output_passes_contract_and_candidate_checks() -> None:
     found = candidates()
     task = make_task(
@@ -144,11 +163,11 @@ def test_fake_model_output_passes_contract_and_candidate_checks() -> None:
         (None, "provider_error", "provider_error"),
     ],
 )
-def test_bad_result_falls_back_to_new(
+def test_bad_result_is_an_error_not_a_new_decision(
     output: dict[str, Any] | None, failure: str | None, expected: str
 ) -> None:
     decision = resolve_decision(result(output, failure), candidates())
 
     assert decision.incident_id is None
-    assert decision.source == "rule_default"
+    assert decision.source == "error"
     assert decision.fallback == expected
