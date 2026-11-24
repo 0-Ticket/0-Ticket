@@ -222,8 +222,17 @@ def test_tools_work_without_python_network(loaded: str, monkeypatch: pytest.Monk
         raise AssertionError("네트워크를 쓰면 안 된다")
 
     # 데이터베이스 접속은 libpq가 하므로 파이썬 소켓 연결·HTTP 호출만 막는다
+    loop = asyncio.new_event_loop()
     monkeypatch.setattr(socket.socket, "connect", forbidden)
     monkeypatch.setattr(httpx.Client, "send", forbidden)
-    assert run_tool("get_attack_technique", {"technique_id": "T1190"})["status"] == "found"
-    assert run_tool("search_attack_techniques", {"query": "public"})["status"] == "ok"
-    assert run_tool("get_cve", {"cve_id": "CVE-2026-0001"})["status"] == "found"
+
+    def invoke(name: str, arguments: dict[str, Any]) -> dict:
+        caller = Caller(default_registry(), config(), stage="l2")
+        return parse(loop.run_until_complete(caller(name, arguments)))
+
+    try:
+        assert invoke("get_attack_technique", {"technique_id": "T1190"})["status"] == "found"
+        assert invoke("search_attack_techniques", {"query": "public"})["status"] == "ok"
+        assert invoke("get_cve", {"cve_id": "CVE-2026-0001"})["status"] == "found"
+    finally:
+        loop.close()

@@ -57,7 +57,7 @@ def test_no_path_is_complete_and_has_no_candidates() -> None:
     assert result.candidates == ()
 
 
-def test_candidate_limit_makes_coverage_incomplete() -> None:
+def test_candidate_count_does_not_discard_graph_paths() -> None:
     data = sample()
     second = {
         **data["matches"][0],
@@ -68,9 +68,9 @@ def test_candidate_limit_makes_coverage_incomplete() -> None:
         data["ticket_id"], data["source"], [data["matches"][0], second], max_candidates=1
     )
 
-    assert result.coverage == "incomplete"
-    assert result.reason == "candidate_limit"
-    assert result.candidates == ()
+    assert result.coverage == "complete"
+    assert result.reason == "paths_found"
+    assert len(result.candidates) == 2
 
 
 def test_public_src_ip_alone_connects_tickets() -> None:

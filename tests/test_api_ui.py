@@ -219,8 +219,35 @@ def test_review_is_incident_and_artifacts_are_preserved(ui_client, ui_db):
         {
             "ticket_id": ticket_id,
             **graph,
+            "vector_only": False,
+            "candidate_count": 0,
+            "vector_score": None,
+            "representative_ticket_id": None,
         }
     ]
+    with psycopg.connect(ui_db) as conn:
+        vector_graph = {
+            "coverage": "complete",
+            "reason": "no_path",
+            "paths": [],
+            "candidates": [{"incident_id": incident_id, "ticket_id": ticket_id, "score": 0.812}],
+        }
+        conn.execute(
+            "UPDATE tickets SET details = jsonb_set(details, '{l2_branch}', %s) WHERE id = %s",
+            (Jsonb(vector_graph), ticket_id),
+        )
+    shown = ui_client.get("/api/incidents/" + incident_id).json()["ticket_graphs"][0]
+    assert (
+        shown["vector_only"],
+        shown["candidate_count"],
+        shown["vector_score"],
+        shown["representative_ticket_id"],
+    ) == (
+        True,
+        1,
+        0.812,
+        ticket_id,
+    )
     for row in body["artifacts"]:
         validate_contract("incident_artifact", row)
     for row in body["proposals"]:

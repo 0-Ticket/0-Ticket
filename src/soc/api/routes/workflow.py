@@ -125,12 +125,30 @@ def incident(request: Request, incident_id: str):
     ticket_graphs = []
     for ticket_id in row["ticket_ids"]:
         graph = by_ticket.get(ticket_id)
+        chosen = (
+            next(
+                (
+                    item
+                    for item in graph.get("candidates", [])
+                    if item.get("incident_id") == incident_id
+                ),
+                None,
+            )
+            if graph
+            else None
+        )
+        paths = [] if graph is None else graph.get("paths", [])
         ticket_graphs.append(
             {
                 "ticket_id": ticket_id,
                 "coverage": "legacy" if graph is None else graph.get("coverage", "unknown"),
                 "reason": None if graph is None else graph.get("reason"),
-                "paths": [] if graph is None else graph.get("paths", []),
+                "paths": paths,
+                "vector_only": chosen is not None
+                and not any(path.get("incident_id") == incident_id for path in paths),
+                "candidate_count": 0 if graph is None else len(graph.get("candidates", [])),
+                "vector_score": None if chosen is None else chosen.get("score"),
+                "representative_ticket_id": None if chosen is None else chosen.get("ticket_id"),
             }
         )
     return dict(

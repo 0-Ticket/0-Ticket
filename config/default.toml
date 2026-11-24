@@ -81,7 +81,7 @@ workers = ["soc.l1.judge:build_worker"]
 [executor.l2]
 interval_seconds = 10
 poll_limit = 10
-workers = ["soc.l2.branch:build_worker", "soc.l2.analyze:build_worker"]
+workers = ["soc.l2.branch.index:build_worker", "soc.l2.branch:build_worker", "soc.l2.analyze:build_worker"]
 
 [executor.l3]
 # L3는 기본으로 돌지 않는다(L3 실행 방식, D-030). 켤 때는 config/local.toml에서 interval_seconds를
@@ -335,11 +335,15 @@ reason_max_chars = 300
 # 결과 하나에 담는 대표 엔티티 수 상한
 entities_max = 5
 
-# L2 Ticket 엔티티 그래프 분류(#319, Incident 분류 방법 D-027).
+# L2 Ticket 벡터·그래프 분류(#370, Incident 분류 방법 D-027).
 [l2.branch]
+min_score = 0.7725
+max_calls_per_cycle = 3
+max_failures = 3
+failure_retry_delay_ms = 300000
 # 그래프 후보를 볼 열린 Incident의 updated_at 시간 창(밀리초)
 candidate_window_ms = 86_400_000
-# 그래프 후보 Incident 수 상한. 초과하면 탐색 미완료로 처리한다.
+# 모델 호출 한 번에 보여 줄 Incident 후보 수 상한.
 max_candidates = 5
 # Incident 하나에 연결할 Ticket 수 상한.
 max_incident_tickets = 10

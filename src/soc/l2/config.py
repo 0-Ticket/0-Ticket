@@ -10,6 +10,10 @@ _BRANCH_KEYS = {
     "candidate_window_ms",
     "max_candidates",
     "max_incident_tickets",
+    "min_score",
+    "max_calls_per_cycle",
+    "max_failures",
+    "failure_retry_delay_ms",
 }
 _ANALYZE_KEYS = (
     "lookback_ms",
@@ -27,6 +31,10 @@ class BranchSettings:
     candidate_window_ms: int
     max_candidates: int
     max_incident_tickets: int
+    min_score: float = 0.7725
+    max_calls_per_cycle: int = 3
+    max_failures: int = 3
+    failure_retry_delay_ms: int = 300_000
 
 
 @dataclass(frozen=True)
@@ -54,11 +62,33 @@ def read_settings(l2: dict[str, Any]) -> BranchSettings:
             raise ConfigError("L2 branch 설정 키가 올바르지 않다")
         candidate_window_ms = _positive_int(branch["candidate_window_ms"])
         max_candidates = _positive_int(branch["max_candidates"])
+        if max_candidates > 5:
+            raise ConfigError("L2 branch max_candidates는 5 이하여야 한다")
         max_incident_tickets = _positive_int(branch["max_incident_tickets"])
+        min_score = branch["min_score"]
+        if (
+            isinstance(min_score, bool)
+            or not isinstance(min_score, int | float)
+            or not 0 < min_score <= 1
+        ):
+            raise ConfigError("L2 branch min_score는 0 초과 1 이하여야 한다")
+        max_calls_per_cycle = _positive_int(branch["max_calls_per_cycle"])
+        if max_calls_per_cycle > 3:
+            raise ConfigError("L2 branch max_calls_per_cycle은 3 이하여야 한다")
+        max_failures = _positive_int(branch["max_failures"])
+        failure_retry_delay_ms = _positive_int(branch["failure_retry_delay_ms"])
     except (KeyError, TypeError):
         raise ConfigError("L2 branch 설정이 올바르지 않다") from None
 
-    return BranchSettings(candidate_window_ms, max_candidates, max_incident_tickets)
+    return BranchSettings(
+        candidate_window_ms,
+        max_candidates,
+        max_incident_tickets,
+        float(min_score),
+        max_calls_per_cycle,
+        max_failures,
+        failure_retry_delay_ms,
+    )
 
 
 def read_analyze_settings(l2: dict[str, Any]) -> AnalyzeSettings:

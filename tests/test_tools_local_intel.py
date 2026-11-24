@@ -377,6 +377,8 @@ def test_tools_make_no_network_calls(monkeypatch: pytest.MonkeyPatch) -> None:
     def forbidden(*args: Any, **kwargs: Any) -> None:
         raise AssertionError("네트워크를 쓰면 안 된다")
 
+    # Windows는 이벤트 루프 생성에 내부 socketpair를 쓰므로 차단 전에 만든다.
+    loop = asyncio.new_event_loop()
     monkeypatch.setattr(socket.socket, "connect", forbidden)
     monkeypatch.setattr(socket, "getaddrinfo", forbidden)
     monkeypatch.setattr(httpx.Client, "send", forbidden)
@@ -389,7 +391,18 @@ def test_tools_make_no_network_calls(monkeypatch: pytest.MonkeyPatch) -> None:
         kev_count=[{"total": 1}],
         kev_row=[KEV_ROW],
     )
-    assert result("get_attack_technique", {"technique_id": "T1190"})["status"] == "found"
-    assert result("search_attack_techniques", {"query": "public"})["status"] == "ok"
-    assert result("get_cve", {"cve_id": "CVE-2026-0001"})["status"] == "found"
+
+    def invoke(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+        return parse(
+            loop.run_until_complete(
+                Caller(default_registry(), config(), stage="l2")(name, arguments)
+            )
+        )
+
+    try:
+        assert invoke("get_attack_technique", {"technique_id": "T1190"})["status"] == "found"
+        assert invoke("search_attack_techniques", {"query": "public"})["status"] == "ok"
+        assert invoke("get_cve", {"cve_id": "CVE-2026-0001"})["status"] == "found"
+    finally:
+        loop.close()
     assert "httpx" not in vars(module)

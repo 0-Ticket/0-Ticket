@@ -134,6 +134,10 @@ class IncidentTicketGraph(_Model):
     coverage: Literal["complete", "incomplete", "legacy", "unknown"]
     reason: str | None
     paths: list[GraphPath]
+    vector_only: bool = False
+    candidate_count: int = 0
+    vector_score: float | None = None
+    representative_ticket_id: str | None = None
 
 
 class IncidentTicket(_Model):

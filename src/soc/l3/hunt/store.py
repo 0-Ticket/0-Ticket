@@ -12,6 +12,7 @@ import psycopg
 from psycopg.types.json import Jsonb
 
 from soc.contracts import to_datetime, to_epoch_ms
+from soc.l2.branch.outbox import enqueue
 
 _HUNT_COLUMNS = (
     "id",
@@ -182,6 +183,7 @@ def insert_ticket(conn: psycopg.Connection, ticket: dict[str, Any]) -> bool:
     try:
         with conn.transaction():
             conn.execute(query, values)
+            enqueue(conn, ticket["id"])
     except psycopg.errors.UniqueViolation as exc:
         if exc.diag.constraint_name != "tickets_hunt_id_key":
             raise

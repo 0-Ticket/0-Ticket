@@ -18,6 +18,10 @@ def test_default_config_reads_into_branch_settings() -> None:
     assert settings.candidate_window_ms == 86_400_000
     assert settings.max_candidates == 5
     assert settings.max_incident_tickets == 10
+    assert settings.min_score == 0.7725
+    assert settings.max_calls_per_cycle == 3
+    assert settings.max_failures == 3
+    assert settings.failure_retry_delay_ms == 300_000
 
 
 def test_default_config_reads_into_analyze_settings() -> None:
@@ -77,8 +81,15 @@ def test_local_overrides_default_and_only_l2_is_returned(tmp_path: Path) -> None
         lambda c: c["branch"].update(candidate_window_ms=True),
         lambda c: c["branch"].update(max_candidates=0),
         lambda c: c["branch"].update(max_candidates="5"),
+        lambda c: c["branch"].update(max_candidates=6),
         lambda c: c["branch"].update(max_incident_tickets=0),
         lambda c: c["branch"].update(max_incident_tickets=True),
+        lambda c: c["branch"].update(min_score=0),
+        lambda c: c["branch"].update(min_score=1.1),
+        lambda c: c["branch"].update(max_calls_per_cycle=0),
+        lambda c: c["branch"].update(max_calls_per_cycle=4),
+        lambda c: c["branch"].update(max_failures=0),
+        lambda c: c["branch"].update(failure_retry_delay_ms=0),
         lambda c: c["branch"].update(candidate_source="vector"),
         lambda c: c["branch"].update(strong_signal_types=[]),
     ],

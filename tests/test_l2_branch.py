@@ -99,7 +99,7 @@ def test_l3_context_uses_hunt_evidence(sample: dict[str, Any]) -> None:
     assert context.missing_evidence_count == 1
 
 
-def test_embedding_text_keeps_order_drops_empty_values_and_has_no_labels() -> None:
+def test_embedding_text_keeps_order_and_excludes_model_reasons() -> None:
     cases = json.loads(EMBEDDING_FIXTURE.read_text(encoding="utf-8"))["cases"]
 
     for case in cases:

@@ -22,6 +22,7 @@ import psycopg
 import pytest
 from conftest import HiddenUrl
 from fake_elk import FakeElk, make_settings, respond
+from fake_embedder import FakeEmbedder
 from fake_model import FakeModel
 from psycopg import sql
 from psycopg.conninfo import make_conninfo
@@ -40,6 +41,8 @@ from soc.ingest.run import run as ingest_run
 from soc.l1.judge import L1Worker
 from soc.l1.ticketing import run as ticketing_run
 from soc.l2.analyze.worker import L2AnalyzeWorker
+from soc.l2.branch.index import L2IndexWorker
+from soc.l2.branch.runtime import BranchService
 from soc.l2.branch.worker import L2BranchWorker
 from soc.l2.config import AnalyzeSettings, BranchSettings
 from soc.l3.config import load_config as load_l3_config
@@ -241,8 +244,42 @@ def analyze_run(task: AgentTask) -> AgentResult:
     )
 
 
-def branch_worker(db: str) -> L2BranchWorker:
-    return L2BranchWorker(db, BRANCH, run=branch_run, clock=lambda: NOW)
+class NoMatchStore:
+    """색인 쓰기는 보존하고 이 랩 사례에는 유사 Ticket을 반환하지 않는다."""
+
+    def __init__(self) -> None:
+        self.points: dict[str, dict[str, Any]] = {}
+
+    def exists(self) -> bool:
+        return True
+
+    def count(self) -> int:
+        return len(self.points)
+
+    def upsert(self, point_id: str, _vector: list[float], payload: dict[str, Any]) -> None:
+        self.points[point_id] = payload
+
+    def search(self, *_args: Any, **_kwargs: Any) -> tuple[()]:
+        return ()
+
+
+def branch_service() -> BranchService:
+    return BranchService(FakeEmbedder(), NoMatchStore())
+
+
+def branch_worker(db: str, service: BranchService) -> L2BranchWorker:
+    return L2BranchWorker(db, BRANCH, run=branch_run, clock=lambda: NOW, service=service)
+
+
+def drain_branch(db: str, service: BranchService) -> int:
+    """색인 워커와 분류 워커를 순서대로 실행한다."""
+    index = L2IndexWorker(db, None, service=service)
+    branch = branch_worker(db, service)
+    ids = branch.poll(100)
+    for ticket_id in ids:
+        drain(index)
+        branch.handle(ticket_id)
+    return len(ids)
 
 
 def drain(worker: Any) -> int:
@@ -322,7 +359,8 @@ def test_lab_shaped_alert_flows_to_incident_artifact_and_rerun_adds_nothing(
     assert tool_rows["n"] == 4
 
     # 5 L2 분류: 공유 엔티티 경로가 없으므로 Ticket별로 Incident를 만든다
-    assert drain(branch_worker(db)) == 4
+    service = branch_service()
+    assert drain_branch(db, service) == 4
     incidents = q(conn, "SELECT * FROM incidents").fetchall()
     assert len(incidents) == 4
     assert all(len(incident["ticket_ids"]) == 1 for incident in incidents)
@@ -360,7 +398,7 @@ def test_lab_shaped_alert_flows_to_incident_artifact_and_rerun_adds_nothing(
     assert normalize_run(NORMALIZE, conn, "lab-cycle").claimed == 0
     assert ticketing_run(conn, AUTO, clock=lambda: NOW_MS).created == 0
     assert drain(L1Worker(db, 0.8, run=l1_run(db), clock=lambda: NOW)) == 0
-    assert drain(branch_worker(db)) == 0
+    assert drain(branch_worker(db, service)) == 0
     assert drain(analyzer) == 0
     assert counts(conn) == first
 
@@ -406,7 +444,7 @@ def test_l3_ticket_from_lab_records_enters_l2_branch(
     ticket = q(conn, "SELECT * FROM tickets WHERE hunt_id = %s", (hunt["id"],)).fetchone()
     assert (ticket["origin"], ticket["status"]) == ("l3", "escalated")
 
-    assert drain(branch_worker(db)) == 1
+    assert drain_branch(db, branch_service()) == 1
     ticket = q(conn, "SELECT * FROM tickets WHERE id = %s", (ticket["id"],)).fetchone()
     assert ticket["status"] == "linked"
     incident = q(conn, "SELECT * FROM incidents").fetchone()

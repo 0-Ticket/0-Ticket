@@ -170,6 +170,22 @@ def test_upsert_then_search_returns_id_score_and_payload(store: VectorStore) -> 
 
 
 @pytest.mark.qdrant
+def test_search_reads_all_threshold_pages_and_point_payload(store: VectorStore) -> None:
+    points = load_points()
+    vector = FakeEmbedder().embed(points[0]["text"])
+    for n, point in enumerate(points):
+        point_vector = vector.copy()
+        point_vector[0] += n * 0.03
+        store.upsert(point["id"], point_vector, {"linked": True})
+    first = store.search(vector, 1, {"linked": True}, score_threshold=0.95)
+    rest = store.search(vector, len(points), {"linked": True}, offset=1, score_threshold=0.95)
+    assert len(first) + len(rest) == len(points)
+    assert {hit.point_id for hit in (*first, *rest)} == {p["id"] for p in points}
+    assert store.count() == len(points)
+    assert store.point_payload(points[0]["id"]) == {"linked": True}
+
+
+@pytest.mark.qdrant
 def test_upsert_overwrites_the_same_point_id(store: VectorStore) -> None:
     embedder = FakeEmbedder()
     point = load_points()[0]

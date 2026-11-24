@@ -44,6 +44,13 @@ function statusText(graph?: IncidentTicketGraph) {
   if (!graph) return "분류 당시 탐색 정보 없음";
   if (graph.coverage === "legacy") return "과거 경로 기록 없음";
   if (graph.coverage === "unknown") return "분류 당시 탐색 상태 확인 불가";
+  if (graph.vector_only)
+    return `유사 Ticket 후보로 연결 (유사도 ${graph.vector_score?.toFixed(3) ?? "확인 불가"}, 그래프 경로 없음)`;
+  if ((graph.candidate_count ?? 0) > 0 && graph.reason === "no_path")
+    return "유사 Ticket 후보 검토 완료 (그래프 경로 없음)";
+  if (graph.reason === "no_similar_candidate")
+    return "분류 당시 유사 Ticket 후보 없음";
+  if (graph.reason === "index_pending") return "분류용 색인 대기 중";
   if (graph.reason === "candidate_limit") return "분류 당시 후보 한도로 미완료";
   if (graph.reason === "public_ip_only")
     return "분류 당시 공용 IP만 일치해 제외";

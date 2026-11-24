@@ -135,10 +135,17 @@ def test_passing_check_runs_four_stages_and_never_l3(
     code = run_pipeline(
         config_dir,
         make_resolver(workers, built),
-        lambda: len(workers) == 5 and all(w.polls >= 2 for w in workers.values()),
+        lambda: len(workers) == 6 and all(w.polls >= 2 for w in workers.values()),
     )
     assert code == 0
-    assert sorted(w.stage for w in workers.values()) == ["l1", "l2", "l2", "normalize", "ticketing"]
+    assert sorted(w.stage for w in workers.values()) == [
+        "l1",
+        "l2",
+        "l2",
+        "l2",
+        "normalize",
+        "ticketing",
+    ]
     assert not [p for p in built if "l3" in p]  # [executor.l3] interval_seconds = 60이어도 안 뜬다
     assert "준비 완료, 수집 명령을 실행하세요" in capsys.readouterr().out
 
@@ -167,7 +174,7 @@ def test_idle_rounds_neither_handle_nor_log(
         run_pipeline(
             config_dir,
             make_resolver(workers, []),
-            lambda: len(workers) == 5 and all(w.polls >= 5 for w in workers.values()),
+            lambda: len(workers) == 6 and all(w.polls >= 5 for w in workers.values()),
         )
     assert all(w.handled == [] for w in workers.values())
     assert not [r for r in caplog.records if r.getMessage().startswith("round ")]
