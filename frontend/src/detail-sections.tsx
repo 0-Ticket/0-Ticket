@@ -1,10 +1,7 @@
 import type { ReactNode } from "react";
-import type { IncidentDetail } from "./api/generated/IncidentDetail";
 import type { TicketDetail } from "./api/generated/TicketDetail";
 import { JsonViewer } from "./components/json-viewer";
 import { Severity, Status } from "./badges";
-import { IncidentGraph } from "./incident-graph";
-import { ReviewActions } from "./review-actions";
 import type { Resource } from "./api/client";
 
 // Builds the in-app link for an id, or nothing when the account cannot open that screen.
@@ -16,7 +13,6 @@ export type LinkTo = (
 ) => ReactNode;
 
 const when = (ms: number) => new Date(ms).toLocaleString("ko-KR");
-const priorities = { high: "높음", medium: "중간", low: "낮음" } as const;
 
 function Entities({
   entities,
@@ -151,100 +147,6 @@ export function TicketSections({
       />
       <h3>Ticket 원본</h3>
       <JsonViewer value={ticket} />
-    </>
-  );
-}
-
-export function IncidentSections({
-  data,
-  link,
-}: {
-  data: IncidentDetail;
-  link: LinkTo;
-}) {
-  const { incident, artifacts, tickets } = data;
-  // Every round is kept; the screen shows recommendations of the newest round only (D-045, D-072).
-  const latest = artifacts.reduce<(typeof artifacts)[number] | null>(
-    (a, b) => (a === null || b.analysis_round > a.analysis_round ? b : a),
-    null,
-  );
-  const recommendations = latest
-    ? data.proposals
-        .filter((p) => p.artifact_id === latest.id)
-        .sort((a, b) => a.seq - b.seq)
-    : [];
-  return (
-    <>
-      <h3>사건 요약</h3>
-      <p>{incident.summary ?? "분석이 끝나면 여기에 표시돼요."}</p>
-      {latest && (
-        <>
-          <h3>영향</h3>
-          <p>{latest.impact}</p>
-        </>
-      )}
-      <h3>소속 Ticket · {tickets.length}건</h3>
-      <ul className="summary-list">
-        {tickets.map((t) => (
-          <li key={t.id}>
-            <strong>{t.title}</strong>
-            <code>{t.id}</code>
-            {link(t.id, "tickets", "Ticket 상세", `${t.title} Ticket 상세`)}
-          </li>
-        ))}
-      </ul>
-      <Entities entities={incident.entities} />
-      <h3>Ticket 연결 그래프</h3>
-      <IncidentGraph
-        incident={incident}
-        ticketGraphs={data.ticket_graphs}
-        titles={Object.fromEntries(tickets.map((t) => [t.id, t.title]))}
-        decisions={Object.fromEntries(tickets.map((t) => [t.id, t.decision]))}
-        criticality={data.entity_criticality}
-      />
-      {recommendations.length > 0 && (
-        <>
-          <h3>권고 조치 · {recommendations.length}건</h3>
-          {recommendations.map((p) => (
-            <div className="proposal" key={p.id}>
-              <span className="kind">
-                {p.kind === "response" ? "대응" : "탐지 룰"}
-              </span>
-              {p.priority && <span>우선순위 {priorities[p.priority]}</span>}
-              <strong>{p.title}</strong>
-              <pre>{p.detail}</pre>
-              {p.rationale && (
-                <p>
-                  <em>왜 필요한가</em> {p.rationale}
-                </p>
-              )}
-            </div>
-          ))}
-        </>
-      )}
-      <h3>Incident</h3>
-      <JsonViewer value={incident} />
-      <h3>라운드별 분석 보고서</h3>
-      {artifacts.length ? (
-        artifacts.map((a) => (
-          <section key={a.id}>
-            <h4>분석 라운드 {a.analysis_round}</h4>
-            <JsonViewer value={a} />
-          </section>
-        ))
-      ) : (
-        <p>분석 보고서가 없습니다.</p>
-      )}
-      <History
-        title="분석 이력"
-        rows={[
-          ["분석 라운드", incident.analysis_round],
-          ["검토 라운드", incident.review_round],
-          ["생성", when(incident.created_at)],
-          ["마지막 갱신", when(incident.updated_at)],
-        ]}
-      />
-      <ReviewActions id={incident.id} status={incident.status} />
     </>
   );
 }

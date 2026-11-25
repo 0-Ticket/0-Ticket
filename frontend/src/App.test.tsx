@@ -60,6 +60,7 @@ test("Case waiting tab explicitly shows Incidents and offers decisions to an acc
       HttpResponse.json({
         incident: seed.incidents[1],
         tickets: [],
+        alerts: [],
         artifacts: [],
         proposals: [],
         seed_source: "dev-seed-ui",
@@ -71,8 +72,11 @@ test("Case waiting tab explicitly shows Incidents and offers decisions to an acc
   expect(requestStatus).toBe("awaiting_review");
   expect(screen.getByText(/아직 Case가 아닌/)).toBeInTheDocument();
   fireEvent.click(screen.getByText(seed.incidents[1].title));
-  expect(await screen.findByRole("dialog")).toBeInTheDocument();
+  expect(screen.queryByRole("dialog")).toBeNull();
   expect(await screen.findByRole("button", { name: "승인" })).toBeEnabled();
+  expect(screen.getByTestId("where")).toHaveTextContent(
+    `/incidents/${seed.incidents[1].id}`,
+  );
   expect(screen.getByRole("button", { name: "반려" })).toBeEnabled();
 });
 test("untrusted raw text remains text, with no executable element or external link", async () => {
@@ -498,18 +502,22 @@ test("Incident reports and response proposals remain text and link to source Tic
   dashboard();
   const incident = seed.incidents[1];
   const artifact = seed.incident_artifacts[0];
+  const tickets = graphFixture.ticket_ids.map((id, i) => ({
+    id,
+    title: `원본 Ticket 제목 ${i + 1}`,
+    decision: null,
+    severity: 3,
+    created_at: 1793678000000,
+    evidence_count: 0,
+    alert_ids: [],
+    entities: [],
+  }));
   server.use(
-    http.get("*/api/incidents", () =>
-      HttpResponse.json({ items: [], next_cursor: null }),
-    ),
     http.get("*/api/incidents/:id", () =>
       HttpResponse.json({
         incident: { ...incident, ticket_ids: graphFixture.ticket_ids },
-        tickets: graphFixture.ticket_ids.map((id, i) => ({
-          id,
-          title: `원본 Ticket 제목 ${i + 1}`,
-          decision: null,
-        })),
+        tickets,
+        alerts: [],
         artifacts: [artifact],
         proposals: [
           {
@@ -524,40 +532,33 @@ test("Incident reports and response proposals remain text and link to source Tic
       }),
     ),
   );
-  show(`/incidents?selected=${incident.id}`);
-  const dialog = await screen.findByRole("dialog");
-  expect(await within(dialog).findByText("대응")).toBeInTheDocument();
+  show(`/incidents/${incident.id}`);
+  const page = (await screen.findByRole("heading", { level: 1 })).closest(
+    ".incident-page",
+  ) as HTMLElement;
+  expect(await within(page).findByText("대응")).toBeInTheDocument();
+  expect(within(page).getByText(sample.original.message)).toBeInTheDocument();
+  expect(page.querySelector("img, script")).toBeNull();
   expect(
-    within(dialog).getByRole("heading", { name: "Ticket 연결 그래프" }),
+    within(page).getByRole("link", { name: "원본 Ticket 제목 1 Ticket 상세" }),
+  ).toHaveAttribute("href", `/tickets?selected=${graphFixture.ticket_ids[0]}`);
+  fireEvent.click(within(page).getByRole("tab", { name: "관계 그래프" }));
+  expect(
+    await within(page).findByRole("region", { name: "Incident 관계도" }),
   ).toBeInTheDocument();
+  expect(page.querySelectorAll(".incident-graph-node.entity")).toHaveLength(1);
+  expect(within(page).getAllByText("lab-7").length).toBeGreaterThan(0);
+  expect(within(page).queryByText("other.example.com")).not.toBeInTheDocument();
   expect(
-    await within(dialog).findByRole("region", { name: "Incident 관계도" }),
-  ).toBeInTheDocument();
-  expect(dialog.querySelectorAll(".incident-graph-node.entity")).toHaveLength(
-    1,
-  );
-  expect(within(dialog).getAllByText("lab-7").length).toBeGreaterThan(0);
-  expect(
-    within(dialog).queryByText("other.example.com"),
-  ).not.toBeInTheDocument();
-  expect(
-    dialog.querySelectorAll(".incident-graph-lines line[data-relation='path']"),
+    page.querySelectorAll(".incident-graph-lines line[data-relation='path']"),
   ).toHaveLength(6);
   expect(
-    dialog.querySelectorAll(
+    page.querySelectorAll(
       ".incident-graph-lines line[data-relation='membership']",
     ),
   ).toHaveLength(7);
-  expect(within(dialog).getByText(sample.original.message)).toBeInTheDocument();
-  expect(dialog.querySelector("img, script")).toBeNull();
-  expect(
-    within(dialog).getByRole("link", {
-      name: "원본 Ticket 제목 1 Ticket 상세",
-    }),
-  ).toHaveAttribute("href", `/tickets?selected=${graphFixture.ticket_ids[0]}`);
-  expect(
-    within(dialog).getByRole("heading", { name: "분석 라운드 1" }),
-  ).toBeInTheDocument();
+  fireEvent.click(within(page).getByRole("tab", { name: /^분석 이력/ }));
+  expect(await within(page).findByText("분석 라운드 1")).toBeInTheDocument();
 });
 
 test("Incident graph shows Ticket names without offering links when ticket.read is absent", async () => {
@@ -569,9 +570,6 @@ test("Incident graph shows Ticket names without offering links when ticket.read 
         permissions: ["incident.read"],
       }),
     ),
-    http.get("*/api/incidents", () =>
-      HttpResponse.json({ items: [], next_cursor: null }),
-    ),
     http.get("*/api/incidents/:id", () =>
       HttpResponse.json({
         incident: { ...seed.incidents[1], ticket_ids: graphFixture.ticket_ids },
@@ -579,7 +577,13 @@ test("Incident graph shows Ticket names without offering links when ticket.read 
           id,
           title: "제목",
           decision: null,
+          severity: 3,
+          created_at: 1793678000000,
+          evidence_count: 0,
+          alert_ids: [],
+          entities: [],
         })),
+        alerts: [],
         artifacts: [],
         proposals: [],
         ticket_graphs: graphFixture.ticket_graphs,
@@ -588,15 +592,12 @@ test("Incident graph shows Ticket names without offering links when ticket.read 
       }),
     ),
   );
-  show(`/incidents?selected=${seed.incidents[1].id}`);
-  const dialog = await screen.findByRole("dialog");
+  show(`/incidents/${seed.incidents[1].id}?tab=graph`);
   expect(
-    await within(dialog).findByRole("region", { name: "Incident 관계도" }),
+    await screen.findByRole("region", { name: "Incident 관계도" }),
   ).toBeInTheDocument();
-  expect(
-    within(dialog).queryByRole("link", { name: /Ticket 상세/ }),
-  ).toBeNull();
-  expect(dialog.textContent).toContain(graphFixture.ticket_ids[0]);
+  expect(screen.queryByRole("link", { name: /Ticket 상세/ })).toBeNull();
+  expect(document.body.textContent).toContain(graphFixture.ticket_ids[0]);
 });
 
 test("Case detail links to the Incident and status chips filter requests", async () => {
@@ -614,7 +615,7 @@ test("Case detail links to the Incident and status chips filter requests", async
   fireEvent.click(await screen.findByRole("button", { name: item.title }));
   expect(
     await screen.findByRole("link", { name: "원본 Incident" }),
-  ).toHaveAttribute("href", `/incidents?selected=${item.incident_id}`);
+  ).toHaveAttribute("href", `/incidents/${item.incident_id}`);
   fireEvent.click(screen.getByRole("button", { name: "상세 닫기" }));
   fireEvent.click(
     within(screen.getByRole("group", { name: "상태 필터" })).getByRole(

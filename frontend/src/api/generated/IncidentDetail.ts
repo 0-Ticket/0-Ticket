@@ -226,7 +226,7 @@ export interface IncidentTicket {
   entities: Entities1;
 }
 /**
- * Incident에 속한 Ticket들의 Alert 요약. 엔티티 표의 연결 수·최초 관측 계산에 쓴다(#379, D-080).
+ * Incident의 Alert 요약. 엔티티 표의 연결 수·최초 관측 계산에 쓴다(#379, D-080).
  */
 export interface IncidentAlert {
   id: Id2;

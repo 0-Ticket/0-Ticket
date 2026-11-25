@@ -1,0 +1,587 @@
+import { expect, test, vi } from "vitest";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { http, HttpResponse } from "msw";
+import seed from "../../tests/fixtures/api/ui_seed.json";
+import graphFixture from "../../tests/fixtures/frontend/incident_graph.json";
+import page from "../../tests/fixtures/frontend/incident_page.json";
+import { auth, dashboard, requests, server, show } from "./test-utils";
+
+const base = seed.incidents[1]; // awaiting_review
+const other = seed.incidents[2];
+const artifact = seed.incident_artifacts.find(
+  (a) => a.incident_id === base.id,
+)!;
+const url = `/incidents/${base.id}`;
+
+function detail(overrides: Record<string, unknown> = {}) {
+  return {
+    incident: {
+      ...base,
+      ticket_ids: page.tickets.map((t) => t.id),
+      entities: page.entities,
+    },
+    tickets: page.tickets,
+    alerts: page.alerts,
+    artifacts: [artifact],
+    proposals: [],
+    ticket_graphs: [],
+    entity_criticality: [],
+    seed_source: null,
+    ...overrides,
+  };
+}
+function serve(body: object = detail(), me: object = auth.admin) {
+  server.use(
+    http.get("*/api/auth/me", () => HttpResponse.json(me)),
+    http.get("*/api/incidents/:id", () => HttpResponse.json(body)),
+  );
+}
+const ticketAt = (i: number) => ({
+  id: `tkt_01a19f93-1266-7000-8000-${String(100 + i).padStart(12, "0")}`,
+  title: `샘플 Ticket ${i + 1}`,
+  decision: (["malicious", "undetermined", "benign", null] as const)[i % 4],
+  severity: i % 7,
+  created_at: 1793678000000 + i * 60000,
+  evidence_count: i,
+  alert_ids: [],
+  entities: [],
+});
+const types = ["ip", "url", "host", "user", "domain", "file_hash", "process"];
+const entityAt = (i: number) => ({
+  type: types[i % types.length],
+  value:
+    i === 5
+      ? `https://example.com/${"a".repeat(300)}`
+      : `${types[i % types.length]}-${i}`,
+  role: null,
+});
+const many = (n: number, make: (i: number) => object) =>
+  Array.from({ length: n }, (_, i) => make(i));
+const tab = (name: RegExp | string) => screen.findByRole("tab", { name });
+
+test("an incident opens as its own page from the list, keeping the sidebar", async () => {
+  dashboard();
+  server.use(
+    http.get("*/api/incidents", () =>
+      HttpResponse.json({
+        items: [{ ...base, display_severity: 5, seed_source: null }],
+        next_cursor: null,
+      }),
+    ),
+  );
+  serve();
+  show("/incidents");
+  fireEvent.click(await screen.findByText(base.title));
+  expect(
+    await screen.findByRole("heading", { level: 1, name: base.title }),
+  ).toBeInTheDocument();
+  expect(screen.getByTestId("where")).toHaveTextContent(url);
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(screen.getByRole("link", { name: "Incident" })).toBeInTheDocument(); // 사이드바
+});
+
+test("the page opens straight from its address and shows the header numbers", async () => {
+  serve();
+  show(url);
+  expect(
+    await screen.findByRole("heading", { level: 1, name: base.title }),
+  ).toBeInTheDocument();
+  const numbers = screen.getByRole("group", { name: "요약 숫자" });
+  expect(numbers).toHaveTextContent(/Ticket\s*3/);
+  expect(numbers).toHaveTextContent(/Alert\s*2/);
+  expect(numbers).toHaveTextContent(/엔티티\s*5/);
+  expect(numbers).toHaveTextContent(/malicious\s*1/);
+  expect(numbers).toHaveTextContent(/undetermined\s*1/);
+  expect(numbers).toHaveTextContent(/판정 전\s*1/);
+  expect(screen.getByRole("tab", { name: /^엔티티/ })).toHaveTextContent("5"); // 헤더와 같은 숫자
+  expect(screen.getByRole("listitem", { current: "step" })).toHaveTextContent(
+    "승인 대기",
+  );
+});
+
+test("held and human_handling highlight no step", async () => {
+  serve(
+    detail({
+      incident: {
+        ...base,
+        status: "human_handling",
+        ticket_ids: [],
+        entities: [],
+      },
+    }),
+  );
+  show(url);
+  await screen.findByRole("heading", { level: 1, name: base.title });
+  expect(screen.queryByRole("listitem", { current: "step" })).toBeNull();
+});
+
+test("an old selected link goes to the page address", async () => {
+  dashboard();
+  serve();
+  server.use(
+    http.get("*/api/incidents", () =>
+      HttpResponse.json({ items: [], next_cursor: null }),
+    ),
+  );
+  show(`/incidents?selected=${base.id}`);
+  await screen.findByRole("heading", { level: 1, name: base.title });
+  expect(screen.getByTestId("where")).toHaveTextContent(new RegExp(`^${url}$`));
+});
+
+test("back to the list keeps the filter, and previous/next move inside the list that was open", async () => {
+  dashboard();
+  const items = [base, other].map((i) => ({
+    ...i,
+    display_severity: 5,
+    seed_source: null,
+  }));
+  server.use(
+    http.get("*/api/incidents", () =>
+      HttpResponse.json({ items, next_cursor: null }),
+    ),
+    http.get("*/api/incidents/:id", ({ params }) =>
+      HttpResponse.json(
+        detail({
+          incident: {
+            ...(params.id === other.id ? other : base),
+            ticket_ids: [],
+            entities: [],
+          },
+        }),
+      ),
+    ),
+  );
+  show("/incidents?status=awaiting_review");
+  fireEvent.click((await screen.findAllByText(base.title))[0]);
+  await screen.findByRole("heading", { level: 1, name: base.title });
+  expect(screen.getByRole("button", { name: "이전 Incident" })).toBeDisabled();
+  fireEvent.click(screen.getByRole("tab", { name: /^Ticket/ })); // 탭을 바꿔도 목록 정보가 남는다
+  fireEvent.click(await screen.findByRole("link", { name: "다음 Incident" }));
+  await waitFor(() =>
+    expect(screen.getByTestId("where")).toHaveTextContent(
+      `/incidents/${other.id}`,
+    ),
+  );
+  expect(
+    await screen.findByRole("link", { name: "이전 Incident" }),
+  ).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("link", { name: "목록으로" }));
+  await waitFor(() =>
+    expect(screen.getByTestId("where")).toHaveTextContent(
+      "/incidents?status=awaiting_review",
+    ),
+  );
+});
+
+test("opened by address, previous and next are disabled and the list link goes to the default list", async () => {
+  dashboard();
+  serve();
+  server.use(
+    http.get("*/api/incidents", () =>
+      HttpResponse.json({ items: [], next_cursor: null }),
+    ),
+  );
+  show(url);
+  await screen.findByRole("heading", { level: 1, name: base.title });
+  expect(screen.getByRole("button", { name: "이전 Incident" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: "다음 Incident" })).toBeDisabled();
+  fireEvent.click(screen.getByRole("link", { name: "목록으로" }));
+  await waitFor(() =>
+    expect(screen.getByTestId("where")).toHaveTextContent(/^\/incidents$/),
+  );
+});
+
+function analyst(...extra: string[]) {
+  return { ...auth.analyst, permissions: ["incident.read", ...extra] };
+}
+const reviewed = {
+  incident: { ...base, status: "confirmed", display_severity: 5 },
+  case_id: "cas_01a19f93-1266-7000-8000-0000000000aa",
+};
+
+test("approve and reject show on awaiting_review for an account that may use them, and the page stays after approving", async () => {
+  serve();
+  const posts: string[] = [];
+  server.use(
+    http.post("*/api/incidents/:id/approve", ({ request }) => {
+      posts.push(new URL(request.url).pathname);
+      return HttpResponse.json(reviewed);
+    }),
+  );
+  show(url);
+  expect(await screen.findByRole("button", { name: "반려" })).toBeEnabled();
+  const before = requests.length;
+  fireEvent.click(screen.getByRole("button", { name: "승인" }));
+  await waitFor(() =>
+    expect(posts).toEqual([`/api/incidents/${base.id}/approve`]),
+  );
+  await waitFor(() =>
+    expect(requests.slice(before).map((r) => r.pathname)).toContain(
+      `/api/incidents/${base.id}`,
+    ),
+  );
+  expect(screen.getByTestId("where")).toHaveTextContent(new RegExp(`^${url}$`));
+  expect(
+    await screen.findByRole("link", { name: "Case 보기" }),
+  ).toHaveAttribute("href", `/cases?selected=${reviewed.case_id}`);
+});
+
+test("only the buttons the account may use show, and none outside awaiting_review", async () => {
+  serve(detail(), analyst("incident.approve"));
+  show(url);
+  expect(
+    await screen.findByRole("button", { name: "승인" }),
+  ).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "반려" })).toBeNull();
+});
+
+test("an account without review rights, or a decided incident, shows no buttons", async () => {
+  serve(detail(), analyst());
+  show(url);
+  await screen.findByRole("heading", { level: 1, name: base.title });
+  expect(screen.queryByRole("button", { name: /^(승인|반려)$/ })).toBeNull();
+});
+
+test("a decided incident shows no approve or reject", async () => {
+  serve(
+    detail({
+      incident: { ...base, status: "confirmed", ticket_ids: [], entities: [] },
+    }),
+  );
+  show(url);
+  await screen.findByRole("heading", { level: 1, name: base.title });
+  expect(screen.queryByRole("button", { name: /^(승인|반려)$/ })).toBeNull();
+});
+
+test("a Case link is not offered without case.read", async () => {
+  serve(detail(), analyst("incident.approve"));
+  server.use(
+    http.post("*/api/incidents/:id/approve", () => HttpResponse.json(reviewed)),
+  );
+  show(url);
+  fireEvent.click(await screen.findByRole("button", { name: "승인" }));
+  await waitFor(() =>
+    expect(requests.some((r) => r.pathname.endsWith("/approve"))).toBe(true),
+  );
+  expect(screen.queryByRole("link", { name: "Case 보기" })).toBeNull();
+});
+
+test("tabs live in the address, survive a reload and fall back to the overview", async () => {
+  serve();
+  show(`${url}?tab=entities`);
+  expect(await tab(/^엔티티/)).toHaveAttribute("aria-selected", "true");
+  fireEvent.click(screen.getByRole("tab", { name: /^Ticket/ }));
+  expect(screen.getByTestId("where")).toHaveTextContent(`${url}?tab=tickets`);
+  expect(screen.getByRole("tab", { name: /^Ticket/ })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+});
+
+test("an unknown tab shows the overview", async () => {
+  serve();
+  show(`${url}?tab=nope`);
+  expect(await tab("개요")).toHaveAttribute("aria-selected", "true");
+  expect(
+    screen.getByRole("heading", { name: "사건 요약" }),
+  ).toBeInTheDocument();
+});
+
+test("the Ticket table is readable with 30 tickets: search, sort, filter and pages", async () => {
+  serve(
+    detail({
+      tickets: many(30, ticketAt),
+      incident: { ...base, ticket_ids: [], entities: [] },
+    }),
+  );
+  show(`${url}?tab=tickets`);
+  const table = await screen.findByRole("table", { name: "Ticket 표" });
+  expect(screen.getByText("30개 Ticket")).toBeInTheDocument();
+  expect(within(table).getAllByRole("row")).toHaveLength(11); // 머리줄 + 10
+  expect(screen.getByText("1 / 3")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "다음 페이지" }));
+  expect(screen.getByText("2 / 3")).toBeInTheDocument();
+  fireEvent.change(screen.getByRole("searchbox", { name: "Ticket 검색" }), {
+    target: { value: "ticket 30" },
+  });
+  expect(
+    within(screen.getByRole("table", { name: "Ticket 표" })).getAllByRole(
+      "row",
+    ),
+  ).toHaveLength(2);
+  expect(screen.getByText("1 / 1")).toBeInTheDocument();
+  fireEvent.change(screen.getByRole("searchbox", { name: "Ticket 검색" }), {
+    target: { value: "" },
+  });
+  fireEvent.click(
+    within(screen.getByRole("group", { name: "판정 필터" })).getByRole(
+      "button",
+      { name: "malicious" },
+    ),
+  );
+  expect(screen.getByText("8개 Ticket")).toBeInTheDocument(); // 30개 중 i%4==0
+  fireEvent.click(screen.getByRole("button", { name: "근거 수 정렬" }));
+  const first = within(
+    screen.getByRole("table", { name: "Ticket 표" }),
+  ).getAllByRole("row")[1];
+  expect(first).toHaveTextContent("샘플 Ticket 1"); // 근거 0개가 앞(오름차순)
+  fireEvent.click(screen.getByRole("button", { name: "근거 수 정렬" }));
+  expect(
+    within(screen.getByRole("table", { name: "Ticket 표" })).getAllByRole(
+      "row",
+    )[1],
+  ).toHaveTextContent("샘플 Ticket 29");
+});
+
+test("a Ticket row shows verdict, level, evidence count, the exploration status and a link only with ticket.read", async () => {
+  serve(detail({ ticket_graphs: [] }), analyst());
+  show(`${url}?tab=tickets`);
+  const table = await screen.findByRole("table", { name: "Ticket 표" });
+  const row = within(table).getByText(page.tickets[0].title).closest("tr")!;
+  expect(row).toHaveTextContent("malicious");
+  expect(row).toHaveTextContent("5 Level");
+  expect(row).toHaveTextContent("3개");
+  expect(row).toHaveTextContent("분류 당시 탐색 정보 없음");
+  expect(screen.queryByRole("link", { name: /Ticket 상세/ })).toBeNull();
+});
+
+test("a Ticket row links to its detail for an account with ticket.read", async () => {
+  serve();
+  show(`${url}?tab=tickets`);
+  expect(
+    (
+      await screen.findAllByRole("link", {
+        name: `${page.tickets[0].title} Ticket 상세`,
+      })
+    )[0],
+  ).toHaveAttribute("href", `/tickets?selected=${page.tickets[0].id}`);
+});
+
+test("the entity table shows links to tickets and alerts, the first sighting, kind chips and 100 entities in pages", async () => {
+  const entities = many(100, entityAt);
+  serve(
+    detail({
+      incident: { ...base, ticket_ids: [], entities },
+      tickets: [],
+      alerts: [],
+    }),
+  );
+  show(`${url}?tab=entities`);
+  const table = await screen.findByRole("table", { name: "엔티티 표" });
+  expect(within(table).getAllByRole("row")).toHaveLength(21); // 머리줄 + 20
+  expect(screen.getByText(/^1 \/ 5$/)).toBeInTheDocument();
+  const kinds = screen.getByRole("group", { name: "종류 필터" });
+  expect(
+    within(kinds).getByRole("button", { name: "ip 15" }),
+  ).toBeInTheDocument();
+  fireEvent.click(within(kinds).getByRole("button", { name: "file_hash 14" }));
+  expect(screen.getByText(/^1 \/ 1$/)).toBeInTheDocument();
+  fireEvent.change(screen.getByRole("searchbox", { name: "엔티티 검색" }), {
+    target: { value: "nothing" },
+  });
+  expect(
+    screen.getByText("조건에 맞는 엔티티가 없습니다."),
+  ).toBeInTheDocument();
+});
+
+test("entity rows count their tickets and alerts and long values stay text with a copy button", async () => {
+  const writeText = vi.fn().mockResolvedValue(undefined);
+  Object.defineProperty(navigator, "clipboard", {
+    value: { writeText },
+    configurable: true,
+  });
+  const long = `https://example.com/${"a".repeat(300)}<img src=x onerror=alert(1)>`;
+  serve(
+    detail({
+      incident: {
+        ...base,
+        ticket_ids: page.tickets.map((t) => t.id),
+        entities: [...page.entities, { type: "url", value: long, role: null }],
+      },
+    }),
+  );
+  show(`${url}?tab=entities`);
+  const table = await screen.findByRole("table", { name: "엔티티 표" });
+  const ip = within(table).getByText("203.0.113.10").closest("tr")!;
+  expect(ip).toHaveTextContent("Ticket 2 · Alert 2");
+  const hash = within(table)
+    .getByText(/^0123456789abcdef/)
+    .closest("tr")!;
+  expect(hash).toHaveTextContent("Ticket 0 · Alert 0");
+  expect(hash).toHaveTextContent("—"); // 최초 관측을 알 수 없다
+  expect(table.querySelector("img")).toBeNull();
+  const row = within(table).getByTitle(long).closest("tr")!;
+  fireEvent.click(within(row).getByRole("button", { name: "값 복사" }));
+  expect(writeText).toHaveBeenCalledWith(long);
+});
+
+test("the history tab opens only the newest round", async () => {
+  const rounds = [1, 2, 3].map((n) => ({
+    ...artifact,
+    id: `${artifact.id.slice(0, -2)}0${n}`,
+    analysis_round: n,
+  }));
+  serve(detail({ artifacts: [rounds[2], rounds[1], rounds[0]] }));
+  show(`${url}?tab=history`);
+  const newest = (await screen.findByText("분석 라운드 3")).closest("details")!;
+  expect(newest).toHaveAttribute("open");
+  expect(
+    screen.getByText("분석 라운드 2").closest("details"),
+  ).not.toHaveAttribute("open");
+  expect(
+    screen.getByText("분석 라운드 1").closest("details"),
+  ).not.toHaveAttribute("open");
+});
+
+test("recommendations have no 'why' label and are split into paragraphs and rules", async () => {
+  const proposals = [0, 1].map((i) => ({
+    ...seed.incident_proposals[0],
+    id: `prp_01a19f93-1266-7000-8000-00000000009${i}`,
+    artifact_id: artifact.id,
+    seq: i + 1,
+    title: `조치 ${i + 1}`,
+    detail: "본문 <b>굵게</b>",
+    rationale: `이유 ${i + 1}`,
+  }));
+  serve(detail({ proposals }));
+  show(url);
+  expect(
+    await screen.findByRole("heading", { name: /권고 조치/ }),
+  ).toBeInTheDocument();
+  expect(screen.queryByText("왜 필요한가")).toBeNull();
+  expect(screen.getByText("이유 1")).toBeInTheDocument();
+  expect(screen.getAllByText("본문 <b>굵게</b>")).toHaveLength(2);
+  expect(document.querySelectorAll(".incident-recommendation hr").length).toBe(
+    0,
+  );
+  expect(document.querySelectorAll("hr.incident-rule").length).toBe(1);
+});
+
+test("the graph tab shows the existing graph; saved paths and exploration status wait in a folded basis", async () => {
+  serve(
+    detail({
+      incident: { ...base, ticket_ids: graphFixture.ticket_ids, entities: [] },
+      tickets: graphFixture.ticket_ids.map((id, i) => ({
+        ...ticketAt(i),
+        id,
+        title: `원본 Ticket 제목 ${i + 1}`,
+      })),
+      ticket_graphs: graphFixture.ticket_graphs,
+    }),
+  );
+  show(`${url}?tab=graph`);
+  expect(
+    await screen.findByRole("region", { name: "Incident 관계도" }),
+  ).toBeInTheDocument();
+  const basis = screen.getByText("분류 근거(고급)").closest("details")!;
+  expect(basis).not.toHaveAttribute("open");
+  expect(
+    within(basis).getByRole("heading", { name: "저장된 연결 경로" }),
+  ).toBeInTheDocument();
+  expect(
+    within(basis).getByRole("heading", {
+      name: "Ticket별 분류 당시 탐색 상태",
+    }),
+  ).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /Entity/ })).toBeDisabled();
+  expect(screen.getByText("준비 중")).toBeInTheDocument();
+});
+
+test("an incident with no tickets shows an empty state with a reload button", async () => {
+  serve(
+    detail({
+      incident: { ...base, ticket_ids: [], entities: [] },
+      tickets: [],
+      alerts: [],
+    }),
+  );
+  show(`${url}?tab=tickets`);
+  expect(
+    await screen.findByText("연결된 Ticket이 없습니다"),
+  ).toBeInTheDocument();
+  const before = requests.filter(
+    (r) => r.pathname === `/api/incidents/${base.id}`,
+  ).length;
+  fireEvent.click(screen.getByRole("button", { name: "분석 상태 새로고침" }));
+  await waitFor(() =>
+    expect(
+      requests.filter((r) => r.pathname === `/api/incidents/${base.id}`).length,
+    ).toBe(before + 1),
+  );
+});
+
+test("an incident with no entities shows an empty entity table message", async () => {
+  serve(
+    detail({
+      incident: { ...base, ticket_ids: [], entities: [] },
+      tickets: [],
+      alerts: [],
+    }),
+  );
+  show(`${url}?tab=entities`);
+  expect(await screen.findByText("엔티티가 없습니다.")).toBeInTheDocument();
+});
+
+test("loading shows a status, a failed read shows the error with a retry", async () => {
+  let fail = true;
+  let release: () => void = () => undefined;
+  const gate = new Promise<void>((resolve) => (release = resolve));
+  server.use(
+    http.get("*/api/incidents/:id", async () => {
+      if (!fail) return HttpResponse.json(detail());
+      await gate;
+      return HttpResponse.json({ error: "db_unavailable" }, { status: 503 });
+    }),
+  );
+  show(url);
+  expect(
+    await screen.findByText("Incident를 불러오는 중…"),
+  ).toBeInTheDocument();
+  release();
+  expect(
+    await screen.findByText("서버에 일시적으로 연결할 수 없어요"),
+  ).toBeInTheDocument();
+  fail = false;
+  fireEvent.click(screen.getByRole("button", { name: /다시 시도/ }));
+  expect(
+    await screen.findByRole("heading", { level: 1, name: base.title }),
+  ).toBeInTheDocument();
+});
+
+test("without incident.read the page is refused and nothing is requested", async () => {
+  server.use(
+    http.get("*/api/auth/me", () =>
+      HttpResponse.json({ ...auth.analyst, permissions: ["ticket.read"] }),
+    ),
+  );
+  show(url);
+  expect(
+    await screen.findByText("이 화면을 볼 권한이 없어요"),
+  ).toBeInTheDocument();
+  expect(requests.some((r) => r.pathname.startsWith("/api/incidents"))).toBe(
+    false,
+  );
+});
+
+test("the title and summary are shown as text, never as markup", async () => {
+  const title = "<img src=x onerror=alert(1)> 제목";
+  serve(
+    detail({
+      incident: {
+        ...base,
+        title,
+        summary: "<script>x</script>요약",
+        ticket_ids: [],
+        entities: [],
+      },
+    }),
+  );
+  show(url);
+  expect(
+    await screen.findByRole("heading", { level: 1, name: title }),
+  ).toBeInTheDocument();
+  expect(screen.getByText("<script>x</script>요약")).toBeInTheDocument();
+  expect(
+    document.querySelector(".incident-page img, .incident-page script"),
+  ).toBeNull();
+});

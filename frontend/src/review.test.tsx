@@ -8,15 +8,22 @@ const incident = seed.incidents[1]; // awaiting_review
 const artifact = seed.incident_artifacts.find(
   (a) => a.incident_id === incident.id,
 )!;
-const tickets = [
-  { id: seed.tickets[5].id, title: seed.tickets[5].title },
-  { id: seed.tickets[6].id, title: seed.tickets[6].title },
-];
+const tickets = [5, 6].map((i) => ({
+  id: seed.tickets[i].id,
+  title: seed.tickets[i].title,
+  decision: null,
+  severity: 4,
+  created_at: seed.tickets[i].created_at,
+  evidence_count: 0,
+  alert_ids: [],
+  entities: [],
+}));
 
 function detail(overrides: Record<string, unknown> = {}) {
   return {
     incident,
     tickets,
+    alerts: [],
     artifacts: [artifact],
     proposals: [],
     ticket_graphs: [],
@@ -36,10 +43,11 @@ function serve(body: object, me: object = auth.admin) {
     http.get("*/api/incidents/:id", () => HttpResponse.json(body)),
   );
 }
-async function open() {
-  show("/incidents");
-  fireEvent.click(await screen.findByText(incident.title));
-  return await screen.findByRole("dialog");
+// The incident opens as a page (#379); the tests look inside its content.
+async function open(tab = "") {
+  show(`/incidents/${incident.id}${tab}`);
+  await screen.findByRole("heading", { level: 1, name: incident.title });
+  return document.querySelector<HTMLElement>(".incident-page")!;
 }
 function analystWith(...extra: string[]) {
   return {
@@ -63,7 +71,7 @@ test("an admin sees approve and reject on an awaiting_review incident, with no '
   expect(dialog).not.toHaveTextContent("아직 제공하지 않습니다");
 });
 
-test("approving posts once, then reloads the detail, the lists and the dashboard", async () => {
+test("approving posts once, reloads the detail, and the lists and dashboard are read again when the list is shown", async () => {
   dashboard();
   serve(detail());
   const posts: string[] = [];
@@ -73,18 +81,31 @@ test("approving posts once, then reloads the detail, the lists and the dashboard
       return HttpResponse.json(reviewed);
     }),
   );
-  const dialog = await open();
+  show("/incidents"); // the list is read first, so there is something cached to be marked stale
+  fireEvent.click(await screen.findByText(incident.title));
+  const page = (await screen.findByRole("heading", { level: 1 })).closest(
+    ".incident-page",
+  ) as HTMLElement;
   const before = requests.length;
-  fireEvent.click(await within(dialog).findByRole("button", { name: "승인" }));
+  fireEvent.click(await within(page).findByRole("button", { name: "승인" }));
   await waitFor(() =>
     expect(
-      requests.slice(before).some((r) => r.pathname === "/api/dashboard"),
+      requests
+        .slice(before)
+        .some((r) => r.pathname === `/api/incidents/${incident.id}`),
     ).toBe(true),
   );
   expect(posts).toEqual([`/api/incidents/${incident.id}/approve`]);
-  const after = requests.slice(before).map((r) => r.pathname);
-  expect(after).toContain(`/api/incidents/${incident.id}`);
-  expect(after).toContain("/api/incidents");
+  expect(screen.getByTestId("where")).toHaveTextContent(
+    `/incidents/${incident.id}`,
+  );
+  const back = requests.length;
+  fireEvent.click(within(page).getByRole("link", { name: "목록으로" }));
+  await waitFor(() => {
+    const after = requests.slice(back).map((r) => r.pathname);
+    expect(after).toContain("/api/incidents");
+    expect(after).toContain("/api/dashboard");
+  });
 });
 
 test("rejecting posts to the reject route", async () => {
@@ -234,10 +255,12 @@ test("an incident with no analysis shows no recommendations section and does not
   dashboard();
   serve(detail({ artifacts: [], proposals: [] }));
   const dialog = await open();
+  expect(await within(dialog).findByText("사건 요약")).toBeInTheDocument();
+  expect(dialog).not.toHaveTextContent("권고 조치");
+  fireEvent.click(within(dialog).getByRole("tab", { name: /^분석 이력/ }));
   expect(
     await within(dialog).findByText("분석 보고서가 없습니다."),
   ).toBeInTheDocument();
-  expect(dialog).not.toHaveTextContent("권고 조치");
 });
 
 test("recommendation text stays text", async () => {

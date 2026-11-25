@@ -1,4 +1,4 @@
-import { useSearchParams } from "react-router";
+import { useLocation, useNavigate, useSearchParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Icon } from "./components/icons";
 import { FilterChips } from "./components/filter-chips";
@@ -52,6 +52,8 @@ export function ListView({
   summary?: Dashboard;
 }) {
   const [search, setSearch] = useSearchParams();
+  const navigate = useNavigate();
+  const location = useLocation();
   const status = waiting ? "awaiting_review" : (search.get("status") ?? "");
   const params = new URLSearchParams({ limit: String(PAGE_SIZE) });
   for (const key of ["cursor", "origin", "severity"])
@@ -74,6 +76,16 @@ export function ListView({
     setSearch(next);
   }
   function select(item: Item) {
+    if (resource === "incidents") {
+      // Incidents open as a page. The list state lets it come back here and step through this page.
+      navigate(`/incidents/${itemId(item)}`, {
+        state: {
+          back: location.pathname + location.search,
+          ids: (query.data?.items ?? []).map(itemId),
+        },
+      });
+      return;
+    }
     const next = new URLSearchParams(search);
     next.set("selected", itemId(item));
     setSearch(next);
