@@ -193,7 +193,12 @@ test("the header shows the status and ticket count as chips, and the view toggle
     "aria-pressed",
     "true",
   );
-  expect(within(views).getByRole("button", { name: "Entity" })).toBeDisabled();
+  const entity = within(views).getByRole("button", { name: /^Entity/ });
+  expect(entity).toBeDisabled();
+  expect(entity).toHaveTextContent("준비 중");
+  expect(entity).toHaveAttribute("aria-disabled", "true");
+  expect(entity).toHaveAttribute("title", "Entity 보기는 준비 중입니다");
+  expect(entity).toHaveAttribute("aria-pressed", "false");
 });
 
 test("ticket nodes show the ticket title when titles are given and the id otherwise", () => {
@@ -211,7 +216,7 @@ test("the incident is selected first and the inspector counts its tickets", () =
   render(<IncidentGraph incident={incident} ticketGraphs={graphs} />);
   expect(inspector()).toHaveTextContent("선택된 노드 · INCIDENT");
   expect(stat("연결 Ticket")).toBe(String(sample.ticket_ids.length));
-  expect(stat("자산 중요도")).toBe("—");
+  expect(within(inspector()).queryByText("자산 중요도")).toBeNull();
 });
 
 test("clicking or pressing Enter on a node selects it and fills the inspector", () => {
@@ -314,7 +319,7 @@ test("shows no verdict chip on other node kinds", () => {
   expect(inspector().querySelector(".decision")).toBeNull();
 });
 
-test("shows the asset importance of the chosen entity and a dash without a value", () => {
+test("shows the asset importance on the chosen entity only", () => {
   render(
     <IncidentGraph
       incident={incident}
@@ -325,10 +330,10 @@ test("shows the asset importance of the chosen entity and a dash without a value
   pick("host: lab-7");
   expect(inspector()).toHaveTextContent("자산 중요도높음");
   pick(`Ticket ${ticketKey}`);
-  expect(inspector()).toHaveTextContent("자산 중요도—");
+  expect(within(inspector()).queryByText("자산 중요도")).toBeNull();
 });
 
-test("matches importance on the entity type and value together", () => {
+test("hides the importance row unless the entity type and value both match", () => {
   render(
     <IncidentGraph
       incident={incident}
@@ -340,11 +345,11 @@ test("matches importance on the entity type and value together", () => {
     />,
   );
   pick("host: lab-7");
-  expect(inspector()).toHaveTextContent("자산 중요도—");
+  expect(within(inspector()).queryByText("자산 중요도")).toBeNull();
 });
 
-test("keeps the importance dash when the response has no importance list", () => {
+test("hides the importance row when the response has no importance list", () => {
   render(<IncidentGraph incident={incident} ticketGraphs={graphs} />);
   pick("host: lab-7");
-  expect(inspector()).toHaveTextContent("자산 중요도—");
+  expect(within(inspector()).queryByText("자산 중요도")).toBeNull();
 });

@@ -250,7 +250,7 @@ export function IncidentGraph({
   ticketGraphs?: IncidentTicketGraph[];
   // Ticket titles by id (IncidentDetail.tickets). Without them nodes show the id.
   titles?: Record<string, string>;
-  // Ticket verdict decision by id and asset importance by entity (IncidentDetail). Missing means no chip and a dash.
+  // Ticket verdict decision by id and asset importance by entity (IncidentDetail). Missing means no chip and no importance row.
   decisions?: Record<string, string | null>;
   criticality?: IncidentDetail["entity_criticality"];
 }) {
@@ -314,9 +314,10 @@ export function IncidentGraph({
             type="button"
             aria-pressed="false"
             disabled
-            title="Entity 공격 경로 보기는 아직 제공하지 않습니다"
+            aria-disabled="true"
+            title="Entity 보기는 준비 중입니다"
           >
-            Entity
+            Entity <small className="soon">준비 중</small>
           </button>
         </div>
       </div>
@@ -457,10 +458,12 @@ export function IncidentGraph({
             <dt>관련 Alert</dt>
             <dd>{alerts}</dd>
           </div>
-          <div>
-            <dt>자산 중요도</dt>
-            <dd>{criticalityLabel(importance)}</dd>
-          </div>
+          {importance != null ? (
+            <div>
+              <dt>자산 중요도</dt>
+              <dd>{criticalityLabel(importance)}</dd>
+            </div>
+          ) : null}
         </dl>
       </aside>
       {ticketGraphs === undefined || ticketGraphs.length === 0 ? (

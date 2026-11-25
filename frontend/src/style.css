@@ -1165,8 +1165,15 @@ td {
   box-shadow: 0 1px 3px #1e315014;
 }
 .incident-graph-modebar button:disabled {
-  opacity: 0.5;
+  opacity: 0.6;
   cursor: not-allowed;
+}
+.incident-graph-modebar .soon {
+  margin-left: 4px;
+  padding: 1px 6px;
+  border: 1px dashed #9aa9bf;
+  border-radius: 10px;
+  font-size: 10px;
 }
 .incident-graph-legend .dot::before {
   width: 10px;
