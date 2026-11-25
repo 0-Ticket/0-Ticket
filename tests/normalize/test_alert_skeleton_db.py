@@ -277,8 +277,8 @@ def test_transient_lookup_errors_stay_failed_and_are_retried(
 
 @pytest.mark.parametrize(
     ("policy", "triage_status", "tickets"),
-    [(TicketingPolicy("auto", ()), None, 1), (TicketingPolicy("scenario", ()), "pending", 0)],
-    ids=["auto-creates-a-ticket", "scenario-marks-pending-for-l1"],
+    [(TicketingPolicy("default", ()), None, 1), (TicketingPolicy("scenario", ()), "pending", 0)],
+    ids=["default-creates-a-ticket", "scenario-marks-pending-for-l1"],
 )
 def test_a_fallback_alert_goes_through_the_ticket_branch(
     conn: psycopg.Connection, policy: TicketingPolicy, triage_status: str | None, tickets: int

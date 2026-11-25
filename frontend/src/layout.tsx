@@ -78,7 +78,7 @@ export function Workspace({ me }: { me: Me }) {
     queryFn: ({ signal }) => get<Dashboard>("dashboard", signal),
     enabled: !denied && mayDashboard && (isHome || resource !== null),
   });
-  // The flow has one more stage in scenario mode. Without policy.read the mode is unknown, so auto is shown.
+  // The flow has one more stage in scenario mode. Without policy.read the mode is unknown, so default is shown.
   const policyNeeded = isHome && !denied && can(["policy.read"]);
   const policy = useQuery({
     queryKey: ["policy"],
@@ -210,7 +210,7 @@ export function Workspace({ me }: { me: Me }) {
           ) : isHome ? (
             <DashboardView
               data={dashboard.data}
-              mode={policy.data?.mode ?? "auto"}
+              mode={policy.data?.mode ?? "default"}
             />
           ) : (
             resource && <Overview resource={resource} data={dashboard.data} />

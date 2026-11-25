@@ -214,7 +214,7 @@ export function DashboardView({
   mode,
 }: {
   data: Dashboard;
-  mode: "auto" | "scenario";
+  mode: "default" | "scenario";
 }) {
   // Everything on the dashboard is shown only if the account may read what it summarizes.
   const can = useCan();

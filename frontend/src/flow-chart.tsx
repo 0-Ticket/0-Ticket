@@ -12,9 +12,9 @@ type Stage = {
   mine?: boolean;
 };
 const BAR_MAX = 48; // design: 6px per item, 8 items = 48px
-// Design 21a (scenario mode, 7 stages) and 21b (auto mode, 6 stages). Auto mode has no
+// Design 21a (scenario mode, 7 stages) and 21b (default mode, 6 stages). Default mode has no
 // "Ticket 전환 판단 대기" stage because every Alert becomes a Ticket without a decision.
-export function stages(data: Dashboard, mode: "auto" | "scenario"): Stage[] {
+export function stages(data: Dashboard, mode: "default" | "scenario"): Stage[] {
   const cases = data.case_status;
   return [
     {
@@ -104,7 +104,7 @@ export function FlowChart({
   mode,
 }: {
   data: Dashboard;
-  mode: "auto" | "scenario";
+  mode: "default" | "scenario";
 }) {
   const can = useCan();
   const list = stages(data, mode).filter((s) => can(...s.needs));

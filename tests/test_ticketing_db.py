@@ -157,7 +157,7 @@ def test_ticketing_api_reads_fallback_then_prefers_active_database_policy(
     from soc import ticketing
 
     (tmp_path / "default.toml").write_text(
-        '[ticketing]\nmode = "auto"\nscenario_rule_ids = []\n', encoding="utf-8"
+        '[ticketing]\nmode = "default"\nscenario_rule_ids = []\n', encoding="utf-8"
     )
     (tmp_path / "local.toml").write_text(
         '[ticketing]\nmode = "scenario"\nscenario_rule_ids = ["local-rule"]\n',
@@ -169,16 +169,35 @@ def test_ticketing_api_reads_fallback_then_prefers_active_database_policy(
     assert fallback.status_code == 200
     assert fallback.json() == {"mode": "scenario", "scenario_rule_ids": ["local-rule"]}
 
-    replace_active_policy(conn, TicketingPolicy("auto", ()))
+    replace_active_policy(conn, TicketingPolicy("default", ()))
     active = api_client.get("/api/ticketing-policy")
     assert active.status_code == 200
-    assert active.json() == {"mode": "auto", "scenario_rule_ids": []}
+    assert active.json() == {"mode": "default", "scenario_rule_ids": []}
+
+
+def test_ticketing_api_returns_default_mode_from_default_toml_without_db_row(
+    conn: psycopg.Connection,
+    api_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    from soc import ticketing
+
+    # local.toml 없이 실제 config/default.toml만 쓴다. 활성 DB 정책 행도 없다.
+    shutil.copyfile(ticketing.CONFIG_DIR / "default.toml", tmp_path / "default.toml")
+    monkeypatch.setattr(ticketing, "CONFIG_DIR", tmp_path)
+    assert conn.execute("SELECT count(*) FROM ticketing_policy").fetchone() == (0,)
+
+    response = api_client.get("/api/ticketing-policy")
+
+    assert response.status_code == 200
+    assert response.json() == {"mode": "default", "scenario_rule_ids": []}
 
 
 def test_ticketing_api_put_replaces_policy_and_rejects_invalid_body_without_changes(
     conn: psycopg.Connection, api_client: TestClient
 ) -> None:
-    replace_active_policy(conn, TicketingPolicy("auto", ()))
+    replace_active_policy(conn, TicketingPolicy("default", ()))
 
     replaced = api_client.put(
         "/api/ticketing-policy",
@@ -196,7 +215,7 @@ def test_ticketing_api_put_replaces_policy_and_rejects_invalid_body_without_chan
     marker = "BODY-MUST-NOT-LEAK"
     rejected = api_client.put(
         "/api/ticketing-policy",
-        json={"mode": "auto", "scenario_rule_ids": marker},
+        json={"mode": "default", "scenario_rule_ids": marker},
     )
     assert rejected.status_code == 422
     assert rejected.json() == {"error": "invalid_body", "fields": ["scenario_rule_ids"]}
@@ -210,11 +229,12 @@ def test_ticketing_api_put_replaces_policy_and_rejects_invalid_body_without_chan
 @pytest.mark.parametrize(
     "statement",
     [
-        "INSERT INTO ticketing_policy VALUES (2, 'auto', '{}')",
+        "INSERT INTO ticketing_policy VALUES (2, 'default', '{}')",
         "INSERT INTO ticketing_policy VALUES (1, 'manual', '{}')",
-        "INSERT INTO ticketing_policy VALUES (1, 'auto', ARRAY['rule', NULL])",
+        "INSERT INTO ticketing_policy VALUES (1, 'auto', '{}')",
+        "INSERT INTO ticketing_policy VALUES (1, 'default', ARRAY['rule', NULL])",
     ],
-    ids=["singleton_id", "mode", "nonnull_rule_ids"],
+    ids=["singleton_id", "mode", "old_auto_mode", "nonnull_rule_ids"],
 )
 def test_ticketing_policy_table_rejects_invalid_rows(
     conn: psycopg.Connection, statement: str
@@ -223,15 +243,15 @@ def test_ticketing_policy_table_rejects_invalid_rows(
         conn.execute(statement)
 
 
-def test_auto_mode_uses_only_successful_alert_results_and_is_idempotent(
+def test_default_mode_uses_only_successful_alert_results_and_is_idempotent(
     conn: psycopg.Connection,
 ) -> None:
     cases = seed_cases(
         conn, ("auto_alert", "already_triaged", "event_result", "failed_normalization")
     )
 
-    first = run(conn, TicketingPolicy("auto", ()), clock=lambda: NOW_MS)
-    second = run(conn, TicketingPolicy("auto", ()), clock=lambda: NOW_MS + 1)
+    first = run(conn, TicketingPolicy("default", ()), clock=lambda: NOW_MS)
+    second = run(conn, TicketingPolicy("default", ()), clock=lambda: NOW_MS + 1)
 
     assert (first.candidates, first.created, first.pending, first.failed) == (1, 1, 0, 0)
     assert (second.candidates, second.created, second.pending, second.failed) == (0, 0, 0, 0)
@@ -294,7 +314,7 @@ def test_active_database_policy_overrides_the_supplied_fallback(
     cases = seed_cases(conn, ("auto_alert",))
     replace_active_policy(conn, TicketingPolicy("scenario", ("default-rule",)))
 
-    result = run(conn, TicketingPolicy("auto", ()), clock=lambda: NOW_MS)
+    result = run(conn, TicketingPolicy("default", ()), clock=lambda: NOW_MS)
 
     assert result.created == 1
     assert conn.execute("SELECT origin FROM tickets").fetchone() == ("scenario",)
@@ -307,7 +327,7 @@ def test_policy_is_read_once_per_alert_and_later_alert_uses_new_commit(
     conn: psycopg.Connection,
 ) -> None:
     cases = seed_cases(conn, ("auto_alert", "scenario_match"))
-    replace_active_policy(conn, TicketingPolicy("auto", ()))
+    replace_active_policy(conn, TicketingPolicy("default", ()))
     calls = 0
 
     def update_policy_between_alerts() -> int:
@@ -364,7 +384,7 @@ def test_existing_ticket_inserted_after_candidate_snapshot_is_reused_unchanged(
             )
         return NOW_MS
 
-    result = run(conn, TicketingPolicy("auto", ()), clock=insert_existing_ticket)
+    result = run(conn, TicketingPolicy("default", ()), clock=insert_existing_ticket)
 
     assert (result.candidates, result.skipped, result.created) == (1, 1, 0)
     assert conn.execute("SELECT origin, status, alert_ids, verdict FROM tickets").fetchone() == (
@@ -378,7 +398,7 @@ def test_existing_ticket_inserted_after_candidate_snapshot_is_reused_unchanged(
 def test_failed_alert_rolls_back_and_is_retried_on_next_run(conn: psycopg.Connection) -> None:
     cases = seed_cases(conn, ("auto_alert", "scenario_match"))
     rejected_id = cases["auto_alert"]["alert"]["id"]
-    replace_active_policy(conn, TicketingPolicy("auto", ()))
+    replace_active_policy(conn, TicketingPolicy("default", ()))
     conn.execute(
         """
         CREATE FUNCTION reject_fixture_ticket() RETURNS trigger LANGUAGE plpgsql AS $$
@@ -423,7 +443,7 @@ def test_one_shot_command_processes_alerts_and_reports_counters(
     with psycopg.connect(migrated_database, autocommit=True) as setup:
         seed_cases(setup, ("auto_alert",))
     (tmp_path / "default.toml").write_text(
-        '[ticketing]\nmode = "auto"\nscenario_rule_ids = []\n', encoding="utf-8"
+        '[ticketing]\nmode = "default"\nscenario_rule_ids = []\n', encoding="utf-8"
     )
     monkeypatch.setattr(ticketing, "CONFIG_DIR", tmp_path)
     monkeypatch.setenv("DATABASE_URL", migrated_database)
@@ -434,6 +454,37 @@ def test_one_shot_command_processes_alerts_and_reports_counters(
     assert capsys.readouterr().out.strip() == (
         "candidates=1 created=1 pending=0 skipped=0 failed=0"
     )
+
+
+def test_one_shot_command_tells_to_replace_the_old_auto_mode_in_local_toml(
+    migrated_database: HiddenUrl,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    from soc import ticketing
+
+    # run()은 후보가 있고 활성 DB 정책 행이 없을 때만 TOML을 읽는다.
+    with psycopg.connect(migrated_database, autocommit=True) as setup:
+        seed_cases(setup, ("auto_alert",))
+    (tmp_path / "default.toml").write_text(
+        '[ticketing]\nmode = "default"\nscenario_rule_ids = []\n', encoding="utf-8"
+    )
+    (tmp_path / "local.toml").write_text(
+        '[ticketing]\nmode = "auto"\nscenario_rule_ids = []\n', encoding="utf-8"
+    )
+    monkeypatch.setattr(ticketing, "CONFIG_DIR", tmp_path)
+    monkeypatch.setenv("DATABASE_URL", migrated_database)
+
+    result = main()
+
+    captured = capsys.readouterr()
+    assert result == 2
+    assert captured.out == ""
+    assert "default 또는 scenario" in captured.err
+    assert "옛 값 auto는 default로 바꾼다" in captured.err
+    with psycopg.connect(migrated_database) as verify:
+        assert verify.execute("SELECT count(*) FROM tickets").fetchone() == (0,)
 
 
 def test_failed_run_uses_failure_exit_code(conn: psycopg.Connection) -> None:
@@ -452,7 +503,7 @@ def test_failed_run_uses_failure_exit_code(conn: psycopg.Connection) -> None:
         " FOR EACH ROW EXECUTE FUNCTION reject_fixture_ticket()"
     )
 
-    result = run(conn, TicketingPolicy("auto", ()), clock=lambda: NOW_MS)
+    result = run(conn, TicketingPolicy("default", ()), clock=lambda: NOW_MS)
 
     assert result.failed == 1
     assert exit_code(result) == 1
@@ -470,7 +521,7 @@ def test_concurrent_runs_create_at_most_one_ticket(migrated_database: HiddenUrl)
                 barrier.wait(timeout=10)
                 return NOW_MS
 
-            return run(connection, TicketingPolicy("auto", ()), clock=wait_for_both_candidates)
+            return run(connection, TicketingPolicy("default", ()), clock=wait_for_both_candidates)
 
     with ThreadPoolExecutor(max_workers=2) as pool:
         results = [
@@ -539,7 +590,8 @@ def test_migration_refuses_existing_multi_alert_w04_ticket_without_rewriting(
     legacy_dir = tmp_path / "legacy_migrations"
     legacy_dir.mkdir()
     for migration in MIGRATIONS_DIR.glob("*.sql"):
-        if migration.name != "0104_l1_ticketing.sql":
+        # 0110은 ticketing_policy가 있어야 하므로 0104와 함께 뺀다.
+        if migration.name not in ("0104_l1_ticketing.sql", "0110_ticketing_policy_default.sql"):
             shutil.copyfile(migration, legacy_dir / migration.name)
     migrate(temp_database, legacy_dir)
     ids = [

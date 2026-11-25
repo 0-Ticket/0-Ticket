@@ -220,8 +220,8 @@ def test_run_creates_a_ticket_and_does_not_retry_when_the_alert_title_is_unusabl
     seed = seed_cases(conn, ("auto_alert",))["auto_alert"]
     conn.execute("UPDATE alerts SET title = %s WHERE id = %s", (alert_title, seed["alert"]["id"]))
 
-    first = run(conn, TicketingPolicy("auto", ()), clock=lambda: NOW_MS)
-    second = run(conn, TicketingPolicy("auto", ()), clock=lambda: NOW_MS + 1)
+    first = run(conn, TicketingPolicy("default", ()), clock=lambda: NOW_MS)
+    second = run(conn, TicketingPolicy("default", ()), clock=lambda: NOW_MS + 1)
 
     assert (first.candidates, first.created, first.failed) == (1, 1, 0)
     assert (second.candidates, second.created, second.failed) == (0, 0, 0)

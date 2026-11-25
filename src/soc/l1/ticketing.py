@@ -166,8 +166,9 @@ def _process_alert(
         policy = read_active_policy(conn)
         if policy is None:
             policy = fallback if fallback is not None else load_policy()
-        if policy.mode == "auto" or alert["rule_id"] in policy.scenario_rule_ids:
-            origin = "auto" if policy.mode == "auto" else "scenario"
+        if policy.mode == "default" or alert["rule_id"] in policy.scenario_rule_ids:
+            # origin "auto"는 default 모드가 만든 Ticket의 출처다(D-026).
+            origin = "auto" if policy.mode == "default" else "scenario"
             ticket = _make_ticket(alert, origin, now_ms)
             validate_contract("ticket", ticket)
             conflict_ticket = _insert_ticket(conn, ticket)
@@ -267,7 +268,11 @@ def main() -> int:
     try:
         with psycopg.connect(database_url, autocommit=True) as conn:
             result = run(conn)
-    except (ConfigError, OSError, tomllib.TOMLDecodeError) as exc:
+    except ConfigError as exc:
+        # ConfigError 문구는 값을 담지 않는 고정 문장이라 그대로 보여 준다.
+        print(f"설정 오류: {exc}", file=sys.stderr)
+        return 2
+    except (OSError, tomllib.TOMLDecodeError) as exc:
         print(f"설정 오류: {type(exc).__name__}", file=sys.stderr)
         return 2
     except psycopg.Error as exc:
