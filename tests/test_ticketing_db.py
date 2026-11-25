@@ -175,6 +175,25 @@ def test_ticketing_api_reads_fallback_then_prefers_active_database_policy(
     assert active.json() == {"mode": "default", "scenario_rule_ids": []}
 
 
+def test_ticketing_api_returns_default_mode_from_default_toml_without_db_row(
+    conn: psycopg.Connection,
+    api_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    from soc import ticketing
+
+    # local.toml 없이 실제 config/default.toml만 쓴다. 활성 DB 정책 행도 없다.
+    shutil.copyfile(ticketing.CONFIG_DIR / "default.toml", tmp_path / "default.toml")
+    monkeypatch.setattr(ticketing, "CONFIG_DIR", tmp_path)
+    assert conn.execute("SELECT count(*) FROM ticketing_policy").fetchone() == (0,)
+
+    response = api_client.get("/api/ticketing-policy")
+
+    assert response.status_code == 200
+    assert response.json() == {"mode": "default", "scenario_rule_ids": []}
+
+
 def test_ticketing_api_put_replaces_policy_and_rejects_invalid_body_without_changes(
     conn: psycopg.Connection, api_client: TestClient
 ) -> None:

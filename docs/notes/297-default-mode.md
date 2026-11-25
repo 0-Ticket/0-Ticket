@@ -24,6 +24,7 @@ Ticket 출처 `origin = 'auto'`(D-026)는 바꾸지 않았다. default 모드가
 - `tests/test_lab_cycle_db.py`의 상수 `AUTO`를 `DEFAULT_POLICY`로 바꿨다(값이 `default`라서).
 - 옛 값 `auto`를 가진 로컬 설정 테스트는 처리할 Alert 1건 + 활성 DB 정책 행 없음 + `local.toml`의 `mode = "auto"`로 만들었다(`test_one_shot_command_tells_to_replace_the_old_auto_mode_in_local_toml`). `run()`은 후보가 있고 활성 DB 정책이 없을 때만 TOML을 읽기 때문이다.
 - 옛 값 `local.toml`의 `main()` 테스트는 계획에는 `tests/test_ticketing.py`로 적었지만 DB가 필요해서 `tests/test_ticketing_db.py`에 있다.
+- 완료 기준 "GET이 DB 행이 없을 때 `mode: "default"`"의 근거는 `tests/test_ticketing_db.py::test_ticketing_api_returns_default_mode_from_default_toml_without_db_row`다(실제 `config/default.toml`만 복사하고 `local.toml`과 활성 DB 행이 없는 상태에서 GET 응답을 단언). 처음에는 `load_policy`만 확인하는 테스트가 근거였는데 API 응답을 직접 보지 않아 리뷰에서 지적받고 이 테스트를 더했다. 이 PC에서는 실행하지 않았다(`db` 마커).
 - 계획 6번의 "Alert는 정책 오류로 집계된다"는 `soc.l1.ticketing` CLI에는 맞지 않는다. 활성 DB 행이 옛 값이면 CLI는 집계 없이 `ConfigError`로 종료 코드 2가 된다(아래 "다음 사람이 알아야 할 것"). 동작은 바꾸지 않았고 설명만 정정한다.
 - 그 밖에는 없음.
 
@@ -37,6 +38,7 @@ Ticket 출처 `origin = 'auto'`(D-026)는 바꾸지 않았다. default 모드가
 - `GET /api/ticketing-policy`가 옛 값이 든 `local.toml`에서 500이 될 수 있다. 코드를 읽고 짐작한 것이고 실행해 확인하지 않았다. 범위 밖이라 고치지 않았다.
 - `design/0-Ticket.pen`의 모드 라벨 두 곳(14445, 14481줄 근처, "자동 (auto)")은 사람이 같은 PR에서 "기본 (default)"로 고친다. 전·후 스크린샷도 사람이 붙인다(D-075). `.pen`은 건드리지 않았다.
 - Ticket `origin = 'auto'`를 `default`로 바꾸는 것은 별도 이슈다. 공통 계약, `tickets` 테이블 잠금과 CHECK, 부분 유일 인덱스 이름, L1 판정 입력(`l1/judge.py`), 샘플, D-026 변경이 따라오고 L1·L2·L3 담당 전원 승인이 필요하다.
+- 샘플 `tests/fixtures/ticketing/alerts.json`의 케이스 이름 `auto_alert`(테스트 22곳)는 바꾸지 않았다. default 모드가 만든 Ticket의 `origin`이 여전히 `auto`라 이름이 틀리지 않고, `origin` 변경은 별도 이슈에서 다룬다. 그 이슈에서 `origin`을 바꾸면 이 이름도 함께 본다.
 - 새 DB 테스트(`tests/test_ticketing_policy_migration_db.py`)는 CHECK 이름 `ticketing_policy_mode_check`와 정의 `CHECK ((mode = ANY (ARRAY['default'::text, 'scenario'::text])))`를 정확히 비교한다. 정의 문자열은 사람이 PostgreSQL에서 확인한 `pg_get_constraintdef` 출력이다. 이 환경에서는 실행하지 못했다.
 - `test_ticketing_db.py::test_migration_refuses_existing_multi_alert_w04_ticket_without_rewriting`는 0104뿐 아니라 0110도 빼고 복사한다. 0110은 `ticketing_policy`가 있어야 적용된다.
 - Windows에서 `uv run pytest`는 `read_text()`에 인코딩이 없는 테스트 때문에 수집에서 cp949 오류가 난다. `PYTHONUTF8=1`을 붙이면 통과한다(이번 변경과 무관, 이미 있던 것).
