@@ -161,16 +161,27 @@ def alert_summaries(conn, alert_ids: list[str]) -> list[dict[str, Any]]:
     return [by_id[i] for i in alert_ids if i in by_id]
 
 
-def entity_criticality(conn, alert_ids: list[str]) -> list[dict[str, Any]]:
-    """Alert들의 자산 중요도를 (type, value)별 최댓값으로 모은다(#376). 쿼리 한 번, 키 순서로 준다.
+def incident_alerts(conn, alert_ids: list[str]) -> list[dict[str, Any]]:
+    """Incident의 Alert들(#376, #379). 쿼리 한 번이고 Alert 수와 관계없이 일정하다.
 
-    `alerts.assets`는 정규화 시점의 스냅샷이다. 중요도가 null인 자산은 건너뛴다.
+    시각(`time`), 엔티티와 자산 스냅샷(`assets`)을 읽는다. 시각 오름차순, 같으면 id 순이다.
     """
     if not alert_ids:
         return []
-    rows = conn.execute("SELECT assets FROM alerts WHERE id = ANY(%s)", (alert_ids,)).fetchall()
+    rows = conn.execute(
+        "SELECT id, time, entities, assets FROM alerts WHERE id = ANY(%s) ORDER BY time, id",
+        (list(dict.fromkeys(alert_ids)),),
+    ).fetchall()
+    return [times(row) for row in rows]
+
+
+def entity_criticality(alerts: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Alert들의 자산 중요도를 (type, value)별 최댓값으로 모은다(#376). 키 순서로 준다.
+
+    `alerts.assets`는 정규화 시점의 스냅샷이다. 중요도가 null인 자산은 건너뛴다.
+    """
     best: dict[tuple[str, str], int] = {}
-    for row in rows:
+    for row in alerts:
         for asset in row["assets"]:
             level = asset["criticality"]
             if level is not None:

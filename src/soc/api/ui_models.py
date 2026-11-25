@@ -7,6 +7,7 @@ from pydantic import Field
 from soc.api.models import _Model
 from soc.contracts.generated.alert_schema import Alert
 from soc.contracts.generated.case_schema import Case
+from soc.contracts.generated.common.entity_schema import Entity
 from soc.contracts.generated.event_schema import Event
 from soc.contracts.generated.incident_artifact_schema import IncidentArtifact
 from soc.contracts.generated.incident_proposal_schema import IncidentProposal
@@ -146,6 +147,19 @@ class IncidentTicket(_Model):
     id: str
     title: str
     decision: Literal["benign", "malicious", "undetermined"] | None
+    severity: int = Field(ge=0, le=6)
+    created_at: int
+    evidence_count: int = Field(ge=0)
+    alert_ids: list[str]
+    entities: list[Entity]
+
+
+class IncidentAlert(_Model):
+    """Incident의 Alert 요약. 엔티티 표의 연결 수·최초 관측 계산에 쓴다(#379, D-080)."""
+
+    id: str
+    time: int
+    entities: list[Entity]
 
 
 class EntityCriticality(_Model):
@@ -159,6 +173,7 @@ class EntityCriticality(_Model):
 class IncidentDetail(_Model):
     incident: Incident
     tickets: list[IncidentTicket]
+    alerts: list[IncidentAlert]
     artifacts: list[IncidentArtifact]
     proposals: list[IncidentProposal]
     ticket_graphs: list[IncidentTicketGraph] = Field(default_factory=list)

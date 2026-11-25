@@ -1,0 +1,26 @@
+{
+  "_comment": "Incident 상세 페이지용 응답 확장(#379, D-080) 샘플. 손으로 만든 값이고 IP·도메인은 문서용이다. 키는 ui_seed.json의 Ticket·Alert 번호 뒷자리다.",
+  "alerts": {
+    "05": {
+      "time": 1793678100000,
+      "entities": [
+        {"type": "ip", "value": "203.0.113.10", "role": "src"},
+        {"type": "host", "value": "web-01", "role": "dst"}
+      ]
+    },
+    "06": {
+      "time": 1793678200000,
+      "entities": [
+        {"type": "ip", "value": "203.0.113.10", "role": "src"},
+        {"type": "user", "value": "svc-web", "role": "actor"}
+      ]
+    },
+    "07": {"time": 1793678150000, "entities": []}
+  },
+  "ticket_entities": {
+    "08": [{"type": "domain", "value": "example.com", "role": "dst"}]
+  },
+  "extra_alert_links": {"08": ["05"]},
+  "expected_evidence_count": {"05": 1, "06": 0, "07": 0, "08": 0},
+  "expected_alert_order": ["05", "07", "06"]
+}
