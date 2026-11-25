@@ -3,12 +3,15 @@
 샘플: tests/fixtures/api/ui_seed.json. Ticket 01~07은 Alert 하나씩, Ticket 08은 L3 Ticket이다.
 """
 
+import json
 from contextlib import contextmanager
+from pathlib import Path
 
 import psycopg
 import pytest
 from auth_support import admin_client
 from psycopg.rows import dict_row
+from psycopg.types.json import Jsonb
 from test_api_ui import INC, SEED, TKT, insert_row
 
 from soc.api import db as api_db
@@ -27,6 +30,9 @@ def detail_db(temp_database, monkeypatch):
                 insert_row(conn, table, row)
     monkeypatch.setenv("DATABASE_URL", temp_database)
     return temp_database
+
+
+ALT = {n: f"alt_01a19f93-1266-7000-8000-0000000000{n}" for n in ("05", "06", "07")}
 
 
 def alert_rows(url):
@@ -116,7 +122,7 @@ def test_ticket_detail_query_count_does_not_grow_with_alerts(detail_db, monkeypa
 def test_incident_detail_has_the_title_of_each_ticket_in_ticket_ids_order(detail_db):
     titles = {t["id"]: t["title"] for t in SEED["tickets"]}
     got = admin_client().get("/api/incidents/" + INC["1"]).json()
-    assert got["tickets"] == [{"id": TKT["05"], "title": titles[TKT["05"]]}]
+    assert got["tickets"] == [{"id": TKT["05"], "title": titles[TKT["05"]], "decision": None}]
     ids = [TKT["07"], TKT["05"], TKT["06"]]
     with psycopg.connect(detail_db, autocommit=True) as conn:
         conn.execute("UPDATE incidents SET ticket_ids=%s WHERE id=%s", (ids, INC["1"]))
@@ -148,3 +154,84 @@ def test_waiting_count_is_every_awaiting_review_incident_not_per_user(detail_db)
         conn.execute("UPDATE incidents SET status='awaiting_review' WHERE id=%s", (INC["4"],))
     waiting = admin_client().get("/api/dashboard").json()["incident_status"]["awaiting_review"]
     assert waiting == 2
+
+
+PANEL = json.loads(
+    (Path(__file__).parent / "fixtures" / "api" / "incident_panel.json").read_text(encoding="utf-8")
+)
+
+
+@pytest.fixture
+def panel_db(detail_db):
+    with psycopg.connect(detail_db, autocommit=True) as conn:
+        conn.execute(
+            "UPDATE incidents SET ticket_ids=%s WHERE id=%s",
+            ([TKT[n] for n in PANEL["ticket_ids"]], INC[PANEL["incident"]]),
+        )
+        for number, verdict in PANEL["verdicts"].items():
+            conn.execute(
+                "UPDATE tickets SET verdict=%s WHERE id=%s",
+                (None if verdict is None else Jsonb(verdict), TKT[number]),
+            )
+        for number, assets in PANEL["alert_assets"].items():
+            conn.execute("UPDATE alerts SET assets=%s WHERE id=%s", (Jsonb(assets), ALT[number]))
+    return detail_db
+
+
+def panel_detail():
+    return admin_client().get("/api/incidents/" + INC[PANEL["incident"]]).json()
+
+
+def test_incident_detail_gives_each_ticket_its_verdict_decision(panel_db):
+    got = panel_detail()
+    assert {t["id"]: t["decision"] for t in got["tickets"]} == {
+        TKT[n]: d for n, d in PANEL["expected_decisions"].items()
+    }
+    assert set(got["tickets"][0]) == {"id", "title", "decision"}
+
+
+def test_entity_criticality_takes_the_highest_value_and_skips_nulls(panel_db):
+    got = panel_detail()
+    assert got["entity_criticality"] == PANEL["expected_criticality"]  # ip는 값이 없어 빠진다
+
+
+def test_entity_criticality_is_empty_without_asset_values(detail_db):
+    with psycopg.connect(detail_db, autocommit=True) as conn:
+        conn.execute("UPDATE alerts SET assets='[]'::jsonb")
+    got = admin_client().get("/api/incidents/" + INC["1"]).json()
+    assert got["entity_criticality"] == []
+    assert [t["decision"] for t in got["tickets"]] == [None]
+
+
+def test_incident_detail_query_count_does_not_grow_with_tickets(panel_db, monkeypatch):
+    calls: list[str] = []
+    real = api_db.connect
+
+    class Counting:
+        def __init__(self, conn):
+            self._conn = conn
+
+        def execute(self, query, *args, **kwargs):
+            calls.append(str(query))
+            return self._conn.execute(query, *args, **kwargs)
+
+        def __getattr__(self, name):
+            return getattr(self._conn, name)
+
+    @contextmanager
+    def counting(settings):
+        with real(settings) as conn:
+            yield Counting(conn)
+
+    monkeypatch.setattr(api_db, "connect", counting)
+    client = admin_client()
+
+    def queries(numbers):
+        with psycopg.connect(panel_db, autocommit=True) as conn:
+            ids = [TKT[n] for n in numbers]
+            conn.execute("UPDATE incidents SET ticket_ids=%s WHERE id=%s", (ids, INC["1"]))
+        calls.clear()
+        client.get("/api/incidents/" + INC["1"])
+        return len(calls)
+
+    assert queries(["05"]) == queries(["05", "06", "07", "08"])

@@ -145,6 +145,15 @@ class IncidentTicket(_Model):
 
     id: str
     title: str
+    decision: Literal["benign", "malicious", "undetermined"] | None
+
+
+class EntityCriticality(_Model):
+    """Incident의 Alert가 가진 자산 중요도를 엔티티 키별 최댓값으로 모은 것(#376, D-078)."""
+
+    type: str
+    value: str
+    criticality: int = Field(ge=1, le=5)
 
 
 class IncidentDetail(_Model):
@@ -153,6 +162,7 @@ class IncidentDetail(_Model):
     artifacts: list[IncidentArtifact]
     proposals: list[IncidentProposal]
     ticket_graphs: list[IncidentTicketGraph] = Field(default_factory=list)
+    entity_criticality: list[EntityCriticality]
     seed_source: str | None
 
 
