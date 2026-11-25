@@ -66,7 +66,7 @@ EVENT_SOURCE = Source(kind="event", key="filebeat-*", time_field="@timestamp")
 NORMALIZE = NormalizeSettings(
     batch_size=200, lease_seconds=600, connect_timeout_seconds=5, asset_statement_timeout_ms=5000
 )
-AUTO = TicketingPolicy(mode="auto", scenario_rule_ids=())
+DEFAULT_POLICY = TicketingPolicy(mode="default", scenario_rule_ids=())
 BRANCH = BranchSettings(candidate_window_ms=86_400_000, max_candidates=5, max_incident_tickets=10)
 ANALYZE = AnalyzeSettings(
     lookback_ms=86_400_000,
@@ -343,7 +343,7 @@ def test_lab_shaped_alert_flows_to_incident_artifact_and_rerun_adds_nothing(
     assert [e for e in waf_alert["entities"] if e["type"] == "ip"] == []
 
     # 3 Ticket(auto): Alert 4건 → Ticket(new) 4건
-    ticketed = ticketing_run(conn, AUTO, clock=lambda: NOW_MS)
+    ticketed = ticketing_run(conn, DEFAULT_POLICY, clock=lambda: NOW_MS)
     assert (ticketed.candidates, ticketed.created, ticketed.failed) == (4, 4, 0)
 
     # 4 L1: 가짜 모델이 get_alert로 읽고 판정 → escalated
@@ -396,7 +396,7 @@ def test_lab_shaped_alert_flows_to_incident_artifact_and_rerun_adds_nothing(
     again = ingest_once(conn)
     assert [(r.inserted, r.failure) for r in again] == [(0, None), (0, None)]
     assert normalize_run(NORMALIZE, conn, "lab-cycle").claimed == 0
-    assert ticketing_run(conn, AUTO, clock=lambda: NOW_MS).created == 0
+    assert ticketing_run(conn, DEFAULT_POLICY, clock=lambda: NOW_MS).created == 0
     assert drain(L1Worker(db, 0.8, run=l1_run(db), clock=lambda: NOW)) == 0
     assert drain(branch_worker(db, service)) == 0
     assert drain(analyzer) == 0

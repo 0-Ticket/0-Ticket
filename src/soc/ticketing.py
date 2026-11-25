@@ -11,7 +11,7 @@ import psycopg
 
 CONFIG_DIR = Path(__file__).resolve().parents[2] / "config"
 POLICY_KEYS = frozenset({"mode", "scenario_rule_ids"})
-POLICY_MODES = frozenset({"auto", "scenario"})
+POLICY_MODES = frozenset({"default", "scenario"})
 
 # 제목에서 공백으로 보는 8종: 탭·LF·VT·FF·CR·공백·U+00A0·U+3000. 계약 pattern(ticket.schema.json)과
 # 마이그레이션 0109의 CHECK가 같은 목록이다. str.split()·strip()은 U+2003·U+0085·U+2028까지
@@ -57,7 +57,9 @@ def parse_policy(value: object) -> TicketingPolicy:
     mode = value["mode"]
     rule_ids = value["scenario_rule_ids"]
     if not isinstance(mode, str) or mode not in POLICY_MODES:
-        raise ConfigError("[ticketing] mode는 auto 또는 scenario여야 한다")
+        raise ConfigError(
+            "[ticketing] mode는 default 또는 scenario여야 한다(옛 값 auto는 default로 바꾼다)"
+        )
     if not isinstance(rule_ids, list | tuple) or any(
         not isinstance(item, str) for item in rule_ids
     ):

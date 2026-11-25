@@ -178,7 +178,7 @@ PERMISSION_TABLE = [
         "PUT",
         "/api/ticketing-policy",
         "policy.update",
-        {"mode": "auto", "scenario_rule_ids": []},
+        {"mode": "default", "scenario_rule_ids": []},
     ),
     ("GET", "/api/users", "user.read", None),
     ("GET", "/api/permissions", "user.read", None),

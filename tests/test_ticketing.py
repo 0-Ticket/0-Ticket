@@ -12,13 +12,13 @@ from soc.contracts import ContractError, validate_contract
 from soc.ticketing import ConfigError, TicketingPolicy, load_policy, parse_policy
 
 
-def test_default_ticketing_policy_is_auto(default_config_dir: Path) -> None:
-    assert load_policy(default_config_dir) == TicketingPolicy("auto", ())
+def test_default_ticketing_policy_is_default(default_config_dir: Path) -> None:
+    assert load_policy(default_config_dir) == TicketingPolicy("default", ())
 
 
 def test_local_ticketing_policy_overrides_default(tmp_path: Path) -> None:
     (tmp_path / "default.toml").write_text(
-        '[ticketing]\nmode = "auto"\nscenario_rule_ids = []\n', encoding="utf-8"
+        '[ticketing]\nmode = "default"\nscenario_rule_ids = []\n', encoding="utf-8"
     )
     (tmp_path / "local.toml").write_text(
         '[ticketing]\nmode = "scenario"\nscenario_rule_ids = ["rule-1"]\n',
@@ -34,14 +34,20 @@ def test_local_ticketing_policy_overrides_default(tmp_path: Path) -> None:
         None,
         {},
         {"mode": "unknown", "scenario_rule_ids": []},
-        {"mode": "auto", "scenario_rule_ids": "rule-1"},
-        {"mode": "auto", "scenario_rule_ids": [1]},
-        {"mode": "auto", "scenario_rule_ids": [], "extra": True},
+        {"mode": "auto", "scenario_rule_ids": []},
+        {"mode": "default", "scenario_rule_ids": "rule-1"},
+        {"mode": "default", "scenario_rule_ids": [1]},
+        {"mode": "default", "scenario_rule_ids": [], "extra": True},
     ],
 )
 def test_invalid_ticketing_policy_is_rejected(value: object) -> None:
     with pytest.raises(ConfigError):
         parse_policy(value)
+
+
+def test_old_auto_mode_error_tells_to_use_default() -> None:
+    with pytest.raises(ConfigError, match="default"):
+        parse_policy({"mode": "auto", "scenario_rule_ids": []})
 
 
 def test_w04_ticket_contract_rejects_multiple_alerts() -> None:
@@ -79,7 +85,7 @@ def test_ticketing_policy_api_is_connected_and_needs_a_session() -> None:
 
     client = make_client()
     assert client.get("/api/ticketing-policy").status_code == 401
-    body = {"mode": "auto", "scenario_rule_ids": []}
+    body = {"mode": "default", "scenario_rule_ids": []}
     assert client.put("/api/ticketing-policy", json=body).status_code == 401
 
 

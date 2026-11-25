@@ -416,7 +416,7 @@ def test_existing_routes_follow_the_permission_grants(url, admin) -> None:
     client = session_client("alice")
     assert client.get("/api/alerts").status_code == 200
     assert client.get("/api/ticketing-policy").status_code == 200
-    body = {"mode": "auto", "scenario_rule_ids": []}
+    body = {"mode": "default", "scenario_rule_ids": []}
     assert client.put("/api/ticketing-policy", json=body).status_code == 403
     assert admin.put("/api/ticketing-policy", json=body).status_code == 200
     revoked = [p for p in ANALYST_DEFAULT if p != "alert.read"]

@@ -88,7 +88,7 @@ class TicketingPolicyBody(_Model):
 
     model_config = ConfigDict(extra="forbid", strict=True)
 
-    mode: Literal["auto", "scenario"]
+    mode: Literal["default", "scenario"]
     scenario_rule_ids: list[StrictStr]
 
 

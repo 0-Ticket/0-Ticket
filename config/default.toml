@@ -474,5 +474,5 @@ allowed_origins = ["http://127.0.0.1:5173", "http://localhost:5173"]
 
 # Ticket 정책(#246). 정책 API에서 저장한 활성 DB 행이 있으면 이 기본값보다 우선한다.
 [ticketing]
-mode = "auto"
+mode = "default"
 scenario_rule_ids = []
