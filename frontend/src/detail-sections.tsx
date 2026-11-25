@@ -124,6 +124,7 @@ export function TicketSections({
       {verdict ? (
         <section className="verdict">
           <h4>근거 검토</h4>
+          <p>근거 {verdict.evidence_ids.length}개</p>
           <p>
             <strong>최종 판정 · {verdict.decision.toUpperCase()}</strong> ·
             신뢰도 {Math.round(verdict.confidence * 100)}%
@@ -198,6 +199,8 @@ export function IncidentSections({
         incident={incident}
         ticketGraphs={data.ticket_graphs}
         titles={Object.fromEntries(tickets.map((t) => [t.id, t.title]))}
+        decisions={Object.fromEntries(tickets.map((t) => [t.id, t.decision]))}
+        criticality={data.entity_criticality}
       />
       {recommendations.length > 0 && (
         <>

@@ -1194,6 +1194,14 @@ td {
   font-size: 14px;
   overflow-wrap: anywhere;
 }
+.incident-graph-inspector .decision {
+  justify-self: start;
+  padding: 2px 9px;
+  border-radius: 20px;
+  background: #f0f3f7;
+  color: #162841;
+  font-weight: 600;
+}
 .incident-graph-inspector code {
   color: #7b8ca5;
   font-size: 11px;

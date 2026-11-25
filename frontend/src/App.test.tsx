@@ -508,6 +508,7 @@ test("Incident reports and response proposals remain text and link to source Tic
         tickets: graphFixture.ticket_ids.map((id, i) => ({
           id,
           title: `원본 Ticket 제목 ${i + 1}`,
+          decision: null,
         })),
         artifacts: [artifact],
         proposals: [
@@ -518,6 +519,7 @@ test("Incident reports and response proposals remain text and link to source Tic
           },
         ],
         ticket_graphs: graphFixture.ticket_graphs,
+        entity_criticality: [],
         seed_source: "dev-seed-ui",
       }),
     ),
@@ -573,10 +575,15 @@ test("Incident graph shows Ticket names without offering links when ticket.read 
     http.get("*/api/incidents/:id", () =>
       HttpResponse.json({
         incident: { ...seed.incidents[1], ticket_ids: graphFixture.ticket_ids },
-        tickets: graphFixture.ticket_ids.map((id) => ({ id, title: "제목" })),
+        tickets: graphFixture.ticket_ids.map((id) => ({
+          id,
+          title: "제목",
+          decision: null,
+        })),
         artifacts: [],
         proposals: [],
         ticket_graphs: graphFixture.ticket_graphs,
+        entity_criticality: [],
         seed_source: "dev-seed-ui",
       }),
     ),
