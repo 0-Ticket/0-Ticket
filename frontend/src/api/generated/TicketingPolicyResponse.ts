@@ -1,6 +1,6 @@
 /* Generated. Do not edit. Run pnpm contracts. */
 
-export type Mode = "auto" | "scenario";
+export type Mode = "default" | "scenario";
 export type ScenarioRuleIds = string[];
 
 export interface TicketingPolicyResponse {

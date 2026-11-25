@@ -34,7 +34,7 @@ test("saving sends the whole policy and shows success", async () => {
   expect(body).toEqual({ mode: "scenario", scenario_rule_ids: [second] });
 });
 
-test("switching to auto keeps the chosen rule ids in the request", async () => {
+test("switching to default keeps the chosen rule ids in the request", async () => {
   let body: unknown = null;
   server.use(
     policy(),
@@ -44,11 +44,13 @@ test("switching to auto keeps the chosen rule ids in the request", async () => {
     }),
   );
   show("/policy");
-  fireEvent.click(await screen.findByRole("radio", { name: /자동 \(auto\)/ }));
+  fireEvent.click(
+    await screen.findByRole("radio", { name: /기본 \(default\)/ }),
+  );
   fireEvent.click(screen.getByRole("button", { name: "저장" }));
   await waitFor(() => expect(body).not.toBeNull());
   expect(body).toEqual({
-    mode: "auto",
+    mode: "default",
     scenario_rule_ids: auth.policy.scenario_rule_ids,
   });
 });
@@ -94,7 +96,9 @@ test("without policy.update the policy is read-only", async () => {
   );
   show("/policy");
   expect(await screen.findByText("읽기 전용이에요")).toBeInTheDocument();
-  expect(screen.getByRole("radio", { name: /자동 \(auto\)/ })).toBeDisabled();
+  expect(
+    screen.getByRole("radio", { name: /기본 \(default\)/ }),
+  ).toBeDisabled();
   expect(screen.queryByRole("button", { name: "저장" })).toBeNull();
 });
 

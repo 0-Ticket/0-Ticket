@@ -63,11 +63,11 @@ function PolicyForm({ stored, canEdit }: { stored: Policy; canEdit: boolean }) {
           <input
             type="radio"
             name="mode"
-            checked={mode === "auto"}
-            onChange={() => setMode("auto")}
+            checked={mode === "default"}
+            onChange={() => setMode("default")}
           />
-          <span>자동 (auto)</span>
-          <small>수집된 Alert에 대해 Ticket을 자동으로 만들어요.</small>
+          <span>기본 (default)</span>
+          <small>수집된 모든 Alert를 Ticket으로 만들어요.</small>
         </label>
         <label className="perm">
           <input

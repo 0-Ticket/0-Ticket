@@ -200,7 +200,7 @@ test("dashboard shows the design flow and keeps ticket total without removed tex
   dashboard();
   show("/");
   const flow = await screen.findByRole("list", { name: "처리 흐름" });
-  // 21b (auto mode): six stages, no "Ticket 전환 판단 대기".
+  // 21b (default mode): six stages, no "Ticket 전환 판단 대기".
   const stages = within(flow).getAllByRole("listitem");
   expect(stages).toHaveLength(6);
   expect(stages[2]).toHaveTextContent("L2 분석 대기");
