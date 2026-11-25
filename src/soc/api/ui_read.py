@@ -161,6 +161,24 @@ def alert_summaries(conn, alert_ids: list[str]) -> list[dict[str, Any]]:
     return [by_id[i] for i in alert_ids if i in by_id]
 
 
+def entity_criticality(conn, alert_ids: list[str]) -> list[dict[str, Any]]:
+    """Alert들의 자산 중요도를 (type, value)별 최댓값으로 모은다(#376). 쿼리 한 번, 키 순서로 준다.
+
+    `alerts.assets`는 정규화 시점의 스냅샷이다. 중요도가 null인 자산은 건너뛴다.
+    """
+    if not alert_ids:
+        return []
+    rows = conn.execute("SELECT assets FROM alerts WHERE id = ANY(%s)", (alert_ids,)).fetchall()
+    best: dict[tuple[str, str], int] = {}
+    for row in rows:
+        for asset in row["assets"]:
+            level = asset["criticality"]
+            if level is not None:
+                key = (asset["entity"]["type"], asset["entity"]["value"])
+                best[key] = max(level, best.get(key, level))
+    return [{"type": k[0], "value": k[1], "criticality": v} for k, v in sorted(best.items())]
+
+
 def ticket_incidents(conn, ticket_ids: list[str]) -> dict[str, dict[str, Any]]:
     """Ticket id → 붙은 Incident 요약(#345). 연결의 원본은 incidents.ticket_ids다.
 

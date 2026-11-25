@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Status } from "./badges";
+import { criticalityLabel } from "./criticality";
 import type {
   GraphNode,
   IncidentDetail,
@@ -242,11 +243,16 @@ export function IncidentGraph({
   incident,
   ticketGraphs,
   titles,
+  decisions,
+  criticality,
 }: {
   incident: Incident;
   ticketGraphs?: IncidentTicketGraph[];
   // Ticket titles by id (IncidentDetail.tickets). Without them nodes show the id.
   titles?: Record<string, string>;
+  // Ticket verdict decision by id and asset importance by entity (IncidentDetail). Missing means no chip and no importance row.
+  decisions?: Record<string, string | null>;
+  criticality?: IncidentDetail["entity_criticality"];
 }) {
   const graph = buildGraph(incident, ticketGraphs);
   const positioned = new Map(graph.nodes.map((node) => [nodeKey(node), node]));
@@ -279,6 +285,13 @@ export function IncidentGraph({
   ).length;
   const alerts = inScope.filter((node) => node.kind === "alert").length;
   const select = (key: string) => setSelected(key);
+  const decision = chosen.kind === "ticket" ? decisions?.[chosen.id] : null;
+  const importance =
+    chosen.kind === "entity"
+      ? criticality?.find(
+          (item) => item.type === chosen.type && item.value === chosen.value,
+        )?.criticality
+      : null;
   return (
     <section className="incident-graph">
       <div className="incident-graph-heading">
@@ -301,9 +314,10 @@ export function IncidentGraph({
             type="button"
             aria-pressed="false"
             disabled
-            title="Entity 공격 경로 보기는 아직 제공하지 않습니다"
+            aria-disabled="true"
+            title="Entity 보기는 준비 중입니다"
           >
-            Entity
+            Entity <small className="soon">준비 중</small>
           </button>
         </div>
       </div>
@@ -427,6 +441,7 @@ export function IncidentGraph({
           선택된 노드 · {nodeName[chosen.kind].toUpperCase()}
         </span>
         <h4>{label(chosen)}</h4>
+        {decision ? <span className="badge decision">{decision}</span> : null}
         <code>
           {chosen.kind === "entity" ? (chosen.type ?? "") : chosen.id}
         </code>
@@ -443,10 +458,12 @@ export function IncidentGraph({
             <dt>관련 Alert</dt>
             <dd>{alerts}</dd>
           </div>
-          <div>
-            <dt>자산 중요도</dt>
-            <dd>—</dd>
-          </div>
+          {importance != null ? (
+            <div>
+              <dt>자산 중요도</dt>
+              <dd>{criticalityLabel(importance)}</dd>
+            </div>
+          ) : null}
         </dl>
       </aside>
       {ticketGraphs === undefined || ticketGraphs.length === 0 ? (

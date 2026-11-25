@@ -69,6 +69,7 @@ export type CreatedAt = number;
 export type UpdatedAt = number;
 export type Id1 = string;
 export type Title1 = string;
+export type Decision = ("benign" | "malicious" | "undetermined") | null;
 export type Tickets = IncidentTicket[];
 export type Id2 = string;
 export type IncidentId = string;
@@ -157,6 +158,10 @@ export type CandidateCount = number;
 export type VectorScore = number | null;
 export type RepresentativeTicketId = string | null;
 export type TicketGraphs = IncidentTicketGraph[];
+export type Type2 = string;
+export type Value2 = string;
+export type Criticality = number;
+export type EntityCriticality = EntityCriticality1[];
 export type SeedSource = string | null;
 
 export interface IncidentDetail {
@@ -165,6 +170,7 @@ export interface IncidentDetail {
   artifacts: Artifacts;
   proposals: Proposals;
   ticket_graphs?: TicketGraphs;
+  entity_criticality: EntityCriticality;
   seed_source: SeedSource;
 }
 export interface Incident {
@@ -202,6 +208,7 @@ export interface Details {
 export interface IncidentTicket {
   id: Id1;
   title: Title1;
+  decision: Decision;
 }
 export interface IncidentArtifact {
   id: Id2;
@@ -265,4 +272,12 @@ export interface GraphEdge {
   from: From;
   to: To;
   kind: Kind2;
+}
+/**
+ * Incident의 Alert가 가진 자산 중요도를 엔티티 키별 최댓값으로 모은 것(#376, D-078).
+ */
+export interface EntityCriticality1 {
+  type: Type2;
+  value: Value2;
+  criticality: Criticality;
 }

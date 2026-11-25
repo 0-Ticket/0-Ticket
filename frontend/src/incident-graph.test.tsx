@@ -193,7 +193,12 @@ test("the header shows the status and ticket count as chips, and the view toggle
     "aria-pressed",
     "true",
   );
-  expect(within(views).getByRole("button", { name: "Entity" })).toBeDisabled();
+  const entity = within(views).getByRole("button", { name: /^Entity/ });
+  expect(entity).toBeDisabled();
+  expect(entity).toHaveTextContent("준비 중");
+  expect(entity).toHaveAttribute("aria-disabled", "true");
+  expect(entity).toHaveAttribute("title", "Entity 보기는 준비 중입니다");
+  expect(entity).toHaveAttribute("aria-pressed", "false");
 });
 
 test("ticket nodes show the ticket title when titles are given and the id otherwise", () => {
@@ -211,7 +216,7 @@ test("the incident is selected first and the inspector counts its tickets", () =
   render(<IncidentGraph incident={incident} ticketGraphs={graphs} />);
   expect(inspector()).toHaveTextContent("선택된 노드 · INCIDENT");
   expect(stat("연결 Ticket")).toBe(String(sample.ticket_ids.length));
-  expect(stat("자산 중요도")).toBe("—");
+  expect(within(inspector()).queryByText("자산 중요도")).toBeNull();
 });
 
 test("clicking or pressing Enter on a node selects it and fills the inspector", () => {
@@ -272,4 +277,79 @@ test("entity text stays literal in the inspector too", () => {
   fireEvent.click(screen.getByRole("group", { name: /onerror/ }));
   expect(inspector()).toHaveTextContent('<img src=x onerror="alert(1)">');
   expect(container.querySelector("img, script")).toBeNull();
+});
+
+const ticketKey = sample.ticket_ids[0];
+const importance = [
+  { type: "host", value: "lab-7", criticality: 4 },
+] as IncidentDetail["entity_criticality"];
+
+function pick(name: string) {
+  fireEvent.click(
+    within(screen.getByRole("region", { name: "Incident 관계도" })).getByRole(
+      "group",
+      { name },
+    ),
+  );
+}
+
+test("shows the ticket verdict chip as the stored decision and none before a verdict", () => {
+  render(
+    <IncidentGraph
+      incident={incident}
+      ticketGraphs={graphs}
+      decisions={{ [ticketKey]: "malicious", [sample.ticket_ids[1]]: null }}
+    />,
+  );
+  pick(`Ticket ${ticketKey}`);
+  expect(inspector().querySelector(".decision")?.textContent).toBe("malicious");
+  pick(`Ticket ${sample.ticket_ids[1]}`);
+  expect(inspector().querySelector(".decision")).toBeNull();
+});
+
+test("shows no verdict chip on other node kinds", () => {
+  render(
+    <IncidentGraph
+      incident={incident}
+      ticketGraphs={graphs}
+      decisions={{ [ticketKey]: "malicious" }}
+    />,
+  );
+  pick("host: lab-7");
+  expect(inspector().querySelector(".decision")).toBeNull();
+});
+
+test("shows the asset importance on the chosen entity only", () => {
+  render(
+    <IncidentGraph
+      incident={incident}
+      ticketGraphs={graphs}
+      criticality={importance}
+    />,
+  );
+  pick("host: lab-7");
+  expect(inspector()).toHaveTextContent("자산 중요도높음");
+  pick(`Ticket ${ticketKey}`);
+  expect(within(inspector()).queryByText("자산 중요도")).toBeNull();
+});
+
+test("hides the importance row unless the entity type and value both match", () => {
+  render(
+    <IncidentGraph
+      incident={incident}
+      ticketGraphs={graphs}
+      criticality={[
+        { type: "ip", value: "lab-7", criticality: 5 },
+        { type: "host", value: "lab-8", criticality: 5 },
+      ]}
+    />,
+  );
+  pick("host: lab-7");
+  expect(within(inspector()).queryByText("자산 중요도")).toBeNull();
+});
+
+test("hides the importance row when the response has no importance list", () => {
+  render(<IncidentGraph incident={incident} ticketGraphs={graphs} />);
+  pick("host: lab-7");
+  expect(within(inspector()).queryByText("자산 중요도")).toBeNull();
 });

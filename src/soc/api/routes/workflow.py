@@ -118,10 +118,15 @@ def incident(request: Request, incident_id: str):
             (incident_id,),
         ).fetchall()
         ticket_rows = conn.execute(
-            "SELECT id, title, details FROM tickets WHERE id = ANY(%s)", (row["ticket_ids"],)
+            "SELECT id, title, details, verdict, alert_ids FROM tickets WHERE id = ANY(%s)",
+            (row["ticket_ids"],),
         ).fetchall()
+        criticality = read.entity_criticality(
+            conn, [a for item in ticket_rows for a in item["alert_ids"]]
+        )
     by_ticket = {item["id"]: item["details"].get("l2_branch") for item in ticket_rows}
     titles = {item["id"]: item["title"] for item in ticket_rows}
+    decisions = {item["id"]: (item["verdict"] or {}).get("decision") for item in ticket_rows}
     ticket_graphs = []
     for ticket_id in row["ticket_ids"]:
         graph = by_ticket.get(ticket_id)
@@ -153,10 +158,15 @@ def incident(request: Request, incident_id: str):
         )
     return dict(
         incident=row,
-        tickets=[{"id": i, "title": titles[i]} for i in row["ticket_ids"] if i in titles],
+        tickets=[
+            {"id": i, "title": titles[i], "decision": decisions[i]}
+            for i in row["ticket_ids"]
+            if i in titles
+        ],
         artifacts=[read.times(x) for x in artifacts],
         proposals=[read.times(x) for x in proposals],
         ticket_graphs=ticket_graphs,
+        entity_criticality=criticality,
         seed_source=row["details"].get("seed_source"),
     )
 

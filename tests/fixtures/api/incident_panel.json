@@ -1,0 +1,27 @@
+{
+  "_comment": "Incident 상세의 판정(decision)과 자산 중요도 계산용 손으로 만든 샘플(#376). 키는 ui_seed.json의 Ticket·Alert 번호 뒷자리다.",
+  "incident": "1",
+  "ticket_ids": ["05", "06", "07", "08"],
+  "verdicts": {
+    "05": {"decision": "malicious", "confidence": 0.92, "reason": "샘플 판정", "evidence_ids": ["alt_01a19f93-1266-7000-8000-000000000005"], "decided_at": 1760000000000},
+    "06": {"decision": "undetermined", "confidence": 0.4, "reason": "샘플 판정", "evidence_ids": [], "decided_at": 1760000000000},
+    "07": null
+  },
+  "alert_assets": {
+    "05": [
+      {"entity": {"type": "host", "value": "web-01"}, "name": "웹서버", "criticality": 3, "owner": null},
+      {"entity": {"type": "host", "value": "db-01"}, "name": "DB", "criticality": 2, "owner": null},
+      {"entity": {"type": "ip", "value": "203.0.113.10"}, "name": null, "criticality": null, "owner": null}
+    ],
+    "06": [
+      {"entity": {"type": "host", "value": "web-01"}, "name": "웹서버", "criticality": 5, "owner": null},
+      {"entity": {"type": "host", "value": "db-01"}, "name": "DB", "criticality": null, "owner": null}
+    ],
+    "07": []
+  },
+  "expected_decisions": {"05": "malicious", "06": "undetermined", "07": null, "08": null},
+  "expected_criticality": [
+    {"type": "host", "value": "db-01", "criticality": 2},
+    {"type": "host", "value": "web-01", "criticality": 5}
+  ]
+}

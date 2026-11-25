@@ -132,9 +132,17 @@ test("the verdict review shows only what the verdict contract has", async () => 
   expect(dialog).toHaveTextContent("신뢰도 92%");
   expect(dialog).toHaveTextContent("SQL 인젝션이 반복됐다 <script>x</script>");
   for (const id of verdict.evidence_ids) expect(dialog).toHaveTextContent(id);
+  expect(dialog).toHaveTextContent("근거 2개");
   for (const absent of ["신호 일치", "강한 근거", "보조 근거"])
     expect(dialog).not.toHaveTextContent(absent);
   expect(dialog.querySelector("script")).toBeNull();
+});
+
+test("the evidence count is the number of evidence ids, zero included", async () => {
+  dashboard();
+  serve({ ticket: { ...ticket, verdict: { ...verdict, evidence_ids: [] } } });
+  const dialog = await open();
+  expect(await within(dialog).findByText("근거 0개")).toBeInTheDocument();
 });
 
 test("an undecided ticket says it has no verdict yet", async () => {
