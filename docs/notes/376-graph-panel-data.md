@@ -44,5 +44,5 @@ supersedes: []
 - 프런트: `criticality.test.ts`, `incident-graph.test.tsx`(판정 칩, 중요도 칸 표시·숨김, Entity 버튼 "준비 중"), `ticket-detail.test.tsx`("근거 N개").
 - `uv run ruff format --check .`, `uv run ruff check .`: 통과.
 - `pnpm contracts:check`, `pnpm lint`(경고 1건은 기존), `pnpm build`: 통과. `pnpm exec vitest run --maxWorkers=2 --testTimeout=30000`: 131건 통과.
-- 전체 `uv run pytest`와 `-m db` 결과는 아래 "마무리" 때 채운다.
+- `uv run pytest`: 2694건 통과. `uv run pytest -m db`(`DATABASE_URL`은 `zt`로): 668건 중 666건 통과, 2건(`test_l2_branch_db.py`)은 이 PC에 `QDRANT_URL`이 없어서 실패했고 그 명령에서만 `QDRANT_URL=http://127.0.0.1:6333`을 주자 같은 파일 51건이 모두 통과했다. 이 변경과 무관하다. `-m qdrant` 마커 테스트는 돌리지 않았다.
 - 손으로 확인한 것은 아직 없다. 전·후 스크린샷은 사람이 붙인다(D-075).
