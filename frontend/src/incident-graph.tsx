@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Status } from "./badges";
 import { criticalityLabel } from "./criticality";
+import { statusText } from "./incident/model";
 import type {
   GraphNode,
   IncidentDetail,
@@ -39,26 +39,6 @@ function nodeText(node: GraphNode) {
   return node.kind === "entity"
     ? `${node.type ?? "Entity"}: ${node.value ?? node.id}`
     : `${nodeName[node.kind]} ${node.id}`;
-}
-
-function statusText(graph?: IncidentTicketGraph) {
-  if (!graph) return "분류 당시 탐색 정보 없음";
-  if (graph.coverage === "legacy") return "과거 경로 기록 없음";
-  if (graph.coverage === "unknown") return "분류 당시 탐색 상태 확인 불가";
-  if (graph.vector_only)
-    return `유사 Ticket 후보로 연결 (유사도 ${graph.vector_score?.toFixed(3) ?? "확인 불가"}, 그래프 경로 없음)`;
-  if ((graph.candidate_count ?? 0) > 0 && graph.reason === "no_path")
-    return "유사 Ticket 후보 검토 완료 (그래프 경로 없음)";
-  if (graph.reason === "no_similar_candidate")
-    return "분류 당시 유사 Ticket 후보 없음";
-  if (graph.reason === "index_pending") return "분류용 색인 대기 중";
-  if (graph.reason === "candidate_limit") return "분류 당시 후보 한도로 미완료";
-  if (graph.reason === "public_ip_only")
-    return "분류 당시 공용 IP만 일치해 제외";
-  if (graph.reason === "no_path") return "분류 당시 후보 없음";
-  return graph.coverage === "complete"
-    ? "분류 당시 탐색 완료"
-    : "분류 당시 탐색 미완료";
 }
 
 function buildGraph(incident: Incident, ticketGraphs?: IncidentTicketGraph[]) {
@@ -294,16 +274,6 @@ export function IncidentGraph({
       : null;
   return (
     <section className="incident-graph">
-      <div className="incident-graph-heading">
-        <div>
-          <strong>{incident.title || incident.id}</strong>
-          <span>{incident.id}</span>
-        </div>
-        <div className="incident-graph-chips">
-          <Status value={incident.status} />
-          <span className="badge">Ticket {incident.ticket_ids.length}</span>
-        </div>
-      </div>
       <div className="incident-graph-modebar">
         <span>그래프 보기 전환</span>
         <div role="group" aria-label="그래프 보기">
@@ -471,39 +441,44 @@ export function IncidentGraph({
           Ticket별 탐색 기록을 받지 못했습니다.
         </p>
       ) : null}
-      {graph.paths.length === 0 ? (
-        <p className="incident-graph-empty">
-          현재 Incident로 이어지는 저장 경로가 없습니다. Ticket 소속은 별도로
-          표시합니다.
-        </p>
-      ) : (
-        <>
-          <h4>저장된 연결 경로</h4>
-          <ol className="incident-graph-routes" aria-label="저장된 연결 경로">
-            {graph.paths.map(({ source, path }, index) => (
-              <li key={`${source}-${path.ticket_id}-${index}`}>
-                {[
-                  `출발 Ticket ${source}`,
-                  ...path.nodes
-                    .slice(1)
-                    .filter((node) => node.kind !== "incident")
-                    .map(nodeText),
-                ].join(" → ")}
-              </li>
-            ))}
-          </ol>
-        </>
-      )}
-      <h4>Ticket별 분류 당시 탐색 상태</h4>
-      <ul className="incident-graph-statuses">
-        {incident.ticket_ids.map((id) => (
-          <li key={id}>
-            {titles?.[id] && <span className="status-title">{titles[id]}</span>}
-            <span>{id}</span>
-            <strong>{statusText(byTicket.get(id))}</strong>
-          </li>
-        ))}
-      </ul>
+      <details className="incident-graph-basis">
+        <summary>분류 근거(고급)</summary>
+        {graph.paths.length === 0 ? (
+          <p className="incident-graph-empty">
+            현재 Incident로 이어지는 저장 경로가 없습니다. Ticket 소속은 별도로
+            표시합니다.
+          </p>
+        ) : (
+          <>
+            <h4>저장된 연결 경로</h4>
+            <ol className="incident-graph-routes" aria-label="저장된 연결 경로">
+              {graph.paths.map(({ source, path }, index) => (
+                <li key={`${source}-${path.ticket_id}-${index}`}>
+                  {[
+                    `출발 Ticket ${source}`,
+                    ...path.nodes
+                      .slice(1)
+                      .filter((node) => node.kind !== "incident")
+                      .map(nodeText),
+                  ].join(" → ")}
+                </li>
+              ))}
+            </ol>
+          </>
+        )}
+        <h4>Ticket별 분류 당시 탐색 상태</h4>
+        <ul className="incident-graph-statuses">
+          {incident.ticket_ids.map((id) => (
+            <li key={id}>
+              {titles?.[id] && (
+                <span className="status-title">{titles[id]}</span>
+              )}
+              <span>{id}</span>
+              <strong>{statusText(byTicket.get(id))}</strong>
+            </li>
+          ))}
+        </ul>
+      </details>
     </section>
   );
 }

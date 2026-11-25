@@ -175,7 +175,7 @@ function SmallList({ items }: { items: Dashboard["top_incidents"] }) {
   return items.length ? (
     <div className="small-list">
       {items.map((item) => (
-        <Link key={item.id} to={`/incidents?selected=${item.id}`}>
+        <Link key={item.id} to={`/incidents/${item.id}`}>
           <span>
             {item.title}
             <small>{statusNames[item.status]}</small>

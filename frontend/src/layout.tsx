@@ -1,5 +1,12 @@
 import type { ReactNode } from "react";
-import { Link, NavLink, useLocation, useSearchParams } from "react-router";
+import {
+  Link,
+  Navigate,
+  NavLink,
+  useLocation,
+  useMatch,
+  useSearchParams,
+} from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Icon, type IconName } from "./components/icons";
 import { LineIcon, type LineIconName } from "./components/line-icon";
@@ -14,6 +21,8 @@ import { useLogout } from "./auth/session";
 import { resourcePermission, titles } from "./constants";
 import { DashboardView, Overview } from "./dashboard";
 import { ErrorState } from "./error-state";
+import { IncidentPage } from "./incident/page";
+import { INCIDENT_ID } from "./links";
 import { ListView } from "./list-view";
 import { PolicyPage } from "./policy-page";
 import { UsersPage } from "./users/users-page";
@@ -48,6 +57,7 @@ export function Workspace({ me }: { me: Me }) {
     Object.hasOwn(titles, slug) ? slug : null
   ) as Resource | null;
   const isHome = location.pathname === "/";
+  const incidentId = useMatch("/incidents/:id")?.params.id ?? null;
   const can = (names: string[]) =>
     names.some((n) => me.permissions.includes(n));
   const page =
@@ -62,15 +72,17 @@ export function Workspace({ me }: { me: Me }) {
   // Permission needed to open this screen. Without it no request is sent; the screen says so.
   const needed: string | null = isHome
     ? "dashboard.read"
-    : page === "users"
-      ? "user.read"
-      : page === "policy"
-        ? "policy.read"
-        : resource
-          ? waiting
-            ? "incident.read"
-            : resourcePermission[resource]
-          : null;
+    : incidentId
+      ? "incident.read"
+      : page === "users"
+        ? "user.read"
+        : page === "policy"
+          ? "policy.read"
+          : resource
+            ? waiting
+              ? "incident.read"
+              : resourcePermission[resource]
+            : null;
   const denied = needed !== null && !can([needed]);
   const mayDashboard = can(["dashboard.read"]);
   const dashboard = useQuery({
@@ -86,6 +98,10 @@ export function Workspace({ me }: { me: Me }) {
       get<TicketingPolicyResponse>("ticketing-policy", signal),
     enabled: policyNeeded,
   });
+  // The old side panel link (/incidents?selected=inc_…) opens the incident page.
+  const legacy = resource === "incidents" ? search.get("selected") : null;
+  if (legacy && INCIDENT_ID.test(legacy))
+    return <Navigate to={`/incidents/${legacy}`} replace />;
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -167,23 +183,28 @@ export function Workspace({ me }: { me: Me }) {
       </aside>
       <div className="workspace">
         <main>
-          <header className="page-heading">
-            <div>
-              <h1>
-                {isHome
-                  ? "DashBoard"
-                  : page
-                    ? page === "users"
-                      ? "사용자 관리"
-                      : page === "policy"
-                        ? "Ticket 정책"
-                        : "설정"
-                    : resource
-                      ? titles[resource]
-                      : "페이지를 찾을 수 없습니다"}
-              </h1>
-            </div>
-          </header>
+          {incidentId && !denied ? null : (
+            <header className="page-heading">
+              <div>
+                <h1>
+                  {incidentId
+                    ? "Incident"
+                    : isHome
+                      ? "DashBoard"
+                      : page
+                        ? page === "users"
+                          ? "사용자 관리"
+                          : page === "policy"
+                            ? "Ticket 정책"
+                            : "설정"
+                        : resource
+                          ? titles[resource]
+                          : "페이지를 찾을 수 없습니다"}
+                </h1>
+              </div>
+            </header>
+          )}
+          {incidentId && !denied && <IncidentPage id={incidentId} />}
           {denied ? (
             <ErrorState
               needs={needed}

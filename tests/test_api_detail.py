@@ -5,6 +5,7 @@
 
 import json
 from contextlib import contextmanager
+from datetime import UTC, datetime
 from pathlib import Path
 
 import psycopg
@@ -122,7 +123,9 @@ def test_ticket_detail_query_count_does_not_grow_with_alerts(detail_db, monkeypa
 def test_incident_detail_has_the_title_of_each_ticket_in_ticket_ids_order(detail_db):
     titles = {t["id"]: t["title"] for t in SEED["tickets"]}
     got = admin_client().get("/api/incidents/" + INC["1"]).json()
-    assert got["tickets"] == [{"id": TKT["05"], "title": titles[TKT["05"]], "decision": None}]
+    assert [(t["id"], t["title"], t["decision"]) for t in got["tickets"]] == [
+        (TKT["05"], titles[TKT["05"]], None)
+    ]
     ids = [TKT["07"], TKT["05"], TKT["06"]]
     with psycopg.connect(detail_db, autocommit=True) as conn:
         conn.execute("UPDATE incidents SET ticket_ids=%s WHERE id=%s", (ids, INC["1"]))
@@ -187,7 +190,16 @@ def test_incident_detail_gives_each_ticket_its_verdict_decision(panel_db):
     assert {t["id"]: t["decision"] for t in got["tickets"]} == {
         TKT[n]: d for n, d in PANEL["expected_decisions"].items()
     }
-    assert set(got["tickets"][0]) == {"id", "title", "decision"}
+    assert set(got["tickets"][0]) == {
+        "id",
+        "title",
+        "decision",
+        "severity",
+        "created_at",
+        "evidence_count",
+        "alert_ids",
+        "entities",
+    }
 
 
 def test_entity_criticality_takes_the_highest_value_and_skips_nulls(panel_db):
@@ -235,3 +247,64 @@ def test_incident_detail_query_count_does_not_grow_with_tickets(panel_db, monkey
         return len(calls)
 
     assert queries(["05"]) == queries(["05", "06", "07", "08"])
+
+
+PAGE = json.loads(
+    (Path(__file__).parent / "fixtures" / "api" / "incident_page.json").read_text(encoding="utf-8")
+)
+
+
+@pytest.fixture
+def page_db(panel_db):
+    with psycopg.connect(panel_db, autocommit=True) as conn:
+        for number, item in PAGE["alerts"].items():
+            when = datetime.fromtimestamp(item["time"] / 1000, tz=UTC)
+            conn.execute(
+                "UPDATE alerts SET time=%s, entities=%s WHERE id=%s",
+                (when, Jsonb(item["entities"]), ALT[number]),
+            )
+        for number, entities in PAGE["ticket_entities"].items():
+            conn.execute(
+                "UPDATE tickets SET entities=%s WHERE id=%s", (Jsonb(entities), TKT[number])
+            )
+        for number, extra in PAGE["extra_alert_links"].items():
+            conn.execute(
+                "UPDATE tickets SET alert_ids = alert_ids || %s WHERE id=%s",
+                ([ALT[n] for n in extra], TKT[number]),
+            )
+    return panel_db
+
+
+def test_incident_detail_tickets_carry_what_the_ticket_table_shows(page_db):
+    with psycopg.connect(page_db, row_factory=dict_row) as conn:
+        db = {r["id"]: r for r in conn.execute("SELECT * FROM tickets")}
+        severity = {r["id"]: r["severity"] for r in conn.execute("SELECT id, severity FROM alerts")}
+    got = panel_detail()["tickets"]
+    assert len(got) == 4
+    for item in got:
+        row = db[item["id"]]
+        number = item["id"][-2:]
+        assert item["severity"] == max([severity[a] for a in row["alert_ids"]], default=0)
+        assert item["created_at"] == to_epoch_ms(row["created_at"])
+        assert item["alert_ids"] == row["alert_ids"]
+        assert item["entities"] == row["entities"]
+        assert item["evidence_count"] == PAGE["expected_evidence_count"][number]
+
+
+def test_incident_detail_lists_each_alert_once_with_time_and_entities(page_db):
+    got = panel_detail()
+    assert [a["id"] for a in got["alerts"]] == [ALT[n] for n in PAGE["expected_alert_order"]]
+    for alert in got["alerts"]:
+        item = PAGE["alerts"][alert["id"][-2:]]
+        assert alert == {"id": alert["id"], "time": item["time"], "entities": item["entities"]}
+    shared = [t for t in got["tickets"] if ALT["05"] in t["alert_ids"]]
+    assert len(shared) == 2  # 같은 Alert가 두 Ticket에 걸려도 alerts[]에는 한 번만 나온다
+
+
+def test_incident_detail_without_alerts_has_an_empty_alert_list(detail_db):
+    with psycopg.connect(detail_db, autocommit=True) as conn:
+        conn.execute("UPDATE incidents SET ticket_ids=%s WHERE id=%s", ([TKT["08"]], INC["1"]))
+    got = admin_client().get("/api/incidents/" + INC["1"]).json()
+    assert got["alerts"] == []
+    (ticket,) = got["tickets"]
+    assert (ticket["alert_ids"], ticket["severity"], ticket["evidence_count"]) == ([], 0, 0)

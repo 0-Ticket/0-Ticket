@@ -1,5 +1,4 @@
 import { useEffect, useRef, type CSSProperties } from "react";
-import { Link } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { PanelResizer } from "./components/panel-resizer";
 import { usePanelWidth } from "./components/use-panel-width";
@@ -7,47 +6,18 @@ import { JsonViewer } from "./components/json-viewer";
 import { Button } from "./components/ui/button";
 import { get } from "./api/client";
 import type { Resource, Detail } from "./api/client";
-import { useCan } from "./auth/session";
 import { Status } from "./badges";
-import { resourcePermission, titles } from "./constants";
+import { titles } from "./constants";
 import { ErrorState } from "./error-state";
-import { IncidentSections, TicketSections } from "./detail-sections";
-import type { LinkTo } from "./detail-sections";
+import { TicketSections } from "./detail-sections";
+import { useLink } from "./links";
 
-function internalLink(
-  id: string,
-  resource: Resource,
-  label: string,
-  name?: string,
-) {
-  if (
-    !/^(alt|evt|raw|tkt|inc|hnt)_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(
-      id,
-    )
-  )
-    return null;
-  return (
-    <Button key={id} variant="outline" size="sm" asChild>
-      <Link to={`/${resource}?selected=${id}`} aria-label={name}>
-        {label}
-      </Link>
-    </Button>
-  );
-}
 function DetailBody({ data }: { data: Detail }) {
-  const can = useCan();
-  // A link to a screen the account cannot open is not offered.
-  const link: LinkTo = (id, resource, label, name) =>
-    can(resourcePermission[resource])
-      ? internalLink(id, resource, label, name)
-      : null;
+  const link = useLink();
   return (
     <>
       {"ticket" in data && "alerts" in data && (
         <TicketSections data={data} link={link} />
-      )}
-      {"artifacts" in data && ( // TicketDetail도 incident 키가 있어 IncidentDetail만 가진 키로 가른다
-        <IncidentSections data={data} link={link} />
       )}
       {"case" in data && (
         <>

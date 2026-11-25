@@ -118,15 +118,16 @@ def incident(request: Request, incident_id: str):
             (incident_id,),
         ).fetchall()
         ticket_rows = conn.execute(
-            "SELECT id, title, details, verdict, alert_ids FROM tickets WHERE id = ANY(%s)",
+            f"SELECT t.id, t.title, t.details, t.verdict, t.alert_ids, t.entities, t.created_at, "
+            f"{read.TICKET_SEVERITY} AS severity FROM tickets t WHERE t.id = ANY(%s)",
             (row["ticket_ids"],),
         ).fetchall()
-        criticality = read.entity_criticality(
-            conn, [a for item in ticket_rows for a in item["alert_ids"]]
-        )
+        alerts = read.incident_alerts(conn, [a for item in ticket_rows for a in item["alert_ids"]])
+    criticality = read.entity_criticality(alerts)
     by_ticket = {item["id"]: item["details"].get("l2_branch") for item in ticket_rows}
     titles = {item["id"]: item["title"] for item in ticket_rows}
-    decisions = {item["id"]: (item["verdict"] or {}).get("decision") for item in ticket_rows}
+    verdicts = {item["id"]: item["verdict"] or {} for item in ticket_rows}
+    by_id = {item["id"]: read.times(item) for item in ticket_rows}
     ticket_graphs = []
     for ticket_id in row["ticket_ids"]:
         graph = by_ticket.get(ticket_id)
@@ -159,10 +160,20 @@ def incident(request: Request, incident_id: str):
     return dict(
         incident=row,
         tickets=[
-            {"id": i, "title": titles[i], "decision": decisions[i]}
+            {
+                "id": i,
+                "title": titles[i],
+                "decision": verdicts[i].get("decision"),
+                "severity": by_id[i]["severity"],
+                "created_at": by_id[i]["created_at"],
+                "evidence_count": len(verdicts[i].get("evidence_ids", [])),
+                "alert_ids": by_id[i]["alert_ids"],
+                "entities": by_id[i]["entities"],
+            }
             for i in row["ticket_ids"]
             if i in titles
         ],
+        alerts=[{k: a[k] for k in ("id", "time", "entities")} for a in alerts],
         artifacts=[read.times(x) for x in artifacts],
         proposals=[read.times(x) for x in proposals],
         ticket_graphs=ticket_graphs,

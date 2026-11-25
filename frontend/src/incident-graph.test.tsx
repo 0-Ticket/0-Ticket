@@ -183,11 +183,8 @@ const stat = (name: string) =>
   within(inspector()).getByText(name).parentElement!.querySelector("dd")!
     .textContent;
 
-test("the header shows the status and ticket count as chips, and the view toggle offers only the ticket view", () => {
+test("the view toggle offers only the ticket view", () => {
   render(<IncidentGraph incident={incident} ticketGraphs={graphs} />);
-  const heading = document.querySelector(".incident-graph-heading")!;
-  expect(heading).toHaveTextContent("승인 대기");
-  expect(heading).toHaveTextContent(`Ticket ${sample.ticket_ids.length}`);
   const views = screen.getByRole("group", { name: "그래프 보기" });
   expect(within(views).getByRole("button", { name: "Ticket" })).toHaveAttribute(
     "aria-pressed",

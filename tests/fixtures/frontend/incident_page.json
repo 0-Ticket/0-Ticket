@@ -1,0 +1,76 @@
+{
+  "_comment": "Incident 상세 페이지 계산 샘플(#379). 손으로 만든 값이고 IP·도메인은 문서용이다. 엔티티 연결 수와 최초 관측의 기대값이 expected에 있다.",
+  "tickets": [
+    {
+      "id": "tkt_01a19f93-1266-7000-8000-000000000071",
+      "title": "웹 서버 SQL 인젝션 탐지",
+      "decision": "malicious",
+      "severity": 5,
+      "created_at": 1793678100000,
+      "evidence_count": 3,
+      "alert_ids": ["alt_01a19f93-1266-7000-8000-000000000081", "alt_01a19f93-1266-7000-8000-000000000082"],
+      "entities": [
+        {"type": "ip", "value": "203.0.113.10", "role": "src"},
+        {"type": "host", "value": "web-01", "role": "dst"}
+      ]
+    },
+    {
+      "id": "tkt_01a19f93-1266-7000-8000-000000000072",
+      "title": "비정상 DB 대량 조회",
+      "decision": "undetermined",
+      "severity": 4,
+      "created_at": 1793678300000,
+      "evidence_count": 0,
+      "alert_ids": ["alt_01a19f93-1266-7000-8000-000000000082"],
+      "entities": [
+        {"type": "ip", "value": "203.0.113.10", "role": "src"},
+        {"type": "user", "value": "svc-web", "role": "actor"}
+      ]
+    },
+    {
+      "id": "tkt_01a19f93-1266-7000-8000-000000000073",
+      "title": "가설: 외부 도메인 통신",
+      "decision": null,
+      "severity": 0,
+      "created_at": 1793678400000,
+      "evidence_count": 0,
+      "alert_ids": [],
+      "entities": [{"type": "domain", "value": "example.com", "role": "dst"}]
+    }
+  ],
+  "alerts": [
+    {
+      "id": "alt_01a19f93-1266-7000-8000-000000000081",
+      "time": 1793678110000,
+      "entities": [
+        {"type": "ip", "value": "203.0.113.10", "role": "src"},
+        {"type": "host", "value": "web-01", "role": "dst"}
+      ]
+    },
+    {
+      "id": "alt_01a19f93-1266-7000-8000-000000000082",
+      "time": 1793678090000,
+      "entities": [
+        {"type": "ip", "value": "203.0.113.10", "role": "src"},
+        {"type": "user", "value": "svc-web", "role": "actor"}
+      ]
+    }
+  ],
+  "entities": [
+    {"type": "ip", "value": "203.0.113.10", "role": "src"},
+    {"type": "host", "value": "web-01", "role": "dst"},
+    {"type": "user", "value": "svc-web", "role": "actor"},
+    {"type": "domain", "value": "example.com", "role": "dst"},
+    {"type": "file_hash", "value": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", "role": null}
+  ],
+  "expected": {
+    "entity_rows": {
+      "ip|203.0.113.10": {"tickets": 2, "alerts": 2, "first": 1793678090000},
+      "host|web-01": {"tickets": 1, "alerts": 1, "first": 1793678110000},
+      "user|svc-web": {"tickets": 2, "alerts": 1, "first": 1793678090000},
+      "domain|example.com": {"tickets": 1, "alerts": 0, "first": 1793678400000},
+      "file_hash|0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef": {"tickets": 0, "alerts": 0, "first": null}
+    },
+    "decision_counts": {"malicious": 1, "undetermined": 1, "benign": 0, "pending": 1}
+  }
+}

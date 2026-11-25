@@ -70,8 +70,17 @@ export type UpdatedAt = number;
 export type Id1 = string;
 export type Title1 = string;
 export type Decision = ("benign" | "malicious" | "undetermined") | null;
+export type Severity2 = number;
+export type CreatedAt1 = number;
+export type EvidenceCount = number;
+export type AlertIds = string[];
+export type Entities1 = Entity[];
 export type Tickets = IncidentTicket[];
 export type Id2 = string;
+export type Time = number;
+export type Entities2 = Entity[];
+export type Alerts = IncidentAlert[];
+export type Id3 = string;
 export type IncidentId = string;
 export type AnalysisRound1 = number;
 export type Verdict = "not_threat" | "attempted" | "succeeded" | "inconclusive";
@@ -83,7 +92,7 @@ export type AssessedSeverity = number;
 /**
  * UTC epoch 밀리초. 상한은 9999-12-30T23:59:59.999Z(+14시간 시간대로 읽어도 9999년 안)
  */
-export type Time = number;
+export type Time1 = number;
 export type Summary2 = string;
 /**
  * @minItems 1
@@ -94,7 +103,7 @@ export type EvidenceIds = [EvidenceId, ...EvidenceId[]];
  */
 export type EvidenceId = string;
 export type Timeline = TimelineItem[];
-export type Id3 = string;
+export type Id4 = string;
 export type Name = string;
 /**
  * @minItems 1
@@ -108,9 +117,9 @@ export type EvidenceIds2 = EvidenceId[];
 /**
  * UTC epoch 밀리초. 상한은 9999-12-30T23:59:59.999Z(+14시간 시간대로 읽어도 9999년 안)
  */
-export type CreatedAt1 = number;
+export type CreatedAt2 = number;
 export type Artifacts = IncidentArtifact[];
-export type Id4 = string;
+export type Id5 = string;
 export type ArtifactId = string;
 export type Kind = "response" | "detection";
 /**
@@ -136,14 +145,14 @@ export type Rationale = string | null;
 /**
  * UTC epoch 밀리초. 상한은 9999-12-30T23:59:59.999Z(+14시간 시간대로 읽어도 9999년 안)
  */
-export type CreatedAt2 = number;
+export type CreatedAt3 = number;
 export type Proposals = IncidentProposal[];
 export type TicketId1 = string;
 export type Coverage = "complete" | "incomplete" | "legacy" | "unknown";
 export type Reason = string | null;
 export type IncidentId1 = string;
 export type TicketId2 = string;
-export type Id5 = string;
+export type Id6 = string;
 export type Kind1 = "ticket" | "alert" | "hunt" | "entity" | "incident";
 export type Type1 = string | null;
 export type Value1 = string | null;
@@ -167,6 +176,7 @@ export type SeedSource = string | null;
 export interface IncidentDetail {
   incident: Incident;
   tickets: Tickets;
+  alerts: Alerts;
   artifacts: Artifacts;
   proposals: Proposals;
   ticket_graphs?: TicketGraphs;
@@ -209,9 +219,22 @@ export interface IncidentTicket {
   id: Id1;
   title: Title1;
   decision: Decision;
+  severity: Severity2;
+  created_at: CreatedAt1;
+  evidence_count: EvidenceCount;
+  alert_ids: AlertIds;
+  entities: Entities1;
+}
+/**
+ * Incident의 Alert 요약. 엔티티 표의 연결 수·최초 관측 계산에 쓴다(#379, D-080).
+ */
+export interface IncidentAlert {
+  id: Id2;
+  time: Time;
+  entities: Entities2;
 }
 export interface IncidentArtifact {
-  id: Id2;
+  id: Id3;
   incident_id: IncidentId;
   analysis_round: AnalysisRound1;
   verdict: Verdict;
@@ -223,20 +246,20 @@ export interface IncidentArtifact {
   cause: Cause;
   further_risk: FurtherRisk;
   evidence_ids: EvidenceIds2;
-  created_at: CreatedAt1;
+  created_at: CreatedAt2;
 }
 export interface TimelineItem {
-  time: Time;
+  time: Time1;
   summary: Summary2;
   evidence_ids: EvidenceIds;
 }
 export interface Technique {
-  id: Id3;
+  id: Id4;
   name: Name;
   evidence_ids: EvidenceIds1;
 }
 export interface IncidentProposal {
-  id: Id4;
+  id: Id5;
   artifact_id: ArtifactId;
   kind: Kind;
   seq: Seq;
@@ -244,7 +267,7 @@ export interface IncidentProposal {
   title: Title2;
   detail: Detail;
   rationale: Rationale;
-  created_at: CreatedAt2;
+  created_at: CreatedAt3;
 }
 export interface IncidentTicketGraph {
   ticket_id: TicketId1;
@@ -263,7 +286,7 @@ export interface GraphPath {
   edges: Edges;
 }
 export interface GraphNode {
-  id: Id5;
+  id: Id6;
   kind: Kind1;
   type?: Type1;
   value?: Value1;

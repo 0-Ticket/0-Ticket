@@ -968,29 +968,10 @@ td {
   border-radius: 12px;
   background: #fff;
 }
-.incident-graph-heading {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px 16px;
-  font-size: 12px;
-}
-.incident-graph-heading > div {
-  display: grid;
-  gap: 3px;
-  min-width: 0;
-}
-.incident-graph-heading strong {
-  color: #1d365e;
-  font-size: 14px;
-}
-.incident-graph-heading span,
 .incident-graph-note,
 .incident-graph-scroll-hint {
   color: #63738b;
 }
-.incident-graph-heading span,
 .incident-graph-routes li,
 .incident-graph-statuses span {
   overflow-wrap: anywhere;
@@ -1129,10 +1110,6 @@ td {
 .incident-graph-node.dim,
 .incident-graph-lines g.dim {
   opacity: 0.2;
-}
-.incident-graph-chips {
-  display: flex;
-  gap: 6px;
 }
 .incident-graph-modebar {
   display: flex;
@@ -2230,4 +2207,205 @@ td {
 }
 .review-error {
   color: #b42318;
+}
+
+/* Incident page (#379) */
+.incident-page {
+  display: grid;
+  gap: 16px;
+}
+.incident-head {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: grid;
+  gap: 12px;
+  padding: 14px 0 12px;
+  background: var(--page);
+  border-bottom: 1px solid var(--border);
+}
+.incident-nav,
+.incident-title-row,
+.incident-meta,
+.incident-steps,
+.incident-decide,
+.incident-section-head,
+.incident-table-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.incident-nav,
+.incident-title-row,
+.incident-section-head {
+  justify-content: space-between;
+}
+.incident-title-row h1 {
+  margin: 0 0 6px;
+  font-size: 20px;
+  overflow-wrap: anywhere;
+}
+.incident-meta code {
+  color: var(--muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.incident-step-link {
+  border: 1px solid var(--input-border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  padding: 4px 10px;
+  font-size: 12px;
+}
+.incident-step-link:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.incident-numbers dl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  margin: 0;
+}
+.incident-numbers dl div {
+  display: grid;
+  gap: 2px;
+}
+.incident-numbers dt {
+  color: var(--muted);
+  font-size: 11px;
+}
+.incident-numbers dd {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+.incident-progress {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+}
+.incident-progress li {
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: #e9eef6;
+  color: #75839a;
+}
+.incident-progress li[aria-current="step"] {
+  background: #1b2a4a;
+  color: #fff;
+}
+.incident-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.incident-tabs button {
+  border: 0;
+  border-radius: 9px;
+  padding: 10px 18px;
+  background: #e9eef6;
+  color: #75839a;
+  font-size: 13px;
+}
+.incident-tabs button[aria-selected="true"] {
+  background: #1b2a4a;
+  color: #fff;
+}
+.incident-tabs .count {
+  margin-left: 6px;
+  font-size: 11px;
+  opacity: 0.8;
+}
+.incident-panel {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.incident-table-card {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.incident-table-tools input[type="search"] {
+  min-width: 220px;
+  padding: 6px 10px;
+  border: 1px solid var(--input-border);
+  border-radius: 8px;
+}
+.incident-count {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 12px;
+}
+.incident-clip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  min-width: 0;
+}
+.incident-clip .clip {
+  min-width: 0;
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: "Roboto Mono", monospace;
+  font-size: 12px;
+}
+.incident-copy,
+.incident-link {
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-size: 11px;
+  cursor: pointer;
+}
+.incident-sort {
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.incident-cell-title {
+  display: block;
+}
+.incident-round {
+  border-top: 1px solid var(--border);
+  padding: 10px 0;
+}
+.incident-round summary {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  cursor: pointer;
+}
+.incident-rule {
+  margin: 16px 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+.incident-recommendation {
+  display: grid;
+  gap: 6px;
+}
+.incident-detail {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.incident-graph-basis {
+  margin-top: 16px;
+}
+.incident-graph-basis summary {
+  cursor: pointer;
+  font-weight: 600;
 }

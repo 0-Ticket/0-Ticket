@@ -18,7 +18,15 @@ function message(error: unknown) {
 }
 
 // Shown only while the incident waits for review, and only the buttons the account may use (D-076).
-export function ReviewActions({ id, status }: { id: string; status: string }) {
+export function ReviewActions({
+  id,
+  status,
+  onApproved,
+}: {
+  id: string;
+  status: string;
+  onApproved?: (caseId: string) => void;
+}) {
   const can = useCan();
   const client = useQueryClient();
   const review = useMutation<ReviewResult, Error, Action>({
@@ -27,6 +35,9 @@ export function ReviewActions({ id, status }: { id: string; status: string }) {
         "POST",
         `incidents/${encodeURIComponent(id)}/${action}`,
       ),
+    onSuccess: (result) => {
+      if (result.case_id) onApproved?.(result.case_id);
+    },
     // The result may differ from what the screen showed (409), so everything is read again.
     onSettled: () => client.invalidateQueries(),
   });

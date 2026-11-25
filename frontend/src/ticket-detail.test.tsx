@@ -112,7 +112,7 @@ test("the linked incident is shown with its title, status, severity and a link",
   expect(dialog).toHaveTextContent("승인 대기");
   expect(
     within(dialog).getByRole("link", { name: "Incident 보기" }),
-  ).toHaveAttribute("href", `/incidents?selected=${linked.id}`);
+  ).toHaveAttribute("href", `/incidents/${linked.id}`);
 });
 
 test("a ticket with no incident has no linked incident card", async () => {
