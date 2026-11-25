@@ -70,7 +70,7 @@ def test_mode_check_accepts_default_and_scenario_and_rejects_auto(
 
 
 def test_mode_check_name_and_values_are_pinned(legacy_database: HiddenUrl) -> None:
-    """이름이 다른 DB를 위한 분기를 두지 않으므로 0110 적용 뒤의 이름과 값을 고정한다."""
+    """이름이 다른 DB를 위한 분기를 두지 않으므로 0110 적용 뒤의 이름과 정의를 고정한다."""
     migrate(legacy_database)
 
     with psycopg.connect(legacy_database) as conn:
@@ -80,8 +80,9 @@ def test_mode_check_name_and_values_are_pinned(legacy_database: HiddenUrl) -> No
             " AND conname = 'ticketing_policy_mode_check'"
         ).fetchall()
 
-    assert len(rows) == 1
-    definition = rows[0][1]
-    assert "'default'" in definition
-    assert "'scenario'" in definition
-    assert "'auto'" not in definition
+    assert rows == [
+        (
+            "ticketing_policy_mode_check",
+            "CHECK ((mode = ANY (ARRAY['default'::text, 'scenario'::text])))",
+        )
+    ]
