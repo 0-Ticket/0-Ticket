@@ -38,6 +38,11 @@ def config(default_config_dir: Path) -> dict[str, Any]:
     return load_full_config(default_config_dir)
 
 
+def non_l3_tasks(config: dict[str, Any]) -> list[str]:
+    """[tools.allowed]의 l1·l2 태스크 키(#382). 검사가 보는 범위와 같다."""
+    return [key for key in config["tools"]["allowed"] if not key.startswith("l3")]
+
+
 def by_name(checks: list[Any]) -> dict[str, Any]:
     return {c.name: c for c in checks}
 
@@ -100,9 +105,9 @@ def test_stage_without_workers_fails(config: dict[str, Any]) -> None:
 
 
 def test_qdrant_and_embedder_are_skipped_when_unused(config: dict[str, Any]) -> None:
-    for stage in ("l1", "l2"):
-        config["tools"]["allowed"][stage] = [
-            t for t in config["tools"]["allowed"][stage] if t != "search_similar_cases"
+    for task in non_l3_tasks(config):
+        config["tools"]["allowed"][task] = [
+            t for t in config["tools"]["allowed"][task] if t != "search_similar_cases"
         ]
     checks = by_name(run_checks(config, replace(OK_PROBES, qdrant=boom, embedder=boom), ENV))
     assert checks["qdrant"].status == checks["embedder"].status == "SKIP"
@@ -115,7 +120,7 @@ def test_qdrant_is_checked_when_only_the_similar_tool_needs_it(config: dict[str,
 
 
 def test_unknown_allowed_tool_fails(config: dict[str, Any]) -> None:
-    config["tools"]["allowed"]["l1"].append("no_such_tool")
+    config["tools"]["allowed"]["l1_alert_triage"].append("no_such_tool")
     check = by_name(run_checks(config, OK_PROBES, ENV))["tools_config"]
     assert (check.status, check.code) == ("FAIL", "unknown_tool")
 
@@ -129,9 +134,9 @@ def test_siem_environment_is_required_when_a_siem_tool_is_allowed(config: dict[s
 def test_siem_environment_is_not_required_when_no_stage_allows_siem(
     config: dict[str, Any],
 ) -> None:
-    for stage in ("l1", "l2"):
-        config["tools"]["allowed"][stage] = [
-            t for t in config["tools"]["allowed"][stage] if "siem" not in t
+    for task in non_l3_tasks(config):
+        config["tools"]["allowed"][task] = [
+            t for t in config["tools"]["allowed"][task] if "siem" not in t
         ]
     env = {k: v for k, v in ENV.items() if not k.startswith("ELK_")}
     assert by_name(run_checks(config, OK_PROBES, env))["tools_config"].status == "OK"

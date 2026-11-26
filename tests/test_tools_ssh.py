@@ -720,9 +720,12 @@ def test_default_config_has_ssh_settings_and_no_hosts(default_config_dir: Path) 
         "max_stderr_chars": 2000,
         "hosts": [],
     }
-    assert NAME not in tools["allowed"]["l1"]
-    assert NAME in tools["allowed"]["l2"]
-    assert NAME in tools["allowed"]["l3"]
+    allowed = tools["allowed"]
+    assert NAME not in allowed["l1_alert_triage"]
+    assert NAME not in allowed["l1_ticket_judgment"]
+    assert NAME in allowed["l2_investigate"]
+    assert NAME in allowed["l3_hypothesize"]
+    assert NAME in allowed["l3_verify"]
 
 
 def test_default_registry_has_the_tool_but_default_config_does_not_register_it() -> None:

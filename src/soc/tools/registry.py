@@ -191,10 +191,20 @@ class ToolRegistry:
         config: Mapping[str, Any],
         recorder: ToolRecorder,
         services: Mapping[str, Any] | None = None,
+        task: str | None = None,
     ) -> "ToolSession":
-        """stage의 허용 목록으로 실행 하나의 도구 묶음을 만든다. 설정이 잘못되면 ToolConfigError."""
+        """허용 목록으로 실행 하나의 도구 묶음을 만든다. 설정이 잘못되면 ToolConfigError.
+
+        목록은 task의 키를 먼저 보고, 그 키가 없으면 stage의 키를 본다(#382, D-082). 배포 설정은
+        태스크 이름만 키로 두므로(`soc.agent.types.TASK_NAMES`) 등록되지 않은 태스크는 도구가
+        하나도 붙지 않는다. 단계 키만 둔 설정은 그대로 동작한다.
+
+        결과 길이 한도와 strict_mode는 태스크가 아니라 stage의 값을 쓴다.
+        """
         tools = config.get("tools", {})
-        allowed = list(tools.get("allowed", {}).get(stage, []))
+        table = tools.get("allowed", {})
+        key = task if task is not None and task in table else stage
+        allowed = list(table.get(key, []))
         unknown = [name for name in allowed if name not in self._specs]
         if unknown:
             raise ToolConfigError("허용 목록에 등록되지 않은 도구 이름이 있다")

@@ -375,8 +375,10 @@ def test_default_config_allows_only_l1_and_l2(default_config_dir: Any) -> None:
 
     allowed = load_full_config(default_config_dir)["tools"]["allowed"]
 
-    assert NAME in allowed["l1"] and NAME in allowed["l2"]
-    assert NAME not in allowed["l3"]
+    for task in ("l1_alert_triage", "l1_ticket_judgment", "l2_classify", "l2_investigate"):
+        assert NAME in allowed[task], task
+    for task in ("l2_report", "l3_hypothesize", "l3_verify"):
+        assert NAME not in allowed[task], task
 
 
 def test_l3_cannot_use_the_tool_even_with_the_service(monkeypatch: pytest.MonkeyPatch) -> None:

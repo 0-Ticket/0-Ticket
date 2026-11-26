@@ -20,6 +20,17 @@ Failure = Literal[
 ]
 
 STAGES: tuple[str, ...] = ("l1", "l2", "l3")
+# 도구 허용 목록의 키(#382, D-082). AgentTask.task가 이 중 하나일 때만 그 태스크의 목록을 쓴다.
+# 배포 설정([tools.allowed])은 이 이름만 키로 둔다. 새 태스크를 만들면 여기와 설정에 함께 더한다.
+TASK_NAMES: tuple[str, ...] = (
+    "l1_alert_triage",
+    "l1_ticket_judgment",
+    "l2_classify",
+    "l2_investigate",
+    "l2_report",
+    "l3_hypothesize",
+    "l3_verify",
+)
 SUBJECT_TYPES: tuple[str, ...] = ("alert", "ticket", "incident", "hunt")
 DOMAINS: tuple[str, ...] = ("web", "cloud")
 FAILURES: tuple[str, ...] = (

@@ -1037,9 +1037,15 @@ def test_default_config_has_siem_settings_without_secrets(default_config_dir: Pa
     assert by_name["web_access"]["index"] == WEB_INDEX
     assert by_name["cloudtrail"]["index"] == "logs-aws.cloudtrail-*"
     assert all(t["time_field"] == "@timestamp" for t in siem["targets"])
-    assert "query_siem" in tools["allowed"]["l1"] and "count_siem" not in tools["allowed"]["l1"]
-    for stage in ("l2", "l3"):
-        assert {"query_siem", "count_siem"} <= set(tools["allowed"][stage])
+    allowed = tools["allowed"]
+    # 근거를 발급하는 태스크만 심을 본다. l1은 건수 집계를 쓰지 않는다
+    for task in ("l1_alert_triage", "l1_ticket_judgment"):
+        assert "query_siem" in allowed[task] and "count_siem" not in allowed[task], task
+    for task in ("l2_investigate", "l3_hypothesize", "l3_verify"):
+        assert {"query_siem", "count_siem"} <= set(allowed[task]), task
+    # 인용해도 발급할 다음 태스크가 없는 두 태스크다(D-082)
+    for task in ("l2_classify", "l2_report"):
+        assert not {"query_siem", "count_siem"} & set(allowed[task]), task
 
 
 def test_default_config_passes_the_config_check(env: None) -> None:

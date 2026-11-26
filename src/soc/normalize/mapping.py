@@ -417,6 +417,37 @@ def derive_event_columns(ocsf: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+# events 행 생성기. 이벤트 정규화는 없앴지만(#382) 근거 발급과 시드가 이 함수를 쓴다.
+# 매핑표에 기대지 않고 ocsf 문서에서 컬럼만 파생한다.
+def event_row(
+    event_id: str,
+    raw_id: str,
+    ocsf: dict[str, Any],
+    entities: list[dict[str, Any]],
+    details: dict[str, Any] | None = None,
+    assets: list[Any] | None = None,
+) -> dict[str, Any]:
+    """events 행 하나를 만든다. 컬럼 값은 ocsf에서 파생하고 그 밖의 칸은 받은 값이다.
+
+    Args:
+        event_id: events.id.
+        raw_id: raw_records.id.
+        ocsf: 이벤트의 OCSF 문서. 원본이다.
+        entities: Event 엔티티 목록.
+        details: OCSF 속성이 아닌 값. 없으면 빈 객체.
+        assets: 자산 목록. 정규화 뒤 자산 조회가 채우므로 기본은 빈 목록이다.
+    """
+    return {
+        "id": event_id,
+        "raw_id": raw_id,
+        **derive_event_columns(ocsf),
+        "entities": entities,
+        "assets": assets or [],
+        "ocsf": ocsf,
+        "details": details or {},
+    }
+
+
 def with_derived_event_columns(row: dict[str, Any]) -> dict[str, Any]:
     """ocsf만 가진 events 행(시드 샘플)에 파생 컬럼 time·ocsf_class·summary를 채운다.
 
