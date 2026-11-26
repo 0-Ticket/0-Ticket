@@ -2423,11 +2423,35 @@ td {
 .incident-table-card td.date {
   white-space: nowrap;
 }
-.incident-table-card td:has(> .incident-clip) {
-  min-width: 280px;
+/* The two incident tables set their own column widths (<col>), not the list tables' 50/15/13 split (#386). */
+.table-scroll .incident-table {
+  table-layout: fixed;
 }
-.incident-table-card .incident-clip .clip {
-  max-width: 420px;
+.table-scroll .incident-table th {
+  width: auto;
+  white-space: nowrap;
+}
+.table-scroll .incident-table-tickets {
+  min-width: 856px;
+}
+.table-scroll .incident-table-entities {
+  min-width: 680px;
+}
+.incident-table td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.incident-table .incident-cell-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.incident-table .incident-clip {
+  display: flex;
+}
+.incident-table .incident-clip .clip {
+  flex: 0 1 auto;
+  max-width: none;
 }
 .incident-row-end {
   text-align: right;

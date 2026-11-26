@@ -21,6 +21,17 @@ export function CopyButton({ value, label }: { value: string; label: string }) {
   );
 }
 
+// One <col> per column: a pixel width, or null for the one column that takes what is left (the table layout is fixed).
+export function Cols({ widths }: { widths: (number | null)[] }) {
+  return (
+    <colgroup>
+      {widths.map((w, i) => (
+        <col key={i} style={w === null ? undefined : { width: w }} />
+      ))}
+    </colgroup>
+  );
+}
+
 // Long values stay on one line with an ellipsis; the full text is in the tooltip and the copy button.
 export function Clip({ text, label }: { text: string; label: string }) {
   return (
