@@ -34,7 +34,14 @@ FIXTURE = Path(__file__).parent / "fixtures" / "tools" / "records.json"
 T0 = 1793678578000
 DAY = 86_400_000
 READER = "soc_agent_reader"
-ALL_TOOLS = ["get_alert", "get_event", "query_records", "query_http_flow", "summarize_http_flow"]
+ALL_TOOLS = [
+    "get_alert",
+    "get_event",
+    "query_records",
+    "query_http_flow",
+    "summarize_http_flow",
+    "get_raw",
+]
 
 
 def load_records() -> dict[str, list[dict[str, Any]]]:
@@ -436,3 +443,90 @@ def test_tool_session_is_read_only(reader_url: str, migrated: str) -> None:
     assert out.startswith("TOOL_ERROR tool=write code=failed")
     with psycopg.connect(migrated) as conn:
         assert conn.execute("SELECT count(*) FROM scratch").fetchone() == (0,)
+
+
+# 원문 읽기 (#382)
+#
+# 이벤트를 정규화하지 않으므로 events 행은 class 0 포인터이고 원문은 raw_records.original_text에
+# 있다. get_raw가 그것을 돌려준다. 읽기 역할의 권한은 마이그레이션 0307이 준다.
+
+RAW_ID = "raw_01a19f93-1150-7000-8000-0000000000ff"
+ORIGINAL = json.dumps(
+    {
+        "_index": ".ds-logs-nginx.access-default-2026.11.04-000001",
+        "_id": "aaa1",
+        "_source": {
+            "@timestamp": "2026-11-04T00:00:01Z",
+            "event": {"module": "suricata", "dataset": "suricata.eve"},
+            "source": {"ip": "198.51.100.7"},
+            "url": {"path": "/files/x.php"},
+        },
+    },
+    ensure_ascii=True,
+)
+
+
+def insert_issued_original(admin: str, *, event_id: str | None = None) -> None:
+    """근거 발급이 만드는 모양을 넣는다. 원문 한 건과, 원하면 그것을 가리키는 class 0 Event다."""
+    with psycopg.connect(admin) as conn:
+        conn.execute(
+            "INSERT INTO raw_records (id, kind, siem_profile, siem_ref, fetched_at,"
+            " original_text) VALUES (%s, 'event', 'test-evidence', %s, %s, %s)"
+            " ON CONFLICT DO NOTHING",
+            (RAW_ID, f"issued/{RAW_ID}", to_datetime(T0), ORIGINAL),
+        )
+        if event_id is not None:
+            conn.execute(
+                "INSERT INTO events (id, raw_id, time, ocsf_class, summary, entities, assets,"
+                " ocsf, details) VALUES (%s, %s, %s, 0, '', %s, %s, %s, %s)",
+                (
+                    event_id,
+                    RAW_ID,
+                    to_datetime(T0),
+                    Jsonb([]),
+                    Jsonb([]),
+                    Jsonb(
+                        {
+                            "class_uid": 0,
+                            "time": T0,
+                            "severity_id": 1,
+                            "message": "suricata.eve",
+                        }
+                    ),
+                    Jsonb({}),
+                ),
+            )
+
+
+def test_get_raw_returns_the_original_by_raw_id(migrated: str, reader_url: str) -> None:
+    insert_issued_original(migrated)
+    c = caller()
+    out = call(c, "get_raw", {"id": RAW_ID})
+
+    [record] = out["records"]
+    assert record["id"] == RAW_ID
+    assert record["kind"] == "event"
+    assert record["fetched_at"] == T0
+    assert json.loads(record["original_text"])["_source"]["event"]["module"] == "suricata"
+    # siem_ref는 읽지 않는다(인덱스 이름이 들어 있다)
+    assert "siem_ref" not in record and "siem_profile" not in record
+    assert RAW_ID in c.session.evidence_ids
+
+
+def test_get_raw_follows_an_event_id_to_its_original(migrated: str, reader_url: str) -> None:
+    event_id = "evt_01a19f93-1150-7000-8000-0000000000fe"
+    insert_issued_original(migrated, event_id=event_id)
+    out = call(caller(), "get_raw", {"id": event_id})
+
+    [record] = out["records"]
+    assert record["id"] == RAW_ID
+
+
+def test_get_raw_of_an_unknown_id_returns_no_records(reader_url: str) -> None:
+    out = call(caller(), "get_raw", {"id": "raw_01a19f93-1150-7000-8000-0000000000aa"})
+    assert out["records"] == []
+
+
+def test_get_raw_rejects_a_ticket_id(reader_url: str) -> None:
+    text = call_raw(caller(), "get_raw", {"id": "tkt_01a19f93-1150-7000-8000-000000000001"})
+    assert text.startswith("TOOL_ERROR tool=get_raw code=invalid_argument")

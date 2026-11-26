@@ -134,11 +134,11 @@ max_limit = 100
 # 로컬 ATT&CK·KEV 조회(#311): get_attack_technique·search_attack_techniques·get_cve는 l2·l3
 l1_alert_triage = [
     "get_alert", "get_event", "query_records", "query_http_flow", "summarize_http_flow",
-    "query_siem", "lookup_indicator", "search_similar_cases",
+    "query_siem", "get_raw", "lookup_indicator", "search_similar_cases",
 ]
 l1_ticket_judgment = [
     "get_alert", "get_event", "query_records", "query_http_flow", "summarize_http_flow",
-    "query_siem", "lookup_indicator", "search_similar_cases",
+    "query_siem", "get_raw", "lookup_indicator", "search_similar_cases",
 ]
 # 그래프 후보와 모델 판단만 하는 단계다. 심을 뒤지면 분류가 느려지고 발급할 다음 태스크도 없다
 l2_classify = [
@@ -146,21 +146,21 @@ l2_classify = [
 ]
 l2_investigate = [
     "get_alert", "get_event", "query_records", "query_http_flow", "summarize_http_flow",
-    "query_siem", "count_siem", "run_host_check", "lookup_indicator",
+    "query_siem", "count_siem", "get_raw", "run_host_check", "lookup_indicator",
     "get_attack_technique", "search_attack_techniques", "get_cve", "search_similar_cases",
 ]
-# 보고는 조사 결과만 보고 원문을 다시 보지 않는다(기존 2단계 설계)
+# 보고는 조사 결과만 보고 원문을 다시 보지 않는다(기존 2단계 설계). get_raw도 주지 않는다(D-082)
 l2_report = [
     "get_attack_technique", "search_attack_techniques", "get_cve",
 ]
 l3_hypothesize = [
     "get_alert", "get_event", "query_records", "query_http_flow", "summarize_http_flow",
-    "query_siem", "count_siem", "run_host_check",
+    "query_siem", "count_siem", "get_raw", "run_host_check",
     "get_attack_technique", "search_attack_techniques", "get_cve",
 ]
 l3_verify = [
     "get_alert", "get_event", "query_records", "query_http_flow", "summarize_http_flow",
-    "query_siem", "count_siem", "run_host_check",
+    "query_siem", "count_siem", "get_raw", "run_host_check",
     "get_attack_technique", "search_attack_techniques", "get_cve",
 ]
 

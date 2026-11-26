@@ -51,12 +51,14 @@ def test_default_tools_config(default_config_dir: Path) -> None:
         "query_http_flow",
         "summarize_http_flow",
     ]
+    # #382: 발급한 원문을 읽는 도구. query_siem 뒤에 온다
+    with_raw = [*expected, "query_siem", "get_raw"]
     # 키는 태스크 이름이다(#382, D-082). 단계 키는 두지 않는다 — 등록되지 않은 태스크는 기본 거부다.
     # query_siem은 근거를 발급하는 태스크에만 있고 l2_classify·l2_report에는 없다.
     local_intel = ["get_attack_technique", "search_attack_techniques", "get_cve"]
     allowed = tools["allowed"]
     assert sorted(allowed) == sorted(TASK_NAMES)
-    l1_tools = [*expected, "query_siem", "lookup_indicator", "search_similar_cases"]
+    l1_tools = [*with_raw, "lookup_indicator", "search_similar_cases"]
     assert allowed["l1_alert_triage"] == l1_tools
     assert allowed["l1_ticket_judgment"] == l1_tools
     assert allowed["l2_classify"] == [
@@ -69,13 +71,14 @@ def test_default_tools_config(default_config_dir: Path) -> None:
         *expected,
         "query_siem",
         "count_siem",
+        "get_raw",
         "run_host_check",
         "lookup_indicator",
         *local_intel,
         "search_similar_cases",
     ]
     assert allowed["l2_report"] == local_intel
-    l3_tools = [*expected, "query_siem", "count_siem", "run_host_check", *local_intel]
+    l3_tools = [*expected, "query_siem", "count_siem", "get_raw", "run_host_check", *local_intel]
     assert allowed["l3_hypothesize"] == l3_tools
     assert allowed["l3_verify"] == l3_tools
     assert tools["local_intel"] == {
