@@ -1060,3 +1060,85 @@ def test_elk_marker_is_excluded_by_default() -> None:
     options = pytest_config["tool"]["pytest"]["ini_options"]
     assert any(m.startswith("elk:") for m in options["markers"])
     assert "not elk" in options["addopts"]
+
+
+# siem_ref → (_index, _id) 맵 (#382)
+#
+# 워커가 원문 한 건을 가져오려면 인덱스와 문서 ID가 필요한데, siem_ref 저장 키는 되돌릴 수 없다
+# (soc.ids.siem_ref_key: "키는 / 로 나누어 _index와 _id로 되돌리지 않는다"). 그래서 query_siem이
+# 모델에게 보인 히트의 (_index, _id)를 도구 세션이 들고 있는다.
+# 모델에게는 인덱스 이름이 가지 않는다.
+
+
+def siem_hit(index: str, doc_id: str, **source: Any) -> dict[str, Any]:
+    return {"_index": index, "_id": doc_id, "_source": {"@timestamp": START + 1000, **source}}
+
+
+def hits_response(*hits: dict[str, Any]) -> httpx.Response:
+    total = {"value": len(hits), "relation": "eq"}
+    return httpx.Response(200, json={"hits": {"total": total, "hits": list(hits)}})
+
+
+def test_shown_hits_land_in_the_session_siem_refs_map(elk: FakeElk) -> None:
+    index = ".ds-logs-nginx.access-default-2026.11.04-000001"
+    elk.add(hits_response(siem_hit(index, "aaa1"), siem_hit(index, "bbb2")))
+    c = caller(elk)
+    body = parse(call(c, "query_siem", query()))
+
+    assert [h["siem_ref"] for h in body["hits"]] == [
+        siem_ref_key(f"{index}/aaa1"),
+        siem_ref_key(f"{index}/bbb2"),
+    ]
+    assert c.session.siem_refs == {
+        siem_ref_key(f"{index}/aaa1"): (index, "aaa1"),
+        siem_ref_key(f"{index}/bbb2"): (index, "bbb2"),
+    }
+
+
+def test_map_value_keeps_the_original_id_not_the_stored_key(elk: FakeElk) -> None:
+    # 저장 키는 JSON 이스케이프된 값이라 그대로 URL 경로에 쓰면 다른 문서를 가리킨다.
+    # 맵의 값은 ELK가 준 원래 _id여야 한다.
+    index = ".ds-logs-web-default-2026.11.04-000001"
+    doc_id = 'q"b\\s\x01z한글'
+    elk.add(hits_response(siem_hit(index, doc_id)))
+    c = caller(elk)
+    body = parse(call(c, "query_siem", query()))
+
+    ref = body["hits"][0]["siem_ref"]
+    assert ref == siem_ref_key(f"{index}/{doc_id}")
+    assert ref != f"{index}/{doc_id}"  # 이스케이프가 실제로 일어났다
+    assert c.session.siem_refs[ref] == (index, doc_id)
+
+
+def test_hits_dropped_to_fit_are_not_in_the_map(elk: FakeElk) -> None:
+    # 뒤에서 빠진 히트는 모델이 보지 못했으므로 인용할 수 없고, 맵에도 없어야 한다.
+    index = ".ds-logs-web-default-2026.11.04-000001"
+    big = "x" * 400
+    elk.add(hits_response(*[siem_hit(index, f"id{n}", **{"url.path": big}) for n in range(8)]))
+    c = caller(elk, config(chars=900))
+    body = parse(call(c, "query_siem", query()))
+
+    assert body["omitted"] > 0
+    shown = {h["siem_ref"] for h in body["hits"]}
+    assert shown
+    assert set(c.session.siem_refs) == shown
+
+
+def test_a_failed_call_leaves_the_map_untouched(elk: FakeElk) -> None:
+    index = ".ds-logs-web-default-2026.11.04-000001"
+    elk.add(hits_response(siem_hit(index, "kept")))
+    elk.add(status(500))
+    c = caller(elk)
+    call(c, "query_siem", query())
+    before = dict(c.session.siem_refs)
+    call(c, "query_siem", query(source_ip="203.0.113.9"))
+
+    assert c.session.siem_refs == before == {siem_ref_key(f"{index}/kept"): (index, "kept")}
+
+
+def test_count_siem_adds_nothing_to_the_map(elk: FakeElk) -> None:
+    elk.add(ok("terms.json"))
+    c = caller(elk)
+    call(c, "count_siem", count())
+
+    assert c.session.siem_refs == {}

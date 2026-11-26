@@ -457,7 +457,8 @@ def _cap(value: Any, path: str, cut: list[str]) -> Any:
     return value
 
 
-def _hit(hit: Any, fields: tuple[str, ...]) -> dict[str, Any]:
+def _hit(hit: Any, fields: tuple[str, ...]) -> tuple[dict[str, Any], tuple[str, str]]:
+    """(모델에게 보일 히트, (_index, _id)). 쌍은 원문 한 건을 가져올 때 쓴다(#382)."""
     if not isinstance(hit, dict):
         raise _shape_error()
     index, doc_id = hit.get("_index"), hit.get("_id")
@@ -475,7 +476,7 @@ def _hit(hit: Any, fields: tuple[str, ...]) -> dict[str, Any]:
     shaped: dict[str, Any] = {"siem_ref": siem_ref_key(f"{index}/{doc_id}"), "fields": picked}
     if cut:
         shaped["truncated_fields"] = cut
-    return shaped
+    return shaped, (index, doc_id)
 
 
 def _query_siem(
@@ -496,7 +497,10 @@ def _query_siem(
     raw_hits = data["hits"].get("hits")
     if not isinstance(raw_hits, list):
         raise _shape_error()
-    hits = [_hit(hit, fields) for hit in raw_hits]
+    shaped_hits = [_hit(hit, fields) for hit in raw_hits]
+    hits = [shaped for shaped, _ in shaped_hits]
+    # 저장 키 -> (_index, _id). 아래에서 실제로 보인 히트만 ctx.siem_docs에 넣는다.
+    pairs = {shaped["siem_ref"]: pair for shaped, pair in shaped_hits}
     shown: list[dict[str, Any]] = []
     body: dict[str, Any] = {
         "source": SOURCE_NAME,
@@ -529,6 +533,8 @@ def _query_siem(
         if not ctx.fits(body):
             shown.clear()
             body["omitted"] = len(hits)
+    # 모델에게 보인 히트만 적는다. 뒤에서 빠진 히트는 인용할 수 없다.
+    ctx.siem_docs.update({hit["siem_ref"]: pairs[hit["siem_ref"]] for hit in shown})
     return body
 
 
