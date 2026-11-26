@@ -448,6 +448,107 @@ test("the history tab says so when no round exists yet", async () => {
   ).toBeInTheDocument();
 });
 
+test("the overview has two columns: summary, impact and tickets on the left, key entities and recommendations on the right", async () => {
+  serve();
+  show(url);
+  await screen.findByRole("heading", { name: "사건 요약" });
+  const left = screen.getByRole("region", { name: "사건 개요" });
+  const right = screen.getByRole("complementary", {
+    name: "핵심 엔티티와 권고 조치",
+  });
+  expect(
+    within(left).getByRole("heading", { name: /소속 Ticket/ }),
+  ).toBeInTheDocument();
+  expect(
+    within(right).getByRole("heading", { name: "핵심 엔티티" }),
+  ).toBeInTheDocument();
+});
+
+test("key entities are the three with the most tickets, ties by kind then value, shown as text", async () => {
+  serve();
+  show(url);
+  const card = (
+    await screen.findByRole("heading", { name: "핵심 엔티티" })
+  ).closest("section")!;
+  const rows = within(card).getAllByRole("listitem");
+  expect(rows).toHaveLength(3);
+  expect(rows[0]).toHaveTextContent("ip · 203.0.113.10");
+  expect(rows[1]).toHaveTextContent("user · svc-web"); // 2 tickets, like the ip
+  expect(rows[2]).toHaveTextContent("domain · example.com"); // 1 ticket: domain before host
+  expect(within(card).queryByRole("link")).toBeNull();
+});
+
+test("the impact heading is hidden when the impact text is empty", async () => {
+  serve(detail({ artifacts: [{ ...artifact, impact: "" }] }));
+  show(url);
+  await screen.findByRole("heading", { name: "사건 요약" });
+  expect(screen.queryByRole("heading", { name: "영향" })).toBeNull();
+});
+
+test("an overview ticket row shows time, evidence count, verdict and level without an id, and the whole row opens the ticket", async () => {
+  serve();
+  show(url);
+  const card = (
+    await screen.findByRole("heading", { name: /소속 Ticket/ })
+  ).closest("section")!;
+  const row = within(card).getByRole("link", {
+    name: `${page.tickets[0].title} Ticket 상세`,
+  });
+  expect(row).toHaveAttribute(
+    "href",
+    `/tickets?selected=${page.tickets[0].id}`,
+  );
+  expect(row).toHaveTextContent("근거 3개");
+  expect(row).toHaveTextContent("malicious");
+  expect(row).toHaveTextContent("5 Level");
+  expect(card).not.toHaveTextContent(page.tickets[0].id);
+  expect(within(card).queryByRole("button", { name: /복사/ })).toBeNull();
+});
+
+test("an overview ticket row is plain text for an account without ticket.read", async () => {
+  serve(detail(), analyst());
+  show(url);
+  const card = (
+    await screen.findByRole("heading", { name: /소속 Ticket/ })
+  ).closest("section")!;
+  expect(within(card).queryByRole("link")).toBeNull();
+  expect(card).toHaveTextContent(page.tickets[0].title);
+});
+
+test("recommendations show the priority and the category as chips", async () => {
+  const proposals = [
+    {
+      ...seed.incident_proposals[0],
+      id: "prp_01a19f93-1266-7000-8000-000000000095",
+      artifact_id: artifact.id,
+      seq: 1,
+      kind: "response",
+      priority: "high",
+      title: "격리 검토",
+      detail: "본문",
+      rationale: null,
+    },
+    {
+      ...seed.incident_proposals[0],
+      id: "prp_01a19f93-1266-7000-8000-000000000096",
+      artifact_id: artifact.id,
+      seq: 2,
+      kind: "detection",
+      priority: "low",
+      title: "룰 추가",
+      detail: "본문",
+      rationale: null,
+    },
+  ];
+  serve(detail({ proposals }));
+  show(url);
+  const card = (
+    await screen.findByRole("heading", { name: /권고 조치/ })
+  ).closest("section")!;
+  const chips = [...card.querySelectorAll(".badge")].map((c) => c.textContent);
+  expect(chips).toEqual(["높음", "대응", "낮음", "탐지 룰"]);
+});
+
 test("recommendations have no 'why' label and are split into paragraphs and rules", async () => {
   const proposals = [0, 1].map((i) => ({
     ...seed.incident_proposals[0],

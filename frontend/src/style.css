@@ -2441,6 +2441,40 @@ td {
   align-items: baseline;
   cursor: pointer;
 }
+.incident-overview {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 16px;
+  align-items: start;
+}
+.incident-column {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.incident-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.incident-row-link {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+a.incident-row-link:hover strong {
+  text-decoration: underline;
+}
+@media (max-width: 900px) {
+  .incident-overview {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 .incident-timeline {
   display: grid;
   gap: 0;

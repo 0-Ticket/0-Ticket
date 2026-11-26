@@ -10,18 +10,22 @@ export const INCIDENT_ID =
 const INTERNAL_ID =
   /^(alt|evt|raw|tkt|inc|hnt)_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
+function internalHref(id: string, resource: Resource) {
+  if (!INTERNAL_ID.test(id)) return null;
+  // Incidents have their own page; every other record opens in the side panel of its list.
+  return resource === "incidents"
+    ? `/incidents/${id}`
+    : `/${resource}?selected=${id}`;
+}
+
 function internalLink(
   id: string,
   resource: Resource,
   label: string,
   name?: string,
 ) {
-  if (!INTERNAL_ID.test(id)) return null;
-  // Incidents have their own page; every other record opens in the side panel of its list.
-  const to =
-    resource === "incidents"
-      ? `/incidents/${id}`
-      : `/${resource}?selected=${id}`;
+  const to = internalHref(id, resource);
+  if (!to) return null;
   return (
     <Button key={id} variant="outline" size="sm" asChild>
       <Link to={to} aria-label={name}>
@@ -38,4 +42,11 @@ export function useLink(): LinkTo {
     can(resourcePermission[resource])
       ? internalLink(id, resource, label, name)
       : null;
+}
+
+// The address of a record the account may open, for a row that is a link as a whole.
+export function useHref() {
+  const can = useCan();
+  return (id: string, resource: Resource) =>
+    can(resourcePermission[resource]) ? internalHref(id, resource) : null;
 }
