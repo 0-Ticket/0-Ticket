@@ -546,17 +546,9 @@ test("Incident reports and response proposals remain text and link to source Tic
   expect(
     await within(page).findByRole("region", { name: "Incident 관계도" }),
   ).toBeInTheDocument();
-  expect(page.querySelectorAll(".incident-graph-node.entity")).toHaveLength(1);
-  expect(within(page).getAllByText("lab-7").length).toBeGreaterThan(0);
-  expect(within(page).queryByText("other.example.com")).not.toBeInTheDocument();
-  expect(
-    page.querySelectorAll(".incident-graph-lines line[data-relation='path']"),
-  ).toHaveLength(6);
-  expect(
-    page.querySelectorAll(
-      ".incident-graph-lines line[data-relation='membership']",
-    ),
-  ).toHaveLength(7);
+  expect(page.querySelectorAll(".incident-graph-node.ticket")).toHaveLength(
+    graphFixture.ticket_ids.length,
+  );
   fireEvent.click(within(page).getByRole("tab", { name: /^분석 이력/ }));
   expect(await within(page).findByText("분석 라운드 1")).toBeInTheDocument();
 });

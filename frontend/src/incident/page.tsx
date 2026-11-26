@@ -8,6 +8,9 @@ import { Severity, Status } from "../badges";
 import { ErrorState } from "../error-state";
 import { IncidentGraph } from "../incident-graph";
 import { ReviewActions } from "../review-actions";
+import { ClassificationBasis } from "./basis";
+import { useGraphMemory } from "./graph-memory";
+import type { GraphView } from "./graph-model";
 import { EntityTable } from "./entity-table";
 import { HistoryTab } from "./history-tab";
 import { CopyButton } from "./kit";
@@ -156,6 +159,7 @@ export function IncidentPage({ id }: { id: string }) {
   const from = location.state as FromList | null;
   const [search, setSearch] = useSearchParams();
   const [caseId, setCaseId] = useState<string | null>(null);
+  const [memory, setMemory] = useGraphMemory(id);
   const query = useQuery({
     queryKey: ["detail", "incidents", id],
     queryFn: ({ signal }) =>
@@ -180,13 +184,24 @@ export function IncidentPage({ id }: { id: string }) {
     entities: ["엔티티", data.incident.entities.length],
     history: ["분석 이력", data.artifacts.length],
   };
-  function open(next: Tab) {
+  function go(change: (params: URLSearchParams) => void) {
     const params = new URLSearchParams(search);
-    if (next === "overview") params.delete("tab");
-    else params.set("tab", next);
+    change(params);
     // The list state rides along, or previous/next and "목록으로" would be lost on a tab change.
     setSearch(params, { replace: true, state: location.state });
   }
+  const open = (next: Tab) =>
+    go((params) => {
+      if (next === "overview") params.delete("tab");
+      else params.set("tab", next);
+    });
+  // Only the graph's view (ticket or entity) is kept in the address; search words and filters are not.
+  const view: GraphView = search.get("view") === "entity" ? "entity" : "ticket";
+  const openView = (next: GraphView) =>
+    go((params) => {
+      if (next === "ticket") params.delete("view");
+      else params.set("view", next);
+    });
   return (
     <div className="incident-page">
       <Header data={data} from={from} caseId={caseId} onApproved={setCaseId} />
@@ -211,17 +226,22 @@ export function IncidentPage({ id }: { id: string }) {
           <OverviewTab data={data} showTickets={() => open("tickets")} />
         )}
         {tab === "graph" && (
-          <IncidentGraph
-            incident={data.incident}
-            ticketGraphs={data.ticket_graphs}
-            titles={Object.fromEntries(
-              data.tickets.map((t) => [t.id, t.title]),
-            )}
-            decisions={Object.fromEntries(
-              data.tickets.map((t) => [t.id, t.decision]),
-            )}
-            criticality={data.entity_criticality}
-          />
+          <>
+            <IncidentGraph
+              detail={data}
+              view={view}
+              onView={openView}
+              memory={memory}
+              onMemory={setMemory}
+            />
+            <ClassificationBasis
+              incident={data.incident}
+              ticketGraphs={data.ticket_graphs}
+              titles={Object.fromEntries(
+                data.tickets.map((t) => [t.id, t.title]),
+              )}
+            />
+          </>
         )}
         {tab === "tickets" &&
           (data.tickets.length ? (

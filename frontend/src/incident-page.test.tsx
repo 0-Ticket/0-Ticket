@@ -457,7 +457,7 @@ test("recommendations have no 'why' label and are split into paragraphs and rule
   expect(document.querySelectorAll("hr.incident-rule").length).toBe(1);
 });
 
-test("the graph tab shows the existing graph; saved paths and exploration status wait in a folded basis", async () => {
+test("the graph tab shows the graph with a working view switch; saved paths and exploration status wait in a folded basis", async () => {
   serve(
     detail({
       incident: { ...base, ticket_ids: graphFixture.ticket_ids, entities: [] },
@@ -483,8 +483,41 @@ test("the graph tab shows the existing graph; saved paths and exploration status
       name: "Ticket별 분류 당시 탐색 상태",
     }),
   ).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: /Entity/ })).toBeDisabled();
-  expect(screen.getByText("준비 중")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Entity" })).toBeEnabled();
+  expect(screen.queryByText("준비 중")).toBeNull();
+});
+
+test("the graph view stays in the address and node places survive a visit to another tab", async () => {
+  serve(
+    detail({
+      incident: { ...base, ticket_ids: graphFixture.ticket_ids, entities: [] },
+      tickets: graphFixture.ticket_ids.map((id, i) => ({
+        ...ticketAt(i),
+        id,
+        title: `원본 Ticket 제목 ${i + 1}`,
+      })),
+      ticket_graphs: graphFixture.ticket_graphs,
+    }),
+  );
+  show(`${url}?tab=graph&view=entity`);
+  const entity = await screen.findByRole("button", { name: "Entity" });
+  expect(entity).toHaveAttribute("aria-pressed", "true");
+  fireEvent.click(screen.getByRole("button", { name: "Ticket" }));
+  expect(screen.getByTestId("where")).toHaveTextContent(`${url}?tab=graph`);
+  expect(screen.getByTestId("where")).not.toHaveTextContent("view=");
+  fireEvent.click(screen.getByRole("button", { name: "Entity" }));
+  expect(screen.getByTestId("where")).toHaveTextContent("view=entity");
+  fireEvent.click(screen.getByRole("button", { name: "Ticket" }));
+  const name = "Ticket 원본 Ticket 제목 1";
+  const left = () => parseFloat(screen.getByRole("group", { name }).style.left);
+  const node = screen.getByRole("group", { name });
+  fireEvent.pointerDown(node, { clientX: 100, clientY: 100, button: 0 });
+  fireEvent.pointerMove(node, { clientX: 220, clientY: 100 });
+  fireEvent.pointerUp(node, { clientX: 220, clientY: 100 });
+  const dropped = left();
+  fireEvent.click(screen.getByRole("tab", { name: /^Ticket/ }));
+  fireEvent.click(screen.getByRole("tab", { name: "관계 그래프" }));
+  expect(left()).toBeCloseTo(dropped, 5);
 });
 
 test("an incident with no tickets shows an empty state with a reload button", async () => {
