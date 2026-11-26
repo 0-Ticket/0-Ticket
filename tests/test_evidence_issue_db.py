@@ -177,3 +177,22 @@ def test_the_issued_event_can_be_read_back_as_a_contract(conn: psycopg.Connectio
     columns = ("id", "raw_id", "summary", "entities", "assets", "ocsf", "details")
     event = dict(zip(columns, row, strict=True))
     validate_contract("event", assemble_event(event))
+
+
+def test_l3_hunting_reads_the_entities_of_an_issued_event(conn: psycopg.Connection) -> None:
+    """발급한 Event의 엔티티를 record_entities가 읽는다(#382 완료 기준).
+
+    이벤트 매핑표를 없애면서 ECS 공통 엔티티 규칙 하나만 남겼다. 그 규칙이 채운 값을
+    L3 헌팅이 읽어 Hunt 엔티티에 머지한다. 빈 배열이면 model_only_entities만 남는다.
+    """
+    from soc.l3.hunt.store import record_entities
+
+    doc = document(source={"ip": "198.51.100.7"}, user={"name": "svc-backup"})
+    result = run(conn, (doc,), "aaa1")
+    [event_id] = result.evidence_ids.values()
+
+    entities, missing = record_entities(conn, [event_id])
+
+    assert missing == 0
+    assert {"type": "ip", "value": "198.51.100.7", "role": "src"} in entities
+    assert {"type": "user", "value": "svc-backup", "role": "actor"} in entities
