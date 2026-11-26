@@ -31,7 +31,7 @@ pytestmark = pytest.mark.db
 
 _FIXTURE = Path(__file__).parent.parent / "fixtures" / "normalize" / "raw.json"
 CASES = json.loads(_FIXTURE.read_text(encoding="utf-8"))
-FAILURES = [case["expect"]["error"] for case in CASES if "error" in case["expect"]]
+FAILURES = ["validation_failed" for case in CASES if case["kind"] == "event"]
 SETTINGS = Settings(
     batch_size=200,
     lease_seconds=600,
@@ -120,7 +120,7 @@ def owner() -> str:
 def test_run_saves_valid_results_and_records_each_failure(conn: psycopg.Connection) -> None:
     ids = add_raw_records(conn, CASES)
     add_assets(conn)
-    expected_ok = [case for case in CASES if "error" not in case["expect"]]
+    expected_ok = [case for case in CASES if case["kind"] == "alert"]
 
     result = run(SETTINGS, conn, owner())
 
@@ -131,11 +131,11 @@ def test_run_saves_valid_results_and_records_each_failure(conn: psycopg.Connecti
     )
     assert result.failures == {code: FAILURES.count(code) for code in set(FAILURES)}
     assert exit_code(result) == 1
-    assert count(conn, "alerts") == sum(c["expect"].get("kind") == "alert" for c in expected_ok)
-    assert count(conn, "events") == sum(c["expect"].get("kind") == "event" for c in expected_ok)
+    assert count(conn, "alerts") == len(expected_ok)
+    assert count(conn, "events") == 0
     status = dict(conn.execute("SELECT raw_id, status FROM normalize_status").fetchall())
     for case in CASES:
-        assert status[ids[case["case"]]] == ("failed" if "error" in case["expect"] else "succeeded")
+        assert status[ids[case["case"]]] == ("failed" if case["kind"] == "event" else "succeeded")
     codes = conn.execute(
         "SELECT error_code FROM normalize_status WHERE status = 'failed' ORDER BY error_code"
     ).fetchall()
@@ -198,23 +198,20 @@ def test_retry_run_retries_only_failures_and_adds_no_duplicates(conn: psycopg.Co
     assert attempts == [(2,)]
 
 
-def test_retry_succeeds_after_mapping_is_corrected(
+def test_retry_succeeds_after_transient_lookup_failure(
     conn: psycopg.Connection, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    failing = next(c for c in CASES if c["case"] == "event_without_source")
-    raw_id = add_raw_records(conn, [failing])["event_without_source"]
+    case = next(c for c in CASES if c["case"] == "alert_flat_keys")
+    raw_id = add_raw_records(conn, [case])["alert_flat_keys"]
     before = originals_hash(conn)
-    run(SETTINGS, conn, owner())
 
-    def corrected_mapping(raw: RawRow):
-        original = {
-            **raw.original,
-            "_index": "logs-other-default",
-            "_source": {"@timestamp": "2026-11-04T01:00:00.000Z"},
-        }
-        return map_normalize(RawRow(raw.id, raw.kind, original))
+    def fail(*args: Any) -> None:
+        raise AssetLookupError
 
-    monkeypatch.setattr(run_module, "normalize", corrected_mapping)
+    with monkeypatch.context() as patch:
+        patch.setattr(run_module, "lookup_assets", fail)
+        first = run(SETTINGS, conn, owner())
+    assert first.failures == {"asset_lookup_failed": 1}
     result = run_failed(SETTINGS, conn, owner())
 
     assert (result.claimed, result.succeeded, result.failed) == (1, 1, 0)
@@ -222,16 +219,16 @@ def test_retry_succeeds_after_mapping_is_corrected(
         "SELECT status, attempts, result_kind, result_id FROM normalize_status WHERE raw_id = %s",
         (raw_id,),
     ).fetchone()
-    assert status[:3] == ("succeeded", 2, "event")
+    assert status[:3] == ("succeeded", 2, "alert")
     assert status[3] is not None
-    assert conn.execute("SELECT count(*) FROM events WHERE raw_id = %s", (raw_id,)).fetchone() == (
+    assert conn.execute("SELECT count(*) FROM alerts WHERE raw_id = %s", (raw_id,)).fetchone() == (
         1,
     )
     assert originals_hash(conn) == before
 
     second = run_failed(SETTINGS, conn, owner())
     assert second.claimed == 0
-    assert conn.execute("SELECT count(*) FROM events WHERE raw_id = %s", (raw_id,)).fetchone() == (
+    assert conn.execute("SELECT count(*) FROM alerts WHERE raw_id = %s", (raw_id,)).fetchone() == (
         1,
     )
 
