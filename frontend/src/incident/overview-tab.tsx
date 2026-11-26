@@ -116,7 +116,7 @@ export function OverviewTab({
                 <div className="incident-recommendation">
                   <div className="incident-chips">
                     {p.priority && (
-                      <span className="badge">{priorities[p.priority]}</span>
+                      <span className="badge">{`우선순위 ${priorities[p.priority]}`}</span>
                     )}
                     <span className="badge">
                       {p.kind === "response" ? "대응" : "탐지 룰"}

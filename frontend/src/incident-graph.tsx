@@ -209,10 +209,7 @@ export function IncidentGraph({
   const lines = shown.edges.filter((e) => !arrowsOnly || e.arrow);
   // What the pointer is on wins over the choice; everything outside it stays on screen and is only faded.
   const focus = hovered ?? chosen?.key ?? null;
-  const near = useMemo(
-    () => (focus ? directNeighbours(shown, focus) : null),
-    [shown, focus],
-  );
+  const near = focus ? directNeighbours(shown, focus) : null;
   const incidentNode: GNode = {
     key: "",
     kind: "incident",

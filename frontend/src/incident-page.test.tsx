@@ -597,7 +597,7 @@ test("recommendations show the priority and the category as chips", async () => 
     await screen.findByRole("heading", { name: /권고 조치/ })
   ).closest("section")!;
   const chips = [...card.querySelectorAll(".badge")].map((c) => c.textContent);
-  expect(chips).toEqual(["높음", "대응", "낮음", "탐지 룰"]);
+  expect(chips).toEqual(["우선순위 높음", "대응", "우선순위 낮음", "탐지 룰"]);
 });
 
 test("recommendations have no 'why' label and are split into paragraphs and rules", async () => {
