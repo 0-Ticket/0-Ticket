@@ -415,22 +415,189 @@ test("entity rows count their tickets and alerts and long values stay text with 
   expect(writeText).toHaveBeenCalledWith(long);
 });
 
-test("the history tab opens only the newest round", async () => {
+test("an entity row opens the graph with that entity chosen, in the address and on screen", async () => {
+  serve();
+  show(`${url}?tab=entities`);
+  const table = await screen.findByRole("table", { name: "엔티티 표" });
+  const row = within(table).getByText("203.0.113.10").closest("tr")!;
+  fireEvent.click(within(row).getByRole("link", { name: "그래프에서 보기" }));
+  const where = await screen.findByTestId("where");
+  expect(where).toHaveTextContent("tab=graph");
+  expect(where).toHaveTextContent("view=entity");
+  expect(where.textContent).toContain(
+    encodeURIComponent(JSON.stringify(["ip", "203.0.113.10"])),
+  );
+  const side = await screen.findByRole("complementary", {
+    name: "선택된 노드",
+  });
+  expect(within(side).getByText("203.0.113.10")).toBeInTheDocument();
+  expect(
+    screen.getByRole("group", { name: "ip: 203.0.113.10" }),
+  ).toHaveAttribute("aria-current", "true");
+});
+
+test("leaving the graph tab drops the chosen node from the address", async () => {
+  serve();
+  show(
+    `${url}?tab=graph&view=entity&node=${encodeURIComponent(JSON.stringify(["ip", "203.0.113.10"]))}`,
+  );
+  await screen.findByRole("region", { name: "Incident 관계도" });
+  fireEvent.click(screen.getByRole("tab", { name: /^Ticket/ }));
+  expect(screen.getByTestId("where")).not.toHaveTextContent("node=");
+});
+
+test("a node in the address that is not a [type, value] pair is ignored", async () => {
+  serve();
+  show(`${url}?tab=graph&view=entity&node=${encodeURIComponent("{not json")}`);
+  await screen.findByRole("region", { name: "Incident 관계도" });
+  expect(screen.queryByRole("button", { name: "선택 해제" })).toBeNull();
+});
+
+test("a Ticket row keeps its detail link at the end of the row", async () => {
+  serve();
+  show(`${url}?tab=tickets`);
+  const table = await screen.findByRole("table", { name: "Ticket 표" });
+  const row = within(table).getByText(page.tickets[0].title).closest("tr")!;
+  const last = row.lastElementChild!;
+  expect(
+    within(last as HTMLElement).getByRole("link", {
+      name: `${page.tickets[0].title} Ticket 상세`,
+    }),
+  ).toBeInTheDocument();
+});
+
+test("the history tab is a timeline of rounds, newest first, with the summary as text and the raw JSON folded", async () => {
   const rounds = [1, 2, 3].map((n) => ({
     ...artifact,
     id: `${artifact.id.slice(0, -2)}0${n}`,
     analysis_round: n,
+    summary: n === 3 ? "요약 <b>굵게</b>" : `라운드 ${n} 요약`,
   }));
-  serve(detail({ artifacts: [rounds[2], rounds[1], rounds[0]] }));
+  serve(detail({ artifacts: [rounds[0], rounds[2], rounds[1]] }));
   show(`${url}?tab=history`);
-  const newest = (await screen.findByText("분석 라운드 3")).closest("details")!;
-  expect(newest).toHaveAttribute("open");
+  const list = await screen.findByRole("list", {
+    name: "분석 라운드 타임라인",
+  });
+  const items = within(list).getAllByRole("listitem");
+  expect(items).toHaveLength(3);
+  expect(items[0]).toHaveTextContent("Round 3");
+  expect(items[2]).toHaveTextContent("Round 1");
+  expect(items[0]).toHaveTextContent("요약 <b>굵게</b>");
+  expect(list.querySelector("b")).toBeNull();
+  // no data behind the design's change chips and review events, so none are drawn
+  expect(screen.queryByText(/Ticket \+|엔티티 \+|판정 변경/)).toBeNull();
+  expect(within(list).queryByText(/반려|Incident 승인/)).toBeNull();
+  const raw = screen.getByText("원본 보기(고급)").closest("details")!;
+  expect(raw).not.toHaveAttribute("open");
+});
+
+test("the history tab says so when no round exists yet", async () => {
+  serve(detail({ artifacts: [] }));
+  show(`${url}?tab=history`);
   expect(
-    screen.getByText("분석 라운드 2").closest("details"),
-  ).not.toHaveAttribute("open");
+    await screen.findByText("분석 보고서가 없습니다."),
+  ).toBeInTheDocument();
+});
+
+test("the overview has two columns: summary, impact and tickets on the left, key entities and recommendations on the right", async () => {
+  serve();
+  show(url);
+  await screen.findByRole("heading", { name: "사건 요약" });
+  const left = screen.getByRole("region", { name: "사건 개요" });
+  const right = screen.getByRole("complementary", {
+    name: "핵심 엔티티와 권고 조치",
+  });
   expect(
-    screen.getByText("분석 라운드 1").closest("details"),
-  ).not.toHaveAttribute("open");
+    within(left).getByRole("heading", { name: /소속 Ticket/ }),
+  ).toBeInTheDocument();
+  expect(
+    within(right).getByRole("heading", { name: "핵심 엔티티" }),
+  ).toBeInTheDocument();
+});
+
+test("key entities are the three with the most tickets, ties by kind then value, shown as text", async () => {
+  serve();
+  show(url);
+  const card = (
+    await screen.findByRole("heading", { name: "핵심 엔티티" })
+  ).closest("section")!;
+  const rows = within(card).getAllByRole("listitem");
+  expect(rows).toHaveLength(3);
+  expect(rows[0]).toHaveTextContent("ip · 203.0.113.10");
+  expect(rows[1]).toHaveTextContent("user · svc-web"); // 2 tickets, like the ip
+  expect(rows[2]).toHaveTextContent("domain · example.com"); // 1 ticket: domain before host
+  expect(within(card).queryByRole("link")).toBeNull();
+});
+
+test("the impact heading is hidden when the impact text is empty", async () => {
+  serve(detail({ artifacts: [{ ...artifact, impact: "" }] }));
+  show(url);
+  await screen.findByRole("heading", { name: "사건 요약" });
+  expect(screen.queryByRole("heading", { name: "영향" })).toBeNull();
+});
+
+test("an overview ticket row shows time, evidence count, verdict and level without an id, and the whole row opens the ticket", async () => {
+  serve();
+  show(url);
+  const card = (
+    await screen.findByRole("heading", { name: /소속 Ticket/ })
+  ).closest("section")!;
+  const row = within(card).getByRole("link", {
+    name: `${page.tickets[0].title} Ticket 상세`,
+  });
+  expect(row).toHaveAttribute(
+    "href",
+    `/tickets?selected=${page.tickets[0].id}`,
+  );
+  expect(row).toHaveTextContent("근거 3개");
+  expect(row).toHaveTextContent("malicious");
+  expect(row).toHaveTextContent("5 Level");
+  expect(card).not.toHaveTextContent(page.tickets[0].id);
+  expect(within(card).queryByRole("button", { name: /복사/ })).toBeNull();
+});
+
+test("an overview ticket row is plain text for an account without ticket.read", async () => {
+  serve(detail(), analyst());
+  show(url);
+  const card = (
+    await screen.findByRole("heading", { name: /소속 Ticket/ })
+  ).closest("section")!;
+  expect(within(card).queryByRole("link")).toBeNull();
+  expect(card).toHaveTextContent(page.tickets[0].title);
+});
+
+test("recommendations show the priority and the category as chips", async () => {
+  const proposals = [
+    {
+      ...seed.incident_proposals[0],
+      id: "prp_01a19f93-1266-7000-8000-000000000095",
+      artifact_id: artifact.id,
+      seq: 1,
+      kind: "response",
+      priority: "high",
+      title: "격리 검토",
+      detail: "본문",
+      rationale: null,
+    },
+    {
+      ...seed.incident_proposals[0],
+      id: "prp_01a19f93-1266-7000-8000-000000000096",
+      artifact_id: artifact.id,
+      seq: 2,
+      kind: "detection",
+      priority: "low",
+      title: "룰 추가",
+      detail: "본문",
+      rationale: null,
+    },
+  ];
+  serve(detail({ proposals }));
+  show(url);
+  const card = (
+    await screen.findByRole("heading", { name: /권고 조치/ })
+  ).closest("section")!;
+  const chips = [...card.querySelectorAll(".badge")].map((c) => c.textContent);
+  expect(chips).toEqual(["우선순위 높음", "대응", "우선순위 낮음", "탐지 룰"]);
 });
 
 test("recommendations have no 'why' label and are split into paragraphs and rules", async () => {
@@ -518,6 +685,43 @@ test("the graph view stays in the address and node places survive a visit to ano
   fireEvent.click(screen.getByRole("tab", { name: /^Ticket/ }));
   fireEvent.click(screen.getByRole("tab", { name: "관계 그래프" }));
   expect(left()).toBeCloseTo(dropped, 5);
+});
+
+test("the development sample mode shows the 104-entity graph and the empty state without asking the server", async () => {
+  serve(detail());
+  const { container } = show(`${url}?tab=graph&view=entity&sample=graph`);
+  await screen.findByRole("region", { name: "Incident 관계도" });
+  expect(
+    container.querySelectorAll(".incident-graph-node.entity"),
+  ).toHaveLength(60);
+  expect(requests.some((r) => r.pathname.startsWith("/api/incidents/"))).toBe(
+    false,
+  );
+});
+
+test("the empty sample shows the empty Ticket tab", async () => {
+  serve(detail());
+  show(`${url}?tab=tickets&sample=empty`);
+  expect(
+    await screen.findByText("연결된 Ticket이 없습니다"),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole("button", { name: "분석 상태 새로고침" }),
+  ).toBeInTheDocument();
+});
+
+test("outside development the sample parameter is ignored and the server is asked", async () => {
+  vi.stubEnv("DEV", false);
+  try {
+    serve(detail());
+    show(`${url}?sample=graph`);
+    await screen.findByRole("heading", { level: 1, name: base.title });
+    expect(requests.some((r) => r.pathname.startsWith("/api/incidents/"))).toBe(
+      true,
+    );
+  } finally {
+    vi.unstubAllEnvs();
+  }
 });
 
 test("an incident with no tickets shows an empty state with a reload button", async () => {

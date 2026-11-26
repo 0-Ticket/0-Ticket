@@ -123,33 +123,35 @@ function Header({
           )}
         </div>
       </div>
-      <div role="group" aria-label="요약 숫자" className="incident-numbers">
-        <dl>
-          {(
-            [
-              ["Ticket", data.tickets.length],
-              ["Alert", data.alerts.length],
-              ["엔티티", incident.entities.length],
-              ["malicious", counts.malicious],
-              ["undetermined", counts.undetermined],
-              ["benign", counts.benign],
-              ["판정 전", counts.pending],
-            ] as [string, number][]
-          ).map(([name, value]) => (
-            <div key={name}>
-              <dt>{name}</dt>
-              <dd>{value}</dd>
-            </div>
+      <div className="incident-summary-row">
+        <div role="group" aria-label="요약 숫자" className="incident-numbers">
+          <dl>
+            {(
+              [
+                ["Ticket", data.tickets.length],
+                ["Alert", data.alerts.length],
+                ["엔티티", incident.entities.length],
+                ["malicious", counts.malicious],
+                ["undetermined", counts.undetermined],
+                ["benign", counts.benign],
+                ["판정 전", counts.pending],
+              ] as [string, number][]
+            ).map(([name, value]) => (
+              <div key={name}>
+                <dt>{name}</dt>
+                <dd>{value}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+        <ol className="incident-progress" aria-label="진행 단계">
+          {STEPS.map(([name], i) => (
+            <li key={name} aria-current={i === step ? "step" : undefined}>
+              {name}
+            </li>
           ))}
-        </dl>
+        </ol>
       </div>
-      <ol className="incident-progress" aria-label="진행 단계">
-        {STEPS.map(([name], i) => (
-          <li key={name} aria-current={i === step ? "step" : undefined}>
-            {name}
-          </li>
-        ))}
-      </ol>
     </header>
   );
 }
@@ -160,10 +162,17 @@ export function IncidentPage({ id }: { id: string }) {
   const [search, setSearch] = useSearchParams();
   const [caseId, setCaseId] = useState<string | null>(null);
   const [memory, setMemory] = useGraphMemory(id);
+  // `?sample=graph|empty` swaps the server answer for a hand-made one; the branch is removed from production builds.
+  const sample = import.meta.env.DEV ? search.get("sample") : null;
   const query = useQuery({
-    queryKey: ["detail", "incidents", id],
-    queryFn: ({ signal }) =>
-      get<IncidentDetail>(`incidents/${encodeURIComponent(id)}`, signal),
+    queryKey: ["detail", "incidents", id, sample],
+    queryFn: async ({ signal }) => {
+      if (sample === "graph" || sample === "empty") {
+        const { devSample } = await import("./dev-sample");
+        return devSample(sample, id);
+      }
+      return get<IncidentDetail>(`incidents/${encodeURIComponent(id)}`, signal);
+    },
   });
   if (query.isPending) return <p role="status">Incident를 불러오는 중…</p>;
   if (query.error)
@@ -192,6 +201,7 @@ export function IncidentPage({ id }: { id: string }) {
   }
   const open = (next: Tab) =>
     go((params) => {
+      params.delete("node");
       if (next === "overview") params.delete("tab");
       else params.set("tab", next);
     });
@@ -199,6 +209,7 @@ export function IncidentPage({ id }: { id: string }) {
   const view: GraphView = search.get("view") === "entity" ? "entity" : "ticket";
   const openView = (next: GraphView) =>
     go((params) => {
+      params.delete("node");
       if (next === "ticket") params.delete("view");
       else params.set("view", next);
     });
@@ -233,6 +244,7 @@ export function IncidentPage({ id }: { id: string }) {
               onView={openView}
               memory={memory}
               onMemory={setMemory}
+              start={search.get("node") ?? undefined}
             />
             <ClassificationBasis
               incident={data.incident}

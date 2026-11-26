@@ -3,7 +3,8 @@ import {
   ENTITY_CAP,
   buildGraph,
   facts,
-  neighbourhood,
+  arrowLinks,
+  directNeighbours,
   type GNode,
 } from "./graph-model";
 import { graphDetail } from "./graph-sample";
@@ -134,13 +135,31 @@ test("the ticket view filters entities by type but always keeps incident, ticket
   expect(graph.nodes.filter((n) => n.kind === "ticket")).toHaveLength(14);
 });
 
-test("choosing a node keeps it and its direct neighbours, with only the lines that touch it", () => {
+test("direct neighbours are the nodes a line reaches, and nothing is removed from the graph", () => {
   const graph = buildGraph(detail, "entity", none);
   const hub = entity("ip", "203.0.113.10");
-  const near = neighbourhood(graph, hub);
-  expect(near.nodes.some((n) => n.key === hub)).toBe(true);
-  expect(near.edges.every((e) => e.from === hub || e.to === hub)).toBe(true);
-  expect(near.nodes.length).toBe(near.edges.length + 1);
+  const near = directNeighbours(graph, hub);
+  expect(near.has(hub)).toBe(true);
+  const touching = graph.edges.filter((e) => e.from === hub || e.to === hub);
+  expect(near.size).toBe(touching.length + 1);
+  expect(near.size).toBeLessThan(graph.nodes.length);
+});
+
+test("a node chosen from outside the top 60 is added without moving the others", () => {
+  const key = entity("process", "proc-14.exe");
+  const base = buildGraph(detail, "entity", none);
+  expect(base.nodes.some((n) => n.key === key)).toBe(false);
+  const withIt = buildGraph(detail, "entity", { ...none, include: key });
+  expect(withIt.nodes.slice(0, base.nodes.length)).toEqual(base.nodes);
+  expect(withIt.nodes.some((n) => n.key === key)).toBe(true);
+});
+
+test("arrow links list the src and dst entities an entity is joined to by the whole response", () => {
+  const hub = entity("ip", "203.0.113.10");
+  const links = arrowLinks(detail, hub);
+  expect(links.to.length + links.from.length).toBeGreaterThan(0);
+  expect(links.to.every((n) => n.kind === "entity")).toBe(true);
+  expect(arrowLinks(detail, entity("user", "__proto__")).to).toEqual([]);
 });
 
 test("facts count what an entity is connected to from the whole response", () => {

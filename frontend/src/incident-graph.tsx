@@ -8,8 +8,9 @@ import {
   ENTITY_CAP,
   buildGraph,
   facts,
+  arrowLinks,
+  directNeighbours,
   matches,
-  neighbourhood,
   type GNode,
   type GraphView,
 } from "./incident/graph-model";
@@ -20,6 +21,7 @@ const VIEW_W = 900; // shortcut: "fit" assumes this viewport size instead of mea
 const VIEW_H = 560;
 const MIN_K = 0.2;
 const MAX_K = 3;
+const LINKS_SHOWN = 8;
 // The lines between entities of one alert can be too dense to read. Set to false to draw only the src → dst arrows
 // and show the other lines when a node is chosen (plan 380, "선 밀집").
 const PLAIN_LINES_BY_DEFAULT = true;
@@ -62,17 +64,30 @@ export function IncidentGraph({
   onView,
   memory,
   onMemory,
+  start,
 }: {
   detail: IncidentDetail;
   view: GraphView;
   onView: (view: GraphView) => void;
   memory: GraphMemory;
   onMemory: (memory: GraphMemory) => void;
+  // JSON [type, value] of an entity to open chosen (the entity table's "그래프에서 보기"); read once when the graph opens.
+  start?: string;
 }) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [types, setTypes] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState("");
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(() => {
+    try {
+      const [type, value] = JSON.parse(start ?? "null") as unknown[];
+      return typeof type === "string" && typeof value === "string"
+        ? JSON.stringify(["entity", type, value])
+        : null;
+    } catch {
+      return null;
+    }
+  });
+  const [hovered, setHovered] = useState<string | null>(null);
   const [vt, setVt] = useState<Vt | null>(null);
   const viewport = useRef<HTMLDivElement>(null);
   const drag = useRef<Drag | null>(null);
@@ -82,14 +97,17 @@ export function IncidentGraph({
   );
 
   const graph = useMemo(
-    () => buildGraph(detail, view, { expanded, types, query }),
-    [detail, view, expanded, types, query],
+    () =>
+      buildGraph(detail, view, {
+        expanded,
+        types,
+        query,
+        include: selected ?? undefined,
+      }),
+    [detail, view, expanded, types, query, selected],
   );
   const chosen = graph.nodes.find((n) => n.key === selected) ?? null;
-  const shown = useMemo(
-    () => (chosen ? neighbourhood(graph, chosen.key) : graph),
-    [graph, chosen],
-  );
+  const shown = graph;
   const pinned = memory[view];
   const placed = useMemo(
     () => layout(shown.nodes, shown.edges, pinned),
@@ -189,6 +207,9 @@ export function IncidentGraph({
   const entityView = view === "entity";
   const arrowsOnly = entityView && !chosen && !PLAIN_LINES_BY_DEFAULT;
   const lines = shown.edges.filter((e) => !arrowsOnly || e.arrow);
+  // What the pointer is on wins over the choice; everything outside it stays on screen and is only faded.
+  const focus = hovered ?? chosen?.key ?? null;
+  const near = focus ? directNeighbours(shown, focus) : null;
   const incidentNode: GNode = {
     key: "",
     kind: "incident",
@@ -206,6 +227,8 @@ export function IncidentGraph({
           (c) => c.type === info.type && c.value === info.value,
         )?.criticality
       : null;
+  const links =
+    chosen?.kind === "entity" ? arrowLinks(detail, chosen.key) : null;
   const select = (key: string | null) => change(() => setSelected(key));
 
   return (
@@ -338,11 +361,17 @@ export function IncidentGraph({
                 const b = placed.get(e.to)!;
                 const end = e.arrow ? stop(a, b) : b;
                 const dim = !litKeys.has(e.from) || !litKeys.has(e.to);
+                const fade =
+                  focus !== null && e.from !== focus && e.to !== focus;
                 return (
                   <line
                     key={e.key}
                     data-arrow={e.arrow}
-                    className={dim ? "dim" : undefined}
+                    className={
+                      [dim ? "dim" : "", fade ? "faded" : ""]
+                        .join(" ")
+                        .trim() || undefined
+                    }
                     x1={a.x}
                     y1={a.y}
                     x2={end.x}
@@ -371,6 +400,7 @@ export function IncidentGraph({
                     n.kind,
                     n.key === chosen?.key ? "selected" : "",
                     lit(n) ? "" : "dim",
+                    near && !near.has(n.key) ? "faded" : "",
                   ]
                     .filter(Boolean)
                     .join(" ")}
@@ -379,6 +409,8 @@ export function IncidentGraph({
                   tabIndex={0}
                   aria-label={nodeText(n)}
                   aria-current={n.key === chosen?.key ? "true" : undefined}
+                  onMouseEnter={() => setHovered(n.key)}
+                  onMouseLeave={() => setHovered(null)}
                   onClick={() => {
                     if (suppressClick.current) suppressClick.current = false;
                     else select(n.key);
@@ -442,7 +474,22 @@ export function IncidentGraph({
               선택 해제
             </button>
           )}
-          {chosen && <small>이 노드와 직접 연결된 노드만 보입니다.</small>}
+          {links && (links.from.length > 0 || links.to.length > 0) && (
+            <ul aria-label="이 노드의 연결" className="incident-graph-links">
+              {links.from.slice(0, LINKS_SHOWN).map((n) => (
+                <li key={n.key}>{`${n.type}: ${n.value} → 이 노드`}</li>
+              ))}
+              {links.to.slice(0, LINKS_SHOWN).map((n) => (
+                <li key={n.key}>{`이 노드 → ${n.type}: ${n.value}`}</li>
+              ))}
+            </ul>
+          )}
+          {chosen && (
+            <small>
+              이 노드와 직접 연결된 노드·선만 진하게 보입니다. 나머지는 흐리게
+              남아 있습니다.
+            </small>
+          )}
         </aside>
       </div>
       <p className="incident-graph-hint">

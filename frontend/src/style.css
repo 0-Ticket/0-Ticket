@@ -1112,6 +1112,12 @@ td {
 .incident-graph-lines line.dim {
   opacity: 0.15;
 }
+.incident-graph-lines line.faded {
+  opacity: 0.3;
+}
+.incident-graph-lines line.dim.faded {
+  opacity: 0.15;
+}
 .incident-graph-node {
   position: absolute;
   z-index: 1;
@@ -1179,6 +1185,19 @@ td {
 }
 .incident-graph-node.dim {
   opacity: 0.2;
+}
+.incident-graph-node.faded {
+  opacity: 0.3;
+}
+.incident-graph-node.dim.faded {
+  opacity: 0.2;
+}
+.incident-graph-links {
+  margin: 6px 0 0;
+  padding-left: 16px;
+  color: #344661;
+  font-size: 11px;
+  overflow-wrap: anywhere;
 }
 .incident-graph-inspector {
   display: grid;
@@ -2249,14 +2268,16 @@ td {
   gap: 16px;
 }
 .incident-head {
-  position: sticky;
-  top: 0;
-  z-index: 5;
   display: grid;
-  gap: 12px;
-  padding: 14px 0 12px;
-  background: var(--page);
-  border-bottom: 1px solid var(--border);
+  gap: 8px;
+  padding: 10px 0 0;
+}
+.incident-summary-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 24px;
 }
 .incident-nav,
 .incident-title-row,
@@ -2276,8 +2297,8 @@ td {
   justify-content: space-between;
 }
 .incident-title-row h1 {
-  margin: 0 0 6px;
-  font-size: 20px;
+  margin: 0 0 4px;
+  font-size: 18px;
   overflow-wrap: anywhere;
 }
 .incident-meta code {
@@ -2313,7 +2334,7 @@ td {
 }
 .incident-numbers dd {
   margin: 0;
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 600;
 }
 .incident-progress {
@@ -2335,9 +2356,15 @@ td {
   color: #fff;
 }
 .incident-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 5;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  padding: 8px 0;
+  background: var(--page);
+  border-bottom: 1px solid var(--border);
 }
 .incident-tabs button {
   border: 0;
@@ -2393,8 +2420,22 @@ td {
   font-family: "Roboto Mono", monospace;
   font-size: 12px;
 }
+.incident-table-card td.date {
+  white-space: nowrap;
+}
+.incident-table-card td:has(> .incident-clip) {
+  min-width: 280px;
+}
+.incident-table-card .incident-clip .clip {
+  max-width: 420px;
+}
+.incident-row-end {
+  text-align: right;
+  white-space: nowrap;
+}
 .incident-copy,
 .incident-link {
+  white-space: nowrap;
   border: 0;
   background: none;
   color: var(--accent);
@@ -2421,6 +2462,66 @@ td {
   gap: 12px;
   align-items: baseline;
   cursor: pointer;
+}
+.incident-overview {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 16px;
+  align-items: start;
+}
+.incident-column {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.incident-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.incident-row-link {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+a.incident-row-link:hover strong {
+  text-decoration: underline;
+}
+@media (max-width: 900px) {
+  .incident-overview {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.incident-timeline {
+  display: grid;
+  gap: 0;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.incident-timeline li {
+  display: grid;
+  gap: 6px;
+  padding: 12px 0 12px 16px;
+  border-left: 2px solid var(--border);
+}
+.incident-timeline-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+}
+.incident-raw {
+  margin-top: 16px;
+}
+.incident-raw > summary {
+  cursor: pointer;
+  font-weight: 600;
 }
 .incident-rule {
   margin: 16px 0;
