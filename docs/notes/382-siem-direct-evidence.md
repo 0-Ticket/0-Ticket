@@ -134,6 +134,10 @@ L1·L2·L3가 모두 발급을 부른다. L1은 판정 뒤, L2는 조사 뒤(보
 - **열 단위 GRANT는 `count(*)`를 막지 못한다.** 0308을 넣자
   `test_reader_role_is_denied_elsewhere`의 `SELECT count(*) FROM raw_records`가 통과해 버렸다.
   주지 않은 열(`siem_ref`·`siem_profile`)로 단정을 바꿨다.
+- **발급은 `GET /<index>/_doc/<id>`가 요청한 것과 같은 `_index`·`_id`를 돌려준다고 전제한다.**
+  `evidence_rows`가 응답의 두 값으로 저장 키를 다시 만들기 때문이다. 구체 인덱스로 부르므로
+  ELK는 같은 값을 준다. 혹시 다르면 같은 문서가 두 키로 저장돼 중복이 생길 수 있다(손상은
+  아니다). 방어 코드는 넣지 않았다 — 일어날 수 없는 경우다.
 - **이벤트 수집을 끊으면 파이프 e2e 테스트의 건수가 바뀐다.** `test_pipeline_db.py`·
   `test_lab_cycle_db.py`에서 이벤트 원본 5건이 `validation_failed`로 남고 `events`는 0이다.
   그것이 새 기대값이다.
