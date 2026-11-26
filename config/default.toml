@@ -171,6 +171,9 @@ l3_verify = [
 # ELK 주소(http(s), 계정 정보 없이)와 읽기 전용 API 키를 담은 환경변수 이름. 값은 .env에만 둔다
 url_env = "ELK_URL"
 api_key_env = "ELK_API_KEY"
+# 근거 발급(#382, D-081)으로 저장하는 원본의 siem_profile. 수집([ingest] siem_profile)과
+# 다른 값을 둔다. 수집 체크포인트와 섞이지 않고, 나중에 기존 데이터를 정리할 때 갈라낼 수 있다
+evidence_siem_profile = "elk-evidence"
 # 요청 단위 제한 시간(초). 넘으면 TOOL_ERROR code=timeout
 connect_timeout_seconds = 5
 

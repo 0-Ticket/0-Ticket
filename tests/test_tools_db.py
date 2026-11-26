@@ -140,7 +140,10 @@ def test_reader_role_can_read_alerts_and_events(reader_url: str) -> None:
 @pytest.mark.parametrize(
     "statement",
     [
-        "SELECT count(*) FROM raw_records",
+        # raw_records는 0307(#382)부터 지정 열만 읽는다. 열 권한이면 count(*)는 허용되므로
+        # 주지 않은 열로 본다. siem_ref에는 인덱스 이름이 들어 있어 모델에게 보이지 않는다
+        "SELECT siem_ref FROM raw_records",
+        "SELECT siem_profile FROM raw_records",
         "SELECT count(*) FROM agent_logs",
         # tickets는 0007(#313)부터 지정 열만 읽는다. 열 권한이면 count(*)는 허용돼 details로 본다
         "SELECT details FROM tickets",
@@ -158,6 +161,12 @@ def test_reader_role_is_denied_elsewhere(reader_url: str, statement: str) -> Non
     # 도구의 read-only 세션 설정이 아니라 역할 권한이 막는지 본다(일반 연결)
     with psycopg.connect(reader_url) as conn, pytest.raises(psycopg.errors.InsufficientPrivilege):
         conn.execute(statement)
+
+
+def test_reader_role_reads_only_the_granted_raw_columns(reader_url: str) -> None:
+    # 0307(#382)이 준 네 열은 읽고 그 밖은 못 읽는다. get_raw가 읽는 범위와 같다
+    with psycopg.connect(reader_url) as conn:
+        conn.execute("SELECT id, kind, fetched_at, original_text FROM raw_records")
 
 
 def test_reader_role_migration_applies_to_another_database(
