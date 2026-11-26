@@ -43,6 +43,7 @@ from soc.contracts.generated import (
     ingest_checkpoint_schema,
     ingest_quarantine_schema,
     ingest_run_schema,
+    l1_verdict_schema,
     raw_record_schema,
     ticket_schema,
 )
@@ -102,6 +103,8 @@ _CONTRACTS: dict[str, tuple[str, type[BaseModel]]] = {
     "entity": ("common/entity.schema.json", entity_schema.Entity),
     "asset": ("common/asset.schema.json", asset_schema.Asset),
     "verdict": ("common/verdict.schema.json", verdict_schema.Verdict),
+    # L1 판정 모델의 출력. 저장하는 Verdict에 siem_refs를 더한 모양이다(#382)
+    "l1_verdict": ("l1_verdict.schema.json", l1_verdict_schema.L1Verdict),
 }
 
 CONTRACT_NAMES = tuple(_CONTRACTS)

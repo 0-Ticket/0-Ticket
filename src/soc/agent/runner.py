@@ -186,11 +186,14 @@ def run_task(
 
     output: Any = None
     cited: list[str] = []
+    cited_refs: dict[str, tuple[str, str]] = {}
     failure: str | None = None
     detail: str | None = None
     validation: str | None = None
     try:
-        output, cited = _execute(task, model, instructions, recorder, config, tools, sleep, redact)
+        output, cited, cited_refs = _execute(
+            task, model, instructions, recorder, config, tools, sleep, redact
+        )
         validation = "ok"
     except _Stop as stop:
         failure, detail, validation = stop.failure, stop.detail, stop.validation
@@ -210,6 +213,7 @@ def run_task(
         run_id=run_id,
         usage=_usage(recorder.rows, started),
         cited_evidence_ids=cited if ok else [],
+        cited_siem_refs=cited_refs if ok else {},
     )
 
 
@@ -315,7 +319,7 @@ def _execute(
     tools: ToolSession,
     sleep: Sleep,
     redact: Callable[[Any], Any],
-) -> tuple[Any, list[str]]:
+) -> tuple[Any, list[str], dict[str, tuple[str, str]]]:
     stage = config["agent"][task.stage]
     max_turns = int(stage["max_turns"])
     max_input_chars = int(stage["max_input_chars"])
@@ -393,7 +397,30 @@ def _execute(
         ) from None
     if any(not isinstance(i, str) or i not in ledger for i in cited):
         raise _Stop("evidence_id_error", "근거 장부에 없는 ID를 인용했다", "evidence_id_error")
-    return output, cited
+    return output, cited, _cited_refs(task, output, tools)
+
+
+def _cited_refs(task: AgentTask, output: Any, tools: ToolSession) -> dict[str, tuple[str, str]]:
+    """인용한 SIEM 문서의 저장 키 -> (_index, _id)(#382).
+
+    siem_ref는 밖에서 온 문자열이고 그 값이 ELK 요청 경로를 만든다(`docs/security.md` "밖에서 온
+    문자열"). 그래서 이 run의 성공한 도구 결과에서 모델에게 실제로 보인 ref만 받고, 그 밖의 값을
+    인용하면 근거 ID와 같은 위반으로 run을 멈춘다. 쌍은 저장 키로 되돌릴 수 없어 도구 세션이
+    모아 둔 것을 쓴다(`soc.ids.siem_ref_key`).
+    """
+    if task.cited_refs is None:
+        return {}
+    try:
+        refs = list(dict.fromkeys(task.cited_refs(output)))
+    except Exception:
+        raise _Stop(
+            "evidence_id_error", "출력에서 siem_ref를 꺼내지 못했다", "evidence_id_error"
+        ) from None
+    if any(not isinstance(ref, str) or ref not in tools.siem_refs for ref in refs):
+        raise _Stop(
+            "evidence_id_error", "도구 결과에 없는 siem_ref를 인용했다", "evidence_id_error"
+        )
+    return {ref: tools.siem_refs[ref] for ref in refs}
 
 
 def _check_output(task: AgentTask, final_output: Any) -> tuple[Any, str | None]:

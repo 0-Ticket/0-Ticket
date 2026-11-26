@@ -1,0 +1,61 @@
+[
+  {
+    "case": "siem_refs_missing",
+    "violations": [
+      {
+        "path": "siem_refs",
+        "rule": "required"
+      }
+    ],
+    "data": {
+      "decision": "undetermined",
+      "confidence": 0,
+      "reason": "근거",
+      "evidence_ids": [],
+      "decided_at": 1793678700000
+    }
+  },
+  {
+    "case": "duplicate_siem_refs",
+    "violations": [
+      {
+        "path": "siem_refs",
+        "rule": "uniqueItems"
+      }
+    ],
+    "data": {
+      "decision": "malicious",
+      "confidence": 0.9,
+      "reason": "근거",
+      "evidence_ids": [
+        "alt_01a19f93-1150-7000-8000-000000000001"
+      ],
+      "siem_refs": [
+        ".ds-logs-nginx.access-default-2026.11.04-000001/aaa1",
+        ".ds-logs-nginx.access-default-2026.11.04-000001/aaa1"
+      ],
+      "decided_at": 1793678700000
+    }
+  },
+  {
+    "case": "empty_siem_ref",
+    "violations": [
+      {
+        "path": "siem_refs[0]",
+        "rule": "minLength"
+      }
+    ],
+    "data": {
+      "decision": "malicious",
+      "confidence": 0.9,
+      "reason": "근거",
+      "evidence_ids": [
+        "alt_01a19f93-1150-7000-8000-000000000001"
+      ],
+      "siem_refs": [
+        ""
+      ],
+      "decided_at": 1793678700000
+    }
+  }
+]

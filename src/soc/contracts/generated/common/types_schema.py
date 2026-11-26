@@ -82,3 +82,12 @@ type EvidenceId = Annotated[
         pattern="^(alt|evt|agl)_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
     ),
 ]
+
+
+type SiemRef = Annotated[
+    str,
+    Field(
+        description='SIEM 안에서 문서 하나를 가리키는 이스케이프된 저장 키(siem_ref_key 형태). 원래 형태 "<_index>/<_id>"가 아니다. <_index>/<_id>를 JSON 문자열 이스케이프(ensure_ascii)하고 양쪽 따옴표를 뺀 값이다(D-049, soc.ids.siem_ref_key). 근거 ID가 아니라 발급 전 문서를 가리킨다',
+        min_length=1,
+    ),
+]
