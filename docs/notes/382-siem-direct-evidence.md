@@ -6,7 +6,7 @@ plan: 382-siem-direct-evidence.md
 supersedes: []
 ---
 
-# 이벤트 정규화를 없애고 심에서 찾은 문서를 근거로 발급한다 (진행 중)
+# 이벤트 정규화를 없애고 심에서 찾은 문서를 근거로 발급한다
 
 ## 한 일
 
@@ -28,7 +28,9 @@ supersedes: []
 도구 허용 목록은 단계가 아니라 태스크별이 됐다(D-082). `l2_classify`와 `l2_report`에는 심 조회와
 `get_raw`를 주지 않는다 — 그 태스크가 인용해도 발급할 다음 태스크가 없다.
 
-**아직 L2·L3는 발급을 부르지 않는다.** 아래 "다음 사람이 알아야 할 것" 참고.
+L1·L2·L3가 모두 발급을 부른다. L1은 판정 뒤, L2는 조사 뒤(보고 태스크의 허용 목록에 발급분을
+더한다), L3는 검증 뒤(발급한 ID의 엔티티를 `record_entities`가 읽는다)다. 세 단계 모두 저장 전에
+출력에서 `siem_refs`를 뗀다 — 발급 전 문서는 ID가 없어 저장하면 되돌릴 수 없는 포인터가 된다.
 
 ## 계획과 달라진 점
 
@@ -65,23 +67,34 @@ supersedes: []
     `siem_ref`·`siem_profile`은 주지 않았다 — `siem_ref`에 인덱스 이름이 들어 있고, 모델에게 인덱스
     이름을 보이지 않는 것이 이 설계의 전제다. 계획의 "범위 밖"은 `raw_records` **스키마** 개편을
     말한 것이고, 권한 마이그레이션은 0007·0302와 같은 전례다.
-12. **발급 Event의 `source`는 `issued`다.** `normalize_status.source`는 이벤트 행에서 소문자·숫자·
+12. **`l3_hypothesize`에는 발급을 붙이지 않았다.** 그 태스크는 근거를 전혀 인용하지 않는다
+    (`cited_ids=_no_evidence`, 출력 계약 `hunt_hypotheses`에 근거 칸이 없다). 발급할 것이 없다.
+13. **`query_records`를 `kind=alert`만 받도록 좁히지 않았다.** 발급된 class 0 Event가 `events`
+    표에 있어 목록 조회가 여전히 쓸모 있다. 계획의 그 줄은 발급을 넣기 전 판단이다.
+14. **발급 Event의 `source`는 `issued`다.** `normalize_status.source`는 이벤트 행에서 소문자·숫자·
     밑줄이어야 한다(0305). `outcome`은 비워 둔다 — 정규화 품질을 판단한 값이 아니다.
 
 ## 다음 사람이 알아야 할 것
 
 ### 아직 안 한 것
 
-- **L1·L2·L3 배선.** 발급 모듈(`soc.evidence.issue`)은 있고 **아무도 부르지 않는다.** 남은 일:
-  - `src/soc/l1/judge.py`: `output_contract`를 `l1_verdict`로, `cited_refs`를 주고, 판정 뒤
-    `issue()`를 부르고, **저장 전에 출력에서 `siem_refs`를 뗀다**(저장 Verdict에는 그 칸이 없다).
-  - `src/soc/l2/analyze/`: `incident_findings` 계약에 `siem_refs`를 더하고(`tasks.py`에 `cited_refs`),
-    조사 뒤 `issue()`를 부르고, 발급된 `evt_`를 보고 태스크의 `allowed_evidence_ids`에 더한다
-    (`tasks.py:86`의 `_unique(context_evidence, cited)`와 같은 자리).
-  - `src/soc/l3/hunt/verify.py`·`hypothesize.py`: 같은 방식. 헌팅 계약에도 칸을 더해야 한다.
-  - 버린 건수를 다음 태스크 입력과 `details`에 넣는다(`asset_lookup_failed`와 같은 모양).
-- **`[tools.siem] evidence_siem_profile`을 아무도 읽지 않는다.** 설정과 테스트는 있고 배선이 없다.
-- 조사 지연 측정(완료 기준 8번)과 서버에서 심 조회가 200을 받는지 확인(계획의 "전제").
+- **손으로 확인할 것 셋.** 기존 `evt_` 근거로 만든 과거 인시던트를 화면에서 열어 보기,
+  서버의 심 조회가 실제로 200을 받는지, L2 라운드 소요 시간 전·후 측정.
+- **공통 계약·설정 키 변경에 L1·L2·L3·UI 담당 확인**(원칙 7). 아래 "맞물리는 곳" 목록 그대로다.
+- **`l3_hypothesize`는 발급하지 않는다.** 그 태스크의 출력 계약(`hunt_hypotheses`)에 근거 인용
+  칸이 없고 `cited_ids`가 `_no_evidence`다. 심 조회 도구는 계획대로 그대로 뒀지만, 인용할 수
+  없는 태스크에 로그 조회를 주는 것이 맞는지는 다시 볼 만하다(D-082의 논리를 그대로 적용하면
+  빼는 쪽이다). 이번 이슈에서는 기존 동작을 바꾸지 않았다.
+- **버린 건수를 남기는 범위.** L2는 보고 입력(`dropped_refs`)과
+  `incidents.details.l2_analyze.dropped_refs`에 남긴다. L1·L3는 다음 태스크가 없어 경고 로그만
+  남긴다(저장 Verdict·Hunt 모양을 바꾸지 않으려고).
+- **`query_records`의 `kind` enum을 좁히지 않았다.** 계획의 "바꿀 곳"은 `("alert",)`로 줄이라고
+  했지만, 발급된 class 0 Event가 `events` 표에 있으므로 목록 조회가 여전히 쓸모 있다. 사람이
+  고른 "조회 도구 셋을 남긴다"와도 맞다. `query_http_flow`·`summarize_http_flow`도 남겼다 —
+  검색 풀이 줄어 결과가 적어질 뿐이고, 기존 `evt_` 근거에는 여전히 값이 있다.
+- **`get_raw`에 `screen_input`이 걸리는지 따로 테스트하지 않았다.** `records` 도구 일반에 대해
+  `tests/test_agent_input_redaction.py`가 이미 확인한다(`leak_records`). `get_raw`는 같은 경로를
+  타는 또 하나의 `records` 도구라 중복 테스트를 만들지 않았다.
 
 ### 함정
 
@@ -124,8 +137,8 @@ supersedes: []
 ```
 uv run ruff format --check .   통과
 uv run ruff check .            통과
-uv run pytest                  2598 passed, 733 deselected
-uv run pytest -m db            (아래 참고)
+uv run pytest                  2599 passed, 718 deselected
+uv run pytest -m "db or qdrant"  (아래 참고. postgres·qdrant를 띄우고 돌렸다)
 ```
 
 db 마커는 `docker compose up -d postgres` 뒤에 돌렸다. 주요 테스트:
@@ -137,5 +150,11 @@ db 마커는 `docker compose up -d postgres` 뒤에 돌렸다. 주요 테스트:
 - `tests/test_evidence_issue.py` 30건 — 행 만들기(DB 없음)
 - `tests/test_evidence_issue_db.py` 8건(db) — 트랜잭션, 중복 방지, 정규화기와의 분리
 - `tests/test_tools_db.py` 46건(db) — `get_raw` 실제 읽기와 열 권한
+- `tests/l1/test_l1_judge_db.py` 28건(db) — L1 판정과 발급
+- `tests/test_l3_hunt_db.py` 30건(db) — L3 검증과 발급
+- `tests/test_lab_cycle_db.py`·`tests/test_pipeline_db.py` 9건(db) — 알럿만 정규화되는 전체 흐름
+
+db·qdrant는 `docker compose up -d postgres qdrant` 뒤 `QDRANT_URL=http://127.0.0.1:6333`으로
+돌렸다. `.env`에 `QDRANT_URL`이 비어 있어서 그 값을 셸에서 넣어야 했다.
 
 ELK 마커 테스트와 서버 확인은 하지 않았다. 실제 심 조회가 200을 받는지도 확인하지 않았다.
