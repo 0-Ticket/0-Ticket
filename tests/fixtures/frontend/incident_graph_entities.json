@@ -1,0 +1,1549 @@
+{
+ "_comment": "Incident 그래프 샘플(#380). 손으로 정한 규칙으로 만든 값이고 IP·도메인은 문서용이다. Alert 14개, 엔티티 100개 이상, 공유 src IP 3개, Alert 2개짜리 Ticket 1개, Alert 없는 Ticket 1개, 값이 __proto__인 엔티티 1개.",
+ "tickets": [
+  {
+   "id": "tkt_01a19f93-1266-7000-8000-000000000201",
+   "title": "샘플 Ticket 1",
+   "decision": "malicious",
+   "severity": 2,
+   "created_at": 1793678060000,
+   "evidence_count": 1,
+   "alert_ids": [
+    "alt_01a19f93-1266-7000-8000-000000000101"
+   ],
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.11",
+     "role": "src"
+    },
+    {
+     "type": "ip",
+     "value": "198.51.100.2",
+     "role": "dst"
+    },
+    {
+     "type": "domain",
+     "value": "host-1.example.com",
+     "role": "dst"
+    },
+    {
+     "type": "url",
+     "value": "https://example.com/p/1",
+     "role": "dst"
+    },
+    {
+     "type": "user",
+     "value": "user-1",
+     "role": "actor"
+    },
+    {
+     "type": "host",
+     "value": "srv-1",
+     "role": "target"
+    },
+    {
+     "type": "host",
+     "value": "web-01",
+     "role": "target"
+    },
+    {
+     "type": "file_hash",
+     "value": "0000000000000000000000000000000000000000000000000000000000000001",
+     "role": null
+    },
+    {
+     "type": "process",
+     "value": "proc-1.exe",
+     "role": null
+    }
+   ]
+  },
+  {
+   "id": "tkt_01a19f93-1266-7000-8000-000000000202",
+   "title": "샘플 Ticket 2",
+   "decision": "undetermined",
+   "severity": 3,
+   "created_at": 1793678120000,
+   "evidence_count": 2,
+   "alert_ids": [
+    "alt_01a19f93-1266-7000-8000-000000000102"
+   ],
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.12",
+     "role": "src"
+    },
+    {
+     "type": "ip",
+     "value": "198.51.100.3",
+     "role": "dst"
+    },
+    {
+     "type": "domain",
+     "value": "host-2.example.com",
+     "role": "dst"
+    },
+    {
+     "type": "url",
+     "value": "https://example.com/p/2",
+     "role": "dst"
+    },
+    {
+     "type": "user",
+     "value": "user-2",
+     "role": "actor"
+    },
+    {
+     "type": "host",
+     "value": "srv-2",
+     "role": "target"
+    },
+    {
+     "type": "host",
+     "value": "web-01",
+     "role": "target"
+    },
+    {
+     "type": "file_hash",
+     "value": "0000000000000000000000000000000000000000000000000000000000000002",
+     "role": null
+    },
+    {
+     "type": "process",
+     "value": "proc-2.exe",
+     "role": null
+    }
+   ]
+  },
+  {
+   "id": "tkt_01a19f93-1266-7000-8000-000000000203",
+   "title": "샘플 Ticket 3",
+   "decision": null,
+   "severity": 4,
+   "created_at": 1793678180000,
+   "evidence_count": 3,
+   "alert_ids": [
+    "alt_01a19f93-1266-7000-8000-000000000103"
+   ],
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.10",
+     "role": "src"
+    },
+    {
+     "type": "ip",
+     "value": "198.51.100.4",
+     "role": "dst"
+    },
+    {
+     "type": "domain",
+     "value": "host-3.example.com",
+     "role": "dst"
+    },
+    {
+     "type": "url",
+     "value": "https://example.com/p/3",
+     "role": "dst"
+    },
+    {
+     "type": "user",
+     "value": "user-3",
+     "role": "actor"
+    },
+    {
+     "type": "host",
+     "value": "srv-3",
+     "role": "target"
+    },
+    {
+     "type": "host",
+     "value": "web-01",
+     "role": "target"
+    },
+    {
+     "type": "file_hash",
+     "value": "0000000000000000000000000000000000000000000000000000000000000003",
+     "role": null
+    },
+    {
+     "type": "process",
+     "value": "proc-3.exe",
+     "role": null
+    }
+   ]
+  },
+  {
+   "id": "tkt_01a19f93-1266-7000-8000-000000000204",
+   "title": "샘플 Ticket 4",
+   "decision": "malicious",
+   "severity": 5,
+   "created_at": 1793678240000,
+   "evidence_count": 0,
+   "alert_ids": [
+    "alt_01a19f93-1266-7000-8000-000000000104"
+   ],
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.11",
+     "role": "src"
+    },
+    {
+     "type": "ip",
+     "value": "198.51.100.5",
+     "role": "dst"
+    },
+    {
+     "type": "domain",
+     "value": "host-4.example.com",
+     "role": "dst"
+    },
+    {
+     "type": "url",
+     "value": "https://example.com/p/4",
+     "role": "dst"
+    },
+    {
+     "type": "user",
+     "value": "user-4",
+     "role": "actor"
+    },
+    {
+     "type": "host",
+     "value": "srv-4",
+     "role": "target"
+    },
+    {
+     "type": "host",
+     "value": "web-01",
+     "role": "target"
+    },
+    {
+     "type": "file_hash",
+     "value": "0000000000000000000000000000000000000000000000000000000000000004",
+     "role": null
+    },
+    {
+     "type": "process",
+     "value": "proc-4.exe",
+     "role": null
+    }
+   ]
+  },
+  {
+   "id": "tkt_01a19f93-1266-7000-8000-000000000205",
+   "title": "샘플 Ticket 5",
+   "decision": "undetermined",
+   "severity": 6,
+   "created_at": 1793678300000,
+   "evidence_count": 1,
+   "alert_ids": [
+    "alt_01a19f93-1266-7000-8000-000000000105"
+   ],
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.12",
+     "role": "src"
+    },
+    {
+     "type": "ip",
+     "value": "198.51.100.6",
+     "role": "dst"
+    },
+    {
+     "type": "domain",
+     "value": "host-5.example.com",
+     "role": "dst"
+    },
+    {
+     "type": "url",
+     "value": "https://example.com/p/5",
+     "role": "dst"
+    },
+    {
+     "type": "user",
+     "value": "__proto__",
+     "role": "actor"
+    },
+    {
+     "type": "host",
+     "value": "srv-5",
+     "role": "target"
+    },
+    {
+     "type": "host",
+     "value": "web-01",
+     "role": "target"
+    },
+    {
+     "type": "file_hash",
+     "value": "0000000000000000000000000000000000000000000000000000000000000005",
+     "role": null
+    },
+    {
+     "type": "process",
+     "value": "proc-5.exe",
+     "role": null
+    }
+   ]
+  },
+  {
+   "id": "tkt_01a19f93-1266-7000-8000-000000000206",
+   "title": "샘플 Ticket 6",
+   "decision": null,
+   "severity": 1,
+   "created_at": 1793678360000,
+   "evidence_count": 2,
+   "alert_ids": [
+    "alt_01a19f93-1266-7000-8000-000000000106"
+   ],
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.10",
+     "role": "src"
+    },
+    {
+     "type": "ip",
+     "value": "198.51.100.7",
+     "role": "dst"
+    },
+    {
+     "type": "domain",
+     "value": "host-6.example.com",
+     "role": "dst"
+    },
+    {
+     "type": "url",
+     "value": "https://example.com/p/6",
+     "role": "dst"
+    },
+    {
+     "type": "user",
+     "value": "user-6",
+     "role": "actor"
+    },
+    {
+     "type": "host",
+     "value": "srv-6",
+     "role": "target"
+    },
+    {
+     "type": "host",
+     "value": "web-01",
+     "role": "target"
+    },
+    {
+     "type": "file_hash",
+     "value": "0000000000000000000000000000000000000000000000000000000000000006",
+     "role": null
+    },
+    {
+     "type": "process",
+     "value": "proc-6.exe",
+     "role": null
+    }
+   ]
+  },
+  {
+   "id": "tkt_01a19f93-1266-7000-8000-000000000207",
+   "title": "샘플 Ticket 7",
+   "decision": "malicious",
+   "severity": 2,
+   "created_at": 1793678420000,
+   "evidence_count": 3,
+   "alert_ids": [
+    "alt_01a19f93-1266-7000-8000-000000000107"
+   ],
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.11",
+     "role": "src"
+    },
+    {
+     "type": "ip",
+     "value": "198.51.100.8",
+     "role": "dst"
+    },
+    {
+     "type": "domain",
+     "value": "host-7.example.com",
+     "role": "dst"
+    },
+    {
+     "type": "url",
+     "value": "https://example.com/p/7",
+     "role": "dst"
+    },
+    {
+     "type": "user",
+     "value": "user-7",
+     "role": "actor"
+    },
+    {
+     "type": "host",
+     "value": "srv-7",
+     "role": "target"
+    },
+    {
+     "type": "host",
+     "value": "web-01",
+     "role": "target"
+    },
+    {
+     "type": "file_hash",
+     "value": "0000000000000000000000000000000000000000000000000000000000000007",
+     "role": null
+    },
+    {
+     "type": "process",
+     "value": "proc-7.exe",
+     "role": null
+    }
+   ]
+  },
+  {
+   "id": "tkt_01a19f93-1266-7000-8000-000000000208",
+   "title": "샘플 Ticket 8",
+   "decision": "undetermined",
+   "severity": 3,
+   "created_at": 1793678480000,
+   "evidence_count": 0,
+   "alert_ids": [
+    "alt_01a19f93-1266-7000-8000-000000000108"
+   ],
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.12",
+     "role": "src"
+    },
+    {
+     "type": "ip",
+     "value": "198.51.100.9",
+     "role": "dst"
+    },
+    {
+     "type": "domain",
+     "value": "host-8.example.com",
+     "role": "dst"
+    },
+    {
+     "type": "url",
+     "value": "https://example.com/p/8",
+     "role": "dst"
+    },
+    {
+     "type": "user",
+     "value": "user-8",
+     "role": "actor"
+    },
+    {
+     "type": "host",
+     "value": "srv-8",
+     "role": "target"
+    },
+    {
+     "type": "host",
+     "value": "web-01",
+     "role": "target"
+    },
+    {
+     "type": "file_hash",
+     "value": "0000000000000000000000000000000000000000000000000000000000000008",
+     "role": null
+    },
+    {
+     "type": "process",
+     "value": "proc-8.exe",
+     "role": null
+    }
+   ]
+  },
+  {
+   "id": "tkt_01a19f93-1266-7000-8000-000000000209",
+   "title": "샘플 Ticket 9",
+   "decision": null,
+   "severity": 4,
+   "created_at": 1793678540000,
+   "evidence_count": 1,
+   "alert_ids": [
+    "alt_01a19f93-1266-7000-8000-000000000109"
+   ],
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.10",
+     "role": "src"
+    },
+    {
+     "type": "ip",
+     "value": "198.51.100.10",
+     "role": "dst"
+    },
+    {
+     "type": "domain",
+     "value": "host-9.example.com",
+     "role": "dst"
+    },
+    {
+     "type": "url",
+     "value": "https://example.com/p/9",
+     "role": "dst"
+    },
+    {
+     "type": "user",
+     "value": "user-9",
+     "role": "actor"
+    },
+    {
+     "type": "host",
+     "value": "srv-9",
+     "role": "target"
+    },
+    {
+     "type": "host",
+     "value": "web-01",
+     "role": "target"
+    },
+    {
+     "type": "file_hash",
+     "value": "0000000000000000000000000000000000000000000000000000000000000009",
+     "role": null
+    },
+    {
+     "type": "process",
+     "value": "proc-9.exe",
+     "role": null
+    }
+   ]
+  },
+  {
+   "id": "tkt_01a19f93-1266-7000-8000-000000000210",
+   "title": "샘플 Ticket 10",
+   "decision": "malicious",
+   "severity": 5,
+   "created_at": 1793678600000,
+   "evidence_count": 2,
+   "alert_ids": [
+    "alt_01a19f93-1266-7000-8000-000000000110"
+   ],
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.11",
+     "role": "src"
+    },
+    {
+     "type": "ip",
+     "value": "198.51.100.11",
+     "role": "dst"
+    },
+    {
+     "type": "domain",
+     "value": "host-10.example.com",
+     "role": "dst"
+    },
+    {
+     "type": "url",
+     "value": "https://example.com/p/10",
+     "role": "dst"
+    },
+    {
+     "type": "user",
+     "value": "user-10",
+     "role": "actor"
+    },
+    {
+     "type": "host",
+     "value": "srv-10",
+     "role": "target"
+    },
+    {
+     "type": "host",
+     "value": "web-01",
+     "role": "target"
+    },
+    {
+     "type": "file_hash",
+     "value": "000000000000000000000000000000000000000000000000000000000000000a",
+     "role": null
+    },
+    {
+     "type": "process",
+     "value": "proc-10.exe",
+     "role": null
+    }
+   ]
+  },
+  {
+   "id": "tkt_01a19f93-1266-7000-8000-000000000211",
+   "title": "샘플 Ticket 11",
+   "decision": "undetermined",
+   "severity": 6,
+   "created_at": 1793678660000,
+   "evidence_count": 3,
+   "alert_ids": [
+    "alt_01a19f93-1266-7000-8000-000000000111"
+   ],
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.12",
+     "role": "src"
+    },
+    {
+     "type": "ip",
+     "value": "198.51.100.12",
+     "role": "dst"
+    },
+    {
+     "type": "domain",
+     "value": "host-11.example.com",
+     "role": "dst"
+    },
+    {
+     "type": "url",
+     "value": "https://example.com/p/11",
+     "role": "dst"
+    },
+    {
+     "type": "user",
+     "value": "user-11",
+     "role": "actor"
+    },
+    {
+     "type": "host",
+     "value": "srv-11",
+     "role": "target"
+    },
+    {
+     "type": "host",
+     "value": "web-01",
+     "role": "target"
+    },
+    {
+     "type": "file_hash",
+     "value": "000000000000000000000000000000000000000000000000000000000000000b",
+     "role": null
+    },
+    {
+     "type": "process",
+     "value": "proc-11.exe",
+     "role": null
+    }
+   ]
+  },
+  {
+   "id": "tkt_01a19f93-1266-7000-8000-000000000212",
+   "title": "샘플 Ticket 12",
+   "decision": null,
+   "severity": 1,
+   "created_at": 1793678720000,
+   "evidence_count": 0,
+   "alert_ids": [
+    "alt_01a19f93-1266-7000-8000-000000000112"
+   ],
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.10",
+     "role": "src"
+    },
+    {
+     "type": "ip",
+     "value": "198.51.100.13",
+     "role": "dst"
+    },
+    {
+     "type": "domain",
+     "value": "host-12.example.com",
+     "role": "dst"
+    },
+    {
+     "type": "url",
+     "value": "https://example.com/p/12",
+     "role": "dst"
+    },
+    {
+     "type": "user",
+     "value": "user-12",
+     "role": "actor"
+    },
+    {
+     "type": "host",
+     "value": "srv-12",
+     "role": "target"
+    },
+    {
+     "type": "host",
+     "value": "web-01",
+     "role": "target"
+    },
+    {
+     "type": "file_hash",
+     "value": "000000000000000000000000000000000000000000000000000000000000000c",
+     "role": null
+    },
+    {
+     "type": "process",
+     "value": "proc-12.exe",
+     "role": null
+    }
+   ]
+  },
+  {
+   "id": "tkt_01a19f93-1266-7000-8000-000000000213",
+   "title": "샘플 Ticket 묶음",
+   "decision": "malicious",
+   "severity": 5,
+   "created_at": 1793679000000,
+   "evidence_count": 2,
+   "alert_ids": [
+    "alt_01a19f93-1266-7000-8000-000000000113",
+    "alt_01a19f93-1266-7000-8000-000000000114"
+   ],
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.11",
+     "role": "src"
+    },
+    {
+     "type": "ip",
+     "value": "198.51.100.14",
+     "role": "dst"
+    },
+    {
+     "type": "domain",
+     "value": "host-13.example.com",
+     "role": "dst"
+    },
+    {
+     "type": "url",
+     "value": "https://example.com/p/13",
+     "role": "dst"
+    },
+    {
+     "type": "user",
+     "value": "user-13",
+     "role": "actor"
+    },
+    {
+     "type": "host",
+     "value": "srv-13",
+     "role": "target"
+    },
+    {
+     "type": "host",
+     "value": "web-01",
+     "role": "target"
+    },
+    {
+     "type": "file_hash",
+     "value": "000000000000000000000000000000000000000000000000000000000000000d",
+     "role": null
+    },
+    {
+     "type": "process",
+     "value": "proc-13.exe",
+     "role": null
+    },
+    {
+     "type": "ip",
+     "value": "203.0.113.12",
+     "role": "src"
+    },
+    {
+     "type": "ip",
+     "value": "198.51.100.15",
+     "role": "dst"
+    },
+    {
+     "type": "domain",
+     "value": "host-14.example.com",
+     "role": "dst"
+    },
+    {
+     "type": "url",
+     "value": "https://example.com/p/14",
+     "role": "dst"
+    },
+    {
+     "type": "user",
+     "value": "user-14",
+     "role": "actor"
+    },
+    {
+     "type": "host",
+     "value": "srv-14",
+     "role": "target"
+    },
+    {
+     "type": "host",
+     "value": "web-01",
+     "role": "target"
+    },
+    {
+     "type": "file_hash",
+     "value": "000000000000000000000000000000000000000000000000000000000000000e",
+     "role": null
+    },
+    {
+     "type": "process",
+     "value": "proc-14.exe",
+     "role": null
+    }
+   ]
+  },
+  {
+   "id": "tkt_01a19f93-1266-7000-8000-000000000214",
+   "title": "가설: 외부 통신",
+   "decision": null,
+   "severity": 0,
+   "created_at": 1793679100000,
+   "evidence_count": 0,
+   "alert_ids": [],
+   "entities": [
+    {
+     "type": "domain",
+     "value": "hunt.example.com",
+     "role": "dst"
+    },
+    {
+     "type": "ip",
+     "value": "192.0.2.77",
+     "role": "dst"
+    }
+   ]
+  }
+ ],
+ "alerts": [
+  {
+   "id": "alt_01a19f93-1266-7000-8000-000000000101",
+   "time": 1793678060000,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.11",
+     "role": "src"
+    },
+    {
+     "type": "ip",
+     "value": "198.51.100.2",
+     "role": "dst"
+    },
+    {
+     "type": "domain",
+     "value": "host-1.example.com",
+     "role": "dst"
+    },
+    {
+     "type": "url",
+     "value": "https://example.com/p/1",
+     "role": "dst"
+    },
+    {
+     "type": "user",
+     "value": "user-1",
+     "role": "actor"
+    },
+    {
+     "type": "host",
+     "value": "srv-1",
+     "role": "target"
+    },
+    {
+     "type": "host",
+     "value": "web-01",
+     "role": "target"
+    },
+    {
+     "type": "file_hash",
+     "value": "0000000000000000000000000000000000000000000000000000000000000001",
+     "role": null
+    },
+    {
+     "type": "process",
+     "value": "proc-1.exe",
+     "role": null
+    }
+   ]
+  },
+  {
+   "id": "alt_01a19f93-1266-7000-8000-000000000102",
+   "time": 1793678120000,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.12",
+     "role": "src"
+    },
+    {
+     "type": "ip",
+     "value": "198.51.100.3",
+     "role": "dst"
+    },
+    {
+     "type": "domain",
+     "value": "host-2.example.com",
+     "role": "dst"
+    },
+    {
+     "type": "url",
+     "value": "https://example.com/p/2",
+     "role": "dst"
+    },
+    {
+     "type": "user",
+     "value": "user-2",
+     "role": "actor"
+    },
+    {
+     "type": "host",
+     "value": "srv-2",
+     "role": "target"
+    },
+    {
+     "type": "host",
+     "value": "web-01",
+     "role": "target"
+    },
+    {
+     "type": "file_hash",
+     "value": "0000000000000000000000000000000000000000000000000000000000000002",
+     "role": null
+    },
+    {
+     "type": "process",
+     "value": "proc-2.exe",
+     "role": null
+    }
+   ]
+  },
+  {
+   "id": "alt_01a19f93-1266-7000-8000-000000000103",
+   "time": 1793678180000,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.10",
+     "role": "src"
+    },
+    {
+     "type": "ip",
+     "value": "198.51.100.4",
+     "role": "dst"
+    },
+    {
+     "type": "domain",
+     "value": "host-3.example.com",
+     "role": "dst"
+    },
+    {
+     "type": "url",
+     "value": "https://example.com/p/3",
+     "role": "dst"
+    },
+    {
+     "type": "user",
+     "value": "user-3",
+     "role": "actor"
+    },
+    {
+     "type": "host",
+     "value": "srv-3",
+     "role": "target"
+    },
+    {
+     "type": "host",
+     "value": "web-01",
+     "role": "target"
+    },
+    {
+     "type": "file_hash",
+     "value": "0000000000000000000000000000000000000000000000000000000000000003",
+     "role": null
+    },
+    {
+     "type": "process",
+     "value": "proc-3.exe",
+     "role": null
+    }
+   ]
+  },
+  {
+   "id": "alt_01a19f93-1266-7000-8000-000000000104",
+   "time": 1793678240000,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.11",
+     "role": "src"
+    },
+    {
+     "type": "ip",
+     "value": "198.51.100.5",
+     "role": "dst"
+    },
+    {
+     "type": "domain",
+     "value": "host-4.example.com",
+     "role": "dst"
+    },
+    {
+     "type": "url",
+     "value": "https://example.com/p/4",
+     "role": "dst"
+    },
+    {
+     "type": "user",
+     "value": "user-4",
+     "role": "actor"
+    },
+    {
+     "type": "host",
+     "value": "srv-4",
+     "role": "target"
+    },
+    {
+     "type": "host",
+     "value": "web-01",
+     "role": "target"
+    },
+    {
+     "type": "file_hash",
+     "value": "0000000000000000000000000000000000000000000000000000000000000004",
+     "role": null
+    },
+    {
+     "type": "process",
+     "value": "proc-4.exe",
+     "role": null
+    }
+   ]
+  },
+  {
+   "id": "alt_01a19f93-1266-7000-8000-000000000105",
+   "time": 1793678300000,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.12",
+     "role": "src"
+    },
+    {
+     "type": "ip",
+     "value": "198.51.100.6",
+     "role": "dst"
+    },
+    {
+     "type": "domain",
+     "value": "host-5.example.com",
+     "role": "dst"
+    },
+    {
+     "type": "url",
+     "value": "https://example.com/p/5",
+     "role": "dst"
+    },
+    {
+     "type": "user",
+     "value": "__proto__",
+     "role": "actor"
+    },
+    {
+     "type": "host",
+     "value": "srv-5",
+     "role": "target"
+    },
+    {
+     "type": "host",
+     "value": "web-01",
+     "role": "target"
+    },
+    {
+     "type": "file_hash",
+     "value": "0000000000000000000000000000000000000000000000000000000000000005",
+     "role": null
+    },
+    {
+     "type": "process",
+     "value": "proc-5.exe",
+     "role": null
+    }
+   ]
+  },
+  {
+   "id": "alt_01a19f93-1266-7000-8000-000000000106",
+   "time": 1793678360000,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.10",
+     "role": "src"
+    },
+    {
+     "type": "ip",
+     "value": "198.51.100.7",
+     "role": "dst"
+    },
+    {
+     "type": "domain",
+     "value": "host-6.example.com",
+     "role": "dst"
+    },
+    {
+     "type": "url",
+     "value": "https://example.com/p/6",
+     "role": "dst"
+    },
+    {
+     "type": "user",
+     "value": "user-6",
+     "role": "actor"
+    },
+    {
+     "type": "host",
+     "value": "srv-6",
+     "role": "target"
+    },
+    {
+     "type": "host",
+     "value": "web-01",
+     "role": "target"
+    },
+    {
+     "type": "file_hash",
+     "value": "0000000000000000000000000000000000000000000000000000000000000006",
+     "role": null
+    },
+    {
+     "type": "process",
+     "value": "proc-6.exe",
+     "role": null
+    }
+   ]
+  },
+  {
+   "id": "alt_01a19f93-1266-7000-8000-000000000107",
+   "time": 1793678420000,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.11",
+     "role": "src"
+    },
+    {
+     "type": "ip",
+     "value": "198.51.100.8",
+     "role": "dst"
+    },
+    {
+     "type": "domain",
+     "value": "host-7.example.com",
+     "role": "dst"
+    },
+    {
+     "type": "url",
+     "value": "https://example.com/p/7",
+     "role": "dst"
+    },
+    {
+     "type": "user",
+     "value": "user-7",
+     "role": "actor"
+    },
+    {
+     "type": "host",
+     "value": "srv-7",
+     "role": "target"
+    },
+    {
+     "type": "host",
+     "value": "web-01",
+     "role": "target"
+    },
+    {
+     "type": "file_hash",
+     "value": "0000000000000000000000000000000000000000000000000000000000000007",
+     "role": null
+    },
+    {
+     "type": "process",
+     "value": "proc-7.exe",
+     "role": null
+    }
+   ]
+  },
+  {
+   "id": "alt_01a19f93-1266-7000-8000-000000000108",
+   "time": 1793678480000,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.12",
+     "role": "src"
+    },
+    {
+     "type": "ip",
+     "value": "198.51.100.9",
+     "role": "dst"
+    },
+    {
+     "type": "domain",
+     "value": "host-8.example.com",
+     "role": "dst"
+    },
+    {
+     "type": "url",
+     "value": "https://example.com/p/8",
+     "role": "dst"
+    },
+    {
+     "type": "user",
+     "value": "user-8",
+     "role": "actor"
+    },
+    {
+     "type": "host",
+     "value": "srv-8",
+     "role": "target"
+    },
+    {
+     "type": "host",
+     "value": "web-01",
+     "role": "target"
+    },
+    {
+     "type": "file_hash",
+     "value": "0000000000000000000000000000000000000000000000000000000000000008",
+     "role": null
+    },
+    {
+     "type": "process",
+     "value": "proc-8.exe",
+     "role": null
+    }
+   ]
+  },
+  {
+   "id": "alt_01a19f93-1266-7000-8000-000000000109",
+   "time": 1793678540000,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.10",
+     "role": "src"
+    },
+    {
+     "type": "ip",
+     "value": "198.51.100.10",
+     "role": "dst"
+    },
+    {
+     "type": "domain",
+     "value": "host-9.example.com",
+     "role": "dst"
+    },
+    {
+     "type": "url",
+     "value": "https://example.com/p/9",
+     "role": "dst"
+    },
+    {
+     "type": "user",
+     "value": "user-9",
+     "role": "actor"
+    },
+    {
+     "type": "host",
+     "value": "srv-9",
+     "role": "target"
+    },
+    {
+     "type": "host",
+     "value": "web-01",
+     "role": "target"
+    },
+    {
+     "type": "file_hash",
+     "value": "0000000000000000000000000000000000000000000000000000000000000009",
+     "role": null
+    },
+    {
+     "type": "process",
+     "value": "proc-9.exe",
+     "role": null
+    }
+   ]
+  },
+  {
+   "id": "alt_01a19f93-1266-7000-8000-000000000110",
+   "time": 1793678600000,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.11",
+     "role": "src"
+    },
+    {
+     "type": "ip",
+     "value": "198.51.100.11",
+     "role": "dst"
+    },
+    {
+     "type": "domain",
+     "value": "host-10.example.com",
+     "role": "dst"
+    },
+    {
+     "type": "url",
+     "value": "https://example.com/p/10",
+     "role": "dst"
+    },
+    {
+     "type": "user",
+     "value": "user-10",
+     "role": "actor"
+    },
+    {
+     "type": "host",
+     "value": "srv-10",
+     "role": "target"
+    },
+    {
+     "type": "host",
+     "value": "web-01",
+     "role": "target"
+    },
+    {
+     "type": "file_hash",
+     "value": "000000000000000000000000000000000000000000000000000000000000000a",
+     "role": null
+    },
+    {
+     "type": "process",
+     "value": "proc-10.exe",
+     "role": null
+    }
+   ]
+  },
+  {
+   "id": "alt_01a19f93-1266-7000-8000-000000000111",
+   "time": 1793678660000,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.12",
+     "role": "src"
+    },
+    {
+     "type": "ip",
+     "value": "198.51.100.12",
+     "role": "dst"
+    },
+    {
+     "type": "domain",
+     "value": "host-11.example.com",
+     "role": "dst"
+    },
+    {
+     "type": "url",
+     "value": "https://example.com/p/11",
+     "role": "dst"
+    },
+    {
+     "type": "user",
+     "value": "user-11",
+     "role": "actor"
+    },
+    {
+     "type": "host",
+     "value": "srv-11",
+     "role": "target"
+    },
+    {
+     "type": "host",
+     "value": "web-01",
+     "role": "target"
+    },
+    {
+     "type": "file_hash",
+     "value": "000000000000000000000000000000000000000000000000000000000000000b",
+     "role": null
+    },
+    {
+     "type": "process",
+     "value": "proc-11.exe",
+     "role": null
+    }
+   ]
+  },
+  {
+   "id": "alt_01a19f93-1266-7000-8000-000000000112",
+   "time": 1793678720000,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.10",
+     "role": "src"
+    },
+    {
+     "type": "ip",
+     "value": "198.51.100.13",
+     "role": "dst"
+    },
+    {
+     "type": "domain",
+     "value": "host-12.example.com",
+     "role": "dst"
+    },
+    {
+     "type": "url",
+     "value": "https://example.com/p/12",
+     "role": "dst"
+    },
+    {
+     "type": "user",
+     "value": "user-12",
+     "role": "actor"
+    },
+    {
+     "type": "host",
+     "value": "srv-12",
+     "role": "target"
+    },
+    {
+     "type": "host",
+     "value": "web-01",
+     "role": "target"
+    },
+    {
+     "type": "file_hash",
+     "value": "000000000000000000000000000000000000000000000000000000000000000c",
+     "role": null
+    },
+    {
+     "type": "process",
+     "value": "proc-12.exe",
+     "role": null
+    }
+   ]
+  },
+  {
+   "id": "alt_01a19f93-1266-7000-8000-000000000113",
+   "time": 1793678780000,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.11",
+     "role": "src"
+    },
+    {
+     "type": "ip",
+     "value": "198.51.100.14",
+     "role": "dst"
+    },
+    {
+     "type": "domain",
+     "value": "host-13.example.com",
+     "role": "dst"
+    },
+    {
+     "type": "url",
+     "value": "https://example.com/p/13",
+     "role": "dst"
+    },
+    {
+     "type": "user",
+     "value": "user-13",
+     "role": "actor"
+    },
+    {
+     "type": "host",
+     "value": "srv-13",
+     "role": "target"
+    },
+    {
+     "type": "host",
+     "value": "web-01",
+     "role": "target"
+    },
+    {
+     "type": "file_hash",
+     "value": "000000000000000000000000000000000000000000000000000000000000000d",
+     "role": null
+    },
+    {
+     "type": "process",
+     "value": "proc-13.exe",
+     "role": null
+    }
+   ]
+  },
+  {
+   "id": "alt_01a19f93-1266-7000-8000-000000000114",
+   "time": 1793678840000,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.12",
+     "role": "src"
+    },
+    {
+     "type": "ip",
+     "value": "198.51.100.15",
+     "role": "dst"
+    },
+    {
+     "type": "domain",
+     "value": "host-14.example.com",
+     "role": "dst"
+    },
+    {
+     "type": "url",
+     "value": "https://example.com/p/14",
+     "role": "dst"
+    },
+    {
+     "type": "user",
+     "value": "user-14",
+     "role": "actor"
+    },
+    {
+     "type": "host",
+     "value": "srv-14",
+     "role": "target"
+    },
+    {
+     "type": "host",
+     "value": "web-01",
+     "role": "target"
+    },
+    {
+     "type": "file_hash",
+     "value": "000000000000000000000000000000000000000000000000000000000000000e",
+     "role": null
+    },
+    {
+     "type": "process",
+     "value": "proc-14.exe",
+     "role": null
+    }
+   ]
+  }
+ ],
+ "entity_criticality": [
+  {
+   "type": "ip",
+   "value": "198.51.100.2",
+   "criticality": 4
+  }
+ ]
+}
