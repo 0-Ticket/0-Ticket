@@ -2268,14 +2268,16 @@ td {
   gap: 16px;
 }
 .incident-head {
-  position: sticky;
-  top: 0;
-  z-index: 5;
   display: grid;
-  gap: 12px;
-  padding: 14px 0 12px;
-  background: var(--page);
-  border-bottom: 1px solid var(--border);
+  gap: 8px;
+  padding: 10px 0 0;
+}
+.incident-summary-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 24px;
 }
 .incident-nav,
 .incident-title-row,
@@ -2295,8 +2297,8 @@ td {
   justify-content: space-between;
 }
 .incident-title-row h1 {
-  margin: 0 0 6px;
-  font-size: 20px;
+  margin: 0 0 4px;
+  font-size: 18px;
   overflow-wrap: anywhere;
 }
 .incident-meta code {
@@ -2332,7 +2334,7 @@ td {
 }
 .incident-numbers dd {
   margin: 0;
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 600;
 }
 .incident-progress {
@@ -2354,9 +2356,15 @@ td {
   color: #fff;
 }
 .incident-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 5;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  padding: 8px 0;
+  background: var(--page);
+  border-bottom: 1px solid var(--border);
 }
 .incident-tabs button {
   border: 0;
@@ -2412,8 +2420,22 @@ td {
   font-family: "Roboto Mono", monospace;
   font-size: 12px;
 }
+.incident-table-card td.date {
+  white-space: nowrap;
+}
+.incident-table-card td:has(> .incident-clip) {
+  min-width: 280px;
+}
+.incident-table-card .incident-clip .clip {
+  max-width: 420px;
+}
+.incident-row-end {
+  text-align: right;
+  white-space: nowrap;
+}
 .incident-copy,
 .incident-link {
+  white-space: nowrap;
   border: 0;
   background: none;
   color: var(--accent);

@@ -92,6 +92,7 @@ export function TicketTable({ detail }: { detail: IncidentDetail }) {
               {header("created_at", "시각")}
               {header("evidence_count", "근거 수")}
               <th>분류 탐색</th>
+              <th aria-label="상세" />
             </tr>
           </thead>
           <tbody>
@@ -100,7 +101,6 @@ export function TicketTable({ detail }: { detail: IncidentDetail }) {
                 <td>
                   <strong className="incident-cell-title">{t.title}</strong>
                   <Clip text={t.id} label="Ticket ID" />
-                  {link(t.id, "tickets", "상세 보기", `${t.title} Ticket 상세`)}
                 </td>
                 <td>{t.decision ?? "—"}</td>
                 <td>
@@ -109,6 +109,9 @@ export function TicketTable({ detail }: { detail: IncidentDetail }) {
                 <td className="date">{when(t.created_at)}</td>
                 <td>{`${t.evidence_count}개`}</td>
                 <td>{statusText(graphs.get(t.id))}</td>
+                <td className="incident-row-end">
+                  {link(t.id, "tickets", "상세 보기", `${t.title} Ticket 상세`)}
+                </td>
               </tr>
             ))}
           </tbody>

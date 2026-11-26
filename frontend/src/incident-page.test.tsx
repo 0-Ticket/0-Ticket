@@ -415,6 +415,57 @@ test("entity rows count their tickets and alerts and long values stay text with 
   expect(writeText).toHaveBeenCalledWith(long);
 });
 
+test("an entity row opens the graph with that entity chosen, in the address and on screen", async () => {
+  serve();
+  show(`${url}?tab=entities`);
+  const table = await screen.findByRole("table", { name: "엔티티 표" });
+  const row = within(table).getByText("203.0.113.10").closest("tr")!;
+  fireEvent.click(within(row).getByRole("link", { name: "그래프에서 보기" }));
+  const where = await screen.findByTestId("where");
+  expect(where).toHaveTextContent("tab=graph");
+  expect(where).toHaveTextContent("view=entity");
+  expect(where.textContent).toContain(
+    encodeURIComponent(JSON.stringify(["ip", "203.0.113.10"])),
+  );
+  const side = await screen.findByRole("complementary", {
+    name: "선택된 노드",
+  });
+  expect(within(side).getByText("203.0.113.10")).toBeInTheDocument();
+  expect(
+    screen.getByRole("group", { name: "ip: 203.0.113.10" }),
+  ).toHaveAttribute("aria-current", "true");
+});
+
+test("leaving the graph tab drops the chosen node from the address", async () => {
+  serve();
+  show(
+    `${url}?tab=graph&view=entity&node=${encodeURIComponent(JSON.stringify(["ip", "203.0.113.10"]))}`,
+  );
+  await screen.findByRole("region", { name: "Incident 관계도" });
+  fireEvent.click(screen.getByRole("tab", { name: /^Ticket/ }));
+  expect(screen.getByTestId("where")).not.toHaveTextContent("node=");
+});
+
+test("a node in the address that is not a [type, value] pair is ignored", async () => {
+  serve();
+  show(`${url}?tab=graph&view=entity&node=${encodeURIComponent("{not json")}`);
+  await screen.findByRole("region", { name: "Incident 관계도" });
+  expect(screen.queryByRole("button", { name: "선택 해제" })).toBeNull();
+});
+
+test("a Ticket row keeps its detail link at the end of the row", async () => {
+  serve();
+  show(`${url}?tab=tickets`);
+  const table = await screen.findByRole("table", { name: "Ticket 표" });
+  const row = within(table).getByText(page.tickets[0].title).closest("tr")!;
+  const last = row.lastElementChild!;
+  expect(
+    within(last as HTMLElement).getByRole("link", {
+      name: `${page.tickets[0].title} Ticket 상세`,
+    }),
+  ).toBeInTheDocument();
+});
+
 test("the history tab is a timeline of rounds, newest first, with the summary as text and the raw JSON folded", async () => {
   const rounds = [1, 2, 3].map((n) => ({
     ...artifact,
