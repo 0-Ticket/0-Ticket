@@ -1,7 +1,0 @@
-# nginx 접근 로그는 클래스 공통 ECS 매핑을 그대로 쓴다.
-class_uid: 4002
-detect:
-  - field: [event.module]
-    equals: nginx
-entries: []
-entities: []

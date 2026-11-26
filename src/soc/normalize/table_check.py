@@ -8,7 +8,6 @@ from pathlib import Path
 
 import yaml
 
-from soc.normalize.event_tables import EventTables
 from soc.normalize.ocsf_schema import field_definition, required_children
 from soc.normalize.tables import COMMON, Table
 from soc.normalize.transforms import TRANSFORMS
@@ -26,19 +25,6 @@ ALERT_CODE_FILLED = frozenset(
     }
 )
 
-# 이벤트의 time은 매핑표에서 읽는다.
-EVENT_CODE_FILLED = frozenset(
-    {
-        "activity_id",
-        "category_uid",
-        "class_uid",
-        "message",
-        "metadata.product",
-        "metadata.version",
-        "severity_id",
-        "type_uid",
-    }
-)
 ECS_FIELDS_PATH = Path(__file__).with_name("ecs_fields.yaml")
 
 
@@ -53,37 +39,18 @@ def check_tables(tables: dict[str, Table], class_uid: int = CLASS_UID) -> list[s
         "종류 [표 이름] 경로" 꼴의 문제 문장들.
     """
     problems: list[str] = []
+    ecs_fields = yaml.safe_load(ECS_FIELDS_PATH.read_text(encoding="utf-8"))
     for table in tables.values():
         problems += _target_problems(table, class_uid)
+    for rule in tables[COMMON].entities:
+        for source in rule.sources:
+            if source not in ecs_fields:
+                problems.append(f"unknown_ecs_field [{COMMON}] {source}")
     common = tables[COMMON]
     scopes = [("common", [common])]
     scopes += [(f"common+{n}", [common, t]) for n, t in sorted(tables.items()) if n != COMMON]
     for scope, group in scopes:
         problems += _missing_required(scope, group, class_uid, ALERT_CODE_FILLED)
-    return list(dict.fromkeys(problems))
-
-
-def check_event_tables(tables: EventTables) -> list[str]:
-    """이벤트 표의 target, 필수 경로, 클래스 공통 표의 ECS 원본 경로를 검사한다."""
-    ecs_fields = yaml.safe_load(ECS_FIELDS_PATH.read_text(encoding="utf-8"))
-    problems: list[str] = []
-    source_class_uids = set(tables.source_classes.values())
-    for class_uid, table in tables.classes.items():
-        if not (table.entries or table.entities or class_uid in source_class_uids):
-            continue  # 요약 정의만 있는 클래스는 코드가 매핑한다
-        problems += _target_problems(table, class_uid)
-        problems += _missing_required(table.name, [table], class_uid, EVENT_CODE_FILLED)
-        for rule in (*table.entries, *table.entities):
-            for source in rule.sources:
-                if source not in ecs_fields:
-                    problems.append(f"unknown_ecs_field [{table.name}] {source}")
-    for name, table in tables.sources.items():
-        class_uid = tables.source_classes[name]
-        common = tables.classes[class_uid]
-        problems += _target_problems(table, class_uid)
-        problems += _missing_required(
-            f"{common.name}+{name}", [common, table], class_uid, EVENT_CODE_FILLED
-        )
     return list(dict.fromkeys(problems))
 
 
