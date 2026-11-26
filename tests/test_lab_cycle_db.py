@@ -164,6 +164,8 @@ def l1_run(db: str) -> Any:
                 "confidence": 0.9,
                 "reason": "도구로 읽은 Alert가 웹 공격 룰과 맞다",
                 "evidence_ids": [alert_id, parse(outputs[0])["call_id"]],
+                # 모델 출력에는 siem_refs가 있다(#382). 코드가 저장 전에 뗀다
+                "siem_refs": [],
                 "decided_at": NOW_MS,
             }
 
@@ -212,7 +214,14 @@ def analyze_run(task: AgentTask) -> AgentResult:
                 "evidence_ids": [alert_id],
             }
         ]
-        return ok({"timeline": timeline, "entities": [], "evidence_ids": [alert_id]})
+        return ok(
+            {
+                "timeline": timeline,
+                "entities": [],
+                "evidence_ids": [alert_id],
+                "siem_refs": [],
+            }
+        )
     return ok(
         {
             "verdict": "attempted",
