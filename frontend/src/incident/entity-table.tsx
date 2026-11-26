@@ -1,7 +1,8 @@
 import { useState } from "react";
+import { Link, useLocation } from "react-router";
 import type { IncidentDetail } from "../api/generated/IncidentDetail";
 import { FilterChips } from "../components/filter-chips";
-import { Clip, Pager, SortButton } from "./kit";
+import { Clip, Cols, Pager, SortButton } from "./kit";
 import {
   entityRows,
   nextSort,
@@ -13,6 +14,8 @@ import {
 } from "./model";
 
 const PAGE_SIZE = 20;
+// 종류, 값, role, 연결, 최초 관측, 작업 (px; the value takes the rest)
+const WIDTHS = [80, null, 60, 144, 138, 100];
 
 export function EntityTable({ detail }: { detail: IncidentDetail }) {
   const [query, setQuery] = useState("");
@@ -22,6 +25,7 @@ export function EntityTable({ detail }: { detail: IncidentDetail }) {
     dir: "desc",
   });
   const [page, setPage] = useState(1);
+  const location = useLocation();
   const all = entityRows(detail);
   if (all.length === 0) return <p className="empty">엔티티가 없습니다.</p>;
   const counts = new Map<string, number>();
@@ -73,7 +77,11 @@ export function EntityTable({ detail }: { detail: IncidentDetail }) {
         <span className="incident-count">{`${rows.length}개 엔티티`}</span>
       </div>
       <div className="table-scroll">
-        <table aria-label="엔티티 표">
+        <table
+          aria-label="엔티티 표"
+          className="incident-table incident-table-entities"
+        >
+          <Cols widths={WIDTHS} />
           <thead>
             <tr>
               {header("type", "종류")}
@@ -81,6 +89,7 @@ export function EntityTable({ detail }: { detail: IncidentDetail }) {
               <th>role</th>
               {header("tickets", "연결")}
               {header("first", "최초 관측")}
+              <th>작업</th>
             </tr>
           </thead>
           <tbody>
@@ -94,6 +103,17 @@ export function EntityTable({ detail }: { detail: IncidentDetail }) {
                 <td>{`Ticket ${r.tickets} · Alert ${r.alerts}`}</td>
                 <td className="date">
                   {r.first === null ? "—" : when(r.first)}
+                </td>
+                <td>
+                  <Link
+                    className="incident-link"
+                    // The graph reads the chosen entity from `node`; the list state rides along so "목록으로" keeps working.
+                    to={`?tab=graph&view=entity&node=${encodeURIComponent(JSON.stringify([r.type, r.value]))}`}
+                    state={location.state}
+                    aria-label="그래프에서 보기"
+                  >
+                    그래프에서 보기
+                  </Link>
                 </td>
               </tr>
             ))}

@@ -1,484 +1,502 @@
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { PointerEvent } from "react";
+import type { IncidentDetail } from "./api/generated/IncidentDetail";
 import { criticalityLabel } from "./criticality";
-import { statusText } from "./incident/model";
-import type {
-  GraphNode,
-  IncidentDetail,
-  IncidentTicketGraph,
-} from "./api/generated/IncidentDetail";
+import { fit, layout, type Point } from "./incident/graph-layout";
+import type { GraphMemory } from "./incident/graph-memory";
+import {
+  ENTITY_CAP,
+  buildGraph,
+  facts,
+  arrowLinks,
+  directNeighbours,
+  matches,
+  type GNode,
+  type GraphView,
+} from "./incident/graph-model";
 
-const NODE_WIDTH = 200;
-const NODE_HEIGHT = 92;
-const COLUMN = 236;
-const MARGIN = 24;
-const TICKET_Y = 144;
-const RECORD_Y = 276;
-const RECORD_STEP = 116;
-const MARKER_CENTER = 28; // 선은 노드 가운데가 아니라 동그라미 가운데로 이어진다
+const NODE_W = 168;
+const NODE_H = 44;
+const VIEW_W = 900; // shortcut: "fit" assumes this viewport size instead of measuring it, measure when the graph gets a resizable panel
+const VIEW_H = 560;
+const MIN_K = 0.2;
+const MAX_K = 3;
+const LINKS_SHOWN = 8;
+// The lines between entities of one alert can be too dense to read. Set to false to draw only the src → dst arrows
+// and show the other lines when a node is chosen (plan 380, "선 밀집").
+const PLAIN_LINES_BY_DEFAULT = true;
 
-type Incident = IncidentDetail["incident"];
-type SavedPath = { source: string; path: IncidentTicketGraph["paths"][number] };
-type PositionedNode = GraphNode & { x: number; y: number };
-type PositionedEdge = {
-  from: string;
-  to: string;
-  kind: string;
-  relation: "membership" | "path";
-};
-
-const nodeKey = (node: GraphNode) => JSON.stringify([node.kind, node.id]);
-const nodeName: Record<GraphNode["kind"], string> = {
+const KIND: Record<GNode["kind"], string> = {
+  incident: "Incident",
   ticket: "Ticket",
   alert: "Alert",
-  hunt: "Hunt",
   entity: "Entity",
-  incident: "Incident",
+};
+const nodeText = (n: GNode) =>
+  n.kind === "entity" ? `${n.type}: ${n.value}` : `${KIND[n.kind]} ${n.label}`;
+
+type Vt = { x: number; y: number; k: number };
+type Drag = {
+  kind: "pan" | "node";
+  x: number;
+  y: number;
+  key: string;
+  from: Point;
+  vt: Vt;
+  moved: boolean;
 };
 
-function nodeText(node: GraphNode) {
-  return node.kind === "entity"
-    ? `${node.type ?? "Entity"}: ${node.value ?? node.id}`
-    : `${nodeName[node.kind]} ${node.id}`;
-}
-
-function buildGraph(incident: Incident, ticketGraphs?: IncidentTicketGraph[]) {
-  const ticketIds = [...new Set(incident.ticket_ids)].sort();
-  const ticketSet = new Set(ticketIds);
-  const savedPaths: SavedPath[] = (ticketGraphs ?? [])
-    .filter((graph) => ticketSet.has(graph.ticket_id))
-    .flatMap((graph) =>
-      graph.paths
-        .filter((path) => path.incident_id === incident.id)
-        .map((path) => ({ source: graph.ticket_id, path })),
-    );
-  const nodes = new Map<string, GraphNode>();
-  const edges = new Map<string, PositionedEdge>();
-  const recordOwners = new Map<string, string>();
-  const incidentNode: GraphNode = { kind: "incident", id: incident.id };
-  nodes.set(nodeKey(incidentNode), incidentNode);
-  for (const id of ticketIds) {
-    const ticket: GraphNode = { kind: "ticket", id };
-    nodes.set(nodeKey(ticket), ticket);
-    const edge: PositionedEdge = {
-      from: nodeKey(incidentNode),
-      to: nodeKey(ticket),
-      kind: "belongs_to",
-      relation: "membership",
-    };
-    edges.set(JSON.stringify([edge.from, edge.to, edge.kind]), edge);
-  }
-
-  for (const { source, path } of savedPaths) {
-    const pathNodes = new Map<string, GraphNode | null>();
-    for (const node of path.nodes) {
-      if (
-        (node.kind === "incident" && node.id !== incident.id) ||
-        (node.kind === "ticket" && !ticketSet.has(node.id))
-      )
-        continue;
-      nodes.set(nodeKey(node), node);
-      const previous = pathNodes.get(node.id);
-      pathNodes.set(
-        node.id,
-        previous && previous.kind !== node.kind ? null : node,
-      );
-    }
-    for (const edge of path.edges) {
-      if (edge.kind === "belongs_to") continue;
-      const from = pathNodes.get(edge.from);
-      const to = pathNodes.get(edge.to);
-      if (!from || !to) continue;
-      const graphEdge: PositionedEdge = {
-        from: nodeKey(from),
-        to: nodeKey(to),
-        kind: edge.kind,
-        relation: "path",
-      };
-      edges.set(
-        JSON.stringify([graphEdge.from, graphEdge.to, edge.kind]),
-        graphEdge,
-      );
-      if (from.kind === "ticket" && (to.kind === "alert" || to.kind === "hunt"))
-        recordOwners.set(nodeKey(to), from.id);
-      if (
-        to.kind === "ticket" &&
-        (from.kind === "alert" || from.kind === "hunt")
-      )
-        recordOwners.set(nodeKey(from), to.id);
-    }
-    for (const node of path.nodes) {
-      if (
-        (node.kind === "alert" || node.kind === "hunt") &&
-        !recordOwners.has(nodeKey(node))
-      )
-        recordOwners.set(nodeKey(node), source);
-    }
-  }
-
-  const positions = new Map<string, PositionedNode>();
-  const ticketWidth = MARGIN * 2 + Math.max(ticketIds.length, 1) * COLUMN;
-  positions.set(nodeKey(incidentNode), {
-    ...incidentNode,
-    x: MARGIN,
-    y: MARGIN,
-  });
-  const ticketColumns = new Map(ticketIds.map((id, index) => [id, index]));
-  for (const id of ticketIds) {
-    const node = nodes.get(nodeKey({ kind: "ticket", id }))!;
-    positions.set(nodeKey(node), {
-      ...node,
-      x: MARGIN + ticketColumns.get(id)! * COLUMN,
-      y: TICKET_Y,
-    });
-  }
-
-  const recordGroups = new Map<string, GraphNode[]>();
-  for (const node of nodes.values()) {
-    if (node.kind !== "alert" && node.kind !== "hunt") continue;
-    const owner = recordOwners.get(nodeKey(node)) ?? ticketIds[0];
-    const group = recordGroups.get(owner) ?? [];
-    group.push(node);
-    recordGroups.set(owner, group);
-  }
-  let maxRecords = 0;
-  for (const [owner, group] of recordGroups) {
-    group.sort((a, b) => nodeKey(a).localeCompare(nodeKey(b)));
-    maxRecords = Math.max(maxRecords, group.length);
-    for (const [index, node] of group.entries()) {
-      positions.set(nodeKey(node), {
-        ...node,
-        x: MARGIN + (ticketColumns.get(owner) ?? 0) * COLUMN,
-        y: RECORD_Y + index * RECORD_STEP,
-      });
-    }
-  }
-
-  const entityY = RECORD_Y + maxRecords * RECORD_STEP + 48;
-  const entityNodes = [...nodes.values()].filter(
-    (node) => node.kind === "entity",
+// Where a line meets the edge of the node it points at, so the arrowhead is not hidden under the node.
+function stop(from: Point, to: Point): Point {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const t = Math.min(
+    NODE_W / 2 / Math.max(Math.abs(dx), 1e-6),
+    NODE_H / 2 / Math.max(Math.abs(dy), 1e-6),
+    1,
   );
-  const positionedEdges = [...edges.values()];
-  const preferredX = (entity: GraphNode) => {
-    const connected = positionedEdges
-      .filter(
-        (edge) => edge.from === nodeKey(entity) || edge.to === nodeKey(entity),
-      )
-      .map((edge) =>
-        positions.get(edge.from === nodeKey(entity) ? edge.to : edge.from),
-      )
-      .filter((node): node is PositionedNode => node !== undefined);
-    return connected.length
-      ? connected.reduce((sum, node) => sum + node.x + NODE_WIDTH / 2, 0) /
-          connected.length -
-          NODE_WIDTH / 2
-      : MARGIN;
-  };
-  entityNodes.sort(
-    (a, b) =>
-      preferredX(a) - preferredX(b) || nodeKey(a).localeCompare(nodeKey(b)),
-  );
-  let entityRight = MARGIN;
-  for (const entity of entityNodes) {
-    const x = Math.max(MARGIN, preferredX(entity), entityRight);
-    positions.set(nodeKey(entity), { ...entity, x, y: entityY });
-    entityRight = x + NODE_WIDTH + MARGIN;
-  }
-  return {
-    nodes: [...positions.values()],
-    edges: positionedEdges.filter(
-      (edge) => positions.has(edge.from) && positions.has(edge.to),
-    ),
-    paths: savedPaths,
-    width: Math.max(360, ticketWidth, entityRight + MARGIN),
-    height: entityNodes.length
-      ? entityY + NODE_HEIGHT + MARGIN
-      : maxRecords
-        ? RECORD_Y + maxRecords * RECORD_STEP + MARGIN
-        : TICKET_Y + NODE_HEIGHT + MARGIN,
-  };
-}
-
-type Edge = PositionedEdge;
-
-// Nodes reachable through saved search paths only (membership lines are not evidence of sharing).
-function reach(start: string, edges: Edge[]) {
-  const seen = new Set([start]);
-  const queue = [start];
-  while (queue.length) {
-    const at = queue.shift()!;
-    for (const edge of edges) {
-      if (edge.relation !== "path") continue;
-      const next =
-        edge.from === at ? edge.to : edge.to === at ? edge.from : null;
-      if (next && !seen.has(next)) {
-        seen.add(next);
-        queue.push(next);
-      }
-    }
-  }
-  return seen;
+  return { x: to.x - dx * t, y: to.y - dy * t };
 }
 
 export function IncidentGraph({
-  incident,
-  ticketGraphs,
-  titles,
-  decisions,
-  criticality,
+  detail,
+  view,
+  onView,
+  memory,
+  onMemory,
+  start,
 }: {
-  incident: Incident;
-  ticketGraphs?: IncidentTicketGraph[];
-  // Ticket titles by id (IncidentDetail.tickets). Without them nodes show the id.
-  titles?: Record<string, string>;
-  // Ticket verdict decision by id and asset importance by entity (IncidentDetail). Missing means no chip and no importance row.
-  decisions?: Record<string, string | null>;
-  criticality?: IncidentDetail["entity_criticality"];
+  detail: IncidentDetail;
+  view: GraphView;
+  onView: (view: GraphView) => void;
+  memory: GraphMemory;
+  onMemory: (memory: GraphMemory) => void;
+  // JSON [type, value] of an entity to open chosen (the entity table's "그래프에서 보기"); read once when the graph opens.
+  start?: string;
 }) {
-  const graph = buildGraph(incident, ticketGraphs);
-  const positioned = new Map(graph.nodes.map((node) => [nodeKey(node), node]));
-  const byTicket = new Map(ticketGraphs?.map((item) => [item.ticket_id, item]));
-  const incidentKey = nodeKey({ kind: "incident", id: incident.id });
-  const [selected, setSelected] = useState(incidentKey);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [types, setTypes] = useState<Set<string>>(new Set());
+  const [query, setQuery] = useState("");
+  const [selected, setSelected] = useState<string | null>(() => {
+    try {
+      const [type, value] = JSON.parse(start ?? "null") as unknown[];
+      return typeof type === "string" && typeof value === "string"
+        ? JSON.stringify(["entity", type, value])
+        : null;
+    } catch {
+      return null;
+    }
+  });
   const [hovered, setHovered] = useState<string | null>(null);
-  // Only hovering (or keyboard focus) dims the rest; the selected node just gets a ring.
-  const linked = new Set(hovered ? [hovered] : []);
-  for (const edge of graph.edges) {
-    if (edge.from === hovered) linked.add(edge.to);
-    if (edge.to === hovered) linked.add(edge.from);
+  const [vt, setVt] = useState<Vt | null>(null);
+  const viewport = useRef<HTMLDivElement>(null);
+  const drag = useRef<Drag | null>(null);
+  const suppressClick = useRef(false);
+  const zoomRef = useRef<(factor: number, px: number, py: number) => void>(
+    () => {},
+  );
+
+  const graph = useMemo(
+    () =>
+      buildGraph(detail, view, {
+        expanded,
+        types,
+        query,
+        include: selected ?? undefined,
+      }),
+    [detail, view, expanded, types, query, selected],
+  );
+  const chosen = graph.nodes.find((n) => n.key === selected) ?? null;
+  const shown = graph;
+  const pinned = memory[view];
+  const placed = useMemo(
+    () => layout(shown.nodes, shown.edges, pinned),
+    [shown, pinned],
+  );
+  const current: Vt = vt ?? fit([...placed.values()], VIEW_W, VIEW_H);
+
+  // Before anything changes what is shown, the places the nodes have now are remembered, so they do not move.
+  function remember(extra?: [string, Point]) {
+    const next = new Map(pinned);
+    let changed = false;
+    for (const [key, at] of placed)
+      if (!next.has(key)) {
+        next.set(key, at);
+        changed = true;
+      }
+    if (extra) {
+      next.set(...extra);
+      changed = true;
+    }
+    if (changed) onMemory({ ...memory, [view]: next });
   }
-  const label = (node: GraphNode) =>
-    node.kind === "incident"
-      ? incident.title || node.id
-      : node.kind === "ticket"
-        ? (titles?.[node.id] ?? node.id)
-        : node.kind === "entity"
-          ? (node.value ?? node.id)
-          : node.id;
-  const chosen = positioned.get(selected) ?? positioned.get(incidentKey)!;
-  const scope =
-    chosen.kind === "incident"
-      ? new Set(graph.nodes.map(nodeKey))
-      : reach(nodeKey(chosen), graph.edges);
-  const inScope = graph.nodes.filter((node) => scope.has(nodeKey(node)));
-  const otherTickets = inScope.filter(
-    (node) => node.kind === "ticket" && nodeKey(node) !== nodeKey(chosen),
-  ).length;
-  const alerts = inScope.filter((node) => node.kind === "alert").length;
-  const select = (key: string) => setSelected(key);
-  const decision = chosen.kind === "ticket" ? decisions?.[chosen.id] : null;
+  const change = (apply: () => void) => {
+    remember();
+    apply();
+  };
+  const toggle = (set: Set<string>, value: string) => {
+    const next = new Set(set);
+    if (!next.delete(value)) next.add(value);
+    return next;
+  };
+
+  function zoom(factor: number, px = 0, py = 0) {
+    const k = Math.min(MAX_K, Math.max(MIN_K, current.k * factor));
+    const r = k / current.k;
+    setVt({ k, x: px - (px - current.x) * r, y: py - (py - current.y) * r });
+  }
+  useEffect(() => {
+    zoomRef.current = zoom;
+  });
+  useEffect(() => {
+    const el = viewport.current;
+    if (!el) return;
+    // Only Ctrl/⌘ + wheel zooms, so a plain wheel keeps scrolling the page. React's onWheel is passive, hence the native listener.
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      const box = el.getBoundingClientRect();
+      zoomRef.current(
+        e.deltaY < 0 ? 1.15 : 1 / 1.15,
+        e.clientX - box.left - box.width / 2,
+        e.clientY - box.top - box.height / 2,
+      );
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
+
+  function onPointerDown(e: PointerEvent<HTMLDivElement>) {
+    const target = e.target as HTMLElement;
+    if (e.button !== 0 || target.closest("button, input")) return;
+    suppressClick.current = false;
+    const el = target.closest<HTMLElement>("[data-node]");
+    const key = el?.dataset.node ?? "";
+    remember();
+    drag.current = {
+      kind: el ? "node" : "pan",
+      x: e.clientX,
+      y: e.clientY,
+      key,
+      from: placed.get(key) ?? { x: 0, y: 0 },
+      vt: current,
+      moved: false,
+    };
+    setVt(current);
+    // Capture on the node itself, or the click that follows a press without moving would land on the viewport.
+    (el ?? e.currentTarget).setPointerCapture?.(e.pointerId);
+  }
+  function onPointerMove(e: PointerEvent<HTMLDivElement>) {
+    const d = drag.current;
+    if (!d) return;
+    const dx = e.clientX - d.x;
+    const dy = e.clientY - d.y;
+    if (!d.moved && Math.hypot(dx, dy) < 3) return;
+    d.moved = true;
+    suppressClick.current = true;
+    if (d.kind === "pan") setVt({ ...d.vt, x: d.vt.x + dx, y: d.vt.y + dy });
+    else
+      remember([
+        d.key,
+        { x: d.from.x + dx / d.vt.k, y: d.from.y + dy / d.vt.k },
+      ]);
+  }
+
+  const lit = (n: GNode) => !query.trim() || matches(n, query);
+  const litKeys = new Set(shown.nodes.filter(lit).map((n) => n.key));
+  const entityView = view === "entity";
+  const arrowsOnly = entityView && !chosen && !PLAIN_LINES_BY_DEFAULT;
+  const lines = shown.edges.filter((e) => !arrowsOnly || e.arrow);
+  // What the pointer is on wins over the choice; everything outside it stays on screen and is only faded.
+  const focus = hovered ?? chosen?.key ?? null;
+  const near = focus ? directNeighbours(shown, focus) : null;
+  const incidentNode: GNode = {
+    key: "",
+    kind: "incident",
+    id: detail.incident.id,
+    label: detail.incident.title || detail.incident.id,
+  };
+  const info = chosen ?? incidentNode;
+  const ticket =
+    info.kind === "ticket"
+      ? detail.tickets.find((t) => t.id === info.id)
+      : undefined;
   const importance =
-    chosen.kind === "entity"
-      ? criticality?.find(
-          (item) => item.type === chosen.type && item.value === chosen.value,
+    info.kind === "entity"
+      ? detail.entity_criticality.find(
+          (c) => c.type === info.type && c.value === info.value,
         )?.criticality
       : null;
+  const links =
+    chosen?.kind === "entity" ? arrowLinks(detail, chosen.key) : null;
+  const select = (key: string | null) => change(() => setSelected(key));
+
   return (
     <section className="incident-graph">
-      <div className="incident-graph-modebar">
-        <span>그래프 보기 전환</span>
-        <div role="group" aria-label="그래프 보기">
-          <button type="button" aria-pressed="true">
-            Ticket
+      <div className="incident-graph-toolbar">
+        <div
+          className="incident-graph-modes"
+          role="group"
+          aria-label="그래프 보기"
+        >
+          {(["ticket", "entity"] as const).map((v) => (
+            <button
+              key={v}
+              type="button"
+              aria-pressed={view === v}
+              onClick={() => {
+                if (view === v) return;
+                remember();
+                setSelected(null);
+                setTypes(new Set());
+                setVt(null);
+                onView(v);
+              }}
+            >
+              {v === "ticket" ? "Ticket" : "Entity"}
+            </button>
+          ))}
+        </div>
+        <input
+          type="text"
+          aria-label="노드 검색"
+          placeholder="노드 검색"
+          value={query}
+          onChange={(e) => change(() => setQuery(e.target.value))}
+        />
+        <div
+          className="incident-graph-chips"
+          role="group"
+          aria-label="종류 필터"
+        >
+          {graph.types.map((t) => (
+            <button
+              key={t}
+              type="button"
+              aria-pressed={types.has(t)}
+              onClick={() => change(() => setTypes(toggle(types, t)))}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+        <div
+          className="incident-graph-zoom"
+          role="group"
+          aria-label="확대·이동"
+        >
+          <button type="button" onClick={() => zoom(1.25)}>
+            확대
           </button>
-          <button
-            type="button"
-            aria-pressed="false"
-            disabled
-            aria-disabled="true"
-            title="Entity 보기는 준비 중입니다"
-          >
-            Entity <small className="soon">준비 중</small>
+          <button type="button" onClick={() => zoom(1 / 1.25)}>
+            축소
+          </button>
+          <button type="button" onClick={() => setVt(null)}>
+            화면에 맞추기
           </button>
         </div>
       </div>
-      <p className="incident-graph-note">
-        선은 저장된 후보 탐색 경로입니다. 공격 순서나 최종 선택 이유를 뜻하지
-        않습니다.
-      </p>
-      <div className="incident-graph-legend" aria-label="관계선 범례">
-        <span className="membership">Incident 소속</span>
-        <span className="path">공유 엔티티 연결</span>
-        <span className="dot incident">Incident</span>
-        <span className="dot ticket">Ticket</span>
+      <div className="incident-graph-legend" aria-label="범례">
+        {entityView ? (
+          <>
+            <span className="plain">
+              같은 Alert에 함께 나온 엔티티끼리 이어집니다
+            </span>
+            <span className="arrow">
+              화살표는 Alert에 기록된 출발→목적지 방향이며 공격 순서가 아님
+            </span>
+            {arrowsOnly && <span>나머지 연결은 노드를 선택하면 보입니다</span>}
+          </>
+        ) : (
+          <span className="plain">
+            Incident 소속과 Ticket(펼치면 Alert)에 붙은 엔티티를 잇습니다. 공격
+            순서나 최종 선택 이유를 뜻하지 않습니다.
+          </span>
+        )}
       </div>
-      <p className="incident-graph-scroll-hint">
-        관계도 안에서 가로로 스크롤하거나 키보드로 이동할 수 있습니다. 노드에
-        마우스를 올리면 연결이 강조되고, 클릭하면 상세 정보가 표시됩니다.
-      </p>
-      <div
-        className="incident-graph-viewport"
-        role="region"
-        aria-label="Incident 관계도"
-        tabIndex={0}
-      >
+      {entityView && graph.hidden > 0 && (
+        <p className="incident-graph-note">
+          연결 수 상위 {ENTITY_CAP}개만 표시합니다 (전체 {graph.total}개 중{" "}
+          {graph.nodes.length}개). 나머지는 종류 필터와 검색으로 꺼낼 수
+          있습니다.
+        </p>
+      )}
+      <div className="incident-graph-body">
         <div
-          className="incident-graph-canvas"
-          style={{ width: graph.width, height: graph.height }}
+          ref={viewport}
+          className="incident-graph-viewport"
+          role="region"
+          aria-label="Incident 관계도"
+          tabIndex={0}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={() => (drag.current = null)}
+          onPointerCancel={() => (drag.current = null)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape" && chosen) select(null);
+          }}
         >
-          <svg
-            className="incident-graph-lines"
-            width={graph.width}
-            height={graph.height}
-            aria-hidden="true"
+          <div
+            className="incident-graph-world"
+            style={{
+              transform: `translate(${current.x}px, ${current.y}px) scale(${current.k})`,
+            }}
           >
-            {graph.edges.map((edge) => {
-              const from = positioned.get(edge.from)!;
-              const to = positioned.get(edge.to)!;
-              const x1 = from.x + NODE_WIDTH / 2;
-              const y1 = from.y + MARKER_CENTER;
-              const x2 = to.x + NODE_WIDTH / 2;
-              const y2 = to.y + MARKER_CENTER;
-              // 선 하나만 봐도 무엇을 공유해 이어졌는지 읽히게 가운데에 엔티티를 적는다.
-              const entity =
-                from.kind === "entity"
-                  ? from
-                  : to.kind === "entity"
-                    ? to
-                    : null;
-              const touches =
-                hovered === null ||
-                edge.from === hovered ||
-                edge.to === hovered;
-              return (
-                <g
-                  key={JSON.stringify([edge.from, edge.to, edge.kind])}
-                  className={touches ? "on" : "dim"}
+            <svg className="incident-graph-lines" aria-hidden="true">
+              <defs>
+                <marker
+                  id="incident-graph-arrowhead"
+                  viewBox="0 0 10 10"
+                  refX="9"
+                  refY="5"
+                  markerWidth="7"
+                  markerHeight="7"
+                  orient="auto"
                 >
+                  <path d="M0 0 L10 5 L0 10 z" />
+                </marker>
+              </defs>
+              {lines.map((e) => {
+                const a = placed.get(e.from)!;
+                const b = placed.get(e.to)!;
+                const end = e.arrow ? stop(a, b) : b;
+                const dim = !litKeys.has(e.from) || !litKeys.has(e.to);
+                const fade =
+                  focus !== null && e.from !== focus && e.to !== focus;
+                return (
                   <line
-                    data-relation={edge.relation}
-                    x1={x1}
-                    y1={y1}
-                    x2={x2}
-                    y2={y2}
+                    key={e.key}
+                    data-arrow={e.arrow}
+                    className={
+                      [dim ? "dim" : "", fade ? "faded" : ""]
+                        .join(" ")
+                        .trim() || undefined
+                    }
+                    x1={a.x}
+                    y1={a.y}
+                    x2={end.x}
+                    y2={end.y}
+                    markerEnd={
+                      e.arrow ? "url(#incident-graph-arrowhead)" : undefined
+                    }
                   />
-                  {edge.relation === "path" && entity ? (
-                    <text
-                      className="incident-graph-edge-label"
-                      x={(x1 + x2) / 2}
-                      y={(y1 + y2) / 2}
+                );
+              })}
+            </svg>
+            {shown.nodes.map((n) => {
+              const at = placed.get(n.key)!;
+              const alerts =
+                n.kind === "ticket"
+                  ? (detail.tickets.find((t) => t.id === n.id)?.alert_ids
+                      .length ?? 0)
+                  : 0;
+              const open = expanded.has(n.id);
+              return (
+                <div
+                  key={n.key}
+                  data-node={n.key}
+                  className={[
+                    "incident-graph-node",
+                    n.kind,
+                    n.key === chosen?.key ? "selected" : "",
+                    lit(n) ? "" : "dim",
+                    near && !near.has(n.key) ? "faded" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                  style={{ left: at.x - NODE_W / 2, top: at.y - NODE_H / 2 }}
+                  role="group"
+                  tabIndex={0}
+                  aria-label={nodeText(n)}
+                  aria-current={n.key === chosen?.key ? "true" : undefined}
+                  onMouseEnter={() => setHovered(n.key)}
+                  onMouseLeave={() => setHovered(null)}
+                  onClick={() => {
+                    if (suppressClick.current) suppressClick.current = false;
+                    else select(n.key);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      select(n.key);
+                    }
+                  }}
+                >
+                  <i className="marker" aria-hidden="true" />
+                  <strong>{n.kind === "entity" ? n.type : KIND[n.kind]}</strong>
+                  <span>{n.label}</span>
+                  {alerts > 0 && (
+                    <button
+                      type="button"
+                      aria-expanded={open}
+                      aria-label={`Alert ${open ? "접기" : "펼치기"}: ${n.label}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        change(() => setExpanded(toggle(expanded, n.id)));
+                      }}
                     >
-                      {nodeText(entity)}
-                    </text>
-                  ) : null}
-                </g>
+                      {open ? "−" : "+"}
+                      {alerts}
+                    </button>
+                  )}
+                </div>
               );
             })}
-          </svg>
-          {graph.nodes.map((node) => {
-            const key = nodeKey(node);
-            return (
-              <div
-                key={key}
-                className={[
-                  "incident-graph-node",
-                  node.kind,
-                  key === selected ? "selected" : "",
-                  hovered === null || linked.has(key) ? "" : "dim",
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-                style={{ left: node.x, top: node.y }}
-                role="group"
-                tabIndex={0}
-                aria-label={nodeText(node)}
-                aria-current={key === selected ? "true" : undefined}
-                onMouseEnter={() => setHovered(key)}
-                onMouseLeave={() => setHovered(null)}
-                onFocus={() => setHovered(key)}
-                onBlur={() => setHovered(null)}
-                onClick={() => select(key)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    select(key);
-                  }
-                }}
-              >
-                <i className="marker" aria-hidden="true" />
-                <strong>
-                  {node.kind === "entity"
-                    ? (node.type ?? "Entity")
-                    : nodeName[node.kind]}
-                </strong>
-                <span>{label(node)}</span>
-              </div>
-            );
-          })}
+          </div>
         </div>
-      </div>
-      <aside className="incident-graph-inspector" aria-label="선택된 노드">
-        <span className="eyebrow">
-          선택된 노드 · {nodeName[chosen.kind].toUpperCase()}
-        </span>
-        <h4>{label(chosen)}</h4>
-        {decision ? <span className="badge decision">{decision}</span> : null}
-        <code>
-          {chosen.kind === "entity" ? (chosen.type ?? "") : chosen.id}
-        </code>
-        <dl>
-          <div>
-            <dt>연결 Ticket</dt>
-            <dd>
-              {chosen.kind === "incident"
-                ? incident.ticket_ids.length
-                : otherTickets}
-            </dd>
-          </div>
-          <div>
-            <dt>관련 Alert</dt>
-            <dd>{alerts}</dd>
-          </div>
-          {importance != null ? (
-            <div>
-              <dt>자산 중요도</dt>
-              <dd>{criticalityLabel(importance)}</dd>
-            </div>
+        <aside className="incident-graph-inspector" aria-label="선택된 노드">
+          <span className="eyebrow">
+            {chosen
+              ? `선택된 노드 · ${KIND[info.kind].toUpperCase()}`
+              : "Incident 요약"}
+          </span>
+          <h4>{info.label}</h4>
+          {ticket?.decision ? (
+            <span className="badge decision">{ticket.decision}</span>
           ) : null}
-        </dl>
-      </aside>
-      {ticketGraphs === undefined || ticketGraphs.length === 0 ? (
-        <p className="incident-graph-empty">
-          Ticket별 탐색 기록을 받지 못했습니다.
-        </p>
-      ) : null}
-      <details className="incident-graph-basis">
-        <summary>분류 근거(고급)</summary>
-        {graph.paths.length === 0 ? (
-          <p className="incident-graph-empty">
-            현재 Incident로 이어지는 저장 경로가 없습니다. Ticket 소속은 별도로
-            표시합니다.
-          </p>
-        ) : (
-          <>
-            <h4>저장된 연결 경로</h4>
-            <ol className="incident-graph-routes" aria-label="저장된 연결 경로">
-              {graph.paths.map(({ source, path }, index) => (
-                <li key={`${source}-${path.ticket_id}-${index}`}>
-                  {[
-                    `출발 Ticket ${source}`,
-                    ...path.nodes
-                      .slice(1)
-                      .filter((node) => node.kind !== "incident")
-                      .map(nodeText),
-                  ].join(" → ")}
-                </li>
+          <code>{info.kind === "entity" ? info.type : info.id}</code>
+          <dl>
+            {facts(detail, info).map(([name, value]) => (
+              <div key={name}>
+                <dt>{name}</dt>
+                <dd>{value}</dd>
+              </div>
+            ))}
+            {importance != null ? (
+              <div>
+                <dt>자산 중요도</dt>
+                <dd>{criticalityLabel(importance)}</dd>
+              </div>
+            ) : null}
+          </dl>
+          {chosen && (
+            <button type="button" onClick={() => select(null)}>
+              선택 해제
+            </button>
+          )}
+          {links && (links.from.length > 0 || links.to.length > 0) && (
+            <ul aria-label="이 노드의 연결" className="incident-graph-links">
+              {links.from.slice(0, LINKS_SHOWN).map((n) => (
+                <li key={n.key}>{`${n.type}: ${n.value} → 이 노드`}</li>
               ))}
-            </ol>
-          </>
-        )}
-        <h4>Ticket별 분류 당시 탐색 상태</h4>
-        <ul className="incident-graph-statuses">
-          {incident.ticket_ids.map((id) => (
-            <li key={id}>
-              {titles?.[id] && (
-                <span className="status-title">{titles[id]}</span>
-              )}
-              <span>{id}</span>
-              <strong>{statusText(byTicket.get(id))}</strong>
-            </li>
-          ))}
-        </ul>
-      </details>
+              {links.to.slice(0, LINKS_SHOWN).map((n) => (
+                <li key={n.key}>{`이 노드 → ${n.type}: ${n.value}`}</li>
+              ))}
+            </ul>
+          )}
+          {chosen && (
+            <small>
+              이 노드와 직접 연결된 노드·선만 진하게 보입니다. 나머지는 흐리게
+              남아 있습니다.
+            </small>
+          )}
+        </aside>
+      </div>
+      <p className="incident-graph-hint">
+        Ctrl(⌘)+휠로 확대·축소하고, 배경을 끌어 이동하고, 노드를 끌어 옮길 수
+        있습니다. 노드는 Tab으로 고르고 Enter로 선택하며 Esc로 선택을
+        해제합니다.
+      </p>
     </section>
   );
 }

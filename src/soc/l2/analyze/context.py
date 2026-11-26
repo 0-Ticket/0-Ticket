@@ -25,6 +25,7 @@ class AnalyzeContext:
     ticket_graphs: tuple[dict[str, Any], ...]
     window: dict[str, Any]
     previous_artifact: dict[str, Any] | None
+    rejection: dict[str, Any] | None
     evidence_ids: tuple[str, ...]
     asset_lookup_failed: bool
     max_range_days: int
@@ -41,6 +42,7 @@ class AnalyzeContext:
             "window": self.window,
             "max_range_days": self.max_range_days,
             "previous_artifact": self.previous_artifact,
+            "rejection": self.rejection,
             "asset_lookup_failed": self.asset_lookup_failed,
         }
 
@@ -139,6 +141,7 @@ def read_context(
         ticket_graphs=tuple(ticket_graphs),
         window=window,
         previous_artifact=previous_artifact,
+        rejection=_latest_rejection(conn, incident_id),
         evidence_ids=tuple(evidence),
         asset_lookup_failed=asset_failed,
         max_range_days=max_range_days,
@@ -157,3 +160,23 @@ def _previous_artifact(conn: psycopg.Connection, incident_id: str) -> dict[str, 
     data = dict(row)
     data["created_at"] = to_epoch_ms(data["created_at"])
     return validate_contract("incident_artifact", data).model_dump(mode="json")
+
+
+def _latest_rejection(conn: psycopg.Connection, incident_id: str) -> dict[str, Any] | None:
+    """가장 최근 검토가 반려이고 그 뒤에 성공한 Artifact가 아직 없을 때만 사유(또는 사실)를 낸다.
+
+    실패한 재시도는 Artifact가 없어 사유가 유지되고, 성공한 재분석이나 승인 뒤에는 나오지 않는다.
+    사유는 사람이 쓴 문장이라 호출하는 쪽이 데이터로만 넘긴다(D-082).
+    """
+    with conn.cursor(row_factory=dict_row) as cursor:
+        row = cursor.execute(
+            "SELECT r.reason, r.created_at FROM incident_reviews r "
+            "WHERE r.incident_id = %s AND r.decision = 'reject' "
+            "AND r.id = (SELECT max(id) FROM incident_reviews WHERE incident_id = %s) "
+            "AND NOT EXISTS (SELECT 1 FROM incident_artifacts a "
+            "WHERE a.incident_id = r.incident_id AND a.analysis_round > r.analysis_round)",
+            (incident_id, incident_id),
+        ).fetchone()
+    if row is None:
+        return None
+    return {"reason": row["reason"], "decided_at": to_epoch_ms(row["created_at"])}

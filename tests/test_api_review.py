@@ -5,7 +5,9 @@
 샘플: tests/fixtures/api/ui_seed.json(손으로 만든 시드). Incident 2가 awaiting_review다.
 """
 
+import json
 import threading
+from pathlib import Path
 
 import psycopg
 import pytest
@@ -67,11 +69,52 @@ def test_malformed_id_is_404_before_any_db_access(action, bad, monkeypatch):
     assert post(admin_client(), bad, action).status_code == 404
 
 
-@pytest.mark.parametrize("action", ACTIONS)
-def test_review_routes_have_no_body_and_ignore_extra_fields(action, monkeypatch):
+def test_approve_has_no_body_and_ignores_it(monkeypatch):
     monkeypatch.delenv("DATABASE_URL", raising=False)
-    r = admin_client().post(f"/api/incidents/{REVIEW}/{action}", json={"reason": "x"})
-    assert r.status_code == 503  # 본문은 읽지 않는다. 사유 입력은 없다
+    r = admin_client().post(f"/api/incidents/{REVIEW}/approve", json={"reason": "x"})
+    assert r.status_code == 503  # 본문은 읽지 않는다. 사유 입력은 반려에만 있다(D-082)
+
+
+@pytest.mark.parametrize(
+    "body", [None, {}, {"reason": None}, {"reason": ""}, {"reason": "  \n "}, {"reason": "ok"}]
+)
+def test_reject_accepts_an_optional_reason(body, monkeypatch):
+    monkeypatch.delenv("DATABASE_URL", raising=False)  # 검증을 지나면 DB 없음(503)까지 간다
+    r = admin_client().post(f"/api/incidents/{REVIEW}/reject", json=body)
+    assert r.status_code == 503
+
+
+def test_reject_without_any_body_still_works(monkeypatch):
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    assert post(admin_client(), REVIEW, "reject").status_code == 503
+
+
+def test_reject_reason_edges(monkeypatch):
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    client = admin_client()
+    url = f"/api/incidents/{REVIEW}/reject"
+    assert client.post(url, json={"reason": "가" * 500}).status_code == 503
+    assert client.post(url, json={"reason": " " + "가" * 500 + " "}).status_code == 503
+    assert client.post(url, json={"reason": "가" * 501}).status_code == 422
+    assert client.post(url, json={"reason": "a\tb\r\nc"}).status_code == 503  # 탭·줄바꿈은 허용
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"reason": "a\x00b"},
+        {"reason": "a\x1bb"},
+        {"reason": "a\x7fb"},
+        {"reason": 123},
+        {"reason": ["x"]},
+        {"why": "x"},
+        {"reason": "x", "extra": 1},
+    ],
+)
+def test_reject_refuses_bad_reasons_and_unknown_fields(body, monkeypatch):
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    r = admin_client().post(f"/api/incidents/{REVIEW}/reject", json=body)
+    assert r.status_code == 422
 
 
 def test_approval_permissions_are_used_by_routes_and_close_is_not():
@@ -120,7 +163,7 @@ def test_approve_confirms_the_incident_and_creates_one_open_case(review_db):
     assert body["incident"]["id"] == REVIEW and body["incident"]["status"] == "confirmed"
     after = incident(review_db, REVIEW)
     assert after["status"] == "confirmed" and after["updated_at"] > before["updated_at"]
-    assert after["review_round"] == before["review_round"]
+    assert after["review_round"] == before["review_round"] + 1  # 승인도 검토 한 번이다(D-082)
     assert after["analysis_round"] == before["analysis_round"]
     (case,) = cases_of(review_db, REVIEW)
     assert body["case_id"] == case["id"] and case["id"].startswith("cas_")
@@ -176,8 +219,8 @@ def test_reject_sends_the_incident_back_to_analyzing_without_a_case(review_db):
     assert r.json()["incident"]["status"] == "analyzing" and r.json()["case_id"] is None
     after = incident(review_db, REVIEW)
     assert after["status"] == "analyzing" and after["updated_at"] > before["updated_at"]
-    # review_round·한도는 이번 범위가 아니다(별도 이슈). 다른 값은 그대로다
-    for key in ("review_round", "analysis_round", "title", "summary", "entities", "details"):
+    assert after["review_round"] == before["review_round"] + 1  # 한도는 후속이다(D-082)
+    for key in ("analysis_round", "title", "summary", "entities", "details"):
         assert after[key] == before[key]
     assert cases_of(review_db, REVIEW) == []
 
@@ -254,3 +297,181 @@ def test_simultaneous_requests_let_exactly_one_through(review_db, pair):
     n_cases = len(cases_of(review_db, REVIEW))
     assert (final, n_cases) in {("confirmed", 1), ("analyzing", 0)}
     assert (final == "confirmed") == (n_cases == 1)
+
+
+# 검토 이력(#375, D-082)
+
+SAMPLES = json.loads(
+    (Path(__file__).parent / "fixtures" / "api" / "incident_reviews.json").read_text()
+)
+
+
+def reviews_of(url, incident_id):
+    return q(url, "SELECT * FROM incident_reviews WHERE incident_id=%s ORDER BY id", incident_id)
+
+
+def reject_with(client, incident_id, reason):
+    return client.post(f"/api/incidents/{incident_id}/reject", json={"reason": reason})
+
+
+def back_to_review(url, incident_id):
+    """재분석이 끝나 다시 검토를 기다리는 상태를 만든다(analysis_round는 한 라운드 올린다)."""
+    with psycopg.connect(url, autocommit=True) as conn:
+        conn.execute(
+            "UPDATE incidents SET status='awaiting_review', analysis_round=analysis_round+1 "
+            "WHERE id=%s",
+            (incident_id,),
+        )
+
+
+@pytest.mark.db
+def test_reject_with_a_reason_leaves_one_review_row(review_db):
+    before = incident(review_db, REVIEW)
+    r = reject_with(admin_client(), REVIEW, "근거가 부족하다")
+    assert r.status_code == 200, r.text
+    after = incident(review_db, REVIEW)
+    assert after["review_round"] == before["review_round"] + 1
+    (row,) = reviews_of(review_db, REVIEW)
+    assert (row["decision"], row["reason"], row["decided_by"]) == (
+        "reject",
+        "근거가 부족하다",
+        "tester",
+    )
+    assert row["review_round"] == after["review_round"]
+    assert row["analysis_round"] == before["analysis_round"]
+    assert row["created_at"] is not None
+
+
+@pytest.mark.db
+@pytest.mark.parametrize("body", [None, {}, {"reason": None}, {"reason": ""}, {"reason": " \n\t "}])
+def test_reject_without_a_usable_reason_stores_null(review_db, body):
+    r = admin_client().post(f"/api/incidents/{REVIEW}/reject", json=body)
+    assert r.status_code == 200, r.text
+    (row,) = reviews_of(review_db, REVIEW)
+    assert (row["decision"], row["reason"]) == ("reject", None)
+
+
+@pytest.mark.db
+def test_reason_is_trimmed_and_the_limit_is_in_code_points(review_db):
+    assert reject_with(admin_client(), REVIEW, "  앞뒤 공백  ").status_code == 200
+    assert reviews_of(review_db, REVIEW)[0]["reason"] == "앞뒤 공백"
+    back_to_review(review_db, REVIEW)
+    edge = "😀" * 500  # 500자(코드포인트)는 통과한다
+    assert reject_with(admin_client(), REVIEW, edge).status_code == 200
+    assert reviews_of(review_db, REVIEW)[1]["reason"] == edge
+    back_to_review(review_db, REVIEW)
+    assert reject_with(admin_client(), REVIEW, "😀" * 501).status_code == 422
+    assert len(reviews_of(review_db, REVIEW)) == 2
+
+
+@pytest.mark.db
+@pytest.mark.parametrize("text", SAMPLES["reasons"])
+def test_special_characters_are_stored_and_returned_verbatim(review_db, text):
+    client = admin_client()
+    assert reject_with(client, REVIEW, text).status_code == 200
+    expected = text.strip()
+    assert reviews_of(review_db, REVIEW)[0]["reason"] == expected
+    shown = client.get(f"/api/incidents/{REVIEW}").json()["reviews"]
+    assert [x["reason"] for x in shown] == [expected]
+    assert len(q(review_db, "SELECT id FROM incidents")) == len(
+        SEED["incidents"]
+    )  # 문자열이 SQL이 되지 않는다
+
+
+@pytest.mark.db
+def test_approve_leaves_a_review_row_and_raises_review_round(review_db):
+    before = incident(review_db, REVIEW)
+    assert post(admin_client(), REVIEW, "approve").status_code == 200
+    (row,) = reviews_of(review_db, REVIEW)
+    assert (row["decision"], row["reason"], row["decided_by"]) == ("approve", None, "tester")
+    assert (
+        row["review_round"]
+        == before["review_round"] + 1
+        == incident(review_db, REVIEW)["review_round"]
+    )
+    assert row["analysis_round"] == before["analysis_round"]
+
+
+@pytest.mark.db
+def test_repeated_rejections_keep_every_earlier_review(review_db):
+    client = admin_client()
+    first_round = incident(review_db, REVIEW)["review_round"]
+    for number, reason in enumerate(["첫째", None, "셋째"], start=1):
+        assert reject_with(client, REVIEW, reason).status_code == 200
+        back_to_review(review_db, REVIEW)
+        assert incident(review_db, REVIEW)["review_round"] == first_round + number
+    assert post(client, REVIEW, "approve").status_code == 200
+    rows = reviews_of(review_db, REVIEW)
+    assert [(x["decision"], x["reason"], x["review_round"]) for x in rows] == [
+        ("reject", "첫째", first_round + 1),
+        ("reject", None, first_round + 2),
+        ("reject", "셋째", first_round + 3),
+        ("approve", None, first_round + 4),
+    ]
+    assert [x["analysis_round"] for x in rows] == sorted(x["analysis_round"] for x in rows)
+    shown = client.get(f"/api/incidents/{REVIEW}").json()["reviews"]
+    assert [(x["decision"], x["reason"], x["review_round"]) for x in shown] == [
+        (x["decision"], x["reason"], x["review_round"]) for x in rows
+    ]
+    assert all("id" not in x for x in shown)
+    assert {x["decided_by"] for x in shown} == {"tester"}
+
+
+@pytest.mark.db
+@pytest.mark.parametrize("action", ACTIONS)
+def test_refused_review_leaves_no_row_and_no_round(review_db, action):
+    target = INC["3"]  # confirmed
+    before = incident(review_db, target)
+    r = admin_client().post(
+        f"/api/incidents/{target}/{action}", json={"reason": "x"} if action == "reject" else None
+    )
+    assert r.status_code == 409
+    assert incident(review_db, target) == before
+    assert reviews_of(review_db, target) == []
+
+
+@pytest.mark.db
+def test_incident_without_history_has_an_empty_review_list(review_db):
+    for number in INC:
+        body = admin_client().get(f"/api/incidents/{INC[number]}").json()
+        assert body["reviews"] == []
+
+
+@pytest.mark.db
+def test_reviews_are_readable_with_incident_read_only(review_db):
+    assert reject_with(admin_client(), REVIEW, "사유").status_code == 200
+    reader = make_client(make_user("analyst", frozenset(ANALYST_DEFAULT)))
+    body = reader.get(f"/api/incidents/{REVIEW}").json()
+    assert [(x["decision"], x["reason"], x["decided_by"]) for x in body["reviews"]] == [
+        ("reject", "사유", "tester")
+    ]
+
+
+@pytest.mark.db
+def test_simultaneous_reviews_leave_exactly_one_row(review_db):
+    results: list[int] = []
+    gate = threading.Barrier(2)
+
+    def run(action):
+        app = create_app(load_settings())
+        app.dependency_overrides[session_user] = lambda: make_user("admin")
+        from starlette.testclient import TestClient
+
+        client = TestClient(app, headers={"origin": ORIGIN})
+        gate.wait()
+        results.append(
+            client.post(
+                f"/api/incidents/{REVIEW}/{action}",
+                json={"reason": "동시"} if action == "reject" else None,
+            ).status_code
+        )
+
+    before = incident(review_db, REVIEW)["review_round"]
+    threads = [threading.Thread(target=run, args=(a,)) for a in ("reject", "approve")]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert sorted(results) == [200, 409]
+    assert len(reviews_of(review_db, REVIEW)) == 1
+    assert incident(review_db, REVIEW)["review_round"] == before + 1

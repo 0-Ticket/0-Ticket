@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ApiError, send } from "./api/client";
 import type { ReviewResult } from "./api/generated/ReviewResult";
@@ -5,7 +6,9 @@ import { useCan } from "./auth/session";
 import { Button } from "./components/ui/button";
 import { statusNames } from "./constants";
 
-type Action = "approve" | "reject";
+type Action = { action: "approve" } | { action: "reject"; reason?: string };
+
+const REASON_MAX = 500; // Same limit as the API (D-082).
 
 function message(error: unknown) {
   if (error instanceof ApiError) {
@@ -29,11 +32,15 @@ export function ReviewActions({
 }) {
   const can = useCan();
   const client = useQueryClient();
+  const [asking, setAsking] = useState(false);
   const review = useMutation<ReviewResult, Error, Action>({
-    mutationFn: (action) =>
+    mutationFn: (request) =>
       send<ReviewResult>(
         "POST",
-        `incidents/${encodeURIComponent(id)}/${action}`,
+        `incidents/${encodeURIComponent(id)}/${request.action}`,
+        request.action === "reject" && request.reason
+          ? { reason: request.reason }
+          : undefined,
       ),
     onSuccess: (result) => {
       if (result.case_id) onApproved?.(result.case_id);
@@ -54,7 +61,7 @@ export function ReviewActions({
       {approve && (
         <Button
           disabled={review.isPending}
-          onClick={() => review.mutate("approve")}
+          onClick={() => review.mutate({ action: "approve" })}
         >
           승인
         </Button>
@@ -63,11 +70,65 @@ export function ReviewActions({
         <Button
           variant="outline"
           disabled={review.isPending}
-          onClick={() => review.mutate("reject")}
+          onClick={() => setAsking(true)}
         >
           반려
         </Button>
       )}
+      {asking && (
+        <RejectDialog
+          onCancel={() => setAsking(false)}
+          onConfirm={(reason) => {
+            setAsking(false);
+            review.mutate({ action: "reject", reason });
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+// The reason is optional and is shown later as plain text. An empty box still rejects (D-082).
+function RejectDialog({
+  onCancel,
+  onConfirm,
+}: {
+  onCancel: () => void;
+  onConfirm: (reason: string) => void;
+}) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  const [reason, setReason] = useState("");
+  useEffect(() => {
+    const element = dialog.current;
+    element?.showModal();
+    return () => element?.close();
+  }, []);
+  return (
+    <dialog
+      ref={dialog}
+      className="review-dialog"
+      aria-labelledby="reject-title"
+      onCancel={onCancel}
+    >
+      <h2 id="reject-title">Incident 반려</h2>
+      <p>반려하면 L2가 다시 분석해요. 사유는 재분석에 참고로 전달돼요.</p>
+      <div className="field">
+        <label htmlFor="reject-reason">반려 사유 (선택)</label>
+        <textarea
+          id="reject-reason"
+          value={reason}
+          maxLength={REASON_MAX}
+          rows={4}
+          onChange={(event) => setReason(event.target.value)}
+        />
+        <small>{`${reason.length}/${REASON_MAX}`}</small>
+      </div>
+      <div className="review-dialog-actions">
+        <Button variant="outline" onClick={onCancel}>
+          취소
+        </Button>
+        <Button onClick={() => onConfirm(reason.trim())}>반려하기</Button>
+      </div>
+    </dialog>
   );
 }

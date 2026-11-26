@@ -1,8 +1,9 @@
 """UI 조회 전용 모델. 도메인 계약 자체에는 계산 필드를 추가하지 않는다."""
 
+import unicodedata
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from soc.api.models import _Model
 from soc.contracts.generated.alert_schema import Alert
@@ -170,6 +171,17 @@ class EntityCriticality(_Model):
     criticality: int = Field(ge=1, le=5)
 
 
+class IncidentReview(_Model):
+    """승인·반려 한 건(#375, D-082). 사유는 사람이 쓴 문장이라 텍스트로만 보인다. id는 없다."""
+
+    decision: Literal["approve", "reject"]
+    reason: str | None
+    decided_by: str
+    review_round: int
+    analysis_round: int
+    created_at: int
+
+
 class IncidentDetail(_Model):
     incident: Incident
     tickets: list[IncidentTicket]
@@ -178,7 +190,30 @@ class IncidentDetail(_Model):
     proposals: list[IncidentProposal]
     ticket_graphs: list[IncidentTicketGraph] = Field(default_factory=list)
     entity_criticality: list[EntityCriticality]
+    reviews: list[IncidentReview] = Field(default_factory=list)
     seed_source: str | None
+
+
+REASON_MAX = 500
+
+
+class RejectBody(_Model):
+    """반려 요청 본문. 사유는 선택이다. 공백을 자르고 빈 값은 None이다(D-082)."""
+
+    reason: str | None = None
+
+    @field_validator("reason")
+    @classmethod
+    def _clean(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        # 탭·줄바꿈을 뺀 제어문자는 거절한다. 공백만 있는 값은 사유가 없는 것이다
+        if any(unicodedata.category(c) == "Cc" and c not in "\t\n\r" for c in value):
+            raise ValueError("control character")
+        value = value.strip()
+        if len(value) > REASON_MAX:
+            raise ValueError("too long")
+        return value or None
 
 
 class ReviewResult(_Model):

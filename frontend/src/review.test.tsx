@@ -108,22 +108,111 @@ test("approving posts once, reloads the detail, and the lists and dashboard are 
   });
 });
 
-test("rejecting posts to the reject route", async () => {
-  dashboard();
-  serve(detail());
-  let hit = "";
+function serveReject() {
+  const sent: { path: string; body: string }[] = [];
   server.use(
-    http.post("*/api/incidents/:id/reject", ({ request }) => {
-      hit = new URL(request.url).pathname;
+    http.post("*/api/incidents/:id/reject", async ({ request }) => {
+      sent.push({
+        path: new URL(request.url).pathname,
+        body: await request.text(),
+      });
       return HttpResponse.json({
         incident: { ...incident, status: "analyzing", display_severity: 5 },
         case_id: null,
       });
     }),
   );
-  const dialog = await open();
-  fireEvent.click(await within(dialog).findByRole("button", { name: "반려" }));
-  await waitFor(() => expect(hit).toBe(`/api/incidents/${incident.id}/reject`));
+  return sent;
+}
+async function openRejectDialog() {
+  const page = await open();
+  fireEvent.click(await within(page).findByRole("button", { name: "반려" }));
+  return screen.getByRole("dialog", { name: "Incident 반려" });
+}
+
+test("rejecting asks in a dialog with an optional reason box and sends nothing until confirmed", async () => {
+  dashboard();
+  serve(detail());
+  const sent = serveReject();
+  const dialog = await openRejectDialog();
+  const box = within(dialog).getByRole("textbox", { name: /반려 사유/ });
+  expect(box).toHaveAttribute("maxlength", "500");
+  expect(box).not.toBeRequired();
+  expect(sent).toEqual([]);
+});
+
+test("confirming with the reason box empty still rejects, with no body", async () => {
+  dashboard();
+  serve(detail());
+  const sent = serveReject();
+  const dialog = await openRejectDialog();
+  fireEvent.click(within(dialog).getByRole("button", { name: "반려하기" }));
+  await waitFor(() => expect(sent).toHaveLength(1));
+  expect(sent[0]).toEqual({
+    path: `/api/incidents/${incident.id}/reject`,
+    body: "",
+  });
+});
+
+test("a reason with only spaces is not sent", async () => {
+  dashboard();
+  serve(detail());
+  const sent = serveReject();
+  const dialog = await openRejectDialog();
+  fireEvent.change(within(dialog).getByRole("textbox"), {
+    target: { value: "  \n " },
+  });
+  fireEvent.click(within(dialog).getByRole("button", { name: "반려하기" }));
+  await waitFor(() => expect(sent).toHaveLength(1));
+  expect(sent[0].body).toBe("");
+});
+
+test("confirming with a reason sends it as the reason field, text as typed", async () => {
+  dashboard();
+  serve(detail());
+  const sent = serveReject();
+  const dialog = await openRejectDialog();
+  fireEvent.change(within(dialog).getByRole("textbox"), {
+    target: { value: "근거가 부족해요 <b>x</b>" },
+  });
+  fireEvent.click(within(dialog).getByRole("button", { name: "반려하기" }));
+  await waitFor(() => expect(sent).toHaveLength(1));
+  expect(JSON.parse(sent[0].body)).toEqual({
+    reason: "근거가 부족해요 <b>x</b>",
+  });
+});
+
+test("cancelling closes the dialog without a request and forgets the typed reason", async () => {
+  dashboard();
+  serve(detail());
+  const sent = serveReject();
+  const dialog = await openRejectDialog();
+  fireEvent.change(within(dialog).getByRole("textbox"), {
+    target: { value: "버릴 사유" },
+  });
+  fireEvent.click(within(dialog).getByRole("button", { name: "취소" }));
+  await waitFor(() =>
+    expect(screen.queryByRole("dialog", { name: "Incident 반려" })).toBeNull(),
+  );
+  expect(sent).toEqual([]);
+  const again = await openRejectDialog();
+  expect(within(again).getByRole("textbox")).toHaveValue("");
+});
+
+test("a refused rejection (409) keeps the message on the page and reloads", async () => {
+  dashboard();
+  serve(detail());
+  server.use(
+    http.post("*/api/incidents/:id/reject", () =>
+      HttpResponse.json(
+        { error: "incident_not_awaiting_review", status: "analyzing" },
+        { status: 409 },
+      ),
+    ),
+  );
+  const dialog = await openRejectDialog();
+  fireEvent.click(within(dialog).getByRole("button", { name: "반려하기" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("이미 처리된");
 });
 
 test("a request refused with 409 says the incident was already handled and reloads", async () => {
