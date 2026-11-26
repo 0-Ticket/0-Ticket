@@ -14,6 +14,7 @@ from psycopg.types.json import Jsonb
 from soc.agent import AgentResult, AgentTask, run_agent
 from soc.agent.types import TaskPrompt
 from soc.contracts import to_datetime, to_epoch_ms, validate_contract
+from soc.evidence import issue
 from soc.l1.ticketing import _insert_ticket, _make_ticket
 from soc.l2.branch.outbox import enqueue
 from soc.similar.index import make_indexer
@@ -122,8 +123,10 @@ def _task(conn: psycopg.Connection, subject: dict[str, Any], attempt: int) -> Ag
         task="l1_alert_triage" if kind == "alert" else "l1_ticket_judgment",
         prompt=TaskPrompt(text=_PROMPT, version=hashlib.sha256(_PROMPT.encode()).hexdigest()),
         data=data,
-        output_contract="verdict",
+        # 모델 출력은 저장하는 Verdict에 siem_refs를 더한 모양이다(#382). 저장 전에 뗀다
+        output_contract="l1_verdict",
         cited_ids=lambda output: output["evidence_ids"],
+        cited_refs=lambda output: output["siem_refs"],
         subject_type=kind,
         subject_id=subject_id,
         allowed_evidence_ids=tuple(alert["id"] for alert in alerts),
@@ -164,6 +167,8 @@ class L1Worker:
         run: Run = run_agent,
         clock: Callable[[], datetime] = _utcnow,
         indexer: Indexer | None = None,
+        siem_config: dict[str, Any] | None = None,
+        evidence_profile: str = "",
     ) -> None:
         """database_url은 쓰기 DB 주소, threshold는 0~1 확신도 임계값이다.
 
@@ -174,6 +179,9 @@ class L1Worker:
             raise ValueError("L1 confidence_threshold는 0과 1 사이다")
         self._database_url = database_url
         self._threshold = float(threshold)
+        # 근거 발급(#382). 모델이 인용한 SIEM 문서를 코드가 저장해 evt_ ID를 발급한다
+        self._siem_config = siem_config or {}
+        self._evidence_profile = evidence_profile
         self._run = run
         self._clock = clock
         self._indexer = indexer
@@ -211,7 +219,8 @@ class L1Worker:
                     logger.warning("L1 실행 실패 subject=%s (%s)", subject_id, result.failure)
                     self._failure(conn, subject_id)
                     return
-                self._apply(conn, subject_id, result.output)
+                verdict = self._settle(conn, result)
+                self._apply(conn, subject_id, verdict)
                 self._index(conn, subject_id)
         except Exception as exc:
             logger.warning("L1 처리 예외 subject=%s (%s)", subject_id, type(exc).__name__)
@@ -241,6 +250,30 @@ class L1Worker:
             ).fetchone()
             if row["failures"] >= 3:
                 self._save(conn, subject_id, "held", None)
+
+    def _settle(self, conn: psycopg.Connection, result: AgentResult) -> dict[str, Any]:
+        """모델 출력에서 저장할 Verdict를 만든다(#382).
+
+        인용한 SIEM 문서를 발급해 그 evt_ ID를 evidence_ids에 더하고 siem_refs를 뗀다.
+        발급 전 문서는 ID가 없어 저장된 Verdict에 남기면 되돌릴 수 없는 포인터가 된다.
+        발급에 실패한 문서는 버린다 — 그 근거만 빠지고 판정은 그대로 간다.
+        """
+        verdict = {k: v for k, v in result.output.items() if k != "siem_refs"}
+        if not result.cited_siem_refs:
+            return verdict
+        issued = issue(
+            conn,
+            result.cited_siem_refs,
+            siem_config=self._siem_config,
+            siem_profile=self._evidence_profile,
+            now_ms=to_epoch_ms(self._clock()),
+        )
+        if issued.dropped:
+            logger.warning("L1 근거 발급 실패 %d건", issued.dropped)
+        existing = verdict["evidence_ids"]
+        added = [i for i in issued.evidence_ids.values() if i not in existing]
+        verdict["evidence_ids"] = [*existing, *added]
+        return verdict
 
     def _apply(self, conn: psycopg.Connection, subject_id: str, verdict: dict[str, Any]) -> None:
         """DB 연결에서 대상 ID가 대기 중이면 검증할 Verdict를 적용한다."""
@@ -288,4 +321,14 @@ def build_worker(config: dict[str, Any]) -> L1Worker:
     threshold = config["agent"]["l1"]["confidence_threshold"]
     similar = services.snapshot().get(SERVICE_NAME)  # 실행기가 시작할 때 만든 임베더와 저장소(#313)
     indexer = None if similar is None else make_indexer(similar.embedder, similar.store)
-    return L1Worker(database_url, threshold, indexer=indexer)
+    siem = config["tools"].get("siem", {})
+    evidence_profile = siem.get("evidence_siem_profile", "")
+    if not isinstance(evidence_profile, str) or not evidence_profile:
+        raise ValueError("[tools.siem] evidence_siem_profile이 필요하다")
+    return L1Worker(
+        database_url,
+        threshold,
+        indexer=indexer,
+        siem_config=dict(siem),
+        evidence_profile=evidence_profile,
+    )
