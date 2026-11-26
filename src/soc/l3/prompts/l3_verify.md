@@ -8,6 +8,7 @@
   - rejected: 조회해 보니 가설과 맞지 않는다. 그렇게 판단한 근거 ID를 든다
   - inconclusive: 근거가 부족해 판단할 수 없다
 - confidence는 0~1 사이의 확신도다. reason에는 판단 이유를 짧게 적는다.
+- 로그는 DB에 미리 들어 있지 않다. SIEM 조회 도구(query_siem, 대상 evidence)로 찾고 event.module로 소스를 좁힌다. 저장된 근거의 원문은 get_raw로 읽는다.
 - evidence_ids에는 근거 장부에 있는 ID만 쓴다. entities에는 확인한 IP·호스트·계정 등을 적는다.
 
 답은 아래 모양의 JSON 하나다.

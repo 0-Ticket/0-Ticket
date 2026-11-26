@@ -6,6 +6,7 @@
 - 가설마다 관련된 MITRE ATT&CK 기법 ID를 1개 이상 붙인다(예: T1190, T1505.003). 확실하지 않은 기법 ID는 지어내지 않는다.
 - 참고한 뉴스 id와 Case id만 적는다. 입력에 없는 id는 쓰지 않는다.
 - 세울 만한 가설이 없으면 빈 목록을 낸다.
+- 로그는 DB에 미리 들어 있지 않다. SIEM 조회 도구(query_siem, 대상 evidence)로 찾고 event.module로 소스를 좁힌다. 저장된 근거의 원문은 get_raw로 읽는다.
 
 답은 아래 모양의 JSON 하나다.
 {"hypotheses": [{"hypothesis": "가설 문장", "attack_techniques": ["T1190"], "news_ids": [1], "case_ids": []}]}
