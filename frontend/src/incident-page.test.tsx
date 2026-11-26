@@ -822,3 +822,52 @@ test("the title and summary are shown as text, never as markup", async () => {
     document.querySelector(".incident-page img, .incident-page script"),
   ).toBeNull();
 });
+
+// jsdom has no layout, so these check what the CSS needs (a width for every column, a title for every clipped text);
+// overlap, line count and the sticky tab bar are checked in a browser (docs/notes/386).
+test("the Ticket table fixes a width for every column and clips long text with a title (#386)", async () => {
+  const longTitle = `긴 제목 ${"x".repeat(200)} <img src=x onerror=alert(1)>`;
+  serve(
+    detail({
+      tickets: [{ ...ticketAt(0), title: longTitle }, ...many(2, ticketAt)],
+      incident: { ...base, ticket_ids: [], entities: [] },
+    }),
+  );
+  show(`${url}?tab=tickets`);
+  const table = await screen.findByRole("table", { name: "Ticket 표" });
+  const heads = table.querySelectorAll("thead th");
+  const cols = table.querySelectorAll<HTMLElement>("colgroup > col");
+  expect(cols).toHaveLength(heads.length);
+  // every column but the title takes a fixed width; the title column takes what is left
+  expect([...cols].slice(1).every((c) => /^\d+px$/.test(c.style.width))).toBe(
+    true,
+  );
+  expect(cols[0].style.width).toBe("");
+  const row = within(table).getByTitle(longTitle).closest("tr")!;
+  expect(row.querySelector("img")).toBeNull();
+  // the classification cell is one clipped line whose full text is the tooltip
+  const basis = within(row).getByTitle("분류 당시 탐색 정보 없음");
+  expect(basis).toHaveClass("incident-clip-cell");
+  expect(row.querySelector(".incident-row-end")).not.toBeNull();
+});
+
+test("the entity table fixes a width for every column and gives the value the rest (#386)", async () => {
+  const long = `https://example.com/${"a".repeat(300)}`;
+  serve(
+    detail({
+      incident: {
+        ...base,
+        ticket_ids: page.tickets.map((t) => t.id),
+        entities: [...page.entities, { type: "url", value: long, role: null }],
+      },
+    }),
+  );
+  show(`${url}?tab=entities`);
+  const table = await screen.findByRole("table", { name: "엔티티 표" });
+  const cols = table.querySelectorAll<HTMLElement>("colgroup > col");
+  expect(cols).toHaveLength(table.querySelectorAll("thead th").length);
+  const free = [...cols].filter((c) => c.style.width === "");
+  expect(free).toHaveLength(1); // exactly one column flexes, and it is the value column
+  expect(cols[1]).toBe(free[0]);
+  expect(within(table).getByTitle(long)).toHaveClass("clip");
+});

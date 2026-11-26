@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useLocation } from "react-router";
 import type { IncidentDetail } from "../api/generated/IncidentDetail";
 import { FilterChips } from "../components/filter-chips";
-import { Clip, Pager, SortButton } from "./kit";
+import { Clip, Cols, Pager, SortButton } from "./kit";
 import {
   entityRows,
   nextSort,
@@ -14,6 +14,8 @@ import {
 } from "./model";
 
 const PAGE_SIZE = 20;
+// 종류, 값, role, 연결, 최초 관측, 작업 (px; the value takes the rest)
+const WIDTHS = [80, null, 60, 144, 138, 100];
 
 export function EntityTable({ detail }: { detail: IncidentDetail }) {
   const [query, setQuery] = useState("");
@@ -75,7 +77,11 @@ export function EntityTable({ detail }: { detail: IncidentDetail }) {
         <span className="incident-count">{`${rows.length}개 엔티티`}</span>
       </div>
       <div className="table-scroll">
-        <table aria-label="엔티티 표">
+        <table
+          aria-label="엔티티 표"
+          className="incident-table incident-table-entities"
+        >
+          <Cols widths={WIDTHS} />
           <thead>
             <tr>
               {header("type", "종류")}

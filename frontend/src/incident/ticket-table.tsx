@@ -3,7 +3,7 @@ import type { IncidentDetail } from "../api/generated/IncidentDetail";
 import { Severity } from "../badges";
 import { FilterChips } from "../components/filter-chips";
 import { useLink } from "../links";
-import { Clip, Pager, SortButton } from "./kit";
+import { Clip, Cols, Pager, SortButton } from "./kit";
 import {
   nextSort,
   paginate,
@@ -16,6 +16,8 @@ import {
 } from "./model";
 
 const PAGE_SIZE = 10;
+// title, 판정, 위험도, 시각, 근거 수, 분류 탐색, 상세 (px; the title takes the rest)
+const WIDTHS = [null, 124, 84, 138, 56, 130, 110];
 
 export function TicketTable({ detail }: { detail: IncidentDetail }) {
   const link = useLink();
@@ -83,7 +85,11 @@ export function TicketTable({ detail }: { detail: IncidentDetail }) {
         <span className="incident-count">{`${rows.length}개 Ticket`}</span>
       </div>
       <div className="table-scroll">
-        <table aria-label="Ticket 표">
+        <table
+          aria-label="Ticket 표"
+          className="incident-table incident-table-tickets"
+        >
+          <Cols widths={WIDTHS} />
           <thead>
             <tr>
               <th>제목 / ID</th>
@@ -99,7 +105,9 @@ export function TicketTable({ detail }: { detail: IncidentDetail }) {
             {view.rows.map((t) => (
               <tr key={t.id}>
                 <td>
-                  <strong className="incident-cell-title">{t.title}</strong>
+                  <strong className="incident-cell-title" title={t.title}>
+                    {t.title}
+                  </strong>
                   <Clip text={t.id} label="Ticket ID" />
                 </td>
                 <td>{t.decision ?? "—"}</td>
@@ -108,7 +116,12 @@ export function TicketTable({ detail }: { detail: IncidentDetail }) {
                 </td>
                 <td className="date">{when(t.created_at)}</td>
                 <td>{`${t.evidence_count}개`}</td>
-                <td>{statusText(graphs.get(t.id))}</td>
+                <td
+                  className="incident-clip-cell"
+                  title={statusText(graphs.get(t.id))}
+                >
+                  {statusText(graphs.get(t.id))}
+                </td>
                 <td className="incident-row-end">
                   {link(t.id, "tickets", "상세 보기", `${t.title} Ticket 상세`)}
                 </td>
