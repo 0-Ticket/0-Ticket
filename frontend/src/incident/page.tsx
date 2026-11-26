@@ -162,10 +162,17 @@ export function IncidentPage({ id }: { id: string }) {
   const [search, setSearch] = useSearchParams();
   const [caseId, setCaseId] = useState<string | null>(null);
   const [memory, setMemory] = useGraphMemory(id);
+  // `?sample=graph|empty` swaps the server answer for a hand-made one; the branch is removed from production builds.
+  const sample = import.meta.env.DEV ? search.get("sample") : null;
   const query = useQuery({
-    queryKey: ["detail", "incidents", id],
-    queryFn: ({ signal }) =>
-      get<IncidentDetail>(`incidents/${encodeURIComponent(id)}`, signal),
+    queryKey: ["detail", "incidents", id, sample],
+    queryFn: async ({ signal }) => {
+      if (sample === "graph" || sample === "empty") {
+        const { devSample } = await import("./dev-sample");
+        return devSample(sample, id);
+      }
+      return get<IncidentDetail>(`incidents/${encodeURIComponent(id)}`, signal);
+    },
   });
   if (query.isPending) return <p role="status">Incident를 불러오는 중…</p>;
   if (query.error)

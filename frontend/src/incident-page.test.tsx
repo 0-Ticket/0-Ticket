@@ -687,6 +687,43 @@ test("the graph view stays in the address and node places survive a visit to ano
   expect(left()).toBeCloseTo(dropped, 5);
 });
 
+test("the development sample mode shows the 104-entity graph and the empty state without asking the server", async () => {
+  serve(detail());
+  const { container } = show(`${url}?tab=graph&view=entity&sample=graph`);
+  await screen.findByRole("region", { name: "Incident 관계도" });
+  expect(
+    container.querySelectorAll(".incident-graph-node.entity"),
+  ).toHaveLength(60);
+  expect(requests.some((r) => r.pathname.startsWith("/api/incidents/"))).toBe(
+    false,
+  );
+});
+
+test("the empty sample shows the empty Ticket tab", async () => {
+  serve(detail());
+  show(`${url}?tab=tickets&sample=empty`);
+  expect(
+    await screen.findByText("연결된 Ticket이 없습니다"),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole("button", { name: "분석 상태 새로고침" }),
+  ).toBeInTheDocument();
+});
+
+test("outside development the sample parameter is ignored and the server is asked", async () => {
+  vi.stubEnv("DEV", false);
+  try {
+    serve(detail());
+    show(`${url}?sample=graph`);
+    await screen.findByRole("heading", { level: 1, name: base.title });
+    expect(requests.some((r) => r.pathname.startsWith("/api/incidents/"))).toBe(
+      true,
+    );
+  } finally {
+    vi.unstubAllEnvs();
+  }
+});
+
 test("an incident with no tickets shows an empty state with a reload button", async () => {
   serve(
     detail({
