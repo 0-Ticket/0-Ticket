@@ -17,7 +17,8 @@
         "evidence_ids": [
           "<call_id>"
         ],
-        "entities": []
+        "entities": [],
+        "siem_refs": []
       }
     }
   ]

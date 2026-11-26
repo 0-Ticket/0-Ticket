@@ -158,6 +158,8 @@ def verification(result: str, confidence: float, evidence: list[str], **extra: A
         "reason": "근거를 확인했다",
         "evidence_ids": evidence,
         "entities": [],
+        # 모델 출력에는 siem_refs가 있다(#382). 코드가 발급하고 Hunt에 남기지 않는다
+        "siem_refs": [],
         **extra,
     }
 

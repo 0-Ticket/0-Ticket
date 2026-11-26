@@ -15,7 +15,8 @@
           "value": "203.0.113.10",
           "role": "src"
         }
-      ]
+      ],
+      "siem_refs": []
     }
   },
   {
@@ -27,7 +28,8 @@
       "evidence_ids": [
         "agl_01a19f93-1150-7000-8000-000000000009"
       ],
-      "entities": []
+      "entities": [],
+      "siem_refs": []
     }
   },
   {
@@ -37,7 +39,8 @@
       "confidence": 0.3,
       "reason": "웹 서버에서 의심 요청과 프로세스 실행이 이어졌다",
       "evidence_ids": [],
-      "entities": []
+      "entities": [],
+      "siem_refs": []
     }
   },
   {
@@ -55,7 +58,8 @@
           "value": "203.0.113.10",
           "role": "src"
         }
-      ]
+      ],
+      "siem_refs": []
     }
   }
 ]

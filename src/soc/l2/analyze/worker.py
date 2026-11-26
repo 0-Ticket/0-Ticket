@@ -159,6 +159,7 @@ class L2AnalyzeWorker:
                 attack_names=names,
                 asset_lookup_failed=context.asset_lookup_failed,
                 now_ms=to_epoch_ms(self._clock()),
+                dropped_refs=issued.dropped,
             )
 
     def _save_failure(

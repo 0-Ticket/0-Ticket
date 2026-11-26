@@ -85,6 +85,7 @@ def save_success(
     attack_names: dict[str, str],
     asset_lookup_failed: bool,
     now_ms: int,
+    dropped_refs: int = 0,
 ) -> SaveResult:
     """상태와 라운드가 읽은 값 그대로일 때 Artifact·Proposal·Incident를 저장한다."""
     with conn.transaction():
@@ -108,6 +109,7 @@ def save_success(
             incident["details"],
             asset_lookup_failed=asset_lookup_failed,
             dropped_techniques=dropped,
+            dropped_refs=dropped_refs,
         )
         # 제목은 부수 값이라 계약이 아니라 여기서 정리한다. 쓸 수 없으면 이전 제목을 유지한다(D-072)
         title = clean_title(analysis["title"])
@@ -180,7 +182,11 @@ def save_failure(
 
 
 def _diagnostics(
-    details: dict[str, Any], *, asset_lookup_failed: bool, dropped_techniques: int
+    details: dict[str, Any],
+    *,
+    asset_lookup_failed: bool,
+    dropped_techniques: int,
+    dropped_refs: int = 0,
 ) -> dict[str, Any]:
     l2 = dict(details.get("l2_analyze", {}))
     l2.pop("stopped", None)
@@ -188,6 +194,8 @@ def _diagnostics(
     l2.update(
         asset_lookup_failed=asset_lookup_failed,
         dropped_techniques=dropped_techniques,
+        # 조사가 고른 SIEM 문서 중 저장하지 못해 버린 수(#382). 값은 남기지 않는다
+        dropped_refs=dropped_refs,
         failure_streak=0,
     )
     return {**details, "l2_analyze": l2}
