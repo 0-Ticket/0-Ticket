@@ -49,10 +49,8 @@ def test_reprocess_command_rejects_bad_options(argv: list[str]) -> None:
     assert stopped.value.code == 2
 
 
-def test_reprocess_kind_event_without_source_reaches_the_database_check(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
-    monkeypatch.delenv("DATABASE_URL", raising=False)
+def test_reprocess_kind_event_without_source_is_rejected() -> None:
+    with pytest.raises(SystemExit) as stopped:
+        main(["reprocess", "--kind", "event", "--dry-run"])
 
-    assert main(["reprocess", "--kind", "event", "--dry-run"]) == 2
-    assert "DATABASE_URL" in capsys.readouterr().err
+    assert stopped.value.code == 2

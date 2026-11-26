@@ -1,4 +1,4 @@
-"""손으로 만든 목적지 샘플의 엔티티·클래스별 본문·검증 경계를 확인한다."""
+"""손으로 만든 알럿 목적지 샘플의 엔티티·본문·검증 경계를 확인한다."""
 
 import copy
 import json
@@ -19,10 +19,7 @@ CASES = json.loads(
 )
 
 BY_CASE = {case["case"]: case for case in CASES}
-OMISSION_CASES = [
-    BY_CASE[name]
-    for name in ("alert_flat_destination", "web_nested", "cloud_ipv6", "base_destination")
-]
+OMISSION_CASES = CASES
 
 
 def convert(case: dict[str, Any]) -> dict[str, Any]:
@@ -44,16 +41,11 @@ def test_destination_is_preserved(case: dict[str, Any]) -> None:
         [{"type": "ip", "value": src, "role": "src"}] if src else []
     )
     ocsf = row["ocsf"]
-    if ocsf["class_uid"] == 2004:
-        # 엔티티에서 만드는 evidences(D-065): dst 요소는 한 번, src는 요소가 더해진다
-        dst = [e for e in ocsf["evidences"] if "dst_endpoint" in e]
-        assert dst == [{"dst_endpoint": {"ip": case["destination"]}}]
-        assert "dst_endpoint" not in ocsf
-    elif ocsf["class_uid"] in (4002, 6003):
-        assert ocsf["dst_endpoint"] == {"ip": case["destination"]}
-    else:
-        assert ocsf["unmapped"] == {"destination": {"ip": case["destination"]}}
-        assert "dst_endpoint" not in ocsf
+    assert ocsf["class_uid"] == 2004
+    # 엔티티에서 만드는 evidences(D-065): dst 요소는 한 번, src는 요소가 더해진다
+    dst = [e for e in ocsf["evidences"] if "dst_endpoint" in e]
+    assert dst == [{"dst_endpoint": {"ip": case["destination"]}}]
+    assert "dst_endpoint" not in ocsf
 
 
 @pytest.mark.parametrize("case", OMISSION_CASES, ids=lambda case: case["case"])
@@ -70,7 +62,10 @@ def test_invalid_flat_destination_does_not_fall_back_or_create_empty_objects(
     assert "dst_endpoint" not in row["ocsf"]
     assert not any("dst_endpoint" in e for e in row["ocsf"].get("evidences", []))
     assert "unmapped" not in row["ocsf"]
-    assert {"type": "ip", "value": "198.51.100.7", "role": "src"} in row["entities"]
+    src = source.get("source.ip")
+    assert [e for e in row["entities"] if e["role"] == "src"] == (
+        [{"type": "ip", "value": src, "role": "src"}] if src else []
+    )
 
 
 @pytest.mark.parametrize("case", OMISSION_CASES, ids=lambda case: case["case"])
@@ -104,13 +99,8 @@ def test_malformed_evidences_are_rejected(evidences: Any) -> None:
         validate_ocsf(ocsf)
 
 
-@pytest.mark.parametrize(
-    "case",
-    [BY_CASE["alert_flat_destination"], BY_CASE["base_destination"]],
-    ids=lambda case: case["case"],
-)
-def test_unsupported_top_level_destination_is_rejected(case: dict[str, Any]) -> None:
-    ocsf = convert(case)["ocsf"]
+def test_unsupported_top_level_destination_is_rejected() -> None:
+    ocsf = convert(BY_CASE["alert_flat_destination"])["ocsf"]
     ocsf["dst_endpoint"] = {"ip": "192.0.2.20"}
     with pytest.raises(NormalizeError, match="schema_failed"):
         validate_ocsf(ocsf)
@@ -153,13 +143,5 @@ def test_generic_unmapped_does_not_allow_unknown_top_level_attributes() -> None:
     ocsf = convert(BY_CASE["alert_flat_destination"])["ocsf"]
     ocsf["unmapped"] = {"destination": {"ip": "192.0.2.20"}}
     ocsf["unknown"] = {"ip": "192.0.2.20"}
-    with pytest.raises(NormalizeError, match="schema_failed"):
-        validate_ocsf(ocsf)
-
-
-@pytest.mark.parametrize("endpoint", [[], {"ip": 42}, {"unknown": "value"}])
-def test_known_network_object_remains_strict(endpoint: Any) -> None:
-    ocsf = convert(BY_CASE["web_nested"])["ocsf"]
-    ocsf["dst_endpoint"] = endpoint
     with pytest.raises(NormalizeError, match="schema_failed"):
         validate_ocsf(ocsf)
