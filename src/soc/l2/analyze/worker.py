@@ -10,6 +10,7 @@ from psycopg.types.json import Jsonb
 
 from soc.agent import AgentResult, AgentTask, run_agent
 from soc.contracts import to_datetime, to_epoch_ms
+from soc.evidence import issue
 from soc.l2.analyze.context import read_context
 from soc.l2.analyze.store import save_failure, save_success
 from soc.l2.analyze.tasks import make_investigate_task, make_report_task
@@ -36,6 +37,8 @@ class L2AnalyzeWorker:
         max_range_days: int,
         asset_statement_timeout_ms: int,
         attack_version: str,
+        siem_config: dict[str, Any] | None = None,
+        evidence_profile: str = "",
         run: Run = run_agent,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
     ) -> None:
@@ -44,6 +47,9 @@ class L2AnalyzeWorker:
         self._max_range_days = max_range_days
         self._asset_statement_timeout_ms = asset_statement_timeout_ms
         self._attack_version = attack_version
+        # 근거 발급(#382). 설정이 없으면 빈 값이고, 인용된 문서가 없으면 쓰이지 않는다
+        self._siem_config = siem_config or {}
+        self._evidence_profile = evidence_profile
         self._run = run
         self._clock = clock
 
@@ -112,6 +118,15 @@ class L2AnalyzeWorker:
                 self._save_failure(conn, incident_id, read_round, investigation, context)
                 return
 
+            # 조사가 고른 SIEM 문서를 여기서 발급한다(#382, D-081). 모델은 인용만 했다.
+            # 실패는 그 근거만 버리고 계속한다. 버린 수만 보고 입력에 넣는다
+            issued = issue(
+                conn,
+                investigation.cited_siem_refs,
+                siem_config=self._siem_config,
+                siem_profile=self._evidence_profile,
+                now_ms=to_epoch_ms(self._clock()),
+            )
             report_task = make_report_task(
                 incident_id,
                 attempt=attempt,
@@ -121,6 +136,8 @@ class L2AnalyzeWorker:
                 previous_artifact=context.previous_artifact,
                 asset_lookup_failed=context.asset_lookup_failed,
                 context_evidence=context.evidence_ids,
+                issued_evidence_ids=tuple(issued.evidence_ids.values()),
+                dropped_refs=issued.dropped,
             )
             report = self._run(report_task)
             if should_retry_report(report.failure):
@@ -177,12 +194,18 @@ def build_worker(config: dict[str, Any]) -> L2AnalyzeWorker:
     attack_version = config["l3"]["intel"]["attack"]["version"]
     if not isinstance(attack_version, str) or not attack_version:
         raise ValueError("l3.intel.attack.version이 필요하다")
+    siem = config["tools"].get("siem", {})
+    evidence_profile = siem.get("evidence_siem_profile", "")
+    if not isinstance(evidence_profile, str) or not evidence_profile:
+        raise ValueError("[tools.siem] evidence_siem_profile이 필요하다")
     return L2AnalyzeWorker(
         database_url,
         settings,
         max_range_days=max_range_days,
         asset_statement_timeout_ms=asset_timeout,
         attack_version=attack_version,
+        siem_config=dict(siem),
+        evidence_profile=evidence_profile,
     )
 
 

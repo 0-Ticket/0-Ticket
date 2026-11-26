@@ -18,6 +18,11 @@ def _unique(*groups: list[str] | tuple[str, ...]) -> list[str]:
     return list(dict.fromkeys(item for group in groups for item in group))
 
 
+def findings_refs(output: Any) -> list[str]:
+    """조사가 근거로 고른 SIEM 문서의 저장 키(#382). 발급은 워커가 한다."""
+    return list(output["siem_refs"])
+
+
 def findings_citations(output: Any) -> list[str]:
     """최상위·timeline·entity 근거를 장부 검사 순서로 평탄화한다."""
     return _unique(
@@ -49,6 +54,7 @@ def make_investigate_task(
         data=data,
         output_contract="incident_findings",
         cited_ids=findings_citations,
+        cited_refs=findings_refs,
         subject_type="incident",
         subject_id=incident_id,
         allowed_evidence_ids=allowed_evidence_ids,
@@ -66,6 +72,8 @@ def make_report_task(
     previous_artifact: dict[str, Any] | None,
     asset_lookup_failed: bool,
     context_evidence: tuple[str, ...],
+    issued_evidence_ids: tuple[str, ...] = (),
+    dropped_refs: int = 0,
 ) -> AgentTask:
     cited = tuple(findings_citations(findings))
     return AgentTask(
@@ -78,11 +86,15 @@ def make_report_task(
             "assets": assets,
             "previous_artifact": previous_artifact,
             "asset_lookup_failed": asset_lookup_failed,
+            # 발급하지 못해 버린 근거 수(#382). 값은 넣지 않는다(밖에서 온 문자열).
+            # 모델이 왜 그 근거를 인용할 수 없는지 모르면 같은 것을 다시 가리켜 형식 오류로 돈다
+            "dropped_refs": dropped_refs,
         },
         output_contract="incident_analysis",
         cited_ids=analysis_citations,
         subject_type="incident",
         subject_id=incident_id,
-        allowed_evidence_ids=tuple(_unique(context_evidence, cited)),
+        # 조사가 인용한 것과, 조사가 고른 SIEM 문서를 워커가 발급한 ID를 더한다(#382)
+        allowed_evidence_ids=tuple(_unique(context_evidence, cited, issued_evidence_ids)),
         attempt=attempt,
     )

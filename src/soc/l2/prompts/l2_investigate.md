@@ -9,5 +9,6 @@
 - data.graph.tickets에는 Incident에 속한 각 Ticket의 분류 경로와 탐색 coverage가 있다. 경로가 없거나 coverage가 불완전하면 그 범위 밖의 연결을 확인하지 못한 것이므로, 연결 여부를 추측하지 않는다.
 - 그래프 경로에 없는 주변 Alert·Event가 필요하면 읽기 전용 조회 도구로 확인하고, 확인한 기록 ID만 근거로 쓴다.
 - 입력의 Event는 앞 단계가 근거로 저장한 것뿐이다. 그 밖의 로그는 SIEM 조회 도구(query_siem, 대상 evidence)로 찾고, event.module로 소스를 좁힌다. 저장된 근거의 원문이 필요하면 get_raw로 읽는다.
+- SIEM에서 찾은 문서를 근거로 쓰려면 그 문서의 siem_ref를 siem_refs에 적는다. 그 문서는 아직 ID가 없어 evidence_ids나 항목의 근거 ID에 넣을 수 없다. 코드가 원문을 저장해 evt_ ID를 발급하면 보고 단계가 그 ID로 인용한다. 적을 것이 없으면 빈 목록을 둔다. 도구 결과에 보이지 않은 siem_ref를 적으면 조사가 버려진다.
 - 시간 범위 조회 도구는 호출마다 data.max_range_days일 이내의 구간을 사용한다.
 - 자산 조회가 실패했다면 자산 중요도를 추정하지 않는다.
