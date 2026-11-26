@@ -96,6 +96,25 @@ L1·L2·L3가 모두 발급을 부른다. L1은 판정 뒤, L2는 조사 뒤(보
   `tests/test_agent_input_redaction.py`가 이미 확인한다(`leak_records`). `get_raw`는 같은 경로를
   타는 또 하나의 `records` 도구라 중복 테스트를 만들지 않았다.
 
+### 번호가 옮겨졌다
+
+계획과 이슈 댓글은 이 이슈의 결정을 **D-081·D-082**, 읽기 권한 마이그레이션을 **0307**로 적었다.
+그 사이 `origin/main`이 먼저 D-081(Incident 상세 화면, #385)·D-082(`incident_reviews`, #388)와
+`0307_incident_reviews.sql`을 썼다. 그래서 이 브랜치의 것을 옮겼다.
+
+| 계획·이슈의 표기 | 실제 |
+|---|---|
+| D-081 (근거 발급 방식) | **D-083** |
+| D-082 (태스크별 허용 목록) | **D-084** |
+| `0307_agent_reader_raw_records.sql` | **`0308_agent_reader_raw_records.sql`** |
+
+`src/soc/db/migrate.py:89`가 같은 번호의 마이그레이션 둘을 `MigrationError`로 거부하므로, 옮기지
+않으면 병합한 순간 모든 db 테스트가 깨진다. 참조 46곳을 함께 고쳤다. 계획 파일의 표기도 바꿨다
+(원칙 8의 "고쳐 쓰지 않는다"는 내용 변경을 말하고, 이것은 같은 결정의 번호를 맞춘 것이다).
+
+**브랜치는 병합 뒤 `origin/main`과 같은 지점에서 앞서 있다**(뒤처짐 0). main의 4커밋이
+`docs/decisions.md`·`tests/test_db_tables.py`에서 충돌했고 둘 다 양쪽을 살려 해결했다.
+
 ### 함정
 
 - **허용 목록의 단계 키 폴백.** 배포 설정에는 태스크 키만 있으므로, **배포 설정을 불러와
