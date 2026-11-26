@@ -52,6 +52,7 @@ BODY_FIELDS = {
     "temporary_password",
     "role",
     "permissions",
+    "reason",
 }
 
 
