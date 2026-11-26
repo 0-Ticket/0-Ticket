@@ -2441,6 +2441,32 @@ td {
   align-items: baseline;
   cursor: pointer;
 }
+.incident-timeline {
+  display: grid;
+  gap: 0;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.incident-timeline li {
+  display: grid;
+  gap: 6px;
+  padding: 12px 0 12px 16px;
+  border-left: 2px solid var(--border);
+}
+.incident-timeline-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+}
+.incident-raw {
+  margin-top: 16px;
+}
+.incident-raw > summary {
+  cursor: pointer;
+  font-weight: 600;
+}
 .incident-rule {
   margin: 16px 0;
   border: 0;

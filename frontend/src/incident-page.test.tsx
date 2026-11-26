@@ -415,22 +415,37 @@ test("entity rows count their tickets and alerts and long values stay text with 
   expect(writeText).toHaveBeenCalledWith(long);
 });
 
-test("the history tab opens only the newest round", async () => {
+test("the history tab is a timeline of rounds, newest first, with the summary as text and the raw JSON folded", async () => {
   const rounds = [1, 2, 3].map((n) => ({
     ...artifact,
     id: `${artifact.id.slice(0, -2)}0${n}`,
     analysis_round: n,
+    summary: n === 3 ? "요약 <b>굵게</b>" : `라운드 ${n} 요약`,
   }));
-  serve(detail({ artifacts: [rounds[2], rounds[1], rounds[0]] }));
+  serve(detail({ artifacts: [rounds[0], rounds[2], rounds[1]] }));
   show(`${url}?tab=history`);
-  const newest = (await screen.findByText("분석 라운드 3")).closest("details")!;
-  expect(newest).toHaveAttribute("open");
+  const list = await screen.findByRole("list", {
+    name: "분석 라운드 타임라인",
+  });
+  const items = within(list).getAllByRole("listitem");
+  expect(items).toHaveLength(3);
+  expect(items[0]).toHaveTextContent("Round 3");
+  expect(items[2]).toHaveTextContent("Round 1");
+  expect(items[0]).toHaveTextContent("요약 <b>굵게</b>");
+  expect(list.querySelector("b")).toBeNull();
+  // no data behind the design's change chips and review events, so none are drawn
+  expect(screen.queryByText(/Ticket \+|엔티티 \+|판정 변경/)).toBeNull();
+  expect(within(list).queryByText(/반려|Incident 승인/)).toBeNull();
+  const raw = screen.getByText("원본 보기(고급)").closest("details")!;
+  expect(raw).not.toHaveAttribute("open");
+});
+
+test("the history tab says so when no round exists yet", async () => {
+  serve(detail({ artifacts: [] }));
+  show(`${url}?tab=history`);
   expect(
-    screen.getByText("분석 라운드 2").closest("details"),
-  ).not.toHaveAttribute("open");
-  expect(
-    screen.getByText("분석 라운드 1").closest("details"),
-  ).not.toHaveAttribute("open");
+    await screen.findByText("분석 보고서가 없습니다."),
+  ).toBeInTheDocument();
 });
 
 test("recommendations have no 'why' label and are split into paragraphs and rules", async () => {
