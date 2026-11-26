@@ -195,7 +195,7 @@ class ToolRegistry:
     ) -> "ToolSession":
         """허용 목록으로 실행 하나의 도구 묶음을 만든다. 설정이 잘못되면 ToolConfigError.
 
-        목록은 task의 키를 먼저 보고, 그 키가 없으면 stage의 키를 본다(#382, D-082). 배포 설정은
+        목록은 task의 키를 먼저 보고, 그 키가 없으면 stage의 키를 본다(#382, D-084). 배포 설정은
         태스크 이름만 키로 두므로(`soc.agent.types.TASK_NAMES`) 등록되지 않은 태스크는 도구가
         하나도 붙지 않는다. 단계 키만 둔 설정은 그대로 동작한다.
 

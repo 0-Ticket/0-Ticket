@@ -112,7 +112,7 @@ def run_checks(
     config: Mapping[str, Any], probes: Probes, environ: Mapping[str, str]
 ) -> list[Check]:
     cfg = copy.deepcopy(dict(config))
-    # [tools.allowed]의 키는 태스크 이름이다(#382, D-082). _stages와 같은 범위(l1·l2)만 본다.
+    # [tools.allowed]의 키는 태스크 이름이다(#382, D-084). _stages와 같은 범위(l1·l2)만 본다.
     table = cfg.get("tools", {}).get("allowed", {})
     allowed = [n for key, names in table.items() if not key.startswith("l3") for n in names]
     registry = default_registry()

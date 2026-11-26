@@ -118,7 +118,7 @@ class L2AnalyzeWorker:
                 self._save_failure(conn, incident_id, read_round, investigation, context)
                 return
 
-            # 조사가 고른 SIEM 문서를 여기서 발급한다(#382, D-081). 모델은 인용만 했다.
+            # 조사가 고른 SIEM 문서를 여기서 발급한다(#382, D-083). 모델은 인용만 했다.
             # 실패는 그 근거만 버리고 계속한다. 버린 수만 보고 입력에 넣는다
             issued = issue(
                 conn,

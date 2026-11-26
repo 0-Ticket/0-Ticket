@@ -25,7 +25,7 @@ supersedes: []
 소스를 가리지 않는 심 조회 대상 `evidence`를 더했다(ECS 공통 필터·반환 필드만). `event.module`로
 좁히면 한 소스만, 안 좁히면 전부 걸린다. 수리카타처럼 매핑표가 없던 소스도 이 경로로 근거가 된다.
 
-도구 허용 목록은 단계가 아니라 태스크별이 됐다(D-082). `l2_classify`와 `l2_report`에는 심 조회와
+도구 허용 목록은 단계가 아니라 태스크별이 됐다(D-084). `l2_classify`와 `l2_report`에는 심 조회와
 `get_raw`를 주지 않는다 — 그 태스크가 인용해도 발급할 다음 태스크가 없다.
 
 L1·L2·L3가 모두 발급을 부른다. L1은 판정 뒤, L2는 조사 뒤(보고 태스크의 허용 목록에 발급분을
@@ -62,7 +62,7 @@ L1·L2·L3가 모두 발급을 부른다. L1은 판정 뒤, L2는 조사 뒤(보
 10. **`AgentResult`의 칸 이름은 `cited_siem_refs`다.** 계획은 `siem_refs`라고만 적었다.
     `cited_evidence_ids`와 나란히 두려고 접두사를 붙였고, 담는 값도 세션 맵 전체가 아니라
     **인용이 검증된 것만**이다. 워커가 따로 거를 필요가 없다.
-11. **읽기 역할에 `raw_records` 열 권한을 주는 마이그레이션 0307을 더했다.** 0003이 그 표를 명시적으로
+11. **읽기 역할에 `raw_records` 열 권한을 주는 마이그레이션 0308을 더했다.** 0003이 그 표를 명시적으로
     제외해 놔서 `get_raw`가 읽을 수 없었다. 준 열은 `id`·`kind`·`fetched_at`·`original_text`뿐이고
     `siem_ref`·`siem_profile`은 주지 않았다 — `siem_ref`에 인덱스 이름이 들어 있고, 모델에게 인덱스
     이름을 보이지 않는 것이 이 설계의 전제다. 계획의 "범위 밖"은 `raw_records` **스키마** 개편을
@@ -83,7 +83,7 @@ L1·L2·L3가 모두 발급을 부른다. L1은 판정 뒤, L2는 조사 뒤(보
 - **공통 계약·설정 키 변경에 L1·L2·L3·UI 담당 확인**(원칙 7). 아래 "맞물리는 곳" 목록 그대로다.
 - **`l3_hypothesize`는 발급하지 않는다.** 그 태스크의 출력 계약(`hunt_hypotheses`)에 근거 인용
   칸이 없고 `cited_ids`가 `_no_evidence`다. 심 조회 도구는 계획대로 그대로 뒀지만, 인용할 수
-  없는 태스크에 로그 조회를 주는 것이 맞는지는 다시 볼 만하다(D-082의 논리를 그대로 적용하면
+  없는 태스크에 로그 조회를 주는 것이 맞는지는 다시 볼 만하다(D-084의 논리를 그대로 적용하면
   빼는 쪽이다). 이번 이슈에서는 기존 동작을 바꾸지 않았다.
 - **버린 건수를 남기는 범위.** L2는 보고 입력(`dropped_refs`)과
   `incidents.details.l2_analyze.dropped_refs`에 남긴다. L1·L3는 다음 태스크가 없어 경고 로그만
@@ -112,7 +112,7 @@ L1·L2·L3가 모두 발급을 부른다. L1은 판정 뒤, L2는 조사 뒤(보
 - **계약을 고치면 세 곳을 같이 고친다.** `contracts/*.json` → `uv run python
   scripts/generate_contracts.py` → `tests/contract_samples.py`의 `CONTRACT_NAMES`(별도 목록)와
   `tests/fixtures/contracts/{valid,invalid}/<이름>.json` 샘플.
-- **열 단위 GRANT는 `count(*)`를 막지 못한다.** 0307을 넣자
+- **열 단위 GRANT는 `count(*)`를 막지 못한다.** 0308을 넣자
   `test_reader_role_is_denied_elsewhere`의 `SELECT count(*) FROM raw_records`가 통과해 버렸다.
   주지 않은 열(`siem_ref`·`siem_profile`)로 단정을 바꿨다.
 - **이벤트 수집을 끊으면 파이프 e2e 테스트의 건수가 바뀐다.** `test_pipeline_db.py`·
@@ -127,7 +127,7 @@ L1·L2·L3가 모두 발급을 부른다. L1은 판정 뒤, L2는 조사 뒤(보
 - `CallContext.siem_docs`(호출별)와 `ToolSession.siem_refs`(실행별)가 생겼다.
 - `ToolRegistry.session()`이 `task` 인자를 받는다(선택).
 - 새 도구 `get_raw`와 새 심 조회 대상 `evidence`.
-- 마이그레이션 0307이 읽기 역할에 `raw_records` 네 열을 준다.
+- 마이그레이션 0308이 읽기 역할에 `raw_records` 네 열을 준다.
 - `events`에 class 0 원문 포인터 행이 들어온다. 기존 정규화 행과 섞인다.
 - `normalize_status`에 정규화기가 아닌 코드가 `succeeded` 행을 쓴다.
 - `normalize()`가 이벤트 원본을 거부한다.

@@ -193,7 +193,7 @@ def test_migrate_creates_all_tables_on_empty_db(temp_database: str) -> None:
         "0304_event_ocsf_class.sql",
         "0305_event_normalize_source.sql",
         "0306_l2_ticket_index.sql",
-        "0307_agent_reader_raw_records.sql",
+        "0308_agent_reader_raw_records.sql",
     ]
     with psycopg.connect(temp_database) as conn:
         other_tables = {

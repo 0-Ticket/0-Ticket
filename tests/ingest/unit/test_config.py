@@ -17,7 +17,7 @@ def test_default_config_reads_into_settings() -> None:
     assert settings.siem_profile == "elk-default"
     assert (settings.url_env, settings.api_key_env) == ("ELK_URL", "ELK_API_KEY")
     assert settings.page_size == 500
-    # 이벤트는 수집하지 않는다(#382, D-081). 알럿 하나뿐이다
+    # 이벤트는 수집하지 않는다(#382, D-083). 알럿 하나뿐이다
     assert [(s.kind, s.key, s.time_field) for s in settings.sources] == [
         ("alert", ".alerts-security.alerts-default", "@timestamp"),
     ]
@@ -51,7 +51,7 @@ def test_missing_ingest_section_gives_empty(tmp_path: Path) -> None:
 def valid_ingest() -> dict:
     """배포 설정에 이벤트 대상 하나를 더한 것.
 
-    배포 설정은 이벤트를 수집하지 않지만(#382, D-081) 설정 읽기는 이벤트 대상과 class를
+    배포 설정은 이벤트를 수집하지 않지만(#382, D-083) 설정 읽기는 이벤트 대상과 class를
     계속 받는다. 그 검사 코드를 확인하려면 대상을 테스트가 만들어야 한다.
     """
     ingest = load_config(REPO_CONFIG)["ingest"]

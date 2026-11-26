@@ -66,7 +66,7 @@ def test_tasks_that_cite_evidence_can_read_the_original() -> None:
 
 
 def test_classify_and_report_cannot_read_the_original() -> None:
-    # 발급할 다음 태스크가 없는 두 태스크다(D-082). 분류는 그래프 후보와 모델 판단만 한다
+    # 발급할 다음 태스크가 없는 두 태스크다(D-084). 분류는 그래프 후보와 모델 판단만 한다
     allowed = shipped()
     for task in ("l2_classify", "l2_report"):
         assert NAME not in allowed[task], task
@@ -77,7 +77,7 @@ def test_every_task_key_is_known() -> None:
 
 
 def test_the_reader_role_is_granted_only_the_columns_the_tool_reads() -> None:
-    sql = (REPO / "src/soc/db/migrations/0307_agent_reader_raw_records.sql").read_text(
+    sql = (REPO / "src/soc/db/migrations/0308_agent_reader_raw_records.sql").read_text(
         encoding="utf-8"
     )
     assert "GRANT SELECT (id, kind, fetched_at, original_text) ON raw_records" in sql

@@ -103,7 +103,7 @@ L1 판정·L2 조사·L3 헌팅 프롬프트에 "이벤트는 DB에 없다. 알�
 - `src/soc/contracts/`: `incident_findings`·L1 판정 출력 계약에 `siem_refs`
 - `docs/architecture.md`: 원칙 1에서 이벤트 정규화를 빼고 "근거 발급은 코드가 한다"를 넣는다. 원칙 3에 근거는 OCSF 공통 형식이 아니라 불변 사본이면 된다는 뜻을 명시한다. "큰 흐름" 표의 "수집·정규화" 줄에서 이벤트를 뺀다
 - `docs/security.md`: `get_raw`의 마스킹 예외와 원문이 모델 입력으로 가는 한계를 "에이전트 도구의 한계"에 적는다
-- `docs/decisions.md`: D-081·D-082 추가, D-067·D-069 폐기, D-007·D-062·D-068·D-073 수정
+- `docs/decisions.md`: D-083·D-084 추가, D-067·D-069 폐기, D-007·D-062·D-068·D-073 수정
 - `tests/`: `test_event_assemble.py`·`test_event_quality.py`·`test_event_tables.py`·`test_event_transforms.py`·`test_web_event_samples.py` 삭제 또는 새 동작으로 교체. 발급 경로·`siem_refs` 검증·태스크별 허용 목록 테스트 추가
 - `tests/fake_siem.py`: `FakeElk`가 `POST /<index>/_search`만 허용하고 다른 경로는 599로 답한다. 제한된 `GET /<index>/_doc/<id>`를 허용 목록에 더한다
 - `tests/fixtures/`: 심 조회 응답과 원문 한 건 샘플(문서용 IP 대역, `example.com`, 가짜 계정)
@@ -149,7 +149,7 @@ L1 판정·L2 조사·L3 헌팅 프롬프트에 "이벤트는 DB에 없다. 알�
 - [ ] 개발 첫 단계에서 서버의 심 조회가 실제로 200을 받는 것을 확인했다 (손으로 확인)
 - [ ] L2 조사·보고의 라운드 소요 시간을 전·후로 측정해 `docs/notes/`에 건수로 적었다
 - [ ] `uv run ruff format --check .`, `uv run ruff check .`, `uv run pytest` 통과
-- [ ] D-081·D-082가 `docs/decisions.md` "확정"에, D-067·D-069가 "폐기"에, 수정된 D-007·D-062·D-068·D-073이 반영됐다
+- [ ] D-083·D-084가 `docs/decisions.md` "확정"에, D-067·D-069가 "폐기"에, 수정된 D-007·D-062·D-068·D-073이 반영됐다
 - [ ] `docs/architecture.md` 원칙 1·3과 "큰 흐름", `docs/security.md` "에이전트 도구의 한계"가 고쳐졌다
 - [ ] 공통 계약·설정 키 변경에 L1·L2·L3·UI 담당 확인을 받았다
 - [ ] `docs/notes/382-siem-direct-evidence.md`에 개발 기록이 있다
@@ -173,7 +173,7 @@ L1 판정·L2 조사·L3 헌팅 프롬프트에 "이벤트는 DB에 없다. 알�
 12. **발급 실패는 그 근거만 버리고 진행한다.** 실패 횟수에 넣어 보류로 보내는 안도 있었으나, 심 쪽 사정으로 판정 전체가 멈추는 것보다 낫고 `asset_lookup_failed`가 이미 같은 방식을 쓴다. 버린 건수는 알리고 ref 값은 알리지 않는다.
 13. **발급용 `siem_profile`을 수집과 분리한다.** 같은 `elk-default`를 쓰는 안도 있었으나, 분리하면 수집 체크포인트와 섞이지 않고 나중에 기존 데이터를 정리할 때 둘을 갈라낼 수 있다.
 
-새 결정: **D-081**(이벤트 근거를 심에서 찾아 원문으로 발급하는 방식, `get_raw` 포함), **D-082**(도구 허용 목록을 태스크별로 둔다).
+새 결정: **D-083**(이벤트 근거를 심에서 찾아 원문으로 발급하는 방식, `get_raw` 포함), **D-084**(도구 허용 목록을 태스크별로 둔다).
 
 ### 알려진 위험
 

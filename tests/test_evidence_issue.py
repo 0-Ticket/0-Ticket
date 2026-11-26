@@ -1,4 +1,4 @@
-"""근거 발급의 행 만들기(#382, D-081). DB 없이 순수 함수만 본다.
+"""근거 발급의 행 만들기(#382, D-083). DB 없이 순수 함수만 본다.
 
 트랜잭션과 중복 방지는 tests/test_evidence_issue_db.py의 db 마커 테스트가 본다.
 샘플은 손으로 만들고 IP는 문서용 대역, 도메인은 example.com을 쓴다(docs/security.md).

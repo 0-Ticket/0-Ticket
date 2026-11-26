@@ -121,11 +121,11 @@ max_limit = 100
 # 단계별 허용 도구. 여기에 없는 도구는 모델에게 등록되지 않는다(기본 전부 거부).
 # 레지스트리에 없는 이름을 적으면 실행이 provider_error로 끝난다.
 [tools.allowed]
-# 키는 태스크 이름이다(#382, D-082). 단계가 아니다. 이름 목록은 soc.agent.types.TASK_NAMES이고
+# 키는 태스크 이름이다(#382, D-084). 단계가 아니다. 이름 목록은 soc.agent.types.TASK_NAMES이고
 # 여기에 키가 없는 태스크는 도구가 하나도 붙지 않는다(기본 거부).
 # SIEM 도구(#212): query_siem은 근거를 발급하는 태스크에만, count_siem은 l2_investigate·l3에
 # 둔다. l2_classify와 l2_report에는 주지 않는다 — 그 태스크가 siem_ref를 인용해도 발급할 다음
-# 태스크가 없다(D-082).
+# 태스크가 없다(D-084).
 # SSH 점검 도구(#213): run_host_check는 l2_investigate·l3. [[tools.ssh.hosts]]가 비어 있으면 등록되지 않는다
 # 유사 사례 검색(#313, D-053): search_similar_cases는 l1·l2_classify. l3에 넣지 않는다.
 # 환경변수 QDRANT_URL이 없으면 등록되지 않는다
@@ -149,7 +149,7 @@ l2_investigate = [
     "query_siem", "count_siem", "get_raw", "run_host_check", "lookup_indicator",
     "get_attack_technique", "search_attack_techniques", "get_cve", "search_similar_cases",
 ]
-# 보고는 조사 결과만 보고 원문을 다시 보지 않는다(기존 2단계 설계). get_raw도 주지 않는다(D-082)
+# 보고는 조사 결과만 보고 원문을 다시 보지 않는다(기존 2단계 설계). get_raw도 주지 않는다(D-084)
 l2_report = [
     "get_attack_technique", "search_attack_techniques", "get_cve",
 ]
@@ -171,7 +171,7 @@ l3_verify = [
 # ELK 주소(http(s), 계정 정보 없이)와 읽기 전용 API 키를 담은 환경변수 이름. 값은 .env에만 둔다
 url_env = "ELK_URL"
 api_key_env = "ELK_API_KEY"
-# 근거 발급(#382, D-081)으로 저장하는 원본의 siem_profile. 수집([ingest] siem_profile)과
+# 근거 발급(#382, D-083)으로 저장하는 원본의 siem_profile. 수집([ingest] siem_profile)과
 # 다른 값을 둔다. 수집 체크포인트와 섞이지 않고, 나중에 기존 데이터를 정리할 때 갈라낼 수 있다
 evidence_siem_profile = "elk-evidence"
 # 요청 단위 제한 시간(초). 넘으면 TOOL_ERROR code=timeout
@@ -252,7 +252,7 @@ kind = "alert"
 key = ".alerts-security.alerts-default"
 time_field = "@timestamp"
 
-# 이벤트는 수집하지 않는다(#382, D-081). OCSF로 정규화하지 않으므로 미리 끌어와 둘 이유가
+# 이벤트는 수집하지 않는다(#382, D-083). OCSF로 정규화하지 않으므로 미리 끌어와 둘 이유가
 # 없다. 근거가 필요하면 L1·L2·L3가 심 조회 대상 evidence로 찾고, 인용한 문서만 워커가
 # 원문으로 저장해 evt_ ID를 발급한다(soc.evidence.issue).
 

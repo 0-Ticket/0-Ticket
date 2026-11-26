@@ -13,7 +13,7 @@ REPO_CONFIG = Path(__file__).resolve().parents[3] / "config"
 def ingest_with_event_source() -> dict:
     """배포 설정에 이벤트 대상 하나를 더한 것.
 
-    배포 설정은 이벤트를 수집하지 않지만(#382, D-081) CLI의 경고 경로는 그대로다.
+    배포 설정은 이벤트를 수집하지 않지만(#382, D-083) CLI의 경고 경로는 그대로다.
     경고를 내는 대상을 테스트가 만들어 둔다.
     """
     ingest = load_config(REPO_CONFIG)["ingest"]

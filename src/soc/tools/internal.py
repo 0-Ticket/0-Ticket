@@ -1,6 +1,6 @@
 """내부 데이터 도구(#211, #382): get_alert, get_event, query_records, get_raw.
 
-alerts·events와 raw_records의 일부 열을 읽는다(읽기 역할 soc_agent_reader, 마이그레이션 0003·0307).
+alerts·events와 raw_records의 일부 열을 읽는다(읽기 역할 soc_agent_reader, 마이그레이션 0003·0308).
 결과는 records이고 id(alt_·evt_·raw_)가 근거 장부에 들어간다. 필터는 최상위 컬럼의 허용 목록뿐이고,
 컬럼 이름과 정렬은 상수에서만 고른다. 모델이 만든 문자열은 매개변수로만 SQL에 들어간다.
 """
@@ -188,7 +188,7 @@ GET_EVENT = ToolSpec(
 def _get_raw(args: dict[str, Any], ctx: CallContext) -> list[dict[str, Any]]:
     """원문 한 건을 돌려준다(#382). id가 alt_·evt_면 그 행의 raw_id로 찾는다.
 
-    raw_records에서 읽는 열은 0307이 준 id·kind·fetched_at·original_text뿐이다. siem_ref는
+    raw_records에서 읽는 열은 0308이 준 id·kind·fetched_at·original_text뿐이다. siem_ref는
     읽지 않는다(인덱스 이름이 들어 있다). D-059 마스킹은 적용하지 않고(그 결정이 정한 예외)
     모델 입력 필터 screen_input은 적용된다. 결과 자르기가 걸려 모델에게는 발췌가 갈 수 있다.
     """

@@ -140,7 +140,7 @@ def test_reader_role_can_read_alerts_and_events(reader_url: str) -> None:
 @pytest.mark.parametrize(
     "statement",
     [
-        # raw_records는 0307(#382)부터 지정 열만 읽는다. 열 권한이면 count(*)는 허용되므로
+        # raw_records는 0308(#382)부터 지정 열만 읽는다. 열 권한이면 count(*)는 허용되므로
         # 주지 않은 열로 본다. siem_ref에는 인덱스 이름이 들어 있어 모델에게 보이지 않는다
         "SELECT siem_ref FROM raw_records",
         "SELECT siem_profile FROM raw_records",
@@ -164,7 +164,7 @@ def test_reader_role_is_denied_elsewhere(reader_url: str, statement: str) -> Non
 
 
 def test_reader_role_reads_only_the_granted_raw_columns(reader_url: str) -> None:
-    # 0307(#382)이 준 네 열은 읽고 그 밖은 못 읽는다. get_raw가 읽는 범위와 같다
+    # 0308(#382)이 준 네 열은 읽고 그 밖은 못 읽는다. get_raw가 읽는 범위와 같다
     with psycopg.connect(reader_url) as conn:
         conn.execute("SELECT id, kind, fetched_at, original_text FROM raw_records")
 
@@ -457,7 +457,7 @@ def test_tool_session_is_read_only(reader_url: str, migrated: str) -> None:
 # 원문 읽기 (#382)
 #
 # 이벤트를 정규화하지 않으므로 events 행은 class 0 포인터이고 원문은 raw_records.original_text에
-# 있다. get_raw가 그것을 돌려준다. 읽기 역할의 권한은 마이그레이션 0307이 준다.
+# 있다. get_raw가 그것을 돌려준다. 읽기 역할의 권한은 마이그레이션 0308이 준다.
 
 RAW_ID = "raw_01a19f93-1150-7000-8000-0000000000ff"
 ORIGINAL = json.dumps(

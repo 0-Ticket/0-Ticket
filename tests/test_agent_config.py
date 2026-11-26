@@ -53,7 +53,7 @@ def test_default_tools_config(default_config_dir: Path) -> None:
     ]
     # #382: 발급한 원문을 읽는 도구. query_siem 뒤에 온다
     with_raw = [*expected, "query_siem", "get_raw"]
-    # 키는 태스크 이름이다(#382, D-082). 단계 키는 두지 않는다 — 등록되지 않은 태스크는 기본 거부다.
+    # 키는 태스크 이름이다(#382, D-084). 단계 키는 두지 않는다 — 등록되지 않은 태스크는 기본 거부다.
     # query_siem은 근거를 발급하는 태스크에만 있고 l2_classify·l2_report에는 없다.
     local_intel = ["get_attack_technique", "search_attack_techniques", "get_cve"]
     allowed = tools["allowed"]
