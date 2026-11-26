@@ -35,21 +35,25 @@ ELK ─수집→ raw_records ─정규화→ alerts ──→ L1 ──→ L2 �
 
 `query_siem`은 정해진 `_source` 필드만 돌려주고 문자열 하나를 300자, 히트를 200건으로 자른다(`FIELD_MAX_CHARS`, `SEARCH_MAX`). 불변 사본을 만들 수 없다. `siem_ref`로 문서 한 건을 통째로 받는 읽기 전용 경로(`GET /<index>/_doc/<id>`)를 더한다. 접속 설정 읽기·요청 단위 timeout·전체 마감 시간·응답 크기 상한·리다이렉트 비추적·오류 문구에 주소·키·본문을 넣지 않는 규칙을 도구와 공유하도록 함수로 뽑는다. 도구가 아니므로 레지스트리의 데몬 스레드(D-055)를 거치지 않는다.
 
+**인덱스와 문서 ID는 `siem_ref`에서 되돌리지 않는다.** `src/soc/ids.py`의 `siem_ref_key`가 "키는 `/`로 나누어 `_index`와 `_id`로 되돌리지 않는다(index 이름의 `/`를 가정하지 않는다)"고 못 박았다. 대신 3번의 도구 세션 맵이 `siem_ref → (_index, _id)`를 들고 있고, 워커가 거기서 꺼내 쓴다. 모델에게는 인덱스 이름이 가지 않는다.
+
 ### 3. `siem_refs` 검증
 
-모델이 적는 `siem_ref`는 밖에서 온 문자열이다(`docs/security.md` "밖에서 온 문자열"). 그 값이 ELK 요청 경로를 만들므로 형식 검사만으로는 부족하다. `ToolSession`에 `siem_refs: set[str]`을 더해 `query_siem`이 돌려준 히트의 `siem_ref`만 모으고, 모델 출력의 `siem_refs`를 그 집합과 대조한다. 근거 장부 검사와 같은 자리(`src/soc/agent/runner.py`)에서 하고, 위반은 그 run을 멈춘다. `AgentTask`에 `cited_ids`와 나란히 `cited_refs`를 둔다.
+모델이 적는 `siem_ref`는 밖에서 온 문자열이다(`docs/security.md` "밖에서 온 문자열"). 그 값이 ELK 요청 경로를 만들므로 형식 검사만으로는 부족하다. `ToolSession`에 `siem_refs: dict[SiemRefKey, tuple[str, str]]`을 더해 `query_siem`이 돌려준 히트의 `siem_ref`를 키로, 그 히트의 `(_index, _id)`를 값으로 모으고, 모델 출력의 `siem_refs`를 그 키 집합과 대조한다. 값은 2번의 원문 가져오기가 쓴다(검증과 조회가 같은 자료를 쓴다). `AgentResult`에 `cited_evidence_ids`와 나란히 실어 워커에게 넘긴다. 잘려서 모델에게 보이지 않은 히트(`fields_omitted`)의 `siem_ref`도 모델에게는 보였으므로 맵에 넣는다. 근거 장부 검사와 같은 자리(`src/soc/agent/runner.py`)에서 하고, 위반은 그 run을 멈춘다. `AgentTask`에 `cited_ids`와 나란히 `cited_refs`를 둔다.
 
 ### 4. 근거 발급은 워커가 한다
 
 도구는 읽기 전용을 유지한다(`docs/security.md` "에이전트 도구의 한계"). 모델은 인용만 하고 코드가 저장한다. 한 트랜잭션에서 셋을 쓴다.
 
-1. `raw_records`에 원문을 넣는다. `(siem_profile, siem_ref)` 유니크가 중복을 막는다
+1. `raw_records`에 원문을 넣는다. `(siem_profile, siem_ref)` 유니크가 중복을 막는다. `siem_profile`은 수집과 분리해 `[tools.siem] evidence_siem_profile`의 값을 쓴다. 수집 체크포인트가 `(siem_profile, source_key)`별이라 섞이지 않고, 나중에 기존 데이터를 정리할 때 수집분과 발급분을 갈라낼 수 있다
 2. `normalize_status`에 `status='succeeded'` + `result_kind='event'` + `result_id`를 쓴다. 이걸 빼면 `src/soc/normalize/store.py:47`이 그 원본을 집어가 같은 원본으로 Event를 또 만든다
 3. `events`에 class 0 행을 넣고 `evt_…`를 발급한다
 
 `events.ocsf`에 `raw_data`를 넣지 않는다. 원문은 `raw_records.original_text`에만 둔다. D-059가 "마스킹은 `raw_records.original_text`를 바꾸지 않고 에이전트의 원본 조회 도구에는 적용하지 않는다"로 원본과 정규화 결과를 나눠 뒀고, D-008도 같은 분리다. `raw_data`에 담으면 마스킹 대상이 되어 불변 사본이 아니게 된다.
 
 `events.message`는 `event.dataset` 값으로 채운다(D-068 폴백 2순위). `summary`는 기존 `event_summary()`가 파생하고, `message`가 없으면 `event`가 된다. `time`은 원문의 `@timestamp`를 쓰고 시간대가 없으면 UTC로 본다. 읽을 수 없으면 발급을 실패로 둔다.
+
+**발급 실패는 그 근거만 버리고 나머지로 진행한다.** 원문 가져오기 실패(심 장애, 문서가 이미 삭제됨), 시각 읽기 실패, 저장 실패 모두 같다. 그 run을 실패로 두지 않고, 버린 건수만 다음 태스크 입력에 넣는다(`asset_lookup_failed`와 같은 모양). 버린 `siem_ref` 값은 넣지 않는다(밖에서 온 문자열). 모델이 왜 그 근거를 인용할 수 없는지 모르면 같은 것을 다시 가리켜 형식 오류로 돌 수 있어서 건수는 알린다. 발급 건수와 버린 건수는 `details`에 남긴다.
 
 `events.details.entities`는 발급 시점에 ECS 공통 엔티티 규칙으로 채운다. `common.yaml`의 `entities` 섹션을 알럿·이벤트 공용으로 승격한다. 빈 배열로 두면 `src/soc/l3/hunt/store.py:157`이 읽을 엔티티가 없어 헌팅 엔티티가 `model_only_entities`만 남는다.
 
@@ -86,7 +90,7 @@ L1 판정·L2 조사·L3 헌팅 프롬프트에 "이벤트는 DB에 없다. 알�
 - `src/soc/tools/siem.py`: 소스 구분 없는 대상 상수 추가, 원문 한 건 가져오기 경로 추가, 접속·마감·상한 코드를 공유 함수로 분리
 - `src/soc/tools/internal.py`: `get_raw` 추가, `query_records`의 `kind` enum을 `("alert",)`로 줄이고 설명에서 이벤트를 뺀다
 - `src/soc/tools/web.py`: 파일 삭제(`query_http_flow`·`summarize_http_flow`뿐이다)
-- `src/soc/tools/registry.py`: `ToolSession.siem_refs` 추가
+- `src/soc/tools/registry.py`: `ToolSession.siem_refs` 추가(`siem_ref → (_index, _id)` 맵)
 - `src/soc/agent/runner.py`: `siem_refs` 검증, 태스크별 허용 목록 조회, `web.py` 참조 제거
 - `AgentTask` 정의 위치: `cited_refs` 추가
 - `src/soc/l1/judge.py`: 판정 출력 계약에 `siem_refs`, 발급 호출
@@ -94,12 +98,14 @@ L1 판정·L2 조사·L3 헌팅 프롬프트에 "이벤트는 DB에 없다. 알�
 - `src/soc/l3/hunt/verify.py`: `siem_refs`, 발급 호출
 - 새 모듈(발급): 원문 가져오기 → `raw_records` → `normalize_status` → `events` 한 트랜잭션
 - `src/soc/normalize/`: `event_tables.py` 삭제, `mapping_tables/events/` 삭제, 이벤트 정규화 분기 제거. `common.yaml`의 `entities`를 공용으로 승격
-- `config/default.toml`: `[[ingest.sources]]` 이벤트 대상 5개 삭제, `[[tools.siem.targets]]` 새 대상, `[tools.allowed]`를 태스크 7개 키로
+- `config/default.toml`: `[[ingest.sources]]` 이벤트 대상 5개 삭제, `[[tools.siem.targets]]` 새 대상, `[tools.allowed]`를 태스크 7개 키로, `[tools.siem] evidence_siem_profile` 추가
+- `AgentResult`: `siem_refs` 맵을 실어 워커에게 넘긴다
 - `src/soc/contracts/`: `incident_findings`·L1 판정 출력 계약에 `siem_refs`
 - `docs/architecture.md`: 원칙 1에서 이벤트 정규화를 빼고 "근거 발급은 코드가 한다"를 넣는다. 원칙 3에 근거는 OCSF 공통 형식이 아니라 불변 사본이면 된다는 뜻을 명시한다. "큰 흐름" 표의 "수집·정규화" 줄에서 이벤트를 뺀다
 - `docs/security.md`: `get_raw`의 마스킹 예외와 원문이 모델 입력으로 가는 한계를 "에이전트 도구의 한계"에 적는다
 - `docs/decisions.md`: D-081·D-082 추가, D-067·D-069 폐기, D-007·D-062·D-068·D-073 수정
 - `tests/`: `test_event_assemble.py`·`test_event_quality.py`·`test_event_tables.py`·`test_event_transforms.py`·`test_web_event_samples.py` 삭제 또는 새 동작으로 교체. 발급 경로·`siem_refs` 검증·태스크별 허용 목록 테스트 추가
+- `tests/fake_siem.py`: `FakeElk`가 `POST /<index>/_search`만 허용하고 다른 경로는 599로 답한다. 제한된 `GET /<index>/_doc/<id>`를 허용 목록에 더한다
 - `tests/fixtures/`: 심 조회 응답과 원문 한 건 샘플(문서용 IP 대역, `example.com`, 가짜 계정)
 
 ## 다른 코드와 맞물리는 곳
@@ -110,7 +116,8 @@ L1 판정·L2 조사·L3 헌팅 프롬프트에 "이벤트는 DB에 없다. 알�
 - **`events` 표**에 class 0 원문 포인터 행이 들어온다. 기존 정규화 행과 섞인다. `ocsf_class` CHECK는 둘 다 통과한다
 - **`normalize_status`**에 정규화기가 아닌 코드가 `succeeded` 행을 쓴다
 - **`query_records`**의 `kind` enum이 줄어든다. **`query_http_flow`·`summarize_http_flow`**가 없어진다
-- `AgentTask`에 `cited_refs`가 생긴다. 모든 태스크가 쓰는 구조다
+- `AgentTask`에 `cited_refs`가 생기고 `AgentResult`에 `siem_refs` 맵이 생긴다. 모든 태스크가 쓰는 구조다
+- **`[tools.siem]`에 `evidence_siem_profile`** 설정 키가 생긴다
 
 위 전부 원칙 7 대상이다. **L1·L2·L3·UI 담당 확인이 PR 전에 필요하다.**
 
@@ -129,6 +136,9 @@ L1 판정·L2 조사·L3 헌팅 프롬프트에 "이벤트는 DB에 없다. 알�
 - [ ] 심 조회 대상 하나로 `event.module`을 바꿔 가며 여러 소스의 문서를 찾는다. `tests/fixtures/` 샘플로 확인하는 테스트가 있다
 - [ ] 원문 가져오기 경로가 `siem_ref`로 문서 전체를 받고, 잘리지 않았음을 샘플로 확인한다
 - [ ] 모델이 도구 결과에 없는 `siem_ref`를 적으면 그 run이 멈춘다. 샘플 테스트가 있다
+- [ ] 도구 세션의 `siem_ref → (_index, _id)` 맵에 성공한 조회에서 보인 히트만 들어가고, 원문 가져오기가 그 인덱스·ID를 쓴다. `_id`에 이스케이프가 필요한 글자가 든 샘플로 확인하는 테스트가 있다
+- [ ] 원문 가져오기가 실패하면 그 근거만 버리고 run이 계속되며, 버린 건수가 다음 태스크 입력과 `details`에 남는다. 샘플 테스트가 있다
+- [ ] 발급분의 `raw_records.siem_profile`이 `evidence_siem_profile` 값이고, 같은 문서를 수집이 가져와도 서로 덮지 않는다
 - [ ] 발급이 한 트랜잭션에서 `raw_records`·`normalize_status`(succeeded)·`events`를 쓰고, 같은 원본으로 Event가 두 개 생기지 않는다. 정규화기를 이어 돌려 확인하는 테스트가 있다
 - [ ] `l1_alert_triage`·`l1_ticket_judgment`·`l2_investigate`·`l3_hunt`·`l3_verify`에서 발급이 되고, 다음 태스크가 그 `evt_…`를 인용해 근거 장부 검사를 통과한다
 - [ ] `l2_classify`·`l2_report`에 심 조회와 `get_raw`가 등록되지 않는다. 테스트가 태스크 7개의 허용 목록을 검사한다
@@ -159,6 +169,10 @@ L1 판정·L2 조사·L3 헌팅 프롬프트에 "이벤트는 DB에 없다. 알�
 9. **`ecs_fields.yaml` 허용 목록 검사를 남긴다.** D-069가 폐기되며 사라질 검사지만 엔티티 추출이 ECS 필드를 읽으므로 남긴다.
 10. **D-062를 수정 대상에 더했다.** 이슈 본문의 폐기·수정 표에 없었다.
 
+11. **도구 세션이 `siem_ref → (_index, _id)` 맵을 든다.** 처음에는 `set[str]`으로 두려 했으나 `src/soc/ids.py`의 `siem_ref_key`가 키를 `_index`·`_id`로 되돌리지 못하게 해 놔서 `GET /<index>/_doc/<id>`를 부를 방법이 없었다. 검증용 집합을 맵으로 올리면 검증(3번)과 조회(2번)가 같은 자료를 쓴다. 대안으로 `_search`에 `_id` term을 쓰는 안이 있었지만 인덱스 패턴에 의존해 롤오버 뒤에 못 찾을 수 있다.
+12. **발급 실패는 그 근거만 버리고 진행한다.** 실패 횟수에 넣어 보류로 보내는 안도 있었으나, 심 쪽 사정으로 판정 전체가 멈추는 것보다 낫고 `asset_lookup_failed`가 이미 같은 방식을 쓴다. 버린 건수는 알리고 ref 값은 알리지 않는다.
+13. **발급용 `siem_profile`을 수집과 분리한다.** 같은 `elk-default`를 쓰는 안도 있었으나, 분리하면 수집 체크포인트와 섞이지 않고 나중에 기존 데이터를 정리할 때 둘을 갈라낼 수 있다.
+
 새 결정: **D-081**(이벤트 근거를 심에서 찾아 원문으로 발급하는 방식, `get_raw` 포함), **D-082**(도구 허용 목록을 태스크별로 둔다).
 
 ### 알려진 위험
@@ -170,3 +184,5 @@ L1 판정·L2 조사·L3 헌팅 프롬프트에 "이벤트는 DB에 없다. 알�
 - **모델에게 가는 원문은 잘린다.** 도구 결과 자르기가 적용된다. 불변 사본은 저장 쪽에만 해당한다
 
 ## 바뀐 점
+
+- **2026-11-26** — `/soc-plan` 재검토에서 세 가지를 더했다. (1) 도구 세션의 `siem_refs`를 `set[str]`에서 `siem_ref → (_index, _id)` 맵으로 올렸다. 그것이 없으면 `siem_ref_key`를 되돌릴 수 없어 원문 가져오기 경로를 만들 수 없었다(빈칸). (2) 발급 실패 처리를 정했다(그 근거만 버리고 진행, 건수만 알림). (3) 발급용 `siem_profile`을 수집과 분리했다. 코덱스 교차 검증에서 (1)이 막힌 것을 확인했다.
