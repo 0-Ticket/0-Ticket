@@ -491,6 +491,101 @@ test("the history tab is a timeline of rounds, newest first, with the summary as
   expect(raw).not.toHaveAttribute("open");
 });
 
+const roundsOf = (...numbers: number[]) =>
+  numbers.map((n) => ({
+    ...artifact,
+    id: `${artifact.id.slice(0, -2)}0${n}`,
+    analysis_round: n,
+    summary: `라운드 ${n} 요약`,
+  }));
+const review = (
+  decision: "approve" | "reject",
+  analysis_round: number,
+  review_round: number,
+  reason: string | null = null,
+) => ({
+  decision,
+  reason,
+  decided_by: "tester",
+  review_round,
+  analysis_round,
+  created_at: 1793764600000 + review_round * 1000,
+});
+
+test("review events sit between the rounds, newest first, with decision, reason, person and time as text", async () => {
+  serve(
+    detail({
+      artifacts: roundsOf(1, 2, 3),
+      reviews: [
+        review("reject", 1, 1, "첫 사유 <b>굵게</b>"),
+        review("reject", 2, 2),
+        review("approve", 3, 3),
+      ],
+    }),
+  );
+  show(`${url}?tab=history`);
+  const list = await screen.findByRole("list", {
+    name: "분석 라운드 타임라인",
+  });
+  const items = within(list).getAllByRole("listitem");
+  expect(
+    items.map(
+      (li) => li.textContent?.match(/Round \d|Incident (승인|반려)/)![0],
+    ),
+  ).toEqual([
+    "Incident 승인",
+    "Round 3",
+    "Incident 반려",
+    "Round 2",
+    "Incident 반려",
+    "Round 1",
+  ]);
+  expect(items[4]).toHaveTextContent("첫 사유 <b>굵게</b>");
+  expect(items[4]).toHaveTextContent("tester");
+  expect(items[4]).toHaveTextContent("검토 1회");
+  expect(list.querySelector("b")).toBeNull();
+  expect(items[2]).not.toHaveTextContent("사유");
+  expect(items[0]).not.toHaveTextContent("사유");
+});
+
+test("review events with no matching round go to the nearest earlier round, or to the bottom", async () => {
+  serve(
+    detail({
+      artifacts: roundsOf(2, 3),
+      reviews: [
+        review("reject", 0, 1, "맨 아래"),
+        review("reject", 5, 2, "라운드 3 위"),
+        review("reject", 5, 3, "그 위 같은 자리"),
+      ],
+    }),
+  );
+  show(`${url}?tab=history`);
+  const list = await screen.findByRole("list", {
+    name: "분석 라운드 타임라인",
+  });
+  const text = within(list)
+    .getAllByRole("listitem")
+    .map((li) => li.textContent ?? "");
+  expect(text[0]).toContain("그 위 같은 자리");
+  expect(text[1]).toContain("라운드 3 위");
+  expect(text[2]).toContain("Round 3");
+  expect(text[3]).toContain("Round 2");
+  expect(text[4]).toContain("맨 아래");
+});
+
+test.each([[undefined], [[]]])(
+  "an incident with no review history (reviews: %j) draws only the rounds",
+  async (reviews) => {
+    serve(detail({ artifacts: roundsOf(1, 2), reviews }));
+    show(`${url}?tab=history`);
+    const list = await screen.findByRole("list", {
+      name: "분석 라운드 타임라인",
+    });
+    expect(within(list).getAllByRole("listitem")).toHaveLength(2);
+    expect(within(list).queryByText(/Incident (승인|반려)/)).toBeNull();
+  },
+);
+
 test("the history tab says so when no round exists yet", async () => {
   serve(detail({ artifacts: [] }));
   show(`${url}?tab=history`);

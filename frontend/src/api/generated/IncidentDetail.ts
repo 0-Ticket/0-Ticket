@@ -171,6 +171,13 @@ export type Type2 = string;
 export type Value2 = string;
 export type Criticality = number;
 export type EntityCriticality = EntityCriticality1[];
+export type Decision1 = "approve" | "reject";
+export type Reason1 = string | null;
+export type DecidedBy = string;
+export type ReviewRound1 = number;
+export type AnalysisRound2 = number;
+export type CreatedAt4 = number;
+export type Reviews = IncidentReview[];
 export type SeedSource = string | null;
 
 export interface IncidentDetail {
@@ -181,6 +188,7 @@ export interface IncidentDetail {
   proposals: Proposals;
   ticket_graphs?: TicketGraphs;
   entity_criticality: EntityCriticality;
+  reviews?: Reviews;
   seed_source: SeedSource;
 }
 export interface Incident {
@@ -303,4 +311,15 @@ export interface EntityCriticality1 {
   type: Type2;
   value: Value2;
   criticality: Criticality;
+}
+/**
+ * 승인·반려 한 건(#375, D-082). 사유는 사람이 쓴 문장이라 텍스트로만 보인다. id는 없다.
+ */
+export interface IncidentReview {
+  decision: Decision1;
+  reason: Reason1;
+  decided_by: DecidedBy;
+  review_round: ReviewRound1;
+  analysis_round: AnalysisRound2;
+  created_at: CreatedAt4;
 }
