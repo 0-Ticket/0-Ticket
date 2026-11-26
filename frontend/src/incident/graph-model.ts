@@ -25,6 +25,8 @@ export type GraphOptions = {
   types: Set<string>;
   query: string;
   limit?: number;
+  // A node the person chose that the cut would leave out; it is added after the top ones, like a search match.
+  include?: string;
 };
 
 export const ENTITY_CAP = 60;
@@ -169,9 +171,11 @@ function entityGraph(detail: IncidentDetail, o: GraphOptions): Graph {
   const top = allowed.slice(0, o.limit ?? ENTITY_CAP);
   const shown = new Set(top.map((n) => n.key));
   // Matches below the cut are added after the top ones, so the others keep their place.
-  const extra = o.query.trim()
-    ? allowed.filter((n) => !shown.has(n.key) && matches(n, o.query))
-    : [];
+  const extra = allowed.filter(
+    (n) =>
+      !shown.has(n.key) &&
+      (n.key === o.include || (o.query.trim() !== "" && matches(n, o.query))),
+  );
   const nodes = [...top, ...extra];
   const visible = new Set(nodes.map((n) => n.key));
   const edges = [...arrows.values(), ...plain.values()].filter(
@@ -202,15 +206,31 @@ export function buildGraph(
     : entityGraph(detail, options);
 }
 
-// The chosen node, its direct neighbours, and only the lines that touch it.
-export function neighbourhood(graph: Graph, key: string): Graph {
-  const edges = graph.edges.filter((e) => e.from === key || e.to === key);
-  const keep = new Set([key, ...edges.flatMap((e) => [e.from, e.to])]);
-  return {
-    ...graph,
-    nodes: graph.nodes.filter((n) => keep.has(n.key)),
-    edges,
-  };
+// The node and the nodes a line reaches. Everything else stays in the graph; the screen only fades it.
+export function directNeighbours(graph: Graph, key: string): Set<string> {
+  const keep = new Set([key]);
+  for (const e of graph.edges)
+    if (e.from === key) keep.add(e.to);
+    else if (e.to === key) keep.add(e.from);
+  return keep;
+}
+
+// The entities joined to this one by a src → dst arrow in any alert, taken from the whole response.
+export function arrowLinks(detail: IncidentDetail, key: string) {
+  const from = new Map<string, GNode>();
+  const to = new Map<string, GNode>();
+  for (const alert of detail.alerts) {
+    const of = (role: string) => alert.entities.filter((e) => e.role === role);
+    const src = of("src");
+    const dst = of("dst");
+    if (src.some((e) => entityKey(e) === key))
+      for (const e of dst)
+        if (entityKey(e) !== key) to.set(entityKey(e), entityNode(e));
+    if (dst.some((e) => entityKey(e) === key))
+      for (const e of src)
+        if (entityKey(e) !== key) from.set(entityKey(e), entityNode(e));
+  }
+  return { from: [...from.values()], to: [...to.values()] };
 }
 
 // Counts for the inspector, taken from the whole response and not from what the filters leave visible.

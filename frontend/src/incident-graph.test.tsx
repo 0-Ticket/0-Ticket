@@ -13,9 +13,11 @@ import type { GraphView } from "./incident/graph-model";
 function Harness({
   detail = graphDetail(),
   initial = "ticket",
+  start,
 }: {
   detail?: IncidentDetail;
   initial?: GraphView;
+  start?: string;
 }) {
   const [view, setView] = useState<GraphView>(initial);
   const [memory, setMemory] = useGraphMemory(detail.incident.id);
@@ -32,6 +34,7 @@ function Harness({
           onView={setView}
           memory={memory}
           onMemory={setMemory}
+          start={start}
         />
       )}
     </>
@@ -138,19 +141,83 @@ test("a search brings in a match below the cut and dims what does not match", ()
   );
 });
 
-test("choosing a node keeps only its neighbours and the clear button brings the rest back", () => {
+const faded = (c: HTMLElement) =>
+  c.querySelectorAll(".incident-graph-node.faded");
+const fadedLines = (c: HTMLElement) =>
+  c.querySelectorAll(".incident-graph-lines line.faded");
+
+test("choosing a node fades everything but its direct neighbours and removes nothing", () => {
   const { container } = render(<Harness initial="entity" />);
+  const lines = container.querySelectorAll(".incident-graph-lines line").length;
   fireEvent.click(node("ip: 203.0.113.10"));
   const side = inspector();
   expect(within(side).getByText("203.0.113.10")).toBeInTheDocument();
   expect(within(side).getByText("연결 Ticket").nextSibling).toHaveTextContent(
     "4",
   );
-  const kept = nodes(container, "entity").length;
-  expect(kept).toBeLessThan(60);
-  expect(kept).toBeGreaterThan(1);
-  fireEvent.click(screen.getByRole("button", { name: "선택 해제" }));
   expect(nodes(container, "entity")).toHaveLength(60);
+  expect(container.querySelectorAll(".incident-graph-lines line")).toHaveLength(
+    lines,
+  );
+  const fadedNow = faded(container).length;
+  expect(fadedNow).toBeGreaterThan(0);
+  expect(fadedNow).toBeLessThan(59);
+  expect(node("ip: 203.0.113.10")).not.toHaveClass("faded");
+  expect(fadedLines(container).length).toBeGreaterThan(0);
+  fireEvent.click(screen.getByRole("button", { name: "선택 해제" }));
+  expect(faded(container)).toHaveLength(0);
+  expect(fadedLines(container)).toHaveLength(0);
+});
+
+test("hovering fades the same way in both views, overrides the choice and goes back when the pointer leaves", () => {
+  const { container } = render(<Harness />);
+  fireEvent.mouseEnter(node("Ticket 샘플 Ticket 1"));
+  expect(faded(container).length).toBeGreaterThan(0);
+  expect(node("Ticket 샘플 Ticket 1")).not.toHaveClass("faded");
+  fireEvent.mouseLeave(node("Ticket 샘플 Ticket 1"));
+  expect(faded(container)).toHaveLength(0);
+  fireEvent.click(screen.getByRole("button", { name: "Entity" }));
+  fireEvent.click(node("ip: 203.0.113.10"));
+  const chosenFaded = faded(container).length;
+  fireEvent.mouseEnter(node("ip: 198.51.100.2"));
+  expect(node("ip: 198.51.100.2")).not.toHaveClass("faded");
+  expect(node("ip: 203.0.113.10")).toHaveClass("faded");
+  fireEvent.mouseLeave(node("ip: 198.51.100.2"));
+  expect(faded(container)).toHaveLength(chosenFaded);
+  expect(node("ip: 203.0.113.10")).not.toHaveClass("faded");
+});
+
+test("a hovered node outside the shown graph still hides nothing and a search dim and a fade are not stacked", () => {
+  const { container } = render(<Harness initial="entity" />);
+  fireEvent.change(screen.getByRole("textbox", { name: "노드 검색" }), {
+    target: { value: "203.0.113.10" },
+  });
+  fireEvent.mouseEnter(node("ip: 203.0.113.10"));
+  expect(nodes(container, "entity")).toHaveLength(60);
+  // a dimmed node that is also faded gets one class each and CSS applies the lower opacity only once
+  const both = container.querySelectorAll(".incident-graph-node.dim.faded");
+  expect(both.length).toBeGreaterThan(0);
+});
+
+test("the inspector lists the src and dst entities of the chosen entity as text", () => {
+  render(<Harness initial="entity" />);
+  fireEvent.click(node("ip: 203.0.113.10"));
+  const list = within(inspector()).getByRole("list", {
+    name: "이 노드의 연결",
+  });
+  expect(within(list).getAllByRole("listitem").length).toBeGreaterThan(0);
+  expect(within(inspector()).queryByText(/위험 경로|단계/)).toBeNull();
+});
+
+test("a node given from the address opens chosen, even one below the top 60", () => {
+  render(
+    <Harness
+      initial="entity"
+      start={JSON.stringify(["process", "proc-14.exe"])}
+    />,
+  );
+  expect(node("process: proc-14.exe")).toHaveAttribute("aria-current", "true");
+  expect(within(inspector()).getByText("proc-14.exe")).toBeInTheDocument();
 });
 
 test("nodes can be chosen with the keyboard", () => {
@@ -159,7 +226,7 @@ test("nodes can be chosen with the keyboard", () => {
   expect(first).toHaveAttribute("tabindex", "0");
   fireEvent.keyDown(first, { key: "Enter" });
   expect(within(inspector()).getByText("샘플 Ticket 1")).toBeInTheDocument();
-  // Esc clears the choice and brings the other tickets back
+  // Esc clears the choice
   fireEvent.keyDown(node("Ticket 샘플 Ticket 1"), { key: "Escape" });
   expect(screen.queryByRole("button", { name: "선택 해제" })).toBeNull();
   fireEvent.keyDown(node("Ticket 샘플 Ticket 2"), { key: " " });
