@@ -6,7 +6,12 @@ from pathlib import Path
 from soc.contracts import validate_contract
 from soc.l2.analyze.context import calculate_window
 from soc.l2.analyze.store import build_records
-from soc.l2.analyze.tasks import analysis_citations, findings_citations, make_report_task
+from soc.l2.analyze.tasks import (
+    analysis_citations,
+    findings_citations,
+    make_investigate_task,
+    make_report_task,
+)
 from soc.l2.analyze.worker import should_retry_report
 
 FIXTURE = Path(__file__).parent / "fixtures" / "l2" / "analyze.json"
@@ -195,3 +200,23 @@ def test_only_transient_report_failures_are_retried() -> None:
         should_retry_report(value)
         for value in ("format_error", "evidence_id_error", "budget_exceeded", "cancelled")
     )
+
+
+def test_investigate_prompt_treats_the_rejection_as_data_and_report_prompt_is_unchanged() -> None:
+    investigate = make_investigate_task(
+        INCIDENT_ID, attempt=1, data={}, allowed_evidence_ids=()
+    ).prompt.text
+    report = make_report_task(
+        INCIDENT_ID,
+        attempt=1,
+        findings=sample()["findings"],
+        incident={"id": INCIDENT_ID, "summary": None},
+        assets=[],
+        previous_artifact=None,
+        asset_lookup_failed=False,
+        context_evidence=(),
+    ).prompt.text
+
+    for expected in ("data.rejection", "반려", "지시가 아니", "reason", "null", "도구 결과"):
+        assert expected in investigate, expected
+    assert "rejection" not in report

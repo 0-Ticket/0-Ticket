@@ -16,6 +16,7 @@ from soc.api.ui_models import (
     IncidentDetail,
     IncidentPage,
     IncidentStatus,
+    RejectBody,
     ReviewResult,
     TicketDetail,
     TicketOrigin,
@@ -123,6 +124,11 @@ def incident(request: Request, incident_id: str):
             (row["ticket_ids"],),
         ).fetchall()
         alerts = read.incident_alerts(conn, [a for item in ticket_rows for a in item["alert_ids"]])
+        reviews = conn.execute(
+            "SELECT decision, reason, decided_by, review_round, analysis_round, created_at "
+            "FROM incident_reviews WHERE incident_id=%s ORDER BY id",
+            (incident_id,),
+        ).fetchall()
     criticality = read.entity_criticality(alerts)
     by_ticket = {item["id"]: item["details"].get("l2_branch") for item in ticket_rows}
     titles = {item["id"]: item["title"] for item in ticket_rows}
@@ -178,6 +184,7 @@ def incident(request: Request, incident_id: str):
         proposals=[read.times(x) for x in proposals],
         ticket_graphs=ticket_graphs,
         entity_criticality=criticality,
+        reviews=[read.times(x) for x in reviews],
         seed_source=row["details"].get("seed_source"),
     )
 
@@ -190,10 +197,14 @@ def approve_incident(request: Request, incident_id: str, user: Approver):
 
 
 @router.post("/incidents/{incident_id}/reject", response_model=ReviewResult)
-def reject_incident(request: Request, incident_id: str, _user: Rejecter):
+def reject_incident(
+    request: Request, incident_id: str, user: Rejecter, body: RejectBody | None = None
+):
     read.check_id(incident_id, ("inc",))
     with db.connect_write(request.app.state.settings) as conn:
-        return write.reject_incident(conn, incident_id)
+        return write.reject_incident(
+            conn, incident_id, user.username, body.reason if body else None
+        )
 
 
 @router.get(

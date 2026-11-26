@@ -2261,6 +2261,35 @@ td {
 .review-error {
   color: #b42318;
 }
+.review-dialog {
+  width: min(440px, calc(100vw - 32px));
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.review-dialog::backdrop {
+  background: rgb(15 23 42 / 40%);
+}
+.review-dialog h2 {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+.review-dialog p {
+  margin: 0 0 16px;
+  font-size: 13px;
+  color: #4e6482;
+}
+.review-dialog textarea {
+  width: 100%;
+  resize: vertical;
+  white-space: pre-wrap;
+}
+.review-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
 
 /* Incident page (#379) */
 .incident-page {
@@ -2533,6 +2562,10 @@ a.incident-row-link:hover strong {
   gap: 6px;
   padding: 12px 0 12px 16px;
   border-left: 2px solid var(--border);
+}
+.incident-timeline .incident-timeline-review {
+  border-left-color: #b8c4d8;
+  background: #f7f9fc;
 }
 .incident-timeline-head {
   display: flex;
