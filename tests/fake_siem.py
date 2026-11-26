@@ -1,8 +1,9 @@
 """SIEM 도구 테스트용 가짜 ELK(#212). tests/ 안에서만 쓴다.
 
 FakeElk는 httpx.MockTransport에 넣는 처리기다. 미리 넣은 답을 앞에서부터 하나씩 돌려준다.
-SIEM 도구가 부를 수 있는 것은 POST /<index>/_search 하나뿐이다. 다른 경로·메서드, 쿼리 문자열,
-허용 목록 밖의 본문 키를 받으면 violations에 남기고 599로 답한다. 테스트는 끝날 때 violations가
+허용하는 요청은 둘이다. 도구의 POST /<index>/_search와, 근거 발급 워커의
+GET /<index>/_doc/<id>(#382)다. 다른 경로·메서드, 쿼리 문자열, 허용 목록 밖의 본문 키를 받으면
+violations에 남기고 599로 답한다. GET에는 본문이 없어야 한다. 테스트는 끝날 때 violations가
 비어 있는지 확인한다(conftest가 아니라 각 테스트의 elk 픽스처가 한다).
 """
 
@@ -19,6 +20,8 @@ ELK_URL = "https://elk.example.com:9200"
 ELK_KEY = "fake-elk-key-SECRET-7777"
 BODY_KEYS = frozenset({"size", "query", "sort", "_source", "aggs", "track_total_hits"})
 _SEARCH_PATH = re.compile(r"/[^/]+/_search")
+# 근거 발급 워커가 부르는 경로(#382). _id는 퍼센트 인코딩돼 오고 httpx가 path에서 풀어 준다.
+_DOC_PATH = re.compile(r"/[^/]+/_doc/.+", re.DOTALL)
 
 Answer = httpx.Response | Exception | Callable[[httpx.Request], httpx.Response]
 
@@ -76,6 +79,8 @@ class FakeElk:
 
 
 def _violation(request: httpx.Request) -> str | None:
+    if request.method == "GET":
+        return _doc_violation(request)
     if request.method != "POST":
         return f"메서드 {request.method}"
     if not _SEARCH_PATH.fullmatch(request.url.path):
@@ -88,4 +93,15 @@ def _violation(request: httpx.Request) -> str | None:
         return "본문이 JSON이 아니다"
     if not isinstance(body, dict) or set(body) - BODY_KEYS:
         return "허용 목록 밖의 본문 키"
+    return None
+
+
+def _doc_violation(request: httpx.Request) -> str | None:
+    """근거 발급 워커의 GET /<index>/_doc/<id>만 허용한다(#382)."""
+    if not _DOC_PATH.fullmatch(request.url.path):
+        return f"경로 {request.url.path}"
+    if request.url.query:
+        return "쿼리 문자열"
+    if request.content:
+        return "GET에 본문이 있다"
     return None

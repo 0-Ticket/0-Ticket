@@ -4,7 +4,9 @@
 (ELK_URL·ELK_API_KEY)로 접속한다. SIEM 연결·프로필(D-021)이 생기면 그것으로 바꾼다.
 키는 읽기 전용 API 키다(D-010).
 
-- 부르는 API는 POST /<대상 index>/_search 하나다. PIT·scroll·쓰기 API는 부르지 않는다.
+- 도구가 부르는 API는 POST /<대상 index>/_search 하나다. PIT·scroll·쓰기 API는 부르지 않는다.
+- 근거 발급 워커는 fetch_document로 GET /<index>/_doc/<id>를 하나 더 부른다(#382). 도구가 아니라서
+  모델은 부를 수 없고, 접속·마감·크기 상한 규칙은 _request 한 곳을 도구와 함께 쓴다.
 - 모델은 쿼리를 쓰지 않는다. 대상 이름·필터 인자만 고르고, 도구가 bool.filter(range + term) dict를
   만든다. 필드 이름은 아래 상수에서만 고르고, 모델이 준 값은 term 값 자리에만 들어간다.
 - 대상 이름과 대상별 필터·반환 필드는 코드 상수다(도구 설명과 enum이 정적이라). 설정
@@ -25,6 +27,7 @@ import ssl
 import time
 from collections.abc import Callable, Mapping
 from typing import Any
+from urllib.parse import quote
 
 import httpx
 
@@ -342,6 +345,23 @@ def _search(
     siem = ctx.tools_config.get("siem", {})
     if not isinstance(siem, Mapping):
         raise ToolError("failed", reason="config")
+    return _request(siem, "POST", f"/{index}/_search", body, transport, clock)
+
+
+def _request(
+    siem: Mapping[str, Any],
+    method: str,
+    path: str,
+    body: dict[str, Any] | None,
+    transport: httpx.BaseTransport | None,
+    clock: Clock,
+) -> dict[str, Any]:
+    """요청 한 번. JSON 객체를 돌려주거나 ToolError를 낸다.
+
+    도구(POST _search)와 근거 발급 워커(GET _doc)가 같이 쓴다(#382). 리다이렉트를 따라가지 않고,
+    요청 단위 timeout과 별도로 전체 마감 시간을 보며, 압축을 푼 바이트가 상한을 넘으면 끊는다.
+    오류 문구와 reason에는 주소·키·응답 본문을 넣지 않는다.
+    """
     connect, read, deadline = (_positive(siem, key) for key in _TIMEOUT_KEYS)
     max_bytes = _positive(siem, "max_bytes")
     url, key = _connection(siem)
@@ -358,9 +378,8 @@ def _search(
             verify=verify,
             transport=transport,
         ) as client:
-            with client.stream(
-                "POST", f"/{index}/_search", json=body, follow_redirects=False
-            ) as response:
+            sent = {} if body is None else {"json": body}
+            with client.stream(method, path, follow_redirects=False, **sent) as response:
                 if response.status_code in (401, 403):
                     raise ToolError("failed", reason="auth")
                 if not 200 <= response.status_code < 300:
@@ -383,6 +402,54 @@ def _search(
     if not isinstance(parsed, dict):
         raise ToolError("failed", reason="response_shape")
     return parsed
+
+
+def fetch_document(
+    siem: Mapping[str, Any],
+    index: str,
+    doc_id: str,
+    *,
+    transport: httpx.BaseTransport | None = None,
+    clock: Clock = time.monotonic,
+) -> dict[str, Any]:
+    """문서 한 건을 통째로 가져온다(#382). 도구가 아니라 근거 발급 워커가 부른다.
+
+    인덱스와 문서 ID는 도구 세션이 모은 맵(`ToolSession.siem_refs`)의 값이다. 저장 키
+    `siem_ref`는 `_index`·`_id`로 되돌릴 수 없어(`soc.ids.siem_ref_key`) 쌍을 받아야 한다.
+
+    도구와 달리 값을 자르지 않는다. 불변 사본을 만드는 것이 목적이다.
+
+    Args:
+        siem: 설정의 [tools.siem].
+        index: 문서가 든 실제 인덱스 이름(별칭·패턴이 아니다).
+        doc_id: ELK가 준 원래 `_id`. 저장 키가 아니다. 경로에 넣을 때 퍼센트 인코딩한다.
+
+    Returns:
+        `{"_index", "_id", "_source"}`. 수집이 `raw_records.original_text`에 넣는 모양과 같아
+        `soc.ingest.quarantine.serialize_original`을 그대로 쓸 수 있다.
+
+    Raises:
+        ToolError: 설정·인자 오류, 접속 실패, 404, `found: false`, 모양이 다른 응답.
+    """
+    if not isinstance(siem, Mapping):
+        raise ToolError("failed", reason="config")
+    # 맵의 값은 히트 하나의 _index라 늘 구체 이름이다. 쉼표·와일드카드는 _doc 경로에 쓸 수 없다.
+    if not index or not _INDEX.fullmatch(index) or index.startswith("_"):
+        raise ToolError("invalid_argument")
+    if "," in index or "*" in index:
+        raise ToolError("invalid_argument")
+    if not doc_id:
+        raise ToolError("invalid_argument")
+    path = f"/{index}/_doc/{quote(doc_id, safe='')}"
+    data = _request(siem, "GET", path, None, transport, clock)
+    if data.get("found") is not True:
+        raise ToolError("failed", reason="not_found")
+    got_index, got_id, source = data.get("_index"), data.get("_id"), data.get("_source")
+    if not isinstance(got_index, str) or not got_index or got_index.startswith("_"):
+        raise _shape_error()
+    if not isinstance(got_id, str) or not got_id or not isinstance(source, dict):
+        raise _shape_error()
+    return {"_index": got_index, "_id": got_id, "_source": source}
 
 
 def _shape_error() -> ToolError:

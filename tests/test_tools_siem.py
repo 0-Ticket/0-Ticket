@@ -25,6 +25,7 @@ from soc.agent.config import load_config
 from soc.agent.runner import run_task
 from soc.ids import siem_ref_key
 from soc.tools import (
+    CUT_MARK,
     RESULT_CLOSE,
     ToolConfigError,
     ToolRegistry,
@@ -33,6 +34,7 @@ from soc.tools import (
 )
 from soc.tools import siem as siem_mod
 from soc.tools.siem import (
+    FIELD_MAX_CHARS,
     FILTERS,
     TARGET_FIELDS,
     TARGET_FILTERS,
@@ -1142,3 +1144,126 @@ def test_count_siem_adds_nothing_to_the_map(elk: FakeElk) -> None:
     call(c, "count_siem", count())
 
     assert c.session.siem_refs == {}
+
+
+# 원문 한 건 가져오기 (#382)
+#
+# 도구가 아니라 근거 발급 워커가 부른다. GET /<index>/_doc/<id> 하나이고, 접속·마감·상한 규칙은
+# query_siem과 같은 함수를 쓴다. 돌려주는 모양은 수집이 raw_records.original_text에 넣는 것과 같은
+# 세 칸(_index, _id, _source)이다.
+
+
+def siem_config() -> dict[str, Any]:
+    return config()["tools"]["siem"]
+
+
+def fetch(fake: FakeElk, index: str, doc_id: str, clock: Any = None) -> dict[str, Any]:
+    return siem_mod.fetch_document(
+        siem_config(),
+        index,
+        doc_id,
+        transport=fake.transport(),
+        clock=clock or itertools.count(0.0, 0.1).__next__,
+    )
+
+
+def doc_response(index: str, doc_id: str, source: dict[str, Any]) -> httpx.Response:
+    return httpx.Response(
+        200,
+        json={"_index": index, "_id": doc_id, "_version": 3, "found": True, "_source": source},
+    )
+
+
+def test_fetch_returns_the_three_columns_ingest_stores(elk: FakeElk) -> None:
+    index = ".ds-logs-nginx.access-default-2026.11.04-000001"
+    source = {"@timestamp": "2026-11-04T00:00:01Z", "event": {"module": "suricata"}}
+    elk.add(doc_response(index, "abc1", source))
+
+    got = fetch(elk, index, "abc1")
+
+    assert got == {"_index": index, "_id": "abc1", "_source": source}
+    assert elk.requests[-1].method == "GET"
+
+
+def test_fetch_percent_encodes_an_odd_doc_id(elk: FakeElk) -> None:
+    # _id를 경로에 그대로 넣으면 다른 문서를 가리키거나 경로가 깨진다.
+    index = ".ds-logs-web-default-2026.11.04-000001"
+    doc_id = 'q"b\\s\x01z한글'
+    elk.add(doc_response(index, doc_id, {"a": 1}))
+
+    got = fetch(elk, index, doc_id)
+
+    raw_path = elk.requests[-1].url.raw_path.decode("ascii")
+    assert raw_path.startswith(f"/{index}/_doc/")
+    assert "/" not in raw_path[len(f"/{index}/_doc/") :]
+    assert elk.requests[-1].url.path == f"/{index}/_doc/{doc_id}"
+    assert got["_id"] == doc_id
+
+
+def test_fetch_does_not_truncate_the_source(elk: FakeElk) -> None:
+    # 불변 사본이 목적이므로 도구의 자르기(FIELD_MAX_CHARS, SEARCH_MAX)가 걸리지 않아야 한다.
+    index = ".ds-logs-web-default-2026.11.04-000001"
+    long_value = "y" * (FIELD_MAX_CHARS * 5)
+    elk.add(doc_response(index, "big", {"message": long_value}))
+
+    got = fetch(elk, index, "big")
+
+    assert got["_source"]["message"] == long_value
+    assert CUT_MARK not in got["_source"]["message"]
+
+
+def test_fetch_of_a_missing_document_is_an_error(elk: FakeElk) -> None:
+    index = ".ds-logs-web-default-2026.11.04-000001"
+    elk.add(httpx.Response(404, json={"_index": index, "_id": "gone", "found": False}))
+
+    with pytest.raises(siem_mod.ToolError) as exc:
+        fetch(elk, index, "gone")
+    assert exc.value.code == "failed"
+
+
+def test_fetch_with_found_false_is_an_error(elk: FakeElk) -> None:
+    index = ".ds-logs-web-default-2026.11.04-000001"
+    elk.add(httpx.Response(200, json={"_index": index, "_id": "gone", "found": False}))
+
+    with pytest.raises(siem_mod.ToolError):
+        fetch(elk, index, "gone")
+
+
+def test_fetch_auth_failure_is_reported_as_auth(elk: FakeElk) -> None:
+    elk.add(status(401, "error_401.json"))
+
+    with pytest.raises(siem_mod.ToolError) as exc:
+        fetch(elk, ".ds-x-000001", "a")
+    assert exc.value.reason == "auth"
+
+
+def test_fetch_stops_over_the_size_cap(elk: FakeElk) -> None:
+    cfg = {**siem_config(), "max_bytes": 64}
+    elk.add(doc_response(".ds-x-000001", "a", {"m": "z" * 500}))
+
+    with pytest.raises(siem_mod.ToolError) as exc:
+        siem_mod.fetch_document(
+            cfg,
+            ".ds-x-000001",
+            "a",
+            transport=elk.transport(),
+            clock=itertools.count(0.0, 0.1).__next__,
+        )
+    assert exc.value.reason == "too_large"
+
+
+def test_fetch_error_text_leaks_no_address_or_key(elk: FakeElk) -> None:
+    elk.add(status(500, "error_500.json"))
+
+    with pytest.raises(siem_mod.ToolError) as exc:
+        fetch(elk, ".ds-x-000001", "a")
+    assert leaked(f"{exc.value.code} {exc.value.reason}") == []
+
+
+def test_fetch_rejects_a_pattern_or_multi_index(elk: FakeElk) -> None:
+    # 맵의 값은 히트 하나의 _index라 늘 구체 이름이다. 패턴을 받으면 엉뚱한 문서를 가리킨다.
+    for index in ("logs-nginx.access-*", "logs-a-000001,logs-b-000001"):
+        with pytest.raises(siem_mod.ToolError) as exc:
+            siem_mod.fetch_document(siem_config(), index, "a", transport=elk.transport())
+        assert exc.value.code == "invalid_argument", index
+    assert elk.requests == []
