@@ -44,7 +44,8 @@ from soc.tools.registry import (
     shorten_record,
 )
 
-TARGET_NAMES = ("alerts", "web_access", "cloudtrail")
+# evidence는 소스를 가리지 않는 대상이다(#382). ECS 공통 필드만 쓰고 event.module로 좁힌다.
+TARGET_NAMES = ("alerts", "web_access", "cloudtrail", "evidence")
 # 필터 인자 이름 → ELK 필드. keyword·숫자·ip 타입 필드만 둔다(term·terms가 그대로 맞는다).
 FILTERS: dict[str, str] = {
     "source_ip": "source.ip",
@@ -59,6 +60,9 @@ FILTERS: dict[str, str] = {
     # Elastic Security 알럿 필드(ECS 아님). 실제 매핑 확정은 #208
     "rule_name": "kibana.alert.rule.name",
     "alert_severity": "kibana.alert.severity",
+    # 소스 구분 없는 대상에서 소스를 좁히는 ECS 필드(#382)
+    "event_module": "event.module",
+    "event_dataset": "event.dataset",
 }
 IP_FILTERS = ("source_ip", "destination_ip")
 TARGET_FILTERS: dict[str, tuple[str, ...]] = {
@@ -80,6 +84,18 @@ TARGET_FILTERS: dict[str, tuple[str, ...]] = {
         "host_name",
     ),
     "cloudtrail": ("source_ip", "user_name", "event_action", "cloud_account_id"),
+    # 소스 고유 필드는 두지 않는다. 소스는 event_module·event_dataset로 좁힌다(#382)
+    "evidence": (
+        "source_ip",
+        "destination_ip",
+        "user_name",
+        "host_name",
+        "url_path",
+        "http_method",
+        "status_code",
+        "event_module",
+        "event_dataset",
+    ),
 }
 # query_siem이 돌려주는 _source 필드(시각 필드는 설정의 time_field를 앞에 더한다)
 TARGET_FIELDS: dict[str, tuple[str, ...]] = {
@@ -116,6 +132,23 @@ TARGET_FIELDS: dict[str, tuple[str, ...]] = {
         "user_agent.original",
         "cloud.account.id",
         "cloud.region",
+    ),
+    # 소스에 관계없이 ECS에 있는 것만. 소스 고유 필드는 발급한 원문(get_raw)에서 본다(#382)
+    "evidence": (
+        "event.module",
+        "event.dataset",
+        "event.action",
+        "event.outcome",
+        "source.ip",
+        "destination.ip",
+        "user.name",
+        "host.name",
+        "url.path",
+        "url.query",
+        "http.request.method",
+        "http.response.status_code",
+        "user_agent.original",
+        "message",
     ),
 }
 MAX_FILTERS = 5

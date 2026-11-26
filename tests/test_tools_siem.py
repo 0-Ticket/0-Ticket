@@ -51,6 +51,7 @@ TARGETS = [
     {"name": "alerts", "index": ".alerts-security.alerts-default", "time_field": "@timestamp"},
     {"name": "web_access", "index": WEB_INDEX, "time_field": "@timestamp"},
     {"name": "cloudtrail", "index": "logs-aws.cloudtrail-*", "time_field": "@timestamp"},
+    {"name": "evidence", "index": "logs-*,filebeat-*", "time_field": "@timestamp"},
 ]
 SIEM = {
     "url_env": "ELK_URL",
@@ -642,7 +643,7 @@ def test_five_filters_and_cidr_are_allowed(elk: FakeElk) -> None:
 
 
 def test_target_filters_and_fields_are_known_constants() -> None:
-    assert TARGET_NAMES == ("alerts", "web_access", "cloudtrail")
+    assert TARGET_NAMES == ("alerts", "web_access", "cloudtrail", "evidence")
     for name in TARGET_NAMES:
         assert set(TARGET_FILTERS[name]) <= set(FILTERS)
     assert FILTERS["rule_name"] == "kibana.alert.rule.name"
@@ -1273,3 +1274,84 @@ def test_fetch_rejects_a_pattern_or_multi_index(elk: FakeElk) -> None:
             siem_mod.fetch_document(siem_config(), index, "a", transport=elk.transport())
         assert exc.value.code == "invalid_argument", index
     assert elk.requests == []
+
+
+# 소스 구분 없는 대상 (#382)
+#
+# 이벤트 정규화를 없애면서 수리카타처럼 매핑표가 없는 소스도 근거로 써야 한다. 대상 하나에 ECS
+# 공통 필터·반환 필드만 두고 event.module로 좁힌다. 안 좁히면 여러 소스가 함께 걸린다.
+
+EVIDENCE = "evidence"
+
+
+def evidence_query(**kwargs: Any) -> dict[str, Any]:
+    return {"target": EVIDENCE, "start_ms": START, "end_ms": END, **kwargs}
+
+
+def test_evidence_target_exists_with_ecs_common_filters_only() -> None:
+    assert EVIDENCE in TARGET_NAMES
+    assert set(TARGET_FILTERS[EVIDENCE]) == {
+        "source_ip",
+        "destination_ip",
+        "user_name",
+        "host_name",
+        "url_path",
+        "http_method",
+        "status_code",
+        "event_module",
+        "event_dataset",
+    }
+    # 소스 고유 필드는 쓰지 않는다. 알럿 전용 필터도 없다
+    assert "rule_name" not in TARGET_FILTERS[EVIDENCE]
+    assert "alert_severity" not in TARGET_FILTERS[EVIDENCE]
+    assert "cloud_account_id" not in TARGET_FILTERS[EVIDENCE]
+
+
+def test_evidence_target_returns_ecs_common_fields() -> None:
+    fields = set(TARGET_FIELDS[EVIDENCE])
+    assert {"event.module", "event.dataset", "source.ip", "url.path"} <= fields
+    assert not any(f.startswith("kibana.") for f in fields)
+
+
+def test_event_module_filter_narrows_to_one_source(elk: FakeElk) -> None:
+    elk.add(ok("empty.json"))
+    c = caller(elk)
+    call(c, "query_siem", evidence_query(event_module="suricata"))
+
+    body = elk.bodies()[-1]
+    terms = [f for f in body["query"]["bool"]["filter"] if "term" in f]
+    assert {"term": {"event.module": "suricata"}} in terms
+
+
+def test_evidence_target_without_a_module_filter_catches_every_source(elk: FakeElk) -> None:
+    index = ".ds-filebeat-9.5.0-2026.11.04-000001"
+    hits = [
+        siem_hit(index, f"id{n}", **{"event.module": module})
+        for n, module in enumerate(("suricata", "modsecurity", "nginx"))
+    ]
+    elk.add(hits_response(*hits))
+    c = caller(elk)
+    body = parse(call(c, "query_siem", evidence_query()))
+
+    modules = [h["fields"]["event.module"] for h in body["hits"]]
+    assert modules == ["suricata", "modsecurity", "nginx"]
+    # 모델에게 보인 히트는 모두 원문을 가져올 수 있다
+    assert set(c.session.siem_refs) == {h["siem_ref"] for h in body["hits"]}
+
+
+def test_alert_only_filters_are_rejected_on_the_evidence_target(elk: FakeElk) -> None:
+    c = caller(elk)
+    text = call(c, "query_siem", evidence_query(rule_name="IRLAB"))
+
+    assert text.startswith("TOOL_ERROR tool=query_siem code=invalid_argument")
+    assert elk.requests == []
+
+
+def test_default_config_has_the_evidence_target(env: None) -> None:
+    targets = load_config(REPO / "config")["tools"]["siem"]["targets"]
+    by_name = {t["name"]: t for t in targets}
+    assert EVIDENCE in by_name
+    index = by_name[EVIDENCE]["index"]
+    # 소스를 가리지 않도록 넓게 두고 실제 값은 config/local.toml에서 좁힌다
+    assert "filebeat" in index and "logs-" in index
+    assert by_name[EVIDENCE]["time_field"] == "@timestamp"
