@@ -1,6 +1,6 @@
 """Case 색인의 이름·ID 규칙·승인 당시 Artifact 선택(#391, D-084). 가벼운 상수와 SQL만 둔다.
 
-#392의 검색 도구도 이 모듈을 가져다 쓴다. 임베더·Qdrant·L2를 import하지 않는다.
+#392의 검색 도구(D-087)도 이 모듈을 가져다 쓴다. 임베더·Qdrant·L2를 import하지 않는다.
 """
 
 # Qdrant 컬렉션 용도(컬렉션 이름은 용도·모델·revision에서 파생한다, D-031)
@@ -16,6 +16,13 @@ _PREFIX = "cas_"
 LATEST_ARTIFACT_SQL = (
     "SELECT {columns} FROM incident_artifacts WHERE incident_id = %s "
     "ORDER BY analysis_round DESC LIMIT 1"
+)
+# 같은 기준을 Case 여러 건에 한 번에 적용한다(#392 검색 도구). 파라미터는 Case ID 배열 하나다.
+# 기준을 바꾸면 위 상수와 함께 바꾼다. {columns}는 코드 상수다(`a.`를 붙여 적는다).
+LATEST_ARTIFACTS_SQL = (
+    "SELECT DISTINCT ON (a.incident_id) {columns} FROM incident_artifacts a "
+    "JOIN cases c ON c.incident_id = a.incident_id WHERE c.id = ANY(%s) "
+    "ORDER BY a.incident_id, a.analysis_round DESC"
 )
 
 

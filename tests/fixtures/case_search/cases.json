@@ -1,0 +1,2555 @@
+{
+ "raw_records": [
+  {
+   "id": "raw_01a19f93-1392-7000-8000-000000000101",
+   "kind": "alert",
+   "siem_profile": "test",
+   "siem_ref": "alert-1",
+   "fetched_at": 1793764000000,
+   "original_text": "{\"sample\": true}"
+  },
+  {
+   "id": "raw_01a19f93-1392-7000-8000-000000000102",
+   "kind": "alert",
+   "siem_profile": "test",
+   "siem_ref": "alert-2",
+   "fetched_at": 1793764000000,
+   "original_text": "{\"sample\": true}"
+  },
+  {
+   "id": "raw_01a19f93-1392-7000-8000-000000000103",
+   "kind": "alert",
+   "siem_profile": "test",
+   "siem_ref": "alert-3",
+   "fetched_at": 1793764000000,
+   "original_text": "{\"sample\": true}"
+  },
+  {
+   "id": "raw_01a19f93-1392-7000-8000-000000000104",
+   "kind": "alert",
+   "siem_profile": "test",
+   "siem_ref": "alert-4",
+   "fetched_at": 1793764000000,
+   "original_text": "{\"sample\": true}"
+  },
+  {
+   "id": "raw_01a19f93-1392-7000-8000-000000000105",
+   "kind": "alert",
+   "siem_profile": "test",
+   "siem_ref": "alert-5",
+   "fetched_at": 1793764000000,
+   "original_text": "{\"sample\": true}"
+  },
+  {
+   "id": "raw_01a19f93-1392-7000-8000-000000000200",
+   "kind": "alert",
+   "siem_profile": "test",
+   "siem_ref": "alert-100",
+   "fetched_at": 1793764000000,
+   "original_text": "{\"sample\": true}"
+  },
+  {
+   "id": "raw_01a19f93-1392-7000-8000-000000000201",
+   "kind": "alert",
+   "siem_profile": "test",
+   "siem_ref": "alert-101",
+   "fetched_at": 1793764000000,
+   "original_text": "{\"sample\": true}"
+  },
+  {
+   "id": "raw_01a19f93-1392-7000-8000-000000000202",
+   "kind": "alert",
+   "siem_profile": "test",
+   "siem_ref": "alert-102",
+   "fetched_at": 1793764000000,
+   "original_text": "{\"sample\": true}"
+  },
+  {
+   "id": "raw_01a19f93-1392-7000-8000-000000000203",
+   "kind": "alert",
+   "siem_profile": "test",
+   "siem_ref": "alert-103",
+   "fetched_at": 1793764000000,
+   "original_text": "{\"sample\": true}"
+  },
+  {
+   "id": "raw_01a19f93-1392-7000-8000-000000000204",
+   "kind": "alert",
+   "siem_profile": "test",
+   "siem_ref": "alert-104",
+   "fetched_at": 1793764000000,
+   "original_text": "{\"sample\": true}"
+  },
+  {
+   "id": "raw_01a19f93-1392-7000-8000-000000000205",
+   "kind": "alert",
+   "siem_profile": "test",
+   "siem_ref": "alert-105",
+   "fetched_at": 1793764000000,
+   "original_text": "{\"sample\": true}"
+  },
+  {
+   "id": "raw_01a19f93-1392-7000-8000-000000000400",
+   "kind": "alert",
+   "siem_profile": "test",
+   "siem_ref": "alert-300",
+   "fetched_at": 1793764000000,
+   "original_text": "{\"sample\": true}"
+  },
+  {
+   "id": "raw_01a19f93-1392-7000-8000-000000000401",
+   "kind": "alert",
+   "siem_profile": "test",
+   "siem_ref": "alert-301",
+   "fetched_at": 1793764000000,
+   "original_text": "{\"sample\": true}"
+  },
+  {
+   "id": "raw_01a19f93-1392-7000-8000-000000000402",
+   "kind": "alert",
+   "siem_profile": "test",
+   "siem_ref": "alert-302",
+   "fetched_at": 1793764000000,
+   "original_text": "{\"sample\": true}"
+  },
+  {
+   "id": "raw_01a19f93-1392-7000-8000-000000000403",
+   "kind": "alert",
+   "siem_profile": "test",
+   "siem_ref": "alert-303",
+   "fetched_at": 1793764000000,
+   "original_text": "{\"sample\": true}"
+  },
+  {
+   "id": "raw_01a19f93-1392-7000-8000-000000000404",
+   "kind": "alert",
+   "siem_profile": "test",
+   "siem_ref": "alert-304",
+   "fetched_at": 1793764000000,
+   "original_text": "{\"sample\": true}"
+  },
+  {
+   "id": "raw_01a19f93-1392-7000-8000-000000000405",
+   "kind": "alert",
+   "siem_profile": "test",
+   "siem_ref": "alert-305",
+   "fetched_at": 1793764000000,
+   "original_text": "{\"sample\": true}"
+  },
+  {
+   "id": "raw_01a19f93-1392-7000-8000-000000000406",
+   "kind": "alert",
+   "siem_profile": "test",
+   "siem_ref": "alert-306",
+   "fetched_at": 1793764000000,
+   "original_text": "{\"sample\": true}"
+  },
+  {
+   "id": "raw_01a19f93-1392-7000-8000-000000000407",
+   "kind": "alert",
+   "siem_profile": "test",
+   "siem_ref": "alert-307",
+   "fetched_at": 1793764000000,
+   "original_text": "{\"sample\": true}"
+  },
+  {
+   "id": "raw_01a19f93-1392-7000-8000-000000000408",
+   "kind": "alert",
+   "siem_profile": "test",
+   "siem_ref": "alert-308",
+   "fetched_at": 1793764000000,
+   "original_text": "{\"sample\": true}"
+  },
+  {
+   "id": "raw_01a19f93-1392-7000-8000-000000000409",
+   "kind": "alert",
+   "siem_profile": "test",
+   "siem_ref": "alert-309",
+   "fetched_at": 1793764000000,
+   "original_text": "{\"sample\": true}"
+  },
+  {
+   "id": "raw_01a19f93-1392-7000-8000-000000000410",
+   "kind": "alert",
+   "siem_profile": "test",
+   "siem_ref": "alert-310",
+   "fetched_at": 1793764000000,
+   "original_text": "{\"sample\": true}"
+  },
+  {
+   "id": "raw_01a19f93-1392-7000-8000-000000000411",
+   "kind": "alert",
+   "siem_profile": "test",
+   "siem_ref": "alert-311",
+   "fetched_at": 1793764000000,
+   "original_text": "{\"sample\": true}"
+  },
+  {
+   "id": "raw_01a19f93-1392-7000-8000-000000000412",
+   "kind": "alert",
+   "siem_profile": "test",
+   "siem_ref": "alert-312",
+   "fetched_at": 1793764000000,
+   "original_text": "{\"sample\": true}"
+  },
+  {
+   "id": "raw_01a19f93-1392-7000-8000-000000000413",
+   "kind": "alert",
+   "siem_profile": "test",
+   "siem_ref": "alert-313",
+   "fetched_at": 1793764000000,
+   "original_text": "{\"sample\": true}"
+  },
+  {
+   "id": "raw_01a19f93-1392-7000-8000-000000000414",
+   "kind": "alert",
+   "siem_profile": "test",
+   "siem_ref": "alert-314",
+   "fetched_at": 1793764000000,
+   "original_text": "{\"sample\": true}"
+  },
+  {
+   "id": "raw_01a19f93-1392-7000-8000-000000000415",
+   "kind": "alert",
+   "siem_profile": "test",
+   "siem_ref": "alert-315",
+   "fetched_at": 1793764000000,
+   "original_text": "{\"sample\": true}"
+  },
+  {
+   "id": "raw_01a19f93-1392-7000-8000-000000000416",
+   "kind": "alert",
+   "siem_profile": "test",
+   "siem_ref": "alert-316",
+   "fetched_at": 1793764000000,
+   "original_text": "{\"sample\": true}"
+  },
+  {
+   "id": "raw_01a19f93-1392-7000-8000-000000000417",
+   "kind": "alert",
+   "siem_profile": "test",
+   "siem_ref": "alert-317",
+   "fetched_at": 1793764000000,
+   "original_text": "{\"sample\": true}"
+  },
+  {
+   "id": "raw_01a19f93-1392-7000-8000-000000000418",
+   "kind": "alert",
+   "siem_profile": "test",
+   "siem_ref": "alert-318",
+   "fetched_at": 1793764000000,
+   "original_text": "{\"sample\": true}"
+  },
+  {
+   "id": "raw_01a19f93-1392-7000-8000-000000000419",
+   "kind": "alert",
+   "siem_profile": "test",
+   "siem_ref": "alert-319",
+   "fetched_at": 1793764000000,
+   "original_text": "{\"sample\": true}"
+  },
+  {
+   "id": "raw_01a19f93-1392-7000-8000-000000000420",
+   "kind": "alert",
+   "siem_profile": "test",
+   "siem_ref": "alert-320",
+   "fetched_at": 1793764000000,
+   "original_text": "{\"sample\": true}"
+  },
+  {
+   "id": "raw_01a19f93-1392-7000-8000-000000000421",
+   "kind": "alert",
+   "siem_profile": "test",
+   "siem_ref": "alert-321",
+   "fetched_at": 1793764000000,
+   "original_text": "{\"sample\": true}"
+  },
+  {
+   "id": "raw_01a19f93-1392-7000-8000-000000000422",
+   "kind": "alert",
+   "siem_profile": "test",
+   "siem_ref": "alert-322",
+   "fetched_at": 1793764000000,
+   "original_text": "{\"sample\": true}"
+  },
+  {
+   "id": "raw_01a19f93-1392-7000-8000-000000000423",
+   "kind": "alert",
+   "siem_profile": "test",
+   "siem_ref": "alert-323",
+   "fetched_at": 1793764000000,
+   "original_text": "{\"sample\": true}"
+  }
+ ],
+ "alerts": [
+  {
+   "id": "alt_01a19f93-1392-7000-8000-000000000001",
+   "raw_id": "raw_01a19f93-1392-7000-8000-000000000101",
+   "time": 1793764001000,
+   "severity": 4,
+   "title": "Web shell upload request on example web server",
+   "rule_id": "test-rule",
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.2",
+     "role": "src"
+    }
+   ],
+   "assets": [],
+   "triage": null,
+   "ocsf": {
+    "class_uid": 2004,
+    "severity_id": 4,
+    "time": 1793764001000
+   },
+   "details": {}
+  },
+  {
+   "id": "alt_01a19f93-1392-7000-8000-000000000002",
+   "raw_id": "raw_01a19f93-1392-7000-8000-000000000102",
+   "time": 1793764002000,
+   "severity": 5,
+   "title": "Suspicious command execution from web root",
+   "rule_id": "test-rule",
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.3",
+     "role": "src"
+    }
+   ],
+   "assets": [],
+   "triage": null,
+   "ocsf": {
+    "class_uid": 2004,
+    "severity_id": 5,
+    "time": 1793764002000
+   },
+   "details": {}
+  },
+  {
+   "id": "alt_01a19f93-1392-7000-8000-000000000003",
+   "raw_id": "raw_01a19f93-1392-7000-8000-000000000103",
+   "time": 1793764003000,
+   "severity": 3,
+   "title": "Outbound connection to an example domain",
+   "rule_id": "test-rule",
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.4",
+     "role": "src"
+    }
+   ],
+   "assets": [],
+   "triage": null,
+   "ocsf": {
+    "class_uid": 2004,
+    "severity_id": 3,
+    "time": 1793764003000
+   },
+   "details": {}
+  },
+  {
+   "id": "alt_01a19f93-1392-7000-8000-000000000004",
+   "raw_id": "raw_01a19f93-1392-7000-8000-000000000104",
+   "time": 1793764004000,
+   "severity": 3,
+   "title": "Failed logins burst on example VPN",
+   "rule_id": "test-rule",
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.5",
+     "role": "src"
+    }
+   ],
+   "assets": [],
+   "triage": null,
+   "ocsf": {
+    "class_uid": 2004,
+    "severity_id": 3,
+    "time": 1793764004000
+   },
+   "details": {}
+  },
+  {
+   "id": "alt_01a19f93-1392-7000-8000-000000000005",
+   "raw_id": "raw_01a19f93-1392-7000-8000-000000000105",
+   "time": 1793764005000,
+   "severity": 2,
+   "title": "DNS queries to a rare example domain",
+   "rule_id": "test-rule",
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.6",
+     "role": "src"
+    }
+   ],
+   "assets": [],
+   "triage": null,
+   "ocsf": {
+    "class_uid": 2004,
+    "severity_id": 2,
+    "time": 1793764005000
+   },
+   "details": {}
+  },
+  {
+   "id": "alt_01a19f93-1392-7000-8000-000000000100",
+   "raw_id": "raw_01a19f93-1392-7000-8000-000000000200",
+   "time": 1793764010100,
+   "severity": 0,
+   "title": "Long case alert 1: upload endpoint probe from one external address",
+   "rule_id": "test-rule",
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.101",
+     "role": "src"
+    }
+   ],
+   "assets": [],
+   "triage": null,
+   "ocsf": {
+    "class_uid": 2004,
+    "severity_id": 0,
+    "time": 1793764010100
+   },
+   "details": {}
+  },
+  {
+   "id": "alt_01a19f93-1392-7000-8000-000000000101",
+   "raw_id": "raw_01a19f93-1392-7000-8000-000000000201",
+   "time": 1793764010101,
+   "severity": 1,
+   "title": "Long case alert 2: upload endpoint probe from one external address",
+   "rule_id": "test-rule",
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.102",
+     "role": "src"
+    }
+   ],
+   "assets": [],
+   "triage": null,
+   "ocsf": {
+    "class_uid": 2004,
+    "severity_id": 1,
+    "time": 1793764010101
+   },
+   "details": {}
+  },
+  {
+   "id": "alt_01a19f93-1392-7000-8000-000000000102",
+   "raw_id": "raw_01a19f93-1392-7000-8000-000000000202",
+   "time": 1793764010102,
+   "severity": 1,
+   "title": "Long case alert 3: upload endpoint probe from one external address",
+   "rule_id": "test-rule",
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.103",
+     "role": "src"
+    }
+   ],
+   "assets": [],
+   "triage": null,
+   "ocsf": {
+    "class_uid": 2004,
+    "severity_id": 1,
+    "time": 1793764010102
+   },
+   "details": {}
+  },
+  {
+   "id": "alt_01a19f93-1392-7000-8000-000000000103",
+   "raw_id": "raw_01a19f93-1392-7000-8000-000000000203",
+   "time": 1793764010103,
+   "severity": 2,
+   "title": "Long case alert 4: upload endpoint probe from one external address",
+   "rule_id": "test-rule",
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.104",
+     "role": "src"
+    }
+   ],
+   "assets": [],
+   "triage": null,
+   "ocsf": {
+    "class_uid": 2004,
+    "severity_id": 2,
+    "time": 1793764010103
+   },
+   "details": {}
+  },
+  {
+   "id": "alt_01a19f93-1392-7000-8000-000000000104",
+   "raw_id": "raw_01a19f93-1392-7000-8000-000000000204",
+   "time": 1793764010104,
+   "severity": 2,
+   "title": "Long case alert 5: upload endpoint probe from one external address",
+   "rule_id": "test-rule",
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.105",
+     "role": "src"
+    }
+   ],
+   "assets": [],
+   "triage": null,
+   "ocsf": {
+    "class_uid": 2004,
+    "severity_id": 2,
+    "time": 1793764010104
+   },
+   "details": {}
+  },
+  {
+   "id": "alt_01a19f93-1392-7000-8000-000000000105",
+   "raw_id": "raw_01a19f93-1392-7000-8000-000000000205",
+   "time": 1793764010105,
+   "severity": 3,
+   "title": "Long case alert 6: upload endpoint probe from one external address",
+   "rule_id": "test-rule",
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.106",
+     "role": "src"
+    }
+   ],
+   "assets": [],
+   "triage": null,
+   "ocsf": {
+    "class_uid": 2004,
+    "severity_id": 3,
+    "time": 1793764010105
+   },
+   "details": {}
+  },
+  {
+   "id": "alt_01a19f93-1392-7000-8000-000000000300",
+   "raw_id": "raw_01a19f93-1392-7000-8000-000000000400",
+   "time": 1793764010300,
+   "severity": 0,
+   "title": "Huge case alert 1: upload endpoint probe from one external address",
+   "rule_id": "test-rule",
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.101",
+     "role": "src"
+    }
+   ],
+   "assets": [],
+   "triage": null,
+   "ocsf": {
+    "class_uid": 2004,
+    "severity_id": 0,
+    "time": 1793764010300
+   },
+   "details": {}
+  },
+  {
+   "id": "alt_01a19f93-1392-7000-8000-000000000301",
+   "raw_id": "raw_01a19f93-1392-7000-8000-000000000401",
+   "time": 1793764010301,
+   "severity": 1,
+   "title": "Huge case alert 2: upload endpoint probe from one external address",
+   "rule_id": "test-rule",
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.102",
+     "role": "src"
+    }
+   ],
+   "assets": [],
+   "triage": null,
+   "ocsf": {
+    "class_uid": 2004,
+    "severity_id": 1,
+    "time": 1793764010301
+   },
+   "details": {}
+  },
+  {
+   "id": "alt_01a19f93-1392-7000-8000-000000000302",
+   "raw_id": "raw_01a19f93-1392-7000-8000-000000000402",
+   "time": 1793764010302,
+   "severity": 1,
+   "title": "Huge case alert 3: upload endpoint probe from one external address",
+   "rule_id": "test-rule",
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.103",
+     "role": "src"
+    }
+   ],
+   "assets": [],
+   "triage": null,
+   "ocsf": {
+    "class_uid": 2004,
+    "severity_id": 1,
+    "time": 1793764010302
+   },
+   "details": {}
+  },
+  {
+   "id": "alt_01a19f93-1392-7000-8000-000000000303",
+   "raw_id": "raw_01a19f93-1392-7000-8000-000000000403",
+   "time": 1793764010303,
+   "severity": 2,
+   "title": "Huge case alert 4: upload endpoint probe from one external address",
+   "rule_id": "test-rule",
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.104",
+     "role": "src"
+    }
+   ],
+   "assets": [],
+   "triage": null,
+   "ocsf": {
+    "class_uid": 2004,
+    "severity_id": 2,
+    "time": 1793764010303
+   },
+   "details": {}
+  },
+  {
+   "id": "alt_01a19f93-1392-7000-8000-000000000304",
+   "raw_id": "raw_01a19f93-1392-7000-8000-000000000404",
+   "time": 1793764010304,
+   "severity": 2,
+   "title": "Huge case alert 5: upload endpoint probe from one external address",
+   "rule_id": "test-rule",
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.105",
+     "role": "src"
+    }
+   ],
+   "assets": [],
+   "triage": null,
+   "ocsf": {
+    "class_uid": 2004,
+    "severity_id": 2,
+    "time": 1793764010304
+   },
+   "details": {}
+  },
+  {
+   "id": "alt_01a19f93-1392-7000-8000-000000000305",
+   "raw_id": "raw_01a19f93-1392-7000-8000-000000000405",
+   "time": 1793764010305,
+   "severity": 3,
+   "title": "Huge case alert 6: upload endpoint probe from one external address",
+   "rule_id": "test-rule",
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.106",
+     "role": "src"
+    }
+   ],
+   "assets": [],
+   "triage": null,
+   "ocsf": {
+    "class_uid": 2004,
+    "severity_id": 3,
+    "time": 1793764010305
+   },
+   "details": {}
+  },
+  {
+   "id": "alt_01a19f93-1392-7000-8000-000000000306",
+   "raw_id": "raw_01a19f93-1392-7000-8000-000000000406",
+   "time": 1793764010306,
+   "severity": 3,
+   "title": "Huge case alert 7: upload endpoint probe from one external address",
+   "rule_id": "test-rule",
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.107",
+     "role": "src"
+    }
+   ],
+   "assets": [],
+   "triage": null,
+   "ocsf": {
+    "class_uid": 2004,
+    "severity_id": 3,
+    "time": 1793764010306
+   },
+   "details": {}
+  },
+  {
+   "id": "alt_01a19f93-1392-7000-8000-000000000307",
+   "raw_id": "raw_01a19f93-1392-7000-8000-000000000407",
+   "time": 1793764010307,
+   "severity": 4,
+   "title": "Huge case alert 8: upload endpoint probe from one external address",
+   "rule_id": "test-rule",
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.108",
+     "role": "src"
+    }
+   ],
+   "assets": [],
+   "triage": null,
+   "ocsf": {
+    "class_uid": 2004,
+    "severity_id": 4,
+    "time": 1793764010307
+   },
+   "details": {}
+  },
+  {
+   "id": "alt_01a19f93-1392-7000-8000-000000000308",
+   "raw_id": "raw_01a19f93-1392-7000-8000-000000000408",
+   "time": 1793764010308,
+   "severity": 4,
+   "title": "Huge case alert 9: upload endpoint probe from one external address",
+   "rule_id": "test-rule",
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.109",
+     "role": "src"
+    }
+   ],
+   "assets": [],
+   "triage": null,
+   "ocsf": {
+    "class_uid": 2004,
+    "severity_id": 4,
+    "time": 1793764010308
+   },
+   "details": {}
+  },
+  {
+   "id": "alt_01a19f93-1392-7000-8000-000000000309",
+   "raw_id": "raw_01a19f93-1392-7000-8000-000000000409",
+   "time": 1793764010309,
+   "severity": 5,
+   "title": "Huge case alert 10: upload endpoint probe from one external address",
+   "rule_id": "test-rule",
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.110",
+     "role": "src"
+    }
+   ],
+   "assets": [],
+   "triage": null,
+   "ocsf": {
+    "class_uid": 2004,
+    "severity_id": 5,
+    "time": 1793764010309
+   },
+   "details": {}
+  },
+  {
+   "id": "alt_01a19f93-1392-7000-8000-000000000310",
+   "raw_id": "raw_01a19f93-1392-7000-8000-000000000410",
+   "time": 1793764010310,
+   "severity": 5,
+   "title": "Huge case alert 11: upload endpoint probe from one external address",
+   "rule_id": "test-rule",
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.111",
+     "role": "src"
+    }
+   ],
+   "assets": [],
+   "triage": null,
+   "ocsf": {
+    "class_uid": 2004,
+    "severity_id": 5,
+    "time": 1793764010310
+   },
+   "details": {}
+  },
+  {
+   "id": "alt_01a19f93-1392-7000-8000-000000000311",
+   "raw_id": "raw_01a19f93-1392-7000-8000-000000000411",
+   "time": 1793764010311,
+   "severity": 0,
+   "title": "Huge case alert 12: upload endpoint probe from one external address",
+   "rule_id": "test-rule",
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.112",
+     "role": "src"
+    }
+   ],
+   "assets": [],
+   "triage": null,
+   "ocsf": {
+    "class_uid": 2004,
+    "severity_id": 0,
+    "time": 1793764010311
+   },
+   "details": {}
+  },
+  {
+   "id": "alt_01a19f93-1392-7000-8000-000000000312",
+   "raw_id": "raw_01a19f93-1392-7000-8000-000000000412",
+   "time": 1793764010312,
+   "severity": 0,
+   "title": "Huge case alert 13: upload endpoint probe from one external address",
+   "rule_id": "test-rule",
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.113",
+     "role": "src"
+    }
+   ],
+   "assets": [],
+   "triage": null,
+   "ocsf": {
+    "class_uid": 2004,
+    "severity_id": 0,
+    "time": 1793764010312
+   },
+   "details": {}
+  },
+  {
+   "id": "alt_01a19f93-1392-7000-8000-000000000313",
+   "raw_id": "raw_01a19f93-1392-7000-8000-000000000413",
+   "time": 1793764010313,
+   "severity": 1,
+   "title": "Huge case alert 14: upload endpoint probe from one external address",
+   "rule_id": "test-rule",
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.114",
+     "role": "src"
+    }
+   ],
+   "assets": [],
+   "triage": null,
+   "ocsf": {
+    "class_uid": 2004,
+    "severity_id": 1,
+    "time": 1793764010313
+   },
+   "details": {}
+  },
+  {
+   "id": "alt_01a19f93-1392-7000-8000-000000000314",
+   "raw_id": "raw_01a19f93-1392-7000-8000-000000000414",
+   "time": 1793764010314,
+   "severity": 1,
+   "title": "Huge case alert 15: upload endpoint probe from one external address",
+   "rule_id": "test-rule",
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.115",
+     "role": "src"
+    }
+   ],
+   "assets": [],
+   "triage": null,
+   "ocsf": {
+    "class_uid": 2004,
+    "severity_id": 1,
+    "time": 1793764010314
+   },
+   "details": {}
+  },
+  {
+   "id": "alt_01a19f93-1392-7000-8000-000000000315",
+   "raw_id": "raw_01a19f93-1392-7000-8000-000000000415",
+   "time": 1793764010315,
+   "severity": 2,
+   "title": "Huge case alert 16: upload endpoint probe from one external address",
+   "rule_id": "test-rule",
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.116",
+     "role": "src"
+    }
+   ],
+   "assets": [],
+   "triage": null,
+   "ocsf": {
+    "class_uid": 2004,
+    "severity_id": 2,
+    "time": 1793764010315
+   },
+   "details": {}
+  },
+  {
+   "id": "alt_01a19f93-1392-7000-8000-000000000316",
+   "raw_id": "raw_01a19f93-1392-7000-8000-000000000416",
+   "time": 1793764010316,
+   "severity": 2,
+   "title": "Huge case alert 17: upload endpoint probe from one external address",
+   "rule_id": "test-rule",
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.117",
+     "role": "src"
+    }
+   ],
+   "assets": [],
+   "triage": null,
+   "ocsf": {
+    "class_uid": 2004,
+    "severity_id": 2,
+    "time": 1793764010316
+   },
+   "details": {}
+  },
+  {
+   "id": "alt_01a19f93-1392-7000-8000-000000000317",
+   "raw_id": "raw_01a19f93-1392-7000-8000-000000000417",
+   "time": 1793764010317,
+   "severity": 3,
+   "title": "Huge case alert 18: upload endpoint probe from one external address",
+   "rule_id": "test-rule",
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.118",
+     "role": "src"
+    }
+   ],
+   "assets": [],
+   "triage": null,
+   "ocsf": {
+    "class_uid": 2004,
+    "severity_id": 3,
+    "time": 1793764010317
+   },
+   "details": {}
+  },
+  {
+   "id": "alt_01a19f93-1392-7000-8000-000000000318",
+   "raw_id": "raw_01a19f93-1392-7000-8000-000000000418",
+   "time": 1793764010318,
+   "severity": 3,
+   "title": "Huge case alert 19: upload endpoint probe from one external address",
+   "rule_id": "test-rule",
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.119",
+     "role": "src"
+    }
+   ],
+   "assets": [],
+   "triage": null,
+   "ocsf": {
+    "class_uid": 2004,
+    "severity_id": 3,
+    "time": 1793764010318
+   },
+   "details": {}
+  },
+  {
+   "id": "alt_01a19f93-1392-7000-8000-000000000319",
+   "raw_id": "raw_01a19f93-1392-7000-8000-000000000419",
+   "time": 1793764010319,
+   "severity": 4,
+   "title": "Huge case alert 20: upload endpoint probe from one external address",
+   "rule_id": "test-rule",
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.120",
+     "role": "src"
+    }
+   ],
+   "assets": [],
+   "triage": null,
+   "ocsf": {
+    "class_uid": 2004,
+    "severity_id": 4,
+    "time": 1793764010319
+   },
+   "details": {}
+  },
+  {
+   "id": "alt_01a19f93-1392-7000-8000-000000000320",
+   "raw_id": "raw_01a19f93-1392-7000-8000-000000000420",
+   "time": 1793764010320,
+   "severity": 4,
+   "title": "Huge case alert 21: upload endpoint probe from one external address",
+   "rule_id": "test-rule",
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.121",
+     "role": "src"
+    }
+   ],
+   "assets": [],
+   "triage": null,
+   "ocsf": {
+    "class_uid": 2004,
+    "severity_id": 4,
+    "time": 1793764010320
+   },
+   "details": {}
+  },
+  {
+   "id": "alt_01a19f93-1392-7000-8000-000000000321",
+   "raw_id": "raw_01a19f93-1392-7000-8000-000000000421",
+   "time": 1793764010321,
+   "severity": 5,
+   "title": "Huge case alert 22: upload endpoint probe from one external address",
+   "rule_id": "test-rule",
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.122",
+     "role": "src"
+    }
+   ],
+   "assets": [],
+   "triage": null,
+   "ocsf": {
+    "class_uid": 2004,
+    "severity_id": 5,
+    "time": 1793764010321
+   },
+   "details": {}
+  },
+  {
+   "id": "alt_01a19f93-1392-7000-8000-000000000322",
+   "raw_id": "raw_01a19f93-1392-7000-8000-000000000422",
+   "time": 1793764010322,
+   "severity": 5,
+   "title": "Huge case alert 23: upload endpoint probe from one external address",
+   "rule_id": "test-rule",
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.123",
+     "role": "src"
+    }
+   ],
+   "assets": [],
+   "triage": null,
+   "ocsf": {
+    "class_uid": 2004,
+    "severity_id": 5,
+    "time": 1793764010322
+   },
+   "details": {}
+  },
+  {
+   "id": "alt_01a19f93-1392-7000-8000-000000000323",
+   "raw_id": "raw_01a19f93-1392-7000-8000-000000000423",
+   "time": 1793764010323,
+   "severity": 0,
+   "title": "Huge case alert 24: upload endpoint probe from one external address",
+   "rule_id": "test-rule",
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.124",
+     "role": "src"
+    }
+   ],
+   "assets": [],
+   "triage": null,
+   "ocsf": {
+    "class_uid": 2004,
+    "severity_id": 0,
+    "time": 1793764010323
+   },
+   "details": {}
+  }
+ ],
+ "hunts": [
+  {
+   "id": "hnt_01a19f93-1392-7000-8000-000000000001",
+   "hunt_run_id": "hrn_01a19f93-1392-7000-8000-000000000001",
+   "status": "confirmed",
+   "hypothesis": "Possible DNS beaconing to an example domain",
+   "attack_techniques": [
+    "T1071.004"
+   ],
+   "confidence": 0.8,
+   "reason": "Hunt reason sample",
+   "evidence_ids": [
+    "alt_01a19f93-1392-7000-8000-000000000005"
+   ],
+   "entities": [
+    {
+     "type": "domain",
+     "value": "beacon.example.com",
+     "role": "dst"
+    }
+   ],
+   "attempts": 1,
+   "verified_at": 1793764000100,
+   "created_at": 1793764000000,
+   "updated_at": 1793764000100,
+   "details": {}
+  }
+ ],
+ "tickets": [
+  {
+   "id": "tkt_01a19f93-1392-7000-8000-000000000001",
+   "title": "Web shell upload request on example web server",
+   "origin": "auto",
+   "status": "escalated",
+   "alert_ids": [
+    "alt_01a19f93-1392-7000-8000-000000000001",
+    "alt_01a19f93-1392-7000-8000-000000000002"
+   ],
+   "hunt_id": null,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.2",
+     "role": "src"
+    }
+   ],
+   "verdict": null,
+   "created_at": 1793764001000,
+   "updated_at": 1793764001000,
+   "details": {
+    "l1_note": "계약 밖 값. 에이전트 읽기 역할은 읽지 못한다"
+   }
+  },
+  {
+   "id": "tkt_01a19f93-1392-7000-8000-000000000002",
+   "title": "Outbound connection to an example domain",
+   "origin": "auto",
+   "status": "escalated",
+   "alert_ids": [
+    "alt_01a19f93-1392-7000-8000-000000000003"
+   ],
+   "hunt_id": null,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.3",
+     "role": "src"
+    }
+   ],
+   "verdict": null,
+   "created_at": 1793764002000,
+   "updated_at": 1793764002000,
+   "details": {
+    "l1_note": "계약 밖 값. 에이전트 읽기 역할은 읽지 못한다"
+   }
+  },
+  {
+   "id": "tkt_01a19f93-1392-7000-8000-000000000003",
+   "title": "Failed logins burst on example VPN",
+   "origin": "auto",
+   "status": "escalated",
+   "alert_ids": [
+    "alt_01a19f93-1392-7000-8000-000000000004"
+   ],
+   "hunt_id": null,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.4",
+     "role": "src"
+    }
+   ],
+   "verdict": null,
+   "created_at": 1793764003000,
+   "updated_at": 1793764003000,
+   "details": {
+    "l1_note": "계약 밖 값. 에이전트 읽기 역할은 읽지 못한다"
+   }
+  },
+  {
+   "id": "tkt_01a19f93-1392-7000-8000-000000000004",
+   "title": "Possible DNS beaconing to an example domain",
+   "origin": "l3",
+   "status": "escalated",
+   "alert_ids": [],
+   "hunt_id": "hnt_01a19f93-1392-7000-8000-000000000001",
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.5",
+     "role": "src"
+    }
+   ],
+   "verdict": null,
+   "created_at": 1793764004000,
+   "updated_at": 1793764004000,
+   "details": {
+    "l1_note": "계약 밖 값. 에이전트 읽기 역할은 읽지 못한다"
+   }
+  },
+  {
+   "id": "tkt_01a19f93-1392-7000-8000-000000000005",
+   "title": "DNS queries to a rare example domain",
+   "origin": "auto",
+   "status": "escalated",
+   "alert_ids": [
+    "alt_01a19f93-1392-7000-8000-000000000005"
+   ],
+   "hunt_id": null,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.6",
+     "role": "src"
+    }
+   ],
+   "verdict": null,
+   "created_at": 1793764005000,
+   "updated_at": 1793764005000,
+   "details": {
+    "l1_note": "계약 밖 값. 에이전트 읽기 역할은 읽지 못한다"
+   }
+  },
+  {
+   "id": "tkt_01a19f93-1392-7000-8000-000000000100",
+   "title": "Long case ticket 1: upload endpoint probe from one external address",
+   "origin": "auto",
+   "status": "escalated",
+   "alert_ids": [
+    "alt_01a19f93-1392-7000-8000-000000000100",
+    "alt_01a19f93-1392-7000-8000-000000000101"
+   ],
+   "hunt_id": null,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.101",
+     "role": "src"
+    }
+   ],
+   "verdict": null,
+   "created_at": 1793764100000,
+   "updated_at": 1793764100000,
+   "details": {
+    "l1_note": "계약 밖 값. 에이전트 읽기 역할은 읽지 못한다"
+   }
+  },
+  {
+   "id": "tkt_01a19f93-1392-7000-8000-000000000101",
+   "title": "Long case ticket 2: upload endpoint probe from one external address",
+   "origin": "auto",
+   "status": "escalated",
+   "alert_ids": [
+    "alt_01a19f93-1392-7000-8000-000000000102",
+    "alt_01a19f93-1392-7000-8000-000000000103"
+   ],
+   "hunt_id": null,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.102",
+     "role": "src"
+    }
+   ],
+   "verdict": null,
+   "created_at": 1793764101000,
+   "updated_at": 1793764101000,
+   "details": {
+    "l1_note": "계약 밖 값. 에이전트 읽기 역할은 읽지 못한다"
+   }
+  },
+  {
+   "id": "tkt_01a19f93-1392-7000-8000-000000000102",
+   "title": "Long case ticket 3: upload endpoint probe from one external address",
+   "origin": "auto",
+   "status": "escalated",
+   "alert_ids": [
+    "alt_01a19f93-1392-7000-8000-000000000104",
+    "alt_01a19f93-1392-7000-8000-000000000105"
+   ],
+   "hunt_id": null,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.103",
+     "role": "src"
+    }
+   ],
+   "verdict": null,
+   "created_at": 1793764102000,
+   "updated_at": 1793764102000,
+   "details": {
+    "l1_note": "계약 밖 값. 에이전트 읽기 역할은 읽지 못한다"
+   }
+  },
+  {
+   "id": "tkt_01a19f93-1392-7000-8000-000000000300",
+   "title": "Huge case ticket 1: upload endpoint probe from one external address",
+   "origin": "auto",
+   "status": "escalated",
+   "alert_ids": [
+    "alt_01a19f93-1392-7000-8000-000000000300",
+    "alt_01a19f93-1392-7000-8000-000000000301"
+   ],
+   "hunt_id": null,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.101",
+     "role": "src"
+    }
+   ],
+   "verdict": null,
+   "created_at": 1793764300000,
+   "updated_at": 1793764300000,
+   "details": {
+    "l1_note": "계약 밖 값. 에이전트 읽기 역할은 읽지 못한다"
+   }
+  },
+  {
+   "id": "tkt_01a19f93-1392-7000-8000-000000000301",
+   "title": "Huge case ticket 2: upload endpoint probe from one external address",
+   "origin": "auto",
+   "status": "escalated",
+   "alert_ids": [
+    "alt_01a19f93-1392-7000-8000-000000000302",
+    "alt_01a19f93-1392-7000-8000-000000000303"
+   ],
+   "hunt_id": null,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.102",
+     "role": "src"
+    }
+   ],
+   "verdict": null,
+   "created_at": 1793764301000,
+   "updated_at": 1793764301000,
+   "details": {
+    "l1_note": "계약 밖 값. 에이전트 읽기 역할은 읽지 못한다"
+   }
+  },
+  {
+   "id": "tkt_01a19f93-1392-7000-8000-000000000302",
+   "title": "Huge case ticket 3: upload endpoint probe from one external address",
+   "origin": "auto",
+   "status": "escalated",
+   "alert_ids": [
+    "alt_01a19f93-1392-7000-8000-000000000304",
+    "alt_01a19f93-1392-7000-8000-000000000305"
+   ],
+   "hunt_id": null,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.103",
+     "role": "src"
+    }
+   ],
+   "verdict": null,
+   "created_at": 1793764302000,
+   "updated_at": 1793764302000,
+   "details": {
+    "l1_note": "계약 밖 값. 에이전트 읽기 역할은 읽지 못한다"
+   }
+  },
+  {
+   "id": "tkt_01a19f93-1392-7000-8000-000000000303",
+   "title": "Huge case ticket 4: upload endpoint probe from one external address",
+   "origin": "auto",
+   "status": "escalated",
+   "alert_ids": [
+    "alt_01a19f93-1392-7000-8000-000000000306",
+    "alt_01a19f93-1392-7000-8000-000000000307"
+   ],
+   "hunt_id": null,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.104",
+     "role": "src"
+    }
+   ],
+   "verdict": null,
+   "created_at": 1793764303000,
+   "updated_at": 1793764303000,
+   "details": {
+    "l1_note": "계약 밖 값. 에이전트 읽기 역할은 읽지 못한다"
+   }
+  },
+  {
+   "id": "tkt_01a19f93-1392-7000-8000-000000000304",
+   "title": "Huge case ticket 5: upload endpoint probe from one external address",
+   "origin": "auto",
+   "status": "escalated",
+   "alert_ids": [
+    "alt_01a19f93-1392-7000-8000-000000000308",
+    "alt_01a19f93-1392-7000-8000-000000000309"
+   ],
+   "hunt_id": null,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.105",
+     "role": "src"
+    }
+   ],
+   "verdict": null,
+   "created_at": 1793764304000,
+   "updated_at": 1793764304000,
+   "details": {
+    "l1_note": "계약 밖 값. 에이전트 읽기 역할은 읽지 못한다"
+   }
+  },
+  {
+   "id": "tkt_01a19f93-1392-7000-8000-000000000305",
+   "title": "Huge case ticket 6: upload endpoint probe from one external address",
+   "origin": "auto",
+   "status": "escalated",
+   "alert_ids": [
+    "alt_01a19f93-1392-7000-8000-000000000310",
+    "alt_01a19f93-1392-7000-8000-000000000311"
+   ],
+   "hunt_id": null,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.106",
+     "role": "src"
+    }
+   ],
+   "verdict": null,
+   "created_at": 1793764305000,
+   "updated_at": 1793764305000,
+   "details": {
+    "l1_note": "계약 밖 값. 에이전트 읽기 역할은 읽지 못한다"
+   }
+  },
+  {
+   "id": "tkt_01a19f93-1392-7000-8000-000000000306",
+   "title": "Huge case ticket 7: upload endpoint probe from one external address",
+   "origin": "auto",
+   "status": "escalated",
+   "alert_ids": [
+    "alt_01a19f93-1392-7000-8000-000000000312",
+    "alt_01a19f93-1392-7000-8000-000000000313"
+   ],
+   "hunt_id": null,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.107",
+     "role": "src"
+    }
+   ],
+   "verdict": null,
+   "created_at": 1793764306000,
+   "updated_at": 1793764306000,
+   "details": {
+    "l1_note": "계약 밖 값. 에이전트 읽기 역할은 읽지 못한다"
+   }
+  },
+  {
+   "id": "tkt_01a19f93-1392-7000-8000-000000000307",
+   "title": "Huge case ticket 8: upload endpoint probe from one external address",
+   "origin": "auto",
+   "status": "escalated",
+   "alert_ids": [
+    "alt_01a19f93-1392-7000-8000-000000000314",
+    "alt_01a19f93-1392-7000-8000-000000000315"
+   ],
+   "hunt_id": null,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.108",
+     "role": "src"
+    }
+   ],
+   "verdict": null,
+   "created_at": 1793764307000,
+   "updated_at": 1793764307000,
+   "details": {
+    "l1_note": "계약 밖 값. 에이전트 읽기 역할은 읽지 못한다"
+   }
+  },
+  {
+   "id": "tkt_01a19f93-1392-7000-8000-000000000308",
+   "title": "Huge case ticket 9: upload endpoint probe from one external address",
+   "origin": "auto",
+   "status": "escalated",
+   "alert_ids": [
+    "alt_01a19f93-1392-7000-8000-000000000316",
+    "alt_01a19f93-1392-7000-8000-000000000317"
+   ],
+   "hunt_id": null,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.109",
+     "role": "src"
+    }
+   ],
+   "verdict": null,
+   "created_at": 1793764308000,
+   "updated_at": 1793764308000,
+   "details": {
+    "l1_note": "계약 밖 값. 에이전트 읽기 역할은 읽지 못한다"
+   }
+  },
+  {
+   "id": "tkt_01a19f93-1392-7000-8000-000000000309",
+   "title": "Huge case ticket 10: upload endpoint probe from one external address",
+   "origin": "auto",
+   "status": "escalated",
+   "alert_ids": [
+    "alt_01a19f93-1392-7000-8000-000000000318",
+    "alt_01a19f93-1392-7000-8000-000000000319"
+   ],
+   "hunt_id": null,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.110",
+     "role": "src"
+    }
+   ],
+   "verdict": null,
+   "created_at": 1793764309000,
+   "updated_at": 1793764309000,
+   "details": {
+    "l1_note": "계약 밖 값. 에이전트 읽기 역할은 읽지 못한다"
+   }
+  },
+  {
+   "id": "tkt_01a19f93-1392-7000-8000-000000000310",
+   "title": "Huge case ticket 11: upload endpoint probe from one external address",
+   "origin": "auto",
+   "status": "escalated",
+   "alert_ids": [
+    "alt_01a19f93-1392-7000-8000-000000000320",
+    "alt_01a19f93-1392-7000-8000-000000000321"
+   ],
+   "hunt_id": null,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.111",
+     "role": "src"
+    }
+   ],
+   "verdict": null,
+   "created_at": 1793764310000,
+   "updated_at": 1793764310000,
+   "details": {
+    "l1_note": "계약 밖 값. 에이전트 읽기 역할은 읽지 못한다"
+   }
+  },
+  {
+   "id": "tkt_01a19f93-1392-7000-8000-000000000311",
+   "title": "Huge case ticket 12: upload endpoint probe from one external address",
+   "origin": "auto",
+   "status": "escalated",
+   "alert_ids": [
+    "alt_01a19f93-1392-7000-8000-000000000322",
+    "alt_01a19f93-1392-7000-8000-000000000323"
+   ],
+   "hunt_id": null,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.112",
+     "role": "src"
+    }
+   ],
+   "verdict": null,
+   "created_at": 1793764311000,
+   "updated_at": 1793764311000,
+   "details": {
+    "l1_note": "계약 밖 값. 에이전트 읽기 역할은 읽지 못한다"
+   }
+  }
+ ],
+ "incidents": [
+  {
+   "id": "inc_01a19f93-1392-7000-8000-000000000001",
+   "title": "Web shell on example web server",
+   "summary": "Attacker uploaded a web shell",
+   "status": "confirmed",
+   "ticket_ids": [
+    "tkt_01a19f93-1392-7000-8000-000000000001",
+    "tkt_01a19f93-1392-7000-8000-000000000002"
+   ],
+   "entities": [
+    {
+     "type": "ip",
+     "value": "192.0.2.71",
+     "role": "src"
+    }
+   ],
+   "severity": 4,
+   "assessed_severity": 4,
+   "analysis_round": 2,
+   "review_round": 1,
+   "created_at": 1793764500000,
+   "updated_at": 1793764500000,
+   "details": {}
+  },
+  {
+   "id": "inc_01a19f93-1392-7000-8000-000000000002",
+   "title": "Failed logins burst",
+   "summary": "Many failed logins on the VPN",
+   "status": "confirmed",
+   "ticket_ids": [
+    "tkt_01a19f93-1392-7000-8000-000000000003"
+   ],
+   "entities": [
+    {
+     "type": "ip",
+     "value": "192.0.2.72",
+     "role": "src"
+    }
+   ],
+   "severity": 3,
+   "assessed_severity": 3,
+   "analysis_round": 0,
+   "review_round": 1,
+   "created_at": 1793765000000,
+   "updated_at": 1793765000000,
+   "details": {}
+  },
+  {
+   "id": "inc_01a19f93-1392-7000-8000-000000000003",
+   "title": "DNS beaconing",
+   "summary": "Host beaconed to an example domain",
+   "status": "confirmed",
+   "ticket_ids": [
+    "tkt_01a19f93-1392-7000-8000-000000000004",
+    "tkt_01a19f93-1392-7000-8000-000000000005"
+   ],
+   "entities": [
+    {
+     "type": "ip",
+     "value": "192.0.2.73",
+     "role": "src"
+    }
+   ],
+   "severity": 2,
+   "assessed_severity": 2,
+   "analysis_round": 1,
+   "review_round": 1,
+   "created_at": 1793765500000,
+   "updated_at": 1793765500000,
+   "details": {}
+  },
+  {
+   "id": "inc_01a19f93-1392-7000-8000-000000000004",
+   "title": "Long case web shell incident",
+   "summary": "Long incident",
+   "status": "confirmed",
+   "ticket_ids": [
+    "tkt_01a19f93-1392-7000-8000-000000000100",
+    "tkt_01a19f93-1392-7000-8000-000000000101",
+    "tkt_01a19f93-1392-7000-8000-000000000102"
+   ],
+   "entities": [
+    {
+     "type": "ip",
+     "value": "192.0.2.74",
+     "role": "src"
+    }
+   ],
+   "severity": 5,
+   "assessed_severity": 5,
+   "analysis_round": 1,
+   "review_round": 1,
+   "created_at": 1793766000000,
+   "updated_at": 1793766000000,
+   "details": {}
+  },
+  {
+   "id": "inc_01a19f93-1392-7000-8000-000000000005",
+   "title": "Huge case web shell incident",
+   "summary": "Long incident",
+   "status": "confirmed",
+   "ticket_ids": [
+    "tkt_01a19f93-1392-7000-8000-000000000300",
+    "tkt_01a19f93-1392-7000-8000-000000000301",
+    "tkt_01a19f93-1392-7000-8000-000000000302",
+    "tkt_01a19f93-1392-7000-8000-000000000303",
+    "tkt_01a19f93-1392-7000-8000-000000000304",
+    "tkt_01a19f93-1392-7000-8000-000000000305",
+    "tkt_01a19f93-1392-7000-8000-000000000306",
+    "tkt_01a19f93-1392-7000-8000-000000000307",
+    "tkt_01a19f93-1392-7000-8000-000000000308",
+    "tkt_01a19f93-1392-7000-8000-000000000309",
+    "tkt_01a19f93-1392-7000-8000-000000000310",
+    "tkt_01a19f93-1392-7000-8000-000000000311"
+   ],
+   "entities": [
+    {
+     "type": "ip",
+     "value": "192.0.2.75",
+     "role": "src"
+    }
+   ],
+   "severity": 5,
+   "assessed_severity": 5,
+   "analysis_round": 1,
+   "review_round": 1,
+   "created_at": 1793766500000,
+   "updated_at": 1793766500000,
+   "details": {}
+  }
+ ],
+ "incident_artifacts": [
+  {
+   "id": "art_01a19f93-1392-7000-8000-000000000001",
+   "incident_id": "inc_01a19f93-1392-7000-8000-000000000001",
+   "analysis_round": 1,
+   "verdict": "attempted",
+   "summary": "ARTIFACT-SUMMARY-MARKER same text as the case summary",
+   "assessed_severity": 4,
+   "timeline": [
+    {
+     "time": 1793764001000,
+     "summary": "OLD-ROUND-ONE-TIMELINE",
+     "evidence_ids": [
+      "alt_01a19f93-1392-7000-8000-000000000001"
+     ]
+    }
+   ],
+   "techniques": [
+    {
+     "id": "T1190",
+     "name": "Exploit Public-Facing Application",
+     "evidence_ids": [
+      "alt_01a19f93-1392-7000-8000-000000000001"
+     ]
+    }
+   ],
+   "impact": "old impact",
+   "cause": "OLD-ROUND-ONE-CAUSE",
+   "further_risk": "old risk",
+   "evidence_ids": [
+    "alt_01a19f93-1392-7000-8000-000000000001"
+   ],
+   "created_at": 1793764500001
+  },
+  {
+   "id": "art_01a19f93-1392-7000-8000-000000000002",
+   "incident_id": "inc_01a19f93-1392-7000-8000-000000000001",
+   "analysis_round": 2,
+   "verdict": "succeeded",
+   "summary": "ARTIFACT-SUMMARY-MARKER same text as the case summary",
+   "assessed_severity": 4,
+   "timeline": [
+    {
+     "time": 1793764001000,
+     "summary": "Script file uploaded through the form",
+     "evidence_ids": [
+      "alt_01a19f93-1392-7000-8000-000000000001",
+      "evt_01a19f93-1392-7000-8000-000000000001"
+     ]
+    },
+    {
+     "time": 1793764002000,
+     "summary": "Commands ran from the web root",
+     "evidence_ids": [
+      "alt_01a19f93-1392-7000-8000-000000000002",
+      "agl_01a19f93-1392-7000-8000-000000000001"
+     ]
+    }
+   ],
+   "techniques": [
+    {
+     "id": "T1190",
+     "name": "Exploit Public-Facing Application",
+     "evidence_ids": [
+      "alt_01a19f93-1392-7000-8000-000000000001"
+     ]
+    },
+    {
+     "id": "T1505.003",
+     "name": "Web Shell",
+     "evidence_ids": [
+      "alt_01a19f93-1392-7000-8000-000000000002"
+     ]
+    }
+   ],
+   "impact": "One web server ran attacker commands as the service account.",
+   "cause": "The upload form accepted a script file without a type check.",
+   "further_risk": "The same upload form exists on two other example servers.",
+   "evidence_ids": [
+    "alt_01a19f93-1392-7000-8000-000000000001",
+    "alt_01a19f93-1392-7000-8000-000000000002",
+    "evt_01a19f93-1392-7000-8000-000000000001",
+    "agl_01a19f93-1392-7000-8000-000000000001",
+    "agl_01a19f93-1392-7000-8000-000000000002"
+   ],
+   "created_at": 1793764500002
+  },
+  {
+   "id": "art_01a19f93-1392-7000-8000-000000000003",
+   "incident_id": "inc_01a19f93-1392-7000-8000-000000000003",
+   "analysis_round": 1,
+   "verdict": "attempted",
+   "summary": "ARTIFACT-SUMMARY-MARKER same text as the case summary",
+   "assessed_severity": 4,
+   "timeline": [
+    {
+     "time": 1793764005000,
+     "summary": "Regular DNS queries every minute",
+     "evidence_ids": [
+      "alt_01a19f93-1392-7000-8000-000000000005"
+     ]
+    }
+   ],
+   "techniques": [
+    {
+     "id": "T1071.004",
+     "name": "DNS",
+     "evidence_ids": [
+      "alt_01a19f93-1392-7000-8000-000000000005"
+     ]
+    }
+   ],
+   "impact": "No data left the network.",
+   "cause": "A browser extension queried the domain on a timer.",
+   "further_risk": "Other hosts may run the same extension.",
+   "evidence_ids": [
+    "alt_01a19f93-1392-7000-8000-000000000005",
+    "evt_01a19f93-1392-7000-8000-000000000005"
+   ],
+   "created_at": 1793765500001
+  },
+  {
+   "id": "art_01a19f93-1392-7000-8000-000000000004",
+   "incident_id": "inc_01a19f93-1392-7000-8000-000000000004",
+   "analysis_round": 1,
+   "verdict": "succeeded",
+   "summary": "ARTIFACT-SUMMARY-MARKER same text as the case summary",
+   "assessed_severity": 4,
+   "timeline": [
+    {
+     "time": 1793764010000,
+     "summary": "to the upload endpoint from one external address, followed by a request to a new file (Long case-timeline-1 step 1) under the web root. The file ran c",
+     "evidence_ids": [
+      "alt_01a19f93-1392-7000-8000-000000000100",
+      "evt_01a19f93-1392-7000-8000-000000000100"
+     ]
+    },
+    {
+     "time": 1793764010001,
+     "summary": "to the upload endpoint from one external address, followed by a request to a new file (Long case-timeline-2 step 1) under the web root. The file ran c",
+     "evidence_ids": [
+      "alt_01a19f93-1392-7000-8000-000000000101",
+      "evt_01a19f93-1392-7000-8000-000000000101"
+     ]
+    },
+    {
+     "time": 1793764010002,
+     "summary": "to the upload endpoint from one external address, followed by a request to a new file (Long case-timeline-3 step 1) under the web root. The file ran c",
+     "evidence_ids": [
+      "alt_01a19f93-1392-7000-8000-000000000102",
+      "evt_01a19f93-1392-7000-8000-000000000102"
+     ]
+    },
+    {
+     "time": 1793764010003,
+     "summary": "to the upload endpoint from one external address, followed by a request to a new file (Long case-timeline-4 step 1) under the web root. The file ran c",
+     "evidence_ids": [
+      "alt_01a19f93-1392-7000-8000-000000000103",
+      "evt_01a19f93-1392-7000-8000-000000000103"
+     ]
+    }
+   ],
+   "techniques": [
+    {
+     "id": "T1000",
+     "name": "Technique name 1 for the Long case case",
+     "evidence_ids": [
+      "alt_01a19f93-1392-7000-8000-000000000100"
+     ]
+    },
+    {
+     "id": "T1001",
+     "name": "Technique name 2 for the Long case case",
+     "evidence_ids": [
+      "alt_01a19f93-1392-7000-8000-000000000101"
+     ]
+    },
+    {
+     "id": "T1002",
+     "name": "Technique name 3 for the Long case case",
+     "evidence_ids": [
+      "alt_01a19f93-1392-7000-8000-000000000102"
+     ]
+    },
+    {
+     "id": "T1003",
+     "name": "Technique name 4 for the Long case case",
+     "evidence_ids": [
+      "alt_01a19f93-1392-7000-8000-000000000103"
+     ]
+    }
+   ],
+   "impact": "to the upload endpoint from one external address, followed by a request to a new file (Long case-impact step 1) under the web root. The file ran commands as the service account and listed the (Long case-impact step 2) application directory, then the same address came back with a second shell command",
+   "cause": "to the upload endpoint from one external address, followed by a request to a new file (Long case-cause step 1) under the web root. The file ran commands as the service account and listed the (Long case-cause step 2) application directory, then the same address came back with a second shell command.",
+   "further_risk": "to the upload endpoint from one external address, followed by a request to a new file (Long case-risk step 1) under the web root. The file ran commands as the service account and listed the (Long case-risk step 2) application directory, then the same address came back with a second shell command. (L",
+   "evidence_ids": [
+    "alt_01a19f93-1392-7000-8000-000000000100",
+    "alt_01a19f93-1392-7000-8000-000000000101",
+    "alt_01a19f93-1392-7000-8000-000000000102",
+    "alt_01a19f93-1392-7000-8000-000000000103",
+    "evt_01a19f93-1392-7000-8000-000000000100",
+    "evt_01a19f93-1392-7000-8000-000000000101",
+    "evt_01a19f93-1392-7000-8000-000000000102",
+    "evt_01a19f93-1392-7000-8000-000000000103",
+    "agl_01a19f93-1392-7000-8000-000000000100",
+    "agl_01a19f93-1392-7000-8000-000000000101",
+    "agl_01a19f93-1392-7000-8000-000000000102",
+    "agl_01a19f93-1392-7000-8000-000000000103"
+   ],
+   "created_at": 1793766000001
+  },
+  {
+   "id": "art_01a19f93-1392-7000-8000-000000000005",
+   "incident_id": "inc_01a19f93-1392-7000-8000-000000000005",
+   "analysis_round": 1,
+   "verdict": "succeeded",
+   "summary": "ARTIFACT-SUMMARY-MARKER same text as the case summary",
+   "assessed_severity": 4,
+   "timeline": [
+    {
+     "time": 1793764010000,
+     "summary": "to the upload endpoint from one external address, followed by a request to a new file (Huge case-timeline-1 step 1) under the web root. The file ran commands as the service account and listed the (Huge case-timeline-1 step 2) application di",
+     "evidence_ids": [
+      "alt_01a19f93-1392-7000-8000-000000000300",
+      "evt_01a19f93-1392-7000-8000-000000000300"
+     ]
+    },
+    {
+     "time": 1793764010001,
+     "summary": "to the upload endpoint from one external address, followed by a request to a new file (Huge case-timeline-2 step 1) under the web root. The file ran commands as the service account and listed the (Huge case-timeline-2 step 2) application di",
+     "evidence_ids": [
+      "alt_01a19f93-1392-7000-8000-000000000301",
+      "evt_01a19f93-1392-7000-8000-000000000301"
+     ]
+    },
+    {
+     "time": 1793764010002,
+     "summary": "to the upload endpoint from one external address, followed by a request to a new file (Huge case-timeline-3 step 1) under the web root. The file ran commands as the service account and listed the (Huge case-timeline-3 step 2) application di",
+     "evidence_ids": [
+      "alt_01a19f93-1392-7000-8000-000000000302",
+      "evt_01a19f93-1392-7000-8000-000000000302"
+     ]
+    },
+    {
+     "time": 1793764010003,
+     "summary": "to the upload endpoint from one external address, followed by a request to a new file (Huge case-timeline-4 step 1) under the web root. The file ran commands as the service account and listed the (Huge case-timeline-4 step 2) application di",
+     "evidence_ids": [
+      "alt_01a19f93-1392-7000-8000-000000000303",
+      "evt_01a19f93-1392-7000-8000-000000000303"
+     ]
+    },
+    {
+     "time": 1793764010004,
+     "summary": "to the upload endpoint from one external address, followed by a request to a new file (Huge case-timeline-5 step 1) under the web root. The file ran commands as the service account and listed the (Huge case-timeline-5 step 2) application di",
+     "evidence_ids": [
+      "alt_01a19f93-1392-7000-8000-000000000304",
+      "evt_01a19f93-1392-7000-8000-000000000304"
+     ]
+    },
+    {
+     "time": 1793764010005,
+     "summary": "to the upload endpoint from one external address, followed by a request to a new file (Huge case-timeline-6 step 1) under the web root. The file ran commands as the service account and listed the (Huge case-timeline-6 step 2) application di",
+     "evidence_ids": [
+      "alt_01a19f93-1392-7000-8000-000000000305",
+      "evt_01a19f93-1392-7000-8000-000000000305"
+     ]
+    },
+    {
+     "time": 1793764010006,
+     "summary": "to the upload endpoint from one external address, followed by a request to a new file (Huge case-timeline-7 step 1) under the web root. The file ran commands as the service account and listed the (Huge case-timeline-7 step 2) application di",
+     "evidence_ids": [
+      "alt_01a19f93-1392-7000-8000-000000000306",
+      "evt_01a19f93-1392-7000-8000-000000000306"
+     ]
+    },
+    {
+     "time": 1793764010007,
+     "summary": "to the upload endpoint from one external address, followed by a request to a new file (Huge case-timeline-8 step 1) under the web root. The file ran commands as the service account and listed the (Huge case-timeline-8 step 2) application di",
+     "evidence_ids": [
+      "alt_01a19f93-1392-7000-8000-000000000307",
+      "evt_01a19f93-1392-7000-8000-000000000307"
+     ]
+    },
+    {
+     "time": 1793764010008,
+     "summary": "to the upload endpoint from one external address, followed by a request to a new file (Huge case-timeline-9 step 1) under the web root. The file ran commands as the service account and listed the (Huge case-timeline-9 step 2) application di",
+     "evidence_ids": [
+      "alt_01a19f93-1392-7000-8000-000000000308",
+      "evt_01a19f93-1392-7000-8000-000000000308"
+     ]
+    },
+    {
+     "time": 1793764010009,
+     "summary": "to the upload endpoint from one external address, followed by a request to a new file (Huge case-timeline-10 step 1) under the web root. The file ran commands as the service account and listed the (Huge case-timeline-10 step 2) application",
+     "evidence_ids": [
+      "alt_01a19f93-1392-7000-8000-000000000309",
+      "evt_01a19f93-1392-7000-8000-000000000309"
+     ]
+    },
+    {
+     "time": 1793764010010,
+     "summary": "to the upload endpoint from one external address, followed by a request to a new file (Huge case-timeline-11 step 1) under the web root. The file ran commands as the service account and listed the (Huge case-timeline-11 step 2) application",
+     "evidence_ids": [
+      "alt_01a19f93-1392-7000-8000-000000000310",
+      "evt_01a19f93-1392-7000-8000-000000000310"
+     ]
+    },
+    {
+     "time": 1793764010011,
+     "summary": "to the upload endpoint from one external address, followed by a request to a new file (Huge case-timeline-12 step 1) under the web root. The file ran commands as the service account and listed the (Huge case-timeline-12 step 2) application",
+     "evidence_ids": [
+      "alt_01a19f93-1392-7000-8000-000000000311",
+      "evt_01a19f93-1392-7000-8000-000000000311"
+     ]
+    }
+   ],
+   "techniques": [
+    {
+     "id": "T1000",
+     "name": "Technique name 1 for the Huge case case",
+     "evidence_ids": [
+      "alt_01a19f93-1392-7000-8000-000000000300"
+     ]
+    },
+    {
+     "id": "T1001",
+     "name": "Technique name 2 for the Huge case case",
+     "evidence_ids": [
+      "alt_01a19f93-1392-7000-8000-000000000301"
+     ]
+    },
+    {
+     "id": "T1002",
+     "name": "Technique name 3 for the Huge case case",
+     "evidence_ids": [
+      "alt_01a19f93-1392-7000-8000-000000000302"
+     ]
+    },
+    {
+     "id": "T1003",
+     "name": "Technique name 4 for the Huge case case",
+     "evidence_ids": [
+      "alt_01a19f93-1392-7000-8000-000000000303"
+     ]
+    },
+    {
+     "id": "T1004",
+     "name": "Technique name 5 for the Huge case case",
+     "evidence_ids": [
+      "alt_01a19f93-1392-7000-8000-000000000304"
+     ]
+    },
+    {
+     "id": "T1005",
+     "name": "Technique name 6 for the Huge case case",
+     "evidence_ids": [
+      "alt_01a19f93-1392-7000-8000-000000000305"
+     ]
+    },
+    {
+     "id": "T1006",
+     "name": "Technique name 7 for the Huge case case",
+     "evidence_ids": [
+      "alt_01a19f93-1392-7000-8000-000000000306"
+     ]
+    },
+    {
+     "id": "T1007",
+     "name": "Technique name 8 for the Huge case case",
+     "evidence_ids": [
+      "alt_01a19f93-1392-7000-8000-000000000307"
+     ]
+    },
+    {
+     "id": "T1008",
+     "name": "Technique name 9 for the Huge case case",
+     "evidence_ids": [
+      "alt_01a19f93-1392-7000-8000-000000000308"
+     ]
+    },
+    {
+     "id": "T1009",
+     "name": "Technique name 10 for the Huge case case",
+     "evidence_ids": [
+      "alt_01a19f93-1392-7000-8000-000000000309"
+     ]
+    },
+    {
+     "id": "T1010",
+     "name": "Technique name 11 for the Huge case case",
+     "evidence_ids": [
+      "alt_01a19f93-1392-7000-8000-000000000310"
+     ]
+    },
+    {
+     "id": "T1011",
+     "name": "Technique name 12 for the Huge case case",
+     "evidence_ids": [
+      "alt_01a19f93-1392-7000-8000-000000000311"
+     ]
+    }
+   ],
+   "impact": "to the upload endpoint from one external address, followed by a request to a new file (Huge case-impact step 1) under the web root. The file ran commands as the service account and listed the (Huge case-impact step 2) application directory, then the same address came back with a second shell command. (Huge case-impact step 3) The operator reviewed the proxy logs of the example web tier and found repeated requests (Huge case-impact step 4) to the upload endpoint from one external address, followed by a request to a new file (Huge case-impact step 5) under the web root. The file ran commands as the service account and listed the (Huge case-impact step 6) application directory, then the same address came back with a second shell command. (Huge case-impact step 7) The operator reviewed the proxy logs of the example web tier and found repeated requests (Huge case-impact step 8) to the upload",
+   "cause": "to the upload endpoint from one external address, followed by a request to a new file (Huge case-cause step 1) under the web root. The file ran commands as the service account and listed the (Huge case-cause step 2) application directory, then the same address came back with a second shell command. (Huge case-cause step 3) The operator reviewed the proxy logs of the example web tier and found repeated requests (Huge case-cause step 4) to the upload endpoint from one external address, followed by a request to a new file (Huge case-cause step 5) under the web root. The file ran commands as the service account and listed the (Huge case-cause step 6) application directory, then the same address came back with a second shell command. (Huge case-cause step 7) The operator reviewed the proxy logs of the example web tier and found repeated requests (Huge case-cause step 8) to the upload endpoint",
+   "further_risk": "to the upload endpoint from one external address, followed by a request to a new file (Huge case-risk step 1) under the web root. The file ran commands as the service account and listed the (Huge case-risk step 2) application directory, then the same address came back with a second shell command. (Huge case-risk step 3) The operator reviewed the proxy logs of the example web tier and found repeated requests (Huge case-risk step 4) to the upload endpoint from one external address, followed by a request to a new file (Huge case-risk step 5) under the web root. The file ran commands as the service account and listed the (Huge case-risk step 6) application directory, then the same address came back with a second shell command. (Huge case-risk step 7) The operator reviewed the proxy logs of the example web tier and found repeated requests (Huge case-risk step 8) to the upload endpoint from on",
+   "evidence_ids": [
+    "alt_01a19f93-1392-7000-8000-000000000300",
+    "alt_01a19f93-1392-7000-8000-000000000301",
+    "alt_01a19f93-1392-7000-8000-000000000302",
+    "alt_01a19f93-1392-7000-8000-000000000303",
+    "alt_01a19f93-1392-7000-8000-000000000304",
+    "alt_01a19f93-1392-7000-8000-000000000305",
+    "alt_01a19f93-1392-7000-8000-000000000306",
+    "alt_01a19f93-1392-7000-8000-000000000307",
+    "alt_01a19f93-1392-7000-8000-000000000308",
+    "alt_01a19f93-1392-7000-8000-000000000309",
+    "alt_01a19f93-1392-7000-8000-000000000310",
+    "alt_01a19f93-1392-7000-8000-000000000311",
+    "evt_01a19f93-1392-7000-8000-000000000300",
+    "evt_01a19f93-1392-7000-8000-000000000301",
+    "evt_01a19f93-1392-7000-8000-000000000302",
+    "evt_01a19f93-1392-7000-8000-000000000303",
+    "evt_01a19f93-1392-7000-8000-000000000304",
+    "evt_01a19f93-1392-7000-8000-000000000305",
+    "evt_01a19f93-1392-7000-8000-000000000306",
+    "evt_01a19f93-1392-7000-8000-000000000307",
+    "evt_01a19f93-1392-7000-8000-000000000308",
+    "evt_01a19f93-1392-7000-8000-000000000309",
+    "evt_01a19f93-1392-7000-8000-000000000310",
+    "evt_01a19f93-1392-7000-8000-000000000311",
+    "agl_01a19f93-1392-7000-8000-000000000300",
+    "agl_01a19f93-1392-7000-8000-000000000301",
+    "agl_01a19f93-1392-7000-8000-000000000302",
+    "agl_01a19f93-1392-7000-8000-000000000303"
+   ],
+   "created_at": 1793766500001
+  }
+ ],
+ "incident_proposals": [
+  {
+   "id": "prp_01a19f93-1392-7000-8000-000000000001",
+   "artifact_id": "art_01a19f93-1392-7000-8000-000000000001",
+   "kind": "response",
+   "seq": 1,
+   "priority": "high",
+   "title": "OLD-ROUND-ONE-ACTION",
+   "detail": "Old round action.",
+   "rationale": "Old round.",
+   "created_at": 1793764000000
+  },
+  {
+   "id": "prp_01a19f93-1392-7000-8000-000000000002",
+   "artifact_id": "art_01a19f93-1392-7000-8000-000000000002",
+   "kind": "detection",
+   "seq": 1,
+   "priority": "medium",
+   "title": "Alert on script uploads",
+   "detail": "Alert when the upload form receives a file with a script extension.",
+   "rationale": "The upload form had no type check.",
+   "created_at": 1793764000000
+  },
+  {
+   "id": "prp_01a19f93-1392-7000-8000-000000000003",
+   "artifact_id": "art_01a19f93-1392-7000-8000-000000000002",
+   "kind": "response",
+   "seq": 2,
+   "priority": null,
+   "title": "Restrict the upload form",
+   "detail": "Allow only image types on the upload form.",
+   "rationale": null,
+   "created_at": 1793764000000
+  },
+  {
+   "id": "prp_01a19f93-1392-7000-8000-000000000004",
+   "artifact_id": "art_01a19f93-1392-7000-8000-000000000002",
+   "kind": "response",
+   "seq": 3,
+   "priority": "high",
+   "title": "Remove the uploaded file",
+   "detail": "Delete the script file from the web root and rotate the service account.",
+   "rationale": "The file ran commands.",
+   "created_at": 1793764000000
+  },
+  {
+   "id": "prp_01a19f93-1392-7000-8000-000000000005",
+   "artifact_id": "art_01a19f93-1392-7000-8000-000000000003",
+   "kind": "detection",
+   "seq": 1,
+   "priority": "low",
+   "title": "Alert on rare domain beacons",
+   "detail": "Alert when one host queries one rare domain at a fixed interval.",
+   "rationale": "The queries were regular.",
+   "created_at": 1793764000000
+  },
+  {
+   "id": "prp_01a19f93-1392-7000-8000-000000000006",
+   "artifact_id": "art_01a19f93-1392-7000-8000-000000000004",
+   "kind": "detection",
+   "seq": 1,
+   "priority": "high",
+   "title": "Long case action 1",
+   "detail": "to the upload endpoint from one external address, followed by a request to a new file (Long case-detail-1 step 1) under the web root. The file ran commands as the service account and listed the (Long",
+   "rationale": "to the upload endpoint from one external address, followed by a request to a new file (Long case-rationale-1 step 1) und",
+   "created_at": 1793764000000
+  },
+  {
+   "id": "prp_01a19f93-1392-7000-8000-000000000007",
+   "artifact_id": "art_01a19f93-1392-7000-8000-000000000004",
+   "kind": "response",
+   "seq": 2,
+   "priority": "medium",
+   "title": "Long case action 2",
+   "detail": "to the upload endpoint from one external address, followed by a request to a new file (Long case-detail-2 step 1) under the web root. The file ran commands as the service account and listed the (Long",
+   "rationale": "to the upload endpoint from one external address, followed by a request to a new file (Long case-rationale-2 step 1) und",
+   "created_at": 1793764000000
+  },
+  {
+   "id": "prp_01a19f93-1392-7000-8000-000000000008",
+   "artifact_id": "art_01a19f93-1392-7000-8000-000000000004",
+   "kind": "detection",
+   "seq": 3,
+   "priority": "low",
+   "title": "Long case action 3",
+   "detail": "to the upload endpoint from one external address, followed by a request to a new file (Long case-detail-3 step 1) under the web root. The file ran commands as the service account and listed the (Long",
+   "rationale": "to the upload endpoint from one external address, followed by a request to a new file (Long case-rationale-3 step 1) und",
+   "created_at": 1793764000000
+  },
+  {
+   "id": "prp_01a19f93-1392-7000-8000-000000000009",
+   "artifact_id": "art_01a19f93-1392-7000-8000-000000000004",
+   "kind": "response",
+   "seq": 4,
+   "priority": "high",
+   "title": "Long case action 4",
+   "detail": "to the upload endpoint from one external address, followed by a request to a new file (Long case-detail-4 step 1) under the web root. The file ran commands as the service account and listed the (Long",
+   "rationale": "to the upload endpoint from one external address, followed by a request to a new file (Long case-rationale-4 step 1) und",
+   "created_at": 1793764000000
+  },
+  {
+   "id": "prp_01a19f93-1392-7000-8000-000000000010",
+   "artifact_id": "art_01a19f93-1392-7000-8000-000000000005",
+   "kind": "detection",
+   "seq": 1,
+   "priority": "high",
+   "title": "Huge case action 1",
+   "detail": "to the upload endpoint from one external address, followed by a request to a new file (Huge case-detail-1 step 1) under the web root. The file ran commands as the service account and listed the (Huge case-detail-1 step 2) application directory, then the same address came back with a second shell command. (Huge case-detail-1 step 3) The operator reviewed the proxy logs of the example web tier and found repeated requests (Huge case-detail-1 step 4) to the upload endpoint from one external address, followed by a request to a new file (Huge case-detail-1 step 5) under the web root. The file ran commands as the service account and listed the (Huge case-detail-1 step 6) application directory, then",
+   "rationale": "to the upload endpoint from one external address, followed by a request to a new file (Huge case-rationale-1 step 1) under the web root. The file ran commands as the service account and listed the (Huge case-rationale-1 step 2) application directory, then the same address came back with a second shell command. (Huge case-rationale-1 step 3) The operator reviewed the proxy logs of the example web t",
+   "created_at": 1793764000000
+  },
+  {
+   "id": "prp_01a19f93-1392-7000-8000-000000000011",
+   "artifact_id": "art_01a19f93-1392-7000-8000-000000000005",
+   "kind": "response",
+   "seq": 2,
+   "priority": "medium",
+   "title": "Huge case action 2",
+   "detail": "to the upload endpoint from one external address, followed by a request to a new file (Huge case-detail-2 step 1) under the web root. The file ran commands as the service account and listed the (Huge case-detail-2 step 2) application directory, then the same address came back with a second shell command. (Huge case-detail-2 step 3) The operator reviewed the proxy logs of the example web tier and found repeated requests (Huge case-detail-2 step 4) to the upload endpoint from one external address, followed by a request to a new file (Huge case-detail-2 step 5) under the web root. The file ran commands as the service account and listed the (Huge case-detail-2 step 6) application directory, then",
+   "rationale": "to the upload endpoint from one external address, followed by a request to a new file (Huge case-rationale-2 step 1) under the web root. The file ran commands as the service account and listed the (Huge case-rationale-2 step 2) application directory, then the same address came back with a second shell command. (Huge case-rationale-2 step 3) The operator reviewed the proxy logs of the example web t",
+   "created_at": 1793764000000
+  },
+  {
+   "id": "prp_01a19f93-1392-7000-8000-000000000012",
+   "artifact_id": "art_01a19f93-1392-7000-8000-000000000005",
+   "kind": "detection",
+   "seq": 3,
+   "priority": "low",
+   "title": "Huge case action 3",
+   "detail": "to the upload endpoint from one external address, followed by a request to a new file (Huge case-detail-3 step 1) under the web root. The file ran commands as the service account and listed the (Huge case-detail-3 step 2) application directory, then the same address came back with a second shell command. (Huge case-detail-3 step 3) The operator reviewed the proxy logs of the example web tier and found repeated requests (Huge case-detail-3 step 4) to the upload endpoint from one external address, followed by a request to a new file (Huge case-detail-3 step 5) under the web root. The file ran commands as the service account and listed the (Huge case-detail-3 step 6) application directory, then",
+   "rationale": "to the upload endpoint from one external address, followed by a request to a new file (Huge case-rationale-3 step 1) under the web root. The file ran commands as the service account and listed the (Huge case-rationale-3 step 2) application directory, then the same address came back with a second shell command. (Huge case-rationale-3 step 3) The operator reviewed the proxy logs of the example web t",
+   "created_at": 1793764000000
+  },
+  {
+   "id": "prp_01a19f93-1392-7000-8000-000000000013",
+   "artifact_id": "art_01a19f93-1392-7000-8000-000000000005",
+   "kind": "response",
+   "seq": 4,
+   "priority": "high",
+   "title": "Huge case action 4",
+   "detail": "to the upload endpoint from one external address, followed by a request to a new file (Huge case-detail-4 step 1) under the web root. The file ran commands as the service account and listed the (Huge case-detail-4 step 2) application directory, then the same address came back with a second shell command. (Huge case-detail-4 step 3) The operator reviewed the proxy logs of the example web tier and found repeated requests (Huge case-detail-4 step 4) to the upload endpoint from one external address, followed by a request to a new file (Huge case-detail-4 step 5) under the web root. The file ran commands as the service account and listed the (Huge case-detail-4 step 6) application directory, then",
+   "rationale": "to the upload endpoint from one external address, followed by a request to a new file (Huge case-rationale-4 step 1) under the web root. The file ran commands as the service account and listed the (Huge case-rationale-4 step 2) application directory, then the same address came back with a second shell command. (Huge case-rationale-4 step 3) The operator reviewed the proxy logs of the example web t",
+   "created_at": 1793764000000
+  },
+  {
+   "id": "prp_01a19f93-1392-7000-8000-000000000014",
+   "artifact_id": "art_01a19f93-1392-7000-8000-000000000005",
+   "kind": "detection",
+   "seq": 5,
+   "priority": "medium",
+   "title": "Huge case action 5",
+   "detail": "to the upload endpoint from one external address, followed by a request to a new file (Huge case-detail-5 step 1) under the web root. The file ran commands as the service account and listed the (Huge case-detail-5 step 2) application directory, then the same address came back with a second shell command. (Huge case-detail-5 step 3) The operator reviewed the proxy logs of the example web tier and found repeated requests (Huge case-detail-5 step 4) to the upload endpoint from one external address, followed by a request to a new file (Huge case-detail-5 step 5) under the web root. The file ran commands as the service account and listed the (Huge case-detail-5 step 6) application directory, then",
+   "rationale": "to the upload endpoint from one external address, followed by a request to a new file (Huge case-rationale-5 step 1) under the web root. The file ran commands as the service account and listed the (Huge case-rationale-5 step 2) application directory, then the same address came back with a second shell command. (Huge case-rationale-5 step 3) The operator reviewed the proxy logs of the example web t",
+   "created_at": 1793764000000
+  },
+  {
+   "id": "prp_01a19f93-1392-7000-8000-000000000015",
+   "artifact_id": "art_01a19f93-1392-7000-8000-000000000005",
+   "kind": "response",
+   "seq": 6,
+   "priority": "low",
+   "title": "Huge case action 6",
+   "detail": "to the upload endpoint from one external address, followed by a request to a new file (Huge case-detail-6 step 1) under the web root. The file ran commands as the service account and listed the (Huge case-detail-6 step 2) application directory, then the same address came back with a second shell command. (Huge case-detail-6 step 3) The operator reviewed the proxy logs of the example web tier and found repeated requests (Huge case-detail-6 step 4) to the upload endpoint from one external address, followed by a request to a new file (Huge case-detail-6 step 5) under the web root. The file ran commands as the service account and listed the (Huge case-detail-6 step 6) application directory, then",
+   "rationale": "to the upload endpoint from one external address, followed by a request to a new file (Huge case-rationale-6 step 1) under the web root. The file ran commands as the service account and listed the (Huge case-rationale-6 step 2) application directory, then the same address came back with a second shell command. (Huge case-rationale-6 step 3) The operator reviewed the proxy logs of the example web t",
+   "created_at": 1793764000000
+  },
+  {
+   "id": "prp_01a19f93-1392-7000-8000-000000000016",
+   "artifact_id": "art_01a19f93-1392-7000-8000-000000000005",
+   "kind": "detection",
+   "seq": 7,
+   "priority": "high",
+   "title": "Huge case action 7",
+   "detail": "to the upload endpoint from one external address, followed by a request to a new file (Huge case-detail-7 step 1) under the web root. The file ran commands as the service account and listed the (Huge case-detail-7 step 2) application directory, then the same address came back with a second shell command. (Huge case-detail-7 step 3) The operator reviewed the proxy logs of the example web tier and found repeated requests (Huge case-detail-7 step 4) to the upload endpoint from one external address, followed by a request to a new file (Huge case-detail-7 step 5) under the web root. The file ran commands as the service account and listed the (Huge case-detail-7 step 6) application directory, then",
+   "rationale": "to the upload endpoint from one external address, followed by a request to a new file (Huge case-rationale-7 step 1) under the web root. The file ran commands as the service account and listed the (Huge case-rationale-7 step 2) application directory, then the same address came back with a second shell command. (Huge case-rationale-7 step 3) The operator reviewed the proxy logs of the example web t",
+   "created_at": 1793764000000
+  },
+  {
+   "id": "prp_01a19f93-1392-7000-8000-000000000017",
+   "artifact_id": "art_01a19f93-1392-7000-8000-000000000005",
+   "kind": "response",
+   "seq": 8,
+   "priority": "medium",
+   "title": "Huge case action 8",
+   "detail": "to the upload endpoint from one external address, followed by a request to a new file (Huge case-detail-8 step 1) under the web root. The file ran commands as the service account and listed the (Huge case-detail-8 step 2) application directory, then the same address came back with a second shell command. (Huge case-detail-8 step 3) The operator reviewed the proxy logs of the example web tier and found repeated requests (Huge case-detail-8 step 4) to the upload endpoint from one external address, followed by a request to a new file (Huge case-detail-8 step 5) under the web root. The file ran commands as the service account and listed the (Huge case-detail-8 step 6) application directory, then",
+   "rationale": "to the upload endpoint from one external address, followed by a request to a new file (Huge case-rationale-8 step 1) under the web root. The file ran commands as the service account and listed the (Huge case-rationale-8 step 2) application directory, then the same address came back with a second shell command. (Huge case-rationale-8 step 3) The operator reviewed the proxy logs of the example web t",
+   "created_at": 1793764000000
+  },
+  {
+   "id": "prp_01a19f93-1392-7000-8000-000000000018",
+   "artifact_id": "art_01a19f93-1392-7000-8000-000000000005",
+   "kind": "detection",
+   "seq": 9,
+   "priority": "low",
+   "title": "Huge case action 9",
+   "detail": "to the upload endpoint from one external address, followed by a request to a new file (Huge case-detail-9 step 1) under the web root. The file ran commands as the service account and listed the (Huge case-detail-9 step 2) application directory, then the same address came back with a second shell command. (Huge case-detail-9 step 3) The operator reviewed the proxy logs of the example web tier and found repeated requests (Huge case-detail-9 step 4) to the upload endpoint from one external address, followed by a request to a new file (Huge case-detail-9 step 5) under the web root. The file ran commands as the service account and listed the (Huge case-detail-9 step 6) application directory, then",
+   "rationale": "to the upload endpoint from one external address, followed by a request to a new file (Huge case-rationale-9 step 1) under the web root. The file ran commands as the service account and listed the (Huge case-rationale-9 step 2) application directory, then the same address came back with a second shell command. (Huge case-rationale-9 step 3) The operator reviewed the proxy logs of the example web t",
+   "created_at": 1793764000000
+  },
+  {
+   "id": "prp_01a19f93-1392-7000-8000-000000000019",
+   "artifact_id": "art_01a19f93-1392-7000-8000-000000000005",
+   "kind": "response",
+   "seq": 10,
+   "priority": "high",
+   "title": "Huge case action 10",
+   "detail": "to the upload endpoint from one external address, followed by a request to a new file (Huge case-detail-10 step 1) under the web root. The file ran commands as the service account and listed the (Huge case-detail-10 step 2) application directory, then the same address came back with a second shell command. (Huge case-detail-10 step 3) The operator reviewed the proxy logs of the example web tier and found repeated requests (Huge case-detail-10 step 4) to the upload endpoint from one external address, followed by a request to a new file (Huge case-detail-10 step 5) under the web root. The file ran commands as the service account and listed the (Huge case-detail-10 step 6) application directory",
+   "rationale": "to the upload endpoint from one external address, followed by a request to a new file (Huge case-rationale-10 step 1) under the web root. The file ran commands as the service account and listed the (Huge case-rationale-10 step 2) application directory, then the same address came back with a second shell command. (Huge case-rationale-10 step 3) The operator reviewed the proxy logs of the example we",
+   "created_at": 1793764000000
+  },
+  {
+   "id": "prp_01a19f93-1392-7000-8000-000000000020",
+   "artifact_id": "art_01a19f93-1392-7000-8000-000000000005",
+   "kind": "detection",
+   "seq": 11,
+   "priority": "medium",
+   "title": "Huge case action 11",
+   "detail": "to the upload endpoint from one external address, followed by a request to a new file (Huge case-detail-11 step 1) under the web root. The file ran commands as the service account and listed the (Huge case-detail-11 step 2) application directory, then the same address came back with a second shell command. (Huge case-detail-11 step 3) The operator reviewed the proxy logs of the example web tier and found repeated requests (Huge case-detail-11 step 4) to the upload endpoint from one external address, followed by a request to a new file (Huge case-detail-11 step 5) under the web root. The file ran commands as the service account and listed the (Huge case-detail-11 step 6) application directory",
+   "rationale": "to the upload endpoint from one external address, followed by a request to a new file (Huge case-rationale-11 step 1) under the web root. The file ran commands as the service account and listed the (Huge case-rationale-11 step 2) application directory, then the same address came back with a second shell command. (Huge case-rationale-11 step 3) The operator reviewed the proxy logs of the example we",
+   "created_at": 1793764000000
+  },
+  {
+   "id": "prp_01a19f93-1392-7000-8000-000000000021",
+   "artifact_id": "art_01a19f93-1392-7000-8000-000000000005",
+   "kind": "response",
+   "seq": 12,
+   "priority": "low",
+   "title": "Huge case action 12",
+   "detail": "to the upload endpoint from one external address, followed by a request to a new file (Huge case-detail-12 step 1) under the web root. The file ran commands as the service account and listed the (Huge case-detail-12 step 2) application directory, then the same address came back with a second shell command. (Huge case-detail-12 step 3) The operator reviewed the proxy logs of the example web tier and found repeated requests (Huge case-detail-12 step 4) to the upload endpoint from one external address, followed by a request to a new file (Huge case-detail-12 step 5) under the web root. The file ran commands as the service account and listed the (Huge case-detail-12 step 6) application directory",
+   "rationale": "to the upload endpoint from one external address, followed by a request to a new file (Huge case-rationale-12 step 1) under the web root. The file ran commands as the service account and listed the (Huge case-rationale-12 step 2) application directory, then the same address came back with a second shell command. (Huge case-rationale-12 step 3) The operator reviewed the proxy logs of the example we",
+   "created_at": 1793764000000
+  }
+ ],
+ "cases": [
+  {
+   "id": "cas_01a19f93-1392-7000-8000-000000000001",
+   "incident_id": "inc_01a19f93-1392-7000-8000-000000000001",
+   "title": "Web shell on example web server",
+   "summary": "Attacker uploaded a web shell through the upload form",
+   "severity": 4,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "192.0.2.77",
+     "role": "src"
+    },
+    {
+     "type": "host",
+     "value": "web-1.example.com",
+     "role": "target"
+    }
+   ],
+   "confirmed_by": "analyst.kim",
+   "confirmed_at": 1793764900000,
+   "status": "open",
+   "assignee": "analyst.lee",
+   "resolved_at": null,
+   "details": {}
+  },
+  {
+   "id": "cas_01a19f93-1392-7000-8000-000000000002",
+   "incident_id": "inc_01a19f93-1392-7000-8000-000000000002",
+   "title": "Failed logins burst on example VPN",
+   "summary": "Many failed logins from one address on the VPN",
+   "severity": 3,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "198.51.100.9",
+     "role": "src"
+    }
+   ],
+   "confirmed_by": "analyst.kim",
+   "confirmed_at": 1793765800000,
+   "status": "in_progress",
+   "assignee": null,
+   "resolved_at": null,
+   "details": {}
+  },
+  {
+   "id": "cas_01a19f93-1392-7000-8000-000000000003",
+   "incident_id": "inc_01a19f93-1392-7000-8000-000000000003",
+   "title": "DNS beaconing from an example host",
+   "summary": "A host sent regular DNS queries to a rare example domain",
+   "severity": 2,
+   "entities": [
+    {
+     "type": "domain",
+     "value": "beacon.example.com",
+     "role": "dst"
+    }
+   ],
+   "confirmed_by": "analyst.kim",
+   "confirmed_at": 1793766700000,
+   "status": "resolved",
+   "assignee": null,
+   "resolved_at": 1793766970000,
+   "details": {}
+  },
+  {
+   "id": "cas_01a19f93-1392-7000-8000-000000000004",
+   "incident_id": "inc_01a19f93-1392-7000-8000-000000000004",
+   "title": "Long case web shell incident on the example web tier with many alerts",
+   "summary": "to the upload endpoint from one external address, followed by a request to a new file (Long case-case-summary step 1) under the web root. The file ran commands as the service account and listed the (Long case-case-summary step 2) application directory, then the same address came back with a second s",
+   "severity": 5,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "192.0.2.100",
+     "role": "src"
+    },
+    {
+     "type": "ip",
+     "value": "192.0.2.101",
+     "role": "src"
+    },
+    {
+     "type": "ip",
+     "value": "192.0.2.102",
+     "role": "src"
+    },
+    {
+     "type": "ip",
+     "value": "192.0.2.103",
+     "role": "src"
+    }
+   ],
+   "confirmed_by": "analyst.kim",
+   "confirmed_at": 1793767600000,
+   "status": "open",
+   "assignee": null,
+   "resolved_at": null,
+   "details": {}
+  },
+  {
+   "id": "cas_01a19f93-1392-7000-8000-000000000005",
+   "incident_id": "inc_01a19f93-1392-7000-8000-000000000005",
+   "title": "Huge case web shell incident on the example web tier with many alerts",
+   "summary": "to the upload endpoint from one external address, followed by a request to a new file (Huge case-case-summary step 1) under the web root. The file ran commands as the service account and listed the (Huge case-case-summary step 2) application directory, then the same address came back with a second shell command. (Huge case-case-summary step 3) The operator reviewed the proxy logs of the example web tier and found repeated requests (Huge case-case-summary step 4) to the upload endpoint from one external address, followed by a request to a new file (Huge case-case-summary step 5) under the web root. The file ran commands as the service account and listed the (Huge case-case-summary step 6) application directory, then the same address came back with a second shell command. (Huge case-case-summary step 7) The operator reviewed the proxy logs of the example web tier and found repeated request",
+   "severity": 5,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "192.0.2.100",
+     "role": "src"
+    },
+    {
+     "type": "ip",
+     "value": "192.0.2.101",
+     "role": "src"
+    },
+    {
+     "type": "ip",
+     "value": "192.0.2.102",
+     "role": "src"
+    },
+    {
+     "type": "ip",
+     "value": "192.0.2.103",
+     "role": "src"
+    },
+    {
+     "type": "ip",
+     "value": "192.0.2.104",
+     "role": "src"
+    },
+    {
+     "type": "ip",
+     "value": "192.0.2.105",
+     "role": "src"
+    },
+    {
+     "type": "ip",
+     "value": "192.0.2.106",
+     "role": "src"
+    },
+    {
+     "type": "ip",
+     "value": "192.0.2.107",
+     "role": "src"
+    }
+   ],
+   "confirmed_by": "analyst.kim",
+   "confirmed_at": 1793768500000,
+   "status": "open",
+   "assignee": null,
+   "resolved_at": null,
+   "details": {}
+  }
+ ]
+}

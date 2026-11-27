@@ -56,6 +56,7 @@
 - 정상 값도 가릴 수 있다. `token=null`, `secret=false`, `token: expired`처럼 이름이 `token`·`secret`으로 끝나는 낱말 뒤의 값은 모양과 관계없이 가린다.
 - 가림은 모델의 증거도 가린다. 공격자가 `password=<덩어리>` 모양을 넣으면 그 덩어리가 모델에게도 보이지 않는다. 로그 내용이 판정을 직접 바꾸지는 못하지만 증거를 줄일 수는 있다.
 - 모델이 낸 출력(`AgentResult.output`)은 입력을 거친 값이지만 따로 가리지 않고 파이프가 저장한다.
+- 지난 Incident의 분석 내용이 L3의 외부 LLM으로 새로 나간다(D-087, #392). Case 검색 도구의 결과(Case 제목·요약, 승인 당시 Artifact의 타임라인·원인·영향·추가 위험, 권고 조치, 원본 Ticket·Alert 제목)는 L3 run의 모델 입력이 된다. 이전에는 그 Incident를 분석하는 L2 run만 이 내용을 받았다. 위 가림은 이 결과에도 그대로 적용되지만, 저장된 Case·Artifact 문장은 가림 없이 저장돼 있어(위 모델 출력 항목) 알려진 모양 밖의 비밀이 문장에 섞여 있으면 L3로도 나간다.
 
 ## 에이전트 도구의 한계
 
@@ -65,6 +66,7 @@
 - 계획된 근거 원본 조회 도구 `get_raw`는 저장된 원문을 돌려주며 D-059 마스킹을 적용하지 않는다. 모델 입력에는 `screen_input`을 적용하지만, 위 "모델 입력" 절의 알려진 한계에 해당하는 값은 가려지지 않은 채 외부 LLM에 갈 수 있다.
 - 유사 사례 검색 도구(D-053)는 `tickets`(id, status, verdict, entities, alert_ids, created_at)·`incidents`(id, ticket_ids, status)·`cases`(id, incident_id)의 열만 읽는다(마이그레이션 0007). `tickets.details`와 그 밖의 열은 읽지 못한다. 결과의 판정 이유와 엔티티는 LLM이 쓴 문장이거나 밖에서 온 문자열이라 길이를 자르고 데이터로만 전달한다. `decided_by=agent` 판정은 틀렸을 수 있고, 프롬프트 경고는 L1의 자동 종결(D-025)을 구조적으로 막지 못한다.
 - 사람이 쓴 반려 사유가 든 `incident_reviews`(마이그레이션 0307, D-082)는 `soc_agent_reader`에 권한을 주지 않는다. 에이전트 도구는 이 표를 읽지 못하고(`tests/test_incident_reviews_db.py`), L2 분석 워커가 자기 연결로 읽어 조사 입력 `data.rejection`에 데이터로만 넣는다. 사유는 모델 입력 가림(`screen_input`)을 거친다.
+- 확정 Case 검색 도구(`search_confirmed_cases`, D-087, #392)는 L3 전용이고 마이그레이션 0312이 준 열만 읽는다: `cases`(title, summary, severity, entities, confirmed_at, status), `tickets`(title, origin), `incident_artifacts`(id, incident_id, analysis_round, verdict, timeline, techniques, impact, cause, further_risk, evidence_ids), `incident_proposals`(artifact_id, kind, seq, priority, title, detail, rationale). `cases`의 `confirmed_by`·`assignee`(사람 계정 이름)·`resolved_at`·`details`, `tickets`의 `details`·`hunt_id`·`updated_at`, `incident_artifacts`의 `summary`·`assessed_severity`·`created_at`, `incident_reviews`(D-082), `case_index_jobs`(D-084)는 계속 읽지 못한다(`tests/test_tools_case_search_db.py`). 결과 속 Case 제목·요약·Artifact·권고 조치·Ticket 제목은 L2와 사람 승인을 거쳤어도 로그 같은 밖에서 온 문자열에서 나온 LLM 문장일 수 있다. 예전 로그의 문장이 다음 run에서 지시처럼 읽히는 2차 주입 경로이므로 `<tool_result>`로 감싸 데이터로만 전달하고 길이를 자른다. 결과는 `aggregate`라 근거 장부에는 이 호출의 `call_id`만 들어가고, 결과 속 Alert·Event ID는 근거가 아니라 `get_alert`를 다시 부를 때 쓰는 데이터다. 지난 Case의 판단은 참고이고 이번 사건의 증거가 아니다.
 - 서버에 접속하는 도구는 설정에 적은 대상·계정·명령만 허용하고, 기본은 전부 거부한다. 허용 단위는 인자까지 포함한 명령 템플릿이다. SSH는 원격 서버의 셸이 명령 문자열을 다시 해석하므로, 인자 자리에 들어가는 값은 허용 형식만 받고 셸 특수문자가 들어 있으면 거부한다. 인자 값이 `-`로 시작하면 옵션으로 해석돼 명령이 쓰기·삭제로 바뀔 수 있으므로 거부한다. 원격 접속 계정은 읽기 권한만 가진 계정을 써서, 문자열 검사가 뚫려도 쓰기가 되지 않게 한다. 구체 방법은 SSH 도구(D-011) 메모에 있다(#213).
 - 차단, 격리, 계정 잠금처럼 되돌리기 어려운 동작은 만들지 않는다.
 - OpenAI Agents SDK(D-022)를 쓰기로 정하면, 에이전트를 실행하는 코드 진입점에서 `set_tracing_disabled(True)`를 호출해 트레이싱을 끈다. 환경변수에 맡기지 않는다. 그 이슈는 환경변수 없이도 트레이싱이 꺼지는지 확인하는 테스트를 완료 기준에 넣는다.
