@@ -13,6 +13,8 @@ import psycopg
 import pytest
 from conftest import HiddenUrl
 
+from soc.api import ui_read as read
+from soc.api.ui_models import RawDetail
 from soc.db.migrate import migrate
 from soc.evidence import issue
 from soc.ids import siem_ref_key
@@ -196,3 +198,31 @@ def test_l3_hunting_reads_the_entities_of_an_issued_event(conn: psycopg.Connecti
     assert missing == 0
     assert {"type": "ip", "value": "198.51.100.7", "role": "src"} in entities
     assert {"type": "user", "value": "svc-backup", "role": "actor"} in entities
+
+
+def test_the_raw_view_shows_an_issued_evidence(
+    temp_database: HiddenUrl, conn: psycopg.Connection
+) -> None:
+    """원본 보기(API)가 발급한 근거를 raw_id와 evt_ID 둘 다로 읽고 응답 모양을 지킨다."""
+    doc = document(source={"ip": "198.51.100.7"})
+    [(ref, event_id)] = run(conn, (doc,), "aaa1").evidence_ids.items()
+    raw_id = conn.execute("SELECT id FROM raw_records").fetchone()[0]
+
+    with psycopg.connect(temp_database, row_factory=psycopg.rows.dict_row) as api:
+        by_raw = read.raw_detail(api, "event", raw_id)
+        by_event = read.raw_detail(api, "event", event_id)
+        page = read.raw_page(api, "event", None, None, 10)
+
+    assert by_raw == by_event
+    RawDetail.model_validate(by_event)  # 응답 모델(생성 타입과 같은 계약)을 지킨다
+    assert by_event["normalize_status"] == "succeeded" and by_event["error_code"] is None
+    assert by_event["seed_source"] is None
+    # 수집 원본: 발급한 문서 그대로. siem_ref에 인덱스 이름이 들어 있다
+    raw = by_event["raw_record"]
+    assert raw["kind"] == "event" and raw["siem_profile"] == PROFILE and raw["siem_ref"] == ref
+    assert json.loads(raw["original_text"]) == doc
+    # 정규화 결과: class 0 원문 포인터 Event
+    record = by_event["record"]
+    assert record["details"]["id"] == event_id and record["class_uid"] == 0
+    # 목록에도 한 건으로 나온다
+    assert [(i["raw_id"], i["record_id"]) for i in page["items"]] == [(raw_id, event_id)]

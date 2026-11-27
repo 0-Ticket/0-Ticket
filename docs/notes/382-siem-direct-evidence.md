@@ -293,7 +293,8 @@ uv run ruff format --check .   통과
 uv run ruff check .            통과
 uv run pytest                  2693 passed, 834 deselected
 uv run python scripts/generate_contracts.py --check   통과
-uv run pytest -m "db or qdrant"  817 passed (아래 참고. postgres·qdrant를 띄우고 돌렸다)
+uv run pytest -m "db or qdrant"  818 passed (아래 참고. postgres·qdrant를 띄우고 돌렸다)
+pnpm --dir frontend contracts:check · lint · test · build   통과 (lint 경고 1건은 기존)
 ```
 
 db 마커는 `docker compose up -d postgres` 뒤에 돌렸다. 주요 테스트:
@@ -303,7 +304,7 @@ db 마커는 `docker compose up -d postgres` 뒤에 돌렸다. 주요 테스트:
 - `tests/test_agent_task_tools.py` 8건 — 태스크별 허용 목록
 - `tests/test_tools_get_raw.py` 7건 — 스펙 모양과 허용 목록
 - `tests/test_evidence_issue.py` 30건 — 행 만들기(DB 없음)
-- `tests/test_evidence_issue_db.py` 8건(db) — 트랜잭션, 중복 방지, 정규화기와의 분리
+- `tests/test_evidence_issue_db.py` 10건(db) — 트랜잭션, 중복 방지, 정규화기와의 분리
 - `tests/test_tools_db.py` 46건(db) — `get_raw` 실제 읽기와 열 권한
 - `tests/l1/test_l1_judge_db.py` 28건(db) — L1 판정과 발급
 - `tests/test_l3_hunt_db.py` 36건(db) — L3 검증과 발급
@@ -317,3 +318,19 @@ db·qdrant는 `docker compose up -d postgres qdrant` 뒤 `QDRANT_URL=http://127.
 돌렸다. `.env`에 `QDRANT_URL`이 비어 있어서 그 값을 셸에서 넣어야 했다.
 
 ELK 마커 테스트와 서버 확인은 하지 않았다. 실제 심 조회가 200을 받는지도 확인하지 않았다.
+
+### 화면(원본 보기) 확인 (2026-11-27)
+
+CI의 `contracts:check`가 생성 타입 5개 차이로 실패해 `pnpm --dir frontend contracts`로 다시 만들었다
+(손으로 고치지 않았다). 차이는 모델 출력 전용 계약 `incident_findings`·`hunt_verification`의
+`siem_refs` 칸, 새 계약 `l1_verdict` 파일, `siem_ref` 설명 문구 두 곳(`RawDetail`·`raw_record`)이다.
+`RawDetail`의 모양은 바뀌지 않았다.
+
+화면은 고치지 않았다. 원본 보기(`frontend/src/detail-panel.tsx`)는 `raw_record`를 `JsonViewer`로
+통째로 보여 주고 `siem_ref`·`siem_profile` 같은 칸을 따로 읽지 않는다. 서버 쪽(`ui_read.raw_query`)은
+`events.raw_id`로 `raw_records`를 잇기 때문에 발급분(class 0)이 목록과 상세에 그대로 나오고,
+`normalize_status`는 `succeeded`, "정규화 결과"는 원문 포인터 Event, "수집 원본"은 발급한 문서다.
+`test_the_raw_view_shows_an_issued_evidence`가 raw_id와 `evt_` ID 양쪽 조회와 응답 모델 검증, 목록
+한 건을 확인한다. 알려 둘 점 둘: (1) 발급분에도 "수집 원본"이라는 제목이 붙는다. 수집이 아니라 발급 때
+가져온 문서이고 `siem_profile`이 `evidence_siem_profile`인 것으로만 구분된다. (2) 이벤트 정규화가
+없어져 새 `raw_records`의 `kind='event'`는 발급분뿐이다. 둘 다 화면 문구의 문제라 이번에는 두었다.
