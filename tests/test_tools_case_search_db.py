@@ -21,6 +21,7 @@ from case_search_helpers import (
     cid,
     config,
     make_service,
+    without_call_id,
 )
 from conftest import HiddenUrl
 from psycopg import sql
@@ -197,7 +198,7 @@ def test_the_real_tables_give_the_same_answer_as_the_sample_rows(reader_url: Hid
         # fake_body가 read_many를 가짜로 바꾸므로 반복마다 되돌린다(다음 real이 진짜 표를 읽게)
         with pytest.MonkeyPatch.context() as patch:
             fake = fake_body(patch, args, cfg=config(section=section))
-        assert real == fake
+        assert without_call_id(real) == without_call_id(fake)  # call_id는 호출마다 다르다
         assert real["returned"] == 3 and real["omitted"] == 0
 
 

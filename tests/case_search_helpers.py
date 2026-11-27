@@ -51,6 +51,15 @@ SECTION: dict[str, Any] = {
 }
 
 
+def without_call_id(result: Mapping[str, Any]) -> dict[str, Any]:
+    """결과에서 call_id만 뺀다. 도구를 부를 때마다 새 agl_ ID가 붙어 두 호출은 같을 수 없다.
+
+    나머지(results 전체)는 그대로 둔다. 비교 전에 call_id가 agl_로 시작하는지 확인한다.
+    """
+    assert str(result["call_id"]).startswith("agl_"), result["call_id"]
+    return {k: v for k, v in result.items() if k != "call_id"}
+
+
 def cid(n: int) -> str:
     return f"cas_01a19f93-1392-7000-8000-{n:012d}"
 
