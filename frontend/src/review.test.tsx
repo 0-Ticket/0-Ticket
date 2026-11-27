@@ -375,3 +375,93 @@ test("recommendation text stays text", async () => {
   await within(dialog).findByText("<img src=x onerror=alert(1)>");
   expect(dialog.querySelector("img, script, b")).toBeNull();
 });
+
+// The screen reads the incident again on a timer; "online" makes the same automatic read at once.
+async function refresh() {
+  const count = () =>
+    requests.filter((r) => r.pathname === `/api/incidents/${incident.id}`)
+      .length;
+  const before = count();
+  window.dispatchEvent(new Event("online"));
+  await waitFor(() => expect(count()).toBeGreaterThan(before));
+  await new Promise((done) => setTimeout(done, 30)); // let the answer reach the screen
+}
+async function typedReason() {
+  const dialog = await openRejectDialog();
+  fireEvent.change(within(dialog).getByRole("textbox"), {
+    target: { value: "근거가 부족해요" },
+  });
+  return dialog;
+}
+const reject = (dialog: HTMLElement) =>
+  within(dialog).getByRole("button", { name: "반려하기" });
+
+test("the reject window and the typed reason stay while the incident leaves review, and rejecting is off", async () => {
+  dashboard();
+  serve(detail());
+  const dialog = await typedReason();
+  serve(detail({ incident: { ...incident, status: "analyzing" } }));
+  await refresh();
+  expect(dialog).toHaveTextContent("현재 상태: 분석 중. 반려할 수 없어요.");
+  expect(within(dialog).getByRole("textbox")).toHaveValue("근거가 부족해요");
+  expect(reject(dialog)).toBeDisabled();
+  // Back to review with the same numbers: the window says it moved, and rejecting works again.
+  serve(detail());
+  await refresh();
+  expect(dialog).toHaveTextContent("분석·검토가 바뀌었어요");
+  expect(dialog).not.toHaveTextContent("반려할 수 없어요");
+  expect(within(dialog).getByRole("textbox")).toHaveValue("근거가 부족해요");
+  expect(reject(dialog)).toBeEnabled();
+});
+
+test.each([
+  ["a re-analysis finished", { analysis_round: incident.analysis_round + 1 }],
+  ["a review was recorded", { review_round: incident.review_round + 1 }],
+])(
+  "still in review but %s since the window opened: the window says it changed",
+  async (_name, changed) => {
+    dashboard();
+    serve(detail());
+    const dialog = await typedReason();
+    expect(dialog).not.toHaveTextContent("바뀌었어요");
+    serve(detail({ incident: { ...incident, ...changed } }));
+    await refresh();
+    expect(dialog).toHaveTextContent("분석·검토가 바뀌었어요");
+    expect(reject(dialog)).toBeEnabled();
+    expect(within(dialog).getByRole("textbox")).toHaveValue("근거가 부족해요");
+  },
+);
+
+test("a refresh that changes nothing leaves the reject window as it was", async () => {
+  dashboard();
+  serve(detail());
+  const dialog = await typedReason();
+  await refresh();
+  expect(dialog).not.toHaveTextContent("바뀌었어요");
+  expect(dialog).not.toHaveTextContent("반려할 수 없어요");
+  expect(reject(dialog)).toBeEnabled();
+  expect(within(dialog).getByRole("textbox")).toHaveValue("근거가 부족해요");
+});
+
+test("the 409 note survives the reload that shows the incident is no longer in review", async () => {
+  dashboard();
+  serve(detail());
+  server.use(
+    http.post("*/api/incidents/:id/approve", () => {
+      // The reload that follows sees the result of whoever got there first.
+      serve(detail({ incident: { ...incident, status: "confirmed" } }));
+      return HttpResponse.json(
+        { error: "incident_not_awaiting_review", status: "confirmed" },
+        { status: 409 },
+      );
+    }),
+  );
+  const page = await open();
+  fireEvent.click(await within(page).findByRole("button", { name: "승인" }));
+  await waitFor(() =>
+    expect(within(page).queryByRole("button", { name: "승인" })).toBeNull(),
+  );
+  expect(await within(page).findByRole("alert")).toHaveTextContent(
+    "이미 처리된 Incident예요(현재 상태: 승인 / 확인됨)",
+  );
+});

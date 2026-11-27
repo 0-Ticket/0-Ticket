@@ -6,6 +6,8 @@ import type { IncidentDetail } from "../api/generated/IncidentDetail";
 import { useCan } from "../auth/session";
 import { Severity, Status } from "../badges";
 import { ErrorState } from "../error-state";
+import { LastUpdated } from "../last-updated";
+import { failure, useAutoRefresh } from "../live";
 import { IncidentGraph } from "../incident-graph";
 import { ReviewActions } from "../review-actions";
 import { ClassificationBasis } from "./basis";
@@ -88,6 +90,7 @@ function Header({
           <span aria-hidden="true">← </span>목록으로
         </Link>
         <span className="incident-steps">
+          <LastUpdated />
           <Neighbour
             label="이전 Incident"
             text="‹ 이전"
@@ -116,6 +119,8 @@ function Header({
           <ReviewActions
             id={incident.id}
             status={incident.status}
+            reviewRound={incident.review_round}
+            analysisRound={incident.analysis_round}
             onApproved={onApproved}
           />
           {caseId && can("case.read") && (
@@ -162,6 +167,7 @@ export function IncidentPage({ id }: { id: string }) {
   const [search, setSearch] = useSearchParams();
   const [caseId, setCaseId] = useState<string | null>(null);
   const [memory, setMemory] = useGraphMemory(id);
+  const path = `incidents/${encodeURIComponent(id)}`;
   // `?sample=graph|empty` swaps the server answer for a hand-made one; the branch is removed from production builds.
   const sample = import.meta.env.DEV ? search.get("sample") : null;
   const query = useQuery({
@@ -171,15 +177,21 @@ export function IncidentPage({ id }: { id: string }) {
         const { devSample } = await import("./dev-sample");
         return devSample(sample, id);
       }
-      return get<IncidentDetail>(`incidents/${encodeURIComponent(id)}`, signal);
+      return get<IncidentDetail>(path, signal);
     },
+    refetchOnReconnect: false,
   });
+  // The hand-made sample answers are not refreshed.
+  useAutoRefresh(
+    sample ? null : { key: ["detail", "incidents", id, sample], path },
+  );
+  const broken = failure(query);
   if (query.isPending) return <p role="status">Incident를 불러오는 중…</p>;
-  if (query.error)
+  if (broken || !query.data)
     return (
       <ErrorState
         inline
-        error={query.error}
+        error={broken ?? new Error("데이터를 불러오지 못했습니다.")}
         retry={() => void query.refetch()}
       />
     );

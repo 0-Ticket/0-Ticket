@@ -400,3 +400,49 @@ test("the basis keeps external entity text literal", () => {
   expect(container.querySelector("img")).toBeNull();
   expect(container.textContent).toContain('<img src=x onerror="alert(1)">');
 });
+
+// Where every node sits, and the view, as the page shows them right now.
+function picture(c: HTMLElement) {
+  return {
+    view: c.querySelector<HTMLElement>(".incident-graph-world")!.style
+      .transform,
+    nodes: new Map(
+      [...c.querySelectorAll<HTMLElement>(".incident-graph-node")].map((n) => [
+        n.getAttribute("aria-label")!,
+        `${n.style.left} ${n.style.top}`,
+      ]),
+    ),
+  };
+}
+function withNewTickets(count: number) {
+  const next = graphDetail();
+  const more = Array.from({ length: count }, (_, i) => ({
+    ...structuredClone(next.tickets[0]),
+    id: `tkt_01a19f93-1266-7000-8000-00000000f0${i}`,
+    title: `새 Ticket ${i}`,
+    alert_ids: [],
+  }));
+  next.tickets.push(...more);
+  next.incident.ticket_ids.push(...more.map((t) => t.id));
+  return next;
+}
+
+test("when a refresh brings new nodes, the graph keeps every old node, the zoom and the position, and only adds", () => {
+  const { container, rerender } = render(<Harness />);
+  const before = picture(container);
+  rerender(<Harness detail={withNewTickets(3)} />);
+  const after = picture(container);
+  expect(after.view).toBe(before.view);
+  for (const [name, at] of before.nodes) expect(after.nodes.get(name)).toBe(at);
+  expect(after.nodes.size).toBe(before.nodes.size + 3);
+});
+
+test("a zoom and a position the user chose stay when new nodes arrive", () => {
+  const { container, rerender } = render(<Harness />);
+  fireEvent.click(screen.getByRole("button", { name: "확대" }));
+  const before = picture(container);
+  rerender(<Harness detail={withNewTickets(2)} />);
+  expect(picture(container).view).toBe(before.view);
+  fireEvent.click(screen.getByRole("button", { name: "화면에 맞추기" }));
+  expect(picture(container).view).not.toBe(before.view);
+});

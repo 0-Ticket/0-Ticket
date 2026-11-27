@@ -51,3 +51,7 @@ export const states: Record<Resource, string[]> = {
   cases: ["open", "in_progress", "resolved"],
   hunts: ["pending", "confirmed", "rejected", "inconclusive", "failed"],
 };
+
+// Screens re-read their data on this interval (D-083). A failing read waits twice as long each time, up to the maximum.
+export const AUTO_REFRESH_MS = 10_000;
+export const AUTO_REFRESH_MAX_MS = 60_000;

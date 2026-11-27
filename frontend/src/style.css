@@ -2335,6 +2335,14 @@ td {
   font-size: 12px;
   overflow-wrap: anywhere;
 }
+.last-updated {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.last-updated[data-failing] {
+  color: var(--danger);
+}
 .incident-step-link {
   border: 1px solid var(--input-border);
   border-radius: 8px;
