@@ -436,7 +436,9 @@ def run_with_actor_tool(db: str, steps: list[dict[str, Any]]) -> tuple[Any, Fake
     """가짜 모델과 가짜 행위자 도구로 run_task를 돌리고 Agent Log를 DB에 쓴다."""
     model = FakeModel({"steps": steps})
     config = copy.deepcopy(load_agent_config())
-    config["tools"]["allowed"]["l3"] = [ACTOR_TOOL]
+    # 배포 설정에는 태스크 키가 있어 단계 키(l3)로 덮으면 무시된다(#382). 쓰는 두 태스크 모두 덮는다
+    for task_name in ("l3_hypothesize", "l3_verify"):
+        config["tools"]["allowed"][task_name] = [ACTOR_TOOL]
     sink = PostgresLogSink(db)
 
     def run(task: AgentTask) -> AgentResult:
