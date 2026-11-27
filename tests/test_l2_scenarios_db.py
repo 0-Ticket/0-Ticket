@@ -16,6 +16,7 @@ from soc.contracts import to_datetime
 from soc.db.migrate import migrate
 from soc.l2.branch import build_branch
 from soc.l2.branch.candidates import VectorCandidate
+from soc.l2.branch.decide import Candidate, make_task
 from soc.l2.branch.graph import read_graph
 from soc.l2.branch.worker import L2BranchWorker
 from soc.l2.config import BranchSettings
@@ -130,6 +131,7 @@ def test_scenario_matches_the_graph_rules(
         ("5-same-local-ip-different-environments", ["111111111111", "i-0aaaaaaaaaaaaaaaa"]),
         ("5b-same-local-ip-same-environment", ["111111111111", "i-0aaaaaaaaaaaaaaaa"]),
         ("5c-same-public-src-different-environments", ["111111111111", "i-0aaaaaaaaaaaaaaaa"]),
+        ("5d-network-detection-shared-src", None),
         ("1a-same-source-same-src-ip", None),
     ],
 )
@@ -141,5 +143,16 @@ def test_candidate_input_carries_the_path_alerts_target_hosts(
     with psycopg.connect(temp_database, autocommit=True) as conn:
         built = build_case(conn, case)
         graph = graph_for(conn, built)
-    hosts = list(graph.candidates[0].target_hosts)
+        context = build_branch(conn, built.current_ticket_id)
+    candidate = graph.candidates[0]
+    hosts = list(candidate.target_hosts)
     assert hosts == (expected or [])
+
+    task = make_task(
+        context,
+        (Candidate(candidate.incident, candidate.paths, candidate.target_hosts),),
+        {"coverage": "complete", "reason": "paths_found", "paths": []},
+    )
+    summary = task.data["candidates"][0]
+    assert ("target_hosts" in summary) == bool(expected)
+    assert summary.get("target_hosts") == expected
