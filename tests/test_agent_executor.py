@@ -448,6 +448,7 @@ def test_default_config_executor_values(default_config_dir: Path) -> None:
             "soc.l2.branch.index:build_worker",
             "soc.l2.branch:build_worker",
             "soc.l2.analyze:build_worker",
+            "soc.case_index:build_worker",
         ],
         # L3 워커(#245). 생성이 먼저라 같은 라운드에서 검증된다
         ["soc.l3.hunt.generate:build_worker", "soc.l3.hunt.verify:build_worker"],
@@ -457,6 +458,7 @@ def test_default_config_executor_values(default_config_dir: Path) -> None:
         "soc.l2.branch.index:build_worker": FakeWorker("l2", "l2_branch_index"),
         "soc.l2.branch:build_worker": FakeWorker("l2", "l2"),
         "soc.l2.analyze:build_worker": FakeWorker("l2", "l2_analyze"),
+        "soc.case_index:build_worker": FakeWorker("l2", "case_index"),
     }
     executor = Executor(
         load_full_config(default_config_dir), resolve=lambda path: lambda _: workers[path]

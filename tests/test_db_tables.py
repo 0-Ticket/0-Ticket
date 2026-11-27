@@ -196,6 +196,7 @@ def test_migrate_creates_all_tables_on_empty_db(temp_database: str) -> None:
         "0307_incident_reviews.sql",
         "0308_attack_actors.sql",
         "0309_agent_reader_attack_actors.sql",
+        "0310_case_index_jobs.sql",
     ]
     with psycopg.connect(temp_database) as conn:
         other_tables = {
@@ -221,6 +222,7 @@ def test_migrate_creates_all_tables_on_empty_db(temp_database: str) -> None:
             "incident_reviews",
             "attack_actors",
             "attack_actor_techniques",
+            "case_index_jobs",
         }
         assert table_names(conn) == {*TABLES.values(), *other_tables, "schema_migrations"}
         indexes = {
