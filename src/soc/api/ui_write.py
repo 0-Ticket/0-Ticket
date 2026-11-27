@@ -12,6 +12,7 @@ from psycopg.types.json import Jsonb
 
 from soc.api import ui_read as read
 from soc.api.errors import NotAwaitingReview, NotFound
+from soc.case_index.outbox import enqueue
 from soc.ids import new_id
 
 
@@ -71,6 +72,7 @@ def approve_incident(conn, incident_id: str, username: str) -> dict[str, Any]:
                 username,
             ),
         )
+        enqueue(conn, case_id)  # 색인 대기. 같은 트랜잭션이라 승인이 롤백되면 같이 사라진다(D-084)
         _record(conn, row, "approve", None, username, "confirmed")
         return {"incident": _item(conn, incident_id), "case_id": case_id}
 

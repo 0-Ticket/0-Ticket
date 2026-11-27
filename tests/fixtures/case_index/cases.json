@@ -1,0 +1,384 @@
+{
+ "incidents": [
+  {
+   "id": "inc_01a19f93-1391-7000-8000-000000000001",
+   "title": "Web shell upload on example web server",
+   "summary": "Attacker uploaded a web shell through the upload form",
+   "status": "confirmed",
+   "ticket_ids": [
+    "tkt_01a19f93-1391-7000-8000-000000000001"
+   ],
+   "entities": [
+    {
+     "type": "ip",
+     "value": "192.0.2.77",
+     "role": "src"
+    }
+   ],
+   "severity": 4,
+   "assessed_severity": 4,
+   "analysis_round": 3,
+   "review_round": 1,
+   "created_at": 1793678401000,
+   "updated_at": 1793678401000,
+   "details": {
+    "seed_source": "case-index-fixture"
+   }
+  },
+  {
+   "id": "inc_01a19f93-1391-7000-8000-000000000002",
+   "title": "Suspicious login burst without analysis",
+   "summary": null,
+   "status": "confirmed",
+   "ticket_ids": [
+    "tkt_01a19f93-1391-7000-8000-000000000002"
+   ],
+   "entities": [
+    {
+     "type": "ip",
+     "value": "192.0.2.77",
+     "role": "src"
+    }
+   ],
+   "severity": 4,
+   "assessed_severity": null,
+   "analysis_round": 0,
+   "review_round": 1,
+   "created_at": 1793678402000,
+   "updated_at": 1793678402000,
+   "details": {
+    "seed_source": "case-index-fixture"
+   }
+  },
+  {
+   "id": "inc_01a19f93-1391-7000-8000-000000000003",
+   "title": "Long analysis on example file server",
+   "summary": "Large analysis text for the length limits",
+   "status": "confirmed",
+   "ticket_ids": [
+    "tkt_01a19f93-1391-7000-8000-000000000003"
+   ],
+   "entities": [
+    {
+     "type": "ip",
+     "value": "192.0.2.77",
+     "role": "src"
+    }
+   ],
+   "severity": 4,
+   "assessed_severity": 4,
+   "analysis_round": 1,
+   "review_round": 1,
+   "created_at": 1793678403000,
+   "updated_at": 1793678403000,
+   "details": {
+    "seed_source": "case-index-fixture"
+   }
+  },
+  {
+   "id": "inc_01a19f93-1391-7000-8000-000000000004",
+   "title": "SQL injection against example login form",
+   "summary": "Injection attempts reached the database layer",
+   "status": "awaiting_review",
+   "ticket_ids": [
+    "tkt_01a19f93-1391-7000-8000-000000000004"
+   ],
+   "entities": [
+    {
+     "type": "ip",
+     "value": "192.0.2.77",
+     "role": "src"
+    }
+   ],
+   "severity": 4,
+   "assessed_severity": 4,
+   "analysis_round": 1,
+   "review_round": 0,
+   "created_at": 1793678404000,
+   "updated_at": 1793678404000,
+   "details": {
+    "seed_source": "case-index-fixture"
+   }
+  }
+ ],
+ "incident_artifacts": [
+  {
+   "id": "art_01a19f93-1391-7000-8000-000000000001",
+   "incident_id": "inc_01a19f93-1391-7000-8000-000000000001",
+   "analysis_round": 1,
+   "verdict": "succeeded",
+   "summary": "analysis summary",
+   "assessed_severity": 4,
+   "timeline": [
+    {
+     "time": 1793678405000,
+     "summary": "TIMELINE-MARKER file written under the web root",
+     "evidence_ids": [
+      "evt_01a19f93-1391-7000-8000-000000000001"
+     ]
+    }
+   ],
+   "techniques": [
+    {
+     "id": "T1190",
+     "name": "Exploit Public-Facing Application",
+     "evidence_ids": [
+      "evt_01a19f93-1391-7000-8000-000000000001"
+     ]
+    }
+   ],
+   "impact": "old impact",
+   "cause": "OLD-ROUND-ONE-CAUSE should never be indexed",
+   "further_risk": "old risk",
+   "evidence_ids": [
+    "evt_01a19f93-1391-7000-8000-000000000001"
+   ],
+   "created_at": 1793678406001
+  },
+  {
+   "id": "art_01a19f93-1391-7000-8000-000000000002",
+   "incident_id": "inc_01a19f93-1391-7000-8000-000000000001",
+   "analysis_round": 3,
+   "verdict": "succeeded",
+   "summary": "analysis summary",
+   "assessed_severity": 4,
+   "timeline": [
+    {
+     "time": 1793678405000,
+     "summary": "TIMELINE-MARKER file written under the web root",
+     "evidence_ids": [
+      "evt_01a19f93-1391-7000-8000-000000000002"
+     ]
+    }
+   ],
+   "techniques": [
+    {
+     "id": "T1505.003",
+     "name": "Web Shell",
+     "evidence_ids": [
+      "evt_01a19f93-1391-7000-8000-000000000002"
+     ]
+    },
+    {
+     "id": "T1190",
+     "name": "Exploit Public-Facing Application",
+     "evidence_ids": [
+      "evt_01a19f93-1391-7000-8000-000000000002"
+     ]
+    }
+   ],
+   "impact": "The web server executed attacker supplied code",
+   "cause": "Unrestricted file upload was abused",
+   "further_risk": "The same upload path can drop more tools",
+   "evidence_ids": [
+    "evt_01a19f93-1391-7000-8000-000000000002"
+   ],
+   "created_at": 1793678406002
+  },
+  {
+   "id": "art_01a19f93-1391-7000-8000-000000000003",
+   "incident_id": "inc_01a19f93-1391-7000-8000-000000000003",
+   "analysis_round": 1,
+   "verdict": "succeeded",
+   "summary": "analysis summary",
+   "assessed_severity": 4,
+   "timeline": [
+    {
+     "time": 1793678405000,
+     "summary": "TIMELINE-MARKER file written under the web root",
+     "evidence_ids": [
+      "evt_01a19f93-1391-7000-8000-000000000003"
+     ]
+    }
+   ],
+   "techniques": [
+    {
+     "id": "T1000",
+     "name": "Technique number 0",
+     "evidence_ids": [
+      "evt_01a19f93-1391-7000-8000-000000000003"
+     ]
+    },
+    {
+     "id": "T1001",
+     "name": "Technique number 1",
+     "evidence_ids": [
+      "evt_01a19f93-1391-7000-8000-000000000003"
+     ]
+    },
+    {
+     "id": "T1002",
+     "name": "Technique number 2",
+     "evidence_ids": [
+      "evt_01a19f93-1391-7000-8000-000000000003"
+     ]
+    },
+    {
+     "id": "T1003",
+     "name": "Technique number 3",
+     "evidence_ids": [
+      "evt_01a19f93-1391-7000-8000-000000000003"
+     ]
+    },
+    {
+     "id": "T1004",
+     "name": "Technique number 4",
+     "evidence_ids": [
+      "evt_01a19f93-1391-7000-8000-000000000003"
+     ]
+    },
+    {
+     "id": "T1005",
+     "name": "Technique number 5",
+     "evidence_ids": [
+      "evt_01a19f93-1391-7000-8000-000000000003"
+     ]
+    },
+    {
+     "id": "T1006",
+     "name": "Technique number 6",
+     "evidence_ids": [
+      "evt_01a19f93-1391-7000-8000-000000000003"
+     ]
+    },
+    {
+     "id": "T1007",
+     "name": "Technique number 7",
+     "evidence_ids": [
+      "evt_01a19f93-1391-7000-8000-000000000003"
+     ]
+    },
+    {
+     "id": "T1008",
+     "name": "Technique number 8",
+     "evidence_ids": [
+      "evt_01a19f93-1391-7000-8000-000000000003"
+     ]
+    },
+    {
+     "id": "T1009",
+     "name": "Technique number 9",
+     "evidence_ids": [
+      "evt_01a19f93-1391-7000-8000-000000000003"
+     ]
+    },
+    {
+     "id": "T1010",
+     "name": "Technique number 10",
+     "evidence_ids": [
+      "evt_01a19f93-1391-7000-8000-000000000003"
+     ]
+    },
+    {
+     "id": "T1011",
+     "name": "Technique number 11",
+     "evidence_ids": [
+      "evt_01a19f93-1391-7000-8000-000000000003"
+     ]
+    }
+   ],
+   "impact": "The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. ",
+   "cause": "The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. The upload handler accepted any file type and kept it under the public web root. ",
+   "further_risk": "Other uploads may be affected",
+   "evidence_ids": [
+    "evt_01a19f93-1391-7000-8000-000000000003"
+   ],
+   "created_at": 1793678406003
+  },
+  {
+   "id": "art_01a19f93-1391-7000-8000-000000000004",
+   "incident_id": "inc_01a19f93-1391-7000-8000-000000000004",
+   "analysis_round": 1,
+   "verdict": "succeeded",
+   "summary": "analysis summary",
+   "assessed_severity": 4,
+   "timeline": [
+    {
+     "time": 1793678405000,
+     "summary": "TIMELINE-MARKER file written under the web root",
+     "evidence_ids": [
+      "evt_01a19f93-1391-7000-8000-000000000004"
+     ]
+    }
+   ],
+   "techniques": [
+    {
+     "id": "T1190",
+     "name": "Exploit Public-Facing Application",
+     "evidence_ids": [
+      "evt_01a19f93-1391-7000-8000-000000000004"
+     ]
+    }
+   ],
+   "impact": "Account data could be read",
+   "cause": "Input from the login form reached a SQL query unescaped",
+   "further_risk": "Other forms may share the same flaw",
+   "evidence_ids": [
+    "evt_01a19f93-1391-7000-8000-000000000004"
+   ],
+   "created_at": 1793678406004
+  }
+ ],
+ "cases": [
+  {
+   "id": "cas_01a19f93-1391-7000-8000-000000000001",
+   "incident_id": "inc_01a19f93-1391-7000-8000-000000000001",
+   "title": "Web shell on example web server",
+   "summary": "Attacker uploaded a web shell through the upload form",
+   "severity": 4,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "192.0.2.77",
+     "role": "src"
+    }
+   ],
+   "confirmed_by": "analyst.kim",
+   "confirmed_at": 1793678490001,
+   "status": "open",
+   "assignee": null,
+   "resolved_at": null,
+   "details": {}
+  },
+  {
+   "id": "cas_01a19f93-1391-7000-8000-000000000002",
+   "incident_id": "inc_01a19f93-1391-7000-8000-000000000002",
+   "title": "Suspicious login burst",
+   "summary": null,
+   "severity": 4,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "192.0.2.77",
+     "role": "src"
+    }
+   ],
+   "confirmed_by": "analyst.kim",
+   "confirmed_at": 1793678490002,
+   "status": "open",
+   "assignee": null,
+   "resolved_at": null,
+   "details": {}
+  },
+  {
+   "id": "cas_01a19f93-1391-7000-8000-000000000003",
+   "incident_id": "inc_01a19f93-1391-7000-8000-000000000003",
+   "title": "Long analysis on example file server",
+   "summary": "Large analysis text for the length limits",
+   "severity": 4,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "192.0.2.77",
+     "role": "src"
+    }
+   ],
+   "confirmed_by": "analyst.kim",
+   "confirmed_at": 1793678490003,
+   "status": "open",
+   "assignee": null,
+   "resolved_at": null,
+   "details": {}
+  }
+ ]
+}

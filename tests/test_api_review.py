@@ -226,6 +226,26 @@ def test_reject_sends_the_incident_back_to_analyzing_without_a_case(review_db):
 
 
 @pytest.mark.db
+def test_approve_leaves_one_pending_index_job_for_the_new_case(review_db):
+    """색인 대기 행은 Case를 만든 같은 트랜잭션에서 하나 생긴다(#391, D-084)."""
+    # 시드 Case는 직접 넣어서 대기 행이 없다
+    assert q(review_db, "SELECT * FROM case_index_jobs") == []
+    body = post(admin_client(), REVIEW, "approve").json()
+    (row,) = q(review_db, "SELECT * FROM case_index_jobs")
+    assert row["case_id"] == body["case_id"]
+    assert (row["indexed_at"], row["attempts"], row["last_error"]) == (None, 0, None)
+
+
+@pytest.mark.db
+def test_reject_and_refused_requests_leave_no_index_job(review_db):
+    client = admin_client()
+    assert post(client, REVIEW, "reject").status_code == 200
+    assert post(client, REVIEW, "approve").status_code == 409  # 반려 뒤 승인 대기가 아니다
+    assert post(client, INC["3"], "approve").status_code == 409  # 이미 확정
+    assert q(review_db, "SELECT * FROM case_index_jobs") == []
+
+
+@pytest.mark.db
 @pytest.mark.parametrize("action", ACTIONS)
 @pytest.mark.parametrize(
     ("number", "status"),
