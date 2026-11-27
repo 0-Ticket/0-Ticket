@@ -327,6 +327,8 @@ def test_hypothesize_task_reads_recent_news_and_cases(conn: psycopg.Connection) 
     assert [c["id"] for c in task.data["cases"]] == [CAS_1, CAS_2]
     assert set(task.data["cases"][0]) == {"id", "title", "summary", "severity", "entities"}
     assert task.data["max_hypotheses"] == 2
+    # 검증 run과 같은 조회 구간(#403). 모델이 시각을 계산하지 않는다
+    assert task.data["window"] == {"from": NOW_MS - 7 * DAY_MS, "to": NOW_MS}
     assert result.saved == []
 
 

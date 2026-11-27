@@ -1,6 +1,7 @@
 """L3 가설 헌팅의 DB 없는 규칙(#223): 설정, 결과 낮추기, 엔티티 합치기, 작업 프롬프트."""
 
 import hashlib
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -9,7 +10,7 @@ import pytest
 from soc.agent.types import contains_forbidden
 from soc.l3.config import load_config
 from soc.l3.hunt.prompts import PROMPT_DIR, load_prompt
-from soc.l3.hunt.settings import ConfigError, read_hunt_settings
+from soc.l3.hunt.settings import ConfigError, lookback_window, read_hunt_settings
 from soc.l3.hunt.verify import decide, merge_entities
 
 ALT = "alt_01a19f93-1150-7000-8000-000000000001"
@@ -76,6 +77,18 @@ def test_missing_hunt_table_or_attack_version_is_rejected() -> None:
 
 def test_case_limit_zero_is_allowed() -> None:
     assert read_hunt_settings(l3(case_limit=0)).case_limit == 0
+
+
+def test_lookback_window_counts_back_lookback_days_from_now() -> None:
+    now = datetime(2026, 11, 27, 3, 0, tzinfo=UTC)
+    now_ms = 1_795_748_400_000
+    day_ms = 86_400_000
+
+    window = lookback_window(read_hunt_settings(l3(lookback_days=7)), now)
+    assert window == {"from": now_ms - 7 * day_ms, "to": now_ms}
+
+    half = lookback_window(read_hunt_settings(l3(lookback_days=0.5)), now)
+    assert half == {"from": now_ms - day_ms // 2, "to": now_ms}
 
 
 def verification(result: str, confidence: float, evidence: list[str]) -> dict[str, Any]:
