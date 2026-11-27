@@ -123,9 +123,7 @@ function RejectDialog({
     closed ||
     now.reviewRound !== opened.reviewRound ||
     now.analysisRound !== opened.analysisRound;
-  useEffect(() => {
-    if (differs) setMoved(true);
-  }, [differs]);
+  if (differs && !moved) setMoved(true);
   useEffect(() => {
     const element = dialog.current;
     element?.showModal();

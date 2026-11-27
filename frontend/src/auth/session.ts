@@ -4,7 +4,7 @@ import { ApiError, get, send } from "../api/client";
 import type { Me } from "../api/generated/Me";
 
 // Opened once per app load; a 401 means "not logged in", so the query resolves to null instead of failing.
-// Never refetch it on a timer: the server extends the idle timeout on every request.
+// Never refetch it on a timer: it is not part of the screen refresh (D-083), and a read without the X-Auto-Refresh mark extends the idle timeout.
 export function useMe() {
   return useQuery({
     queryKey: ["me"],

@@ -98,6 +98,8 @@ export function Workspace({ me }: { me: Me }) {
     queryFn: ({ signal }) =>
       get<TicketingPolicyResponse>("ticketing-policy", signal),
     enabled: policyNeeded,
+    // Not refreshed (D-083), so a reconnect must not read it either: that read would carry no mark and extend the session.
+    refetchOnReconnect: false,
   });
   // The old side panel link (/incidents?selected=inc_…) opens the incident page.
   const legacy = resource === "incidents" ? search.get("selected") : null;

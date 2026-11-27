@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, expect, test } from "vitest";
 import { act, fireEvent, screen, waitFor } from "@testing-library/react";
+import { onlineManager } from "@tanstack/react-query";
 import { delay, http, HttpResponse } from "msw";
 import seed from "../../tests/fixtures/api/ui_seed.json";
 import { dashboard, server, show } from "./test-utils";
@@ -27,6 +28,8 @@ const paths = (from = 0) =>
 // The timer is 10 s; "online" makes the same automatic read at once, so the tests need not wait.
 async function refreshOnce() {
   const from = calls.length;
+  // A real offline-to-online change, which is when TanStack would read stale queries by itself.
+  onlineManager.setOnline(false);
   act(() => void window.dispatchEvent(new Event("online")));
   await new Promise((done) => setTimeout(done, 80));
   return from;
@@ -169,4 +172,59 @@ test("a hand-made sample answer and a screen with nothing to refresh are not rea
   await screen.findByRole("heading", { level: 1 });
   const from = await refreshOnce();
   expect(paths(from)).toEqual([]);
+});
+
+test("new numbers appear on a refresh without a loading note, and the filter and open panel stay", async () => {
+  dashboard();
+  serveTickets();
+  show(`/tickets?status=new&selected=${ticket.id}`);
+  await screen.findByRole("dialog");
+  await waitFor(() => expect(paths()).toContain(`tickets/${ticket.id}`));
+  expect(screen.getByTestId("where")).toHaveTextContent(
+    `status=new&selected=${ticket.id}`,
+  );
+  server.use(
+    http.get("*/api/tickets", async () => {
+      await delay(100);
+      return HttpResponse.json({
+        items: [
+          { ...ticket, severity: 4, seed_source: null, incident: null },
+          {
+            ...seed.tickets[1],
+            severity: 3,
+            seed_source: null,
+            incident: null,
+          },
+        ],
+        next_cursor: null,
+      });
+    }),
+  );
+  act(() => void window.dispatchEvent(new Event("online")));
+  await new Promise((done) => setTimeout(done, 30));
+  expect(screen.queryByText("불러오는 중…")).toBeNull();
+  expect(await screen.findByText(seed.tickets[1].title)).toBeInTheDocument();
+  expect(screen.queryByText("불러오는 중…")).toBeNull();
+  expect(screen.getByTestId("where")).toHaveTextContent(
+    `status=new&selected=${ticket.id}`,
+  );
+  expect(screen.getByRole("dialog")).toBeInTheDocument();
+});
+
+test("the dashboard changes by itself, and a 401 on refresh sends the user to the login screen", async () => {
+  dashboard();
+  show("/");
+  await screen.findByText("Tickets by Risk Level");
+  dashboard({ 0: 2, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1 }, [
+    { ...seed.incidents[1], display_severity: 5 },
+  ]);
+  await refreshOnce();
+  expect(await screen.findByText(seed.incidents[1].title)).toBeInTheDocument();
+  server.use(
+    http.get("*/api/dashboard", () =>
+      HttpResponse.json({ error: "unauthenticated" }, { status: 401 }),
+    ),
+  );
+  await refreshOnce();
+  expect(await screen.findByText("세션이 만료되었어요")).toBeInTheDocument();
 });

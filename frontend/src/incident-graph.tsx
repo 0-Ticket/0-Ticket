@@ -117,10 +117,8 @@ export function IncidentGraph({
   // The graph is drawn once and then only grows (D-083, since the page reads the incident again on a timer): the first
   // picture's node places and view are kept, so nodes that arrive later do not push the others around.
   // "화면에 맞추기" empties `vt`, and this puts the fit for what is shown now back.
-  useEffect(() => {
-    if (!vt && placed.size) setVt(fit([...placed.values()], VIEW_W, VIEW_H));
-    remember();
-  });
+  if (!vt && placed.size) setVt(current);
+  useEffect(() => remember());
 
   // Before anything changes what is shown, the places the nodes have now are remembered, so they do not move.
   function remember(extra?: [string, Point]) {
