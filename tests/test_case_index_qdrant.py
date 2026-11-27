@@ -70,8 +70,12 @@ def test_check_and_reindex_recover_a_lost_point_and_a_recreated_collection(
 ) -> None:
     index.reindex(database, FakeEmbedder(), real_store, recreate=True)
     assert index.check(database, real_store) == {
-        "cases": 3, "missing": 0, "no_job": 0, "pending": 0, "no_artifact": 1,
-    }  # fmt: skip
+        "cases": 3,
+        "missing": 0,
+        "no_job": 0,
+        "pending": 0,
+        "no_artifact": 1,
+    }
 
     real_store.drop_collection()
     assert index.check(database, real_store)["missing"] == 3

@@ -488,19 +488,31 @@ def test_rejection_leaves_no_job(database: str) -> None:
 def test_check_counts_each_kind_of_gap(database: str) -> None:
     store = make_store()
     assert index.check(database, store) == {
-        "cases": 3, "missing": 0, "no_job": 3, "pending": 0, "no_artifact": 1,
-    }  # fmt: skip
+        "cases": 3,
+        "missing": 0,
+        "no_job": 3,
+        "pending": 0,
+        "no_artifact": 1,
+    }
 
     enqueue_all(database, "1", "2", "3")
     assert index.check(database, store) == {
-        "cases": 3, "missing": 0, "no_job": 0, "pending": 3, "no_artifact": 1,
-    }  # fmt: skip
+        "cases": 3,
+        "missing": 0,
+        "no_job": 0,
+        "pending": 3,
+        "no_artifact": 1,
+    }
 
     for number in CASE:
         run_index(database, CASE[number], FakeEmbedder(), store)
     assert index.check(database, store) == {
-        "cases": 3, "missing": 0, "no_job": 0, "pending": 0, "no_artifact": 1,
-    }  # fmt: skip
+        "cases": 3,
+        "missing": 0,
+        "no_job": 0,
+        "pending": 0,
+        "no_artifact": 1,
+    }
 
 
 def test_check_reports_an_indexed_case_whose_point_is_gone_as_missing(database: str) -> None:
@@ -508,7 +520,7 @@ def test_check_reports_an_indexed_case_whose_point_is_gone_as_missing(database: 
     enqueue_all(database, "1", "2")
     for number in ("1", "2"):
         run_index(database, CASE[number], FakeEmbedder(), store)
-    store._client.delete(store.collection, points_selector=[point_id(CASE["1"])])  # noqa: SLF001
+    store._client.delete(store.collection, points_selector=[point_id(CASE["1"])])
 
     counts = index.check(database, store)
 
@@ -538,7 +550,7 @@ def test_reindex_creates_missing_jobs_and_indexes_every_case(database: str) -> N
 def test_reindex_refills_a_lost_point_without_recreating(database: str) -> None:
     store = make_store()
     index.reindex(database, FakeEmbedder(), store)
-    store._client.delete(store.collection, points_selector=[point_id(CASE["2"])])  # noqa: SLF001
+    store._client.delete(store.collection, points_selector=[point_id(CASE["2"])])
     assert index.check(database, store)["missing"] == 1
 
     assert index.reindex(database, FakeEmbedder(), store)["failed"] == 0
@@ -549,7 +561,7 @@ def test_reindex_refills_a_lost_point_without_recreating(database: str) -> None:
 def test_reindex_recreate_drops_the_collection_and_fills_it_again(database: str) -> None:
     store = make_store()
     index.reindex(database, FakeEmbedder(), store)
-    store._client.delete(store.collection, points_selector=[point_id(CASE["1"])])  # noqa: SLF001
+    store._client.delete(store.collection, points_selector=[point_id(CASE["1"])])
 
     counts = index.reindex(database, FakeEmbedder(), store, recreate=True)
 
