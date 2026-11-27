@@ -82,16 +82,30 @@ def _delete_sessions(conn: psycopg.Connection, user_id: Any) -> None:
     conn.execute("DELETE FROM user_sessions WHERE user_id = %s", (user_id,))
 
 
-def find_session_user(conn: psycopg.Connection, token: str, idle: int) -> User | None:
-    """유효한 세션이면 마지막 사용 시각을 갱신하고 사용자와 현재 권한을 돌려준다."""
+_LIVE_SESSION = (
+    "u.id = s.user_id AND u.status = 'active' AND s.token_hash = %s "
+    "AND s.expires_at > now() AND s.last_seen_at > now() - make_interval(secs => %s) "
+)
+_SESSION_COLUMNS = "u.id, u.username, u.display_name, u.role, u.must_change_password"
+
+
+def find_session_user(
+    conn: psycopg.Connection, token: str, idle: int, touch: bool = True
+) -> User | None:
+    """유효한 세션이면 사용자와 현재 권한을 돌려준다. touch이면 마지막 사용 시각도 갱신한다.
+
+    touch=False는 화면의 자동 갱신 요청(D-083)이다. 만료·상태 검사는 같고 유휴 시각만 두어,
+    화면을 켜 두기만 해서는 세션이 길어지지 않는다.
+    """
     with conn.transaction():
-        row = conn.execute(
-            "UPDATE user_sessions s SET last_seen_at = now() FROM users u "
-            "WHERE s.token_hash = %s AND u.id = s.user_id AND u.status = 'active' "
-            "AND s.expires_at > now() AND s.last_seen_at > now() - make_interval(secs => %s) "
-            "RETURNING u.id, u.username, u.display_name, u.role, u.must_change_password",
-            (token_hash(token), idle),
-        ).fetchone()
+        if touch:
+            query = (
+                f"UPDATE user_sessions s SET last_seen_at = now() FROM users u "
+                f"WHERE {_LIVE_SESSION}RETURNING {_SESSION_COLUMNS}"
+            )
+        else:
+            query = f"SELECT {_SESSION_COLUMNS} FROM user_sessions s, users u WHERE {_LIVE_SESSION}"
+        row = conn.execute(query, (token_hash(token), idle)).fetchone()
         if row is None:
             return None
         if row["role"] == "admin":

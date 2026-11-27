@@ -3,6 +3,7 @@
 - 라우트 보호는 의존성으로 한다: session_user(로그인) → active_user(임시 비밀번호 변경 전이면 막음)
   → require_permission(권한). 앱 조립(app.py)이 `/api` 라우터에 active_user를 기본으로 건다.
 - 인증은 요청마다 쓰기 연결로 세션을 읽고 last_seen_at을 갱신한다. 데이터 라우트는 읽기 연결이다.
+  단 화면의 자동 갱신 GET(`X-Auto-Refresh: 1`, D-083)은 검사는 같고 last_seen_at만 갱신하지 않는다.
 - 오류 본문에는 오류 코드만 넣는다. 토큰·비밀번호는 로그에도 본문에도 남기지 않는다.
 """
 
@@ -20,6 +21,7 @@ from soc.auth.store import AuthError, User
 USED_PERMISSIONS: set[str] = set()
 
 _SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
+AUTO_REFRESH_HEADER = "x-auto-refresh"
 
 
 def session_user(request: Request) -> User:
@@ -27,8 +29,12 @@ def session_user(request: Request) -> User:
     token = request.cookies.get(settings.auth.cookie_name)
     if not token:
         raise AuthError(401, "unauthenticated")
+    # 표시는 GET에서만 믿는다. 위조해도 자기 세션을 연장하지 못할 뿐이다.
+    auto = request.method == "GET" and request.headers.get(AUTO_REFRESH_HEADER) == "1"
     with db.connect_write(settings) as conn:
-        user = store.find_session_user(conn, token, settings.auth.idle_timeout_seconds)
+        user = store.find_session_user(
+            conn, token, settings.auth.idle_timeout_seconds, touch=not auto
+        )
     if user is None:
         raise AuthError(401, "unauthenticated")
     return user
