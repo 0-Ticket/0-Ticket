@@ -20,6 +20,17 @@ Failure = Literal[
 ]
 
 STAGES: tuple[str, ...] = ("l1", "l2", "l3")
+# 도구 허용 목록의 키(#382, D-086). AgentTask.task가 이 중 하나일 때만 그 태스크의 목록을 쓴다.
+# 배포 설정([tools.allowed])은 이 이름만 키로 둔다. 새 태스크를 만들면 여기와 설정에 함께 더한다.
+TASK_NAMES: tuple[str, ...] = (
+    "l1_alert_triage",
+    "l1_ticket_judgment",
+    "l2_classify",
+    "l2_investigate",
+    "l2_report",
+    "l3_hypothesize",
+    "l3_verify",
+)
 SUBJECT_TYPES: tuple[str, ...] = ("alert", "ticket", "incident", "hunt")
 DOMAINS: tuple[str, ...] = ("web", "cloud")
 FAILURES: tuple[str, ...] = (
@@ -95,6 +106,9 @@ class AgentTask:
     allowed_evidence_ids: tuple[str, ...] = ()
     domains: tuple[str, ...] = ()
     attempt: int = 1
+    # 출력에서 인용한 SIEM 문서의 저장 키를 꺼내는 함수(#382). None이면 검사하지 않는다.
+    # 근거를 발급하는 태스크만 둔다(l2_report처럼 발급하지 않는 태스크는 None).
+    cited_refs: Callable[[Any], Iterable[str]] | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "allowed_evidence_ids", tuple(self.allowed_evidence_ids))
@@ -109,6 +123,8 @@ class AgentTask:
             raise ValueError("output_contract가 계약 이름이 아니다")
         if not callable(self.cited_ids):
             raise ValueError("cited_ids는 함수다")
+        if self.cited_refs is not None and not callable(self.cited_refs):
+            raise ValueError("cited_refs는 함수이거나 None이다")
         if self.subject_type not in SUBJECT_TYPES:
             raise ValueError(f"subject_type은 {', '.join(SUBJECT_TYPES)} 중 하나다")
         pattern = _SUBJECT_ID.get(self.subject_type)
@@ -137,6 +153,9 @@ class AgentResult:
     run_id: str
     usage: dict[str, int] = field(default_factory=dict)
     cited_evidence_ids: list[str] = field(default_factory=list)
+    # 인용이 검증된 SIEM 문서: 저장 키 -> (_index, _id)(#382). 워커가 원문을 가져올 때 쓴다.
+    # 실패한 run은 빈 dict다.
+    cited_siem_refs: dict[str, tuple[str, str]] = field(default_factory=dict)
 
 
 class AgentWorker(Protocol):

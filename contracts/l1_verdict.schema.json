@@ -1,0 +1,74 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "l1_verdict.schema.json",
+  "title": "L1Verdict",
+  "description": "L1 판정 모델의 출력(#382). 저장하는 Verdict(common/verdict.schema.json)에 siem_refs를 더한 모양이다. siem_refs는 아직 발급되지 않은 SIEM 문서를 가리켜 저장하지 않는다. 워커가 그 문서를 가져와 evt_ ID를 발급하면 근거는 evidence_ids로 들어간다.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "decision",
+    "confidence",
+    "reason",
+    "evidence_ids",
+    "decided_at",
+    "siem_refs"
+  ],
+  "properties": {
+    "decision": {
+      "type": "string",
+      "enum": [
+        "benign",
+        "malicious",
+        "undetermined"
+      ]
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "reason": {
+      "description": "판정 이유",
+      "type": "string"
+    },
+    "evidence_ids": {
+      "description": "판정 근거가 된 Alert·Event ID와 도구 호출 기록 ID. decision이 benign·malicious이면 1개 이상. 중복 없음",
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "common/types.schema.json#/definitions/evidence_id"
+      }
+    },
+    "siem_refs": {
+      "description": "근거로 쓰려고 고른 SIEM 문서의 저장 키. evidence_ids와 별개다(아직 ID가 없다). 이 run의 도구 결과에 보인 것만 쓸 수 있고, 워커가 가져와 저장한 뒤 evt_ ID를 발급한다. 중복 없음",
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "common/types.schema.json#/definitions/siem_ref"
+      }
+    },
+    "decided_at": {
+      "$ref": "common/types.schema.json#/definitions/epoch_ms"
+    }
+  },
+  "if": {
+    "required": [
+      "decision"
+    ],
+    "properties": {
+      "decision": {
+        "enum": [
+          "benign",
+          "malicious"
+        ]
+      }
+    }
+  },
+  "then": {
+    "properties": {
+      "evidence_ids": {
+        "minItems": 1
+      }
+    }
+  }
+}

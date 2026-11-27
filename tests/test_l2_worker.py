@@ -42,7 +42,11 @@ def test_build_analyze_worker_reads_shared_settings(monkeypatch: pytest.MonkeyPa
         "max_failures": 3,
         "failure_retry_cooldown_ms": 3_600_000,
     }
-    full["tools"] = {"max_range_days": 7}
+    # 근거 발급(#382)은 발급용 siem_profile을 설정에서 읽는다
+    full["tools"] = {
+        "max_range_days": 7,
+        "siem": {"evidence_siem_profile": "elk-evidence"},
+    }
     full["asset_lookup"] = {"statement_timeout_ms": 5000}
     full["l3"] = {"intel": {"attack": {"version": "20.0"}}}
     monkeypatch.setenv("DATABASE_URL", "postgresql://not-used")
@@ -51,3 +55,22 @@ def test_build_analyze_worker_reads_shared_settings(monkeypatch: pytest.MonkeyPa
 
     assert built.stage == "l2"
     assert built.name == "l2_analyze"
+
+
+def test_build_analyze_worker_needs_the_evidence_profile(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # 발급분과 수집분을 가를 프로필이 없으면 조용히 섞이므로 시작 때 막는다(#382)
+    full = config()
+    full["l2"]["analyze"] = {
+        "lookback_ms": 1000,
+        "max_failures": 3,
+        "failure_retry_cooldown_ms": 3_600_000,
+    }
+    full["tools"] = {"max_range_days": 7, "siem": {}}
+    full["asset_lookup"] = {"statement_timeout_ms": 5000}
+    full["l3"] = {"intel": {"attack": {"version": "20.0"}}}
+    monkeypatch.setenv("DATABASE_URL", "postgresql://not-used")
+
+    with pytest.raises(ValueError, match="evidence_siem_profile"):
+        analyze_worker.build_worker(full)

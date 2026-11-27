@@ -29,11 +29,6 @@ pytestmark = pytest.mark.db
 
 ROOT = Path(__file__).parent.parent / "fixtures" / "normalize"
 ALERTS = json.loads((ROOT / "alert_skeleton.json").read_text(encoding="utf-8"))
-EVENT_CASES = [
-    c
-    for c in json.loads((ROOT / "raw.json").read_text(encoding="utf-8"))
-    if c["kind"] == "event" and "error" not in c["expect"]
-]
 EVENT = next(
     case
     for case in json.loads((ROOT / "raw.json").read_text(encoding="utf-8"))
@@ -87,6 +82,24 @@ def originals_hash(conn: psycopg.Connection) -> str:
     return hashlib.sha256(json.dumps(rows, sort_keys=True).encode()).hexdigest()
 
 
+def add_legacy_event_status(
+    conn: psycopg.Connection, name: str, outcome: str | None, missing: list[str]
+) -> None:
+    raw_id = add_raw(conn, [{"case": name, "original": EVENT["original"]}], kind="event")[name]
+    event_id = new_id("evt")
+    conn.execute(
+        "INSERT INTO events (id, raw_id, time, ocsf_class, summary, entities, assets, ocsf,"
+        " details) VALUES (%s, %s, now(), 0, 'legacy event', '[]', '[]', '{}', '{}')",
+        (event_id, raw_id),
+    )
+    conn.execute(
+        "INSERT INTO normalize_status"
+        " (raw_id, status, result_kind, result_id, outcome, source, missing_fields)"
+        " VALUES (%s, 'succeeded', 'event', %s, %s, 'modsecurity', %s)",
+        (raw_id, event_id, outcome, missing),
+    )
+
+
 def test_every_sample_is_stored_with_its_outcome_and_the_original_is_untouched(
     conn: psycopg.Connection,
 ) -> None:
@@ -114,50 +127,50 @@ def test_every_sample_is_stored_with_its_outcome_and_the_original_is_untouched(
     assert originals_hash(conn) == before
 
 
-def test_events_record_outcome_and_source(conn: psycopg.Connection) -> None:
+def test_event_is_failed_without_outcome_or_source(conn: psycopg.Connection) -> None:
     ids = add_raw(conn, [EVENT], kind="event")
 
-    run(SETTINGS, conn, "owner-1")
+    result = run(SETTINGS, conn, "owner-1")
 
-    assert status_of(conn, ids[EVENT["case"]]) == ("succeeded", None, "ok", [], "class_4002")
+    assert result.failures == {"validation_failed": 1}
+    assert status_of(conn, ids[EVENT["case"]]) == ("failed", "validation_failed", None, [], None)
+    assert conn.execute("SELECT count(*) FROM events").fetchone() == (0,)
 
 
-def test_unsupported_event_is_recorded_as_a_base_event_fallback(conn: psycopg.Connection) -> None:
-    case = next(c for c in EVENT_CASES if c["case"] == "event_without_supported_class")
+def test_unsupported_event_is_recorded_as_failed(conn: psycopg.Connection) -> None:
+    case = next(
+        c
+        for c in json.loads((ROOT / "raw.json").read_text(encoding="utf-8"))
+        if c["case"] == "event_without_supported_class"
+    )
     ids = add_raw(conn, [case], kind="event")
 
     run(SETTINGS, conn, "owner-1")
 
-    assert status_of(conn, ids[case["case"]]) == (
-        "succeeded",
-        "unsupported_event_mapping",
-        "fallback",
-        [],
-        "unknown",
-    )
-
-
-def test_event_that_fails_validation_is_failed_with_null_outcome(
-    conn: psycopg.Connection, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    ids = add_raw(conn, [EVENT], kind="event")
-
-    def reject(ocsf: dict[str, Any]) -> None:
-        raise NormalizeError("schema_failed")
-
-    monkeypatch.setattr(run_module, "validate_ocsf", reject)
-
-    result = run(SETTINGS, conn, "owner-1")
-
-    assert result.failures == {"schema_failed": 1}
-    assert status_of(conn, ids[EVENT["case"]]) == ("failed", "schema_failed", None, [], None)
+    assert status_of(conn, ids[case["case"]]) == ("failed", "validation_failed", None, [], None)
     assert conn.execute("SELECT count(*) FROM events").fetchone() == (0,)
 
 
-def test_event_save_and_status_are_written_together(
-    conn: psycopg.Connection, monkeypatch: pytest.MonkeyPatch
+def test_event_retry_remains_failed_without_a_result(
+    conn: psycopg.Connection,
 ) -> None:
     ids = add_raw(conn, [EVENT], kind="event")
+
+    run(SETTINGS, conn, "owner-1")
+    result = run_failed(SETTINGS, conn, "owner-2")
+
+    assert result.failures == {"validation_failed": 1}
+    assert status_of(conn, ids[EVENT["case"]]) == ("failed", "validation_failed", None, [], None)
+    assert conn.execute("SELECT count(*) FROM events").fetchone() == (0,)
+    assert conn.execute(
+        "SELECT attempts FROM normalize_status WHERE raw_id = %s", (ids[EVENT["case"]],)
+    ).fetchone() == (2,)
+
+
+def test_alert_save_and_status_are_written_together(
+    conn: psycopg.Connection, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    ids = add_raw(conn, ALERTS[:1])
 
     def broken(*args: Any) -> None:
         raise psycopg.errors.DataError
@@ -167,35 +180,19 @@ def test_event_save_and_status_are_written_together(
     result = run(SETTINGS, conn, "owner-1")
 
     assert result.failures == {"db_error": 1}
-    assert status_of(conn, ids[EVENT["case"]])[2:] == (None, [], None)
+    assert status_of(conn, ids[ALERTS[0]["case"]]) == ("failed", "db_error", None, [], None)
+    assert conn.execute("SELECT count(*) FROM alerts").fetchone() == (0,)
 
 
 def test_report_separates_alert_and_event_by_kind_even_with_the_same_source_name(
     conn: psycopg.Connection,
 ) -> None:
     modsec_alert = next(c for c in ALERTS if c["case"] == "modsecurity_sqli_keeps_cookie_out")
-    original = json.loads((ROOT / "events" / "modsecurity.json").read_text(encoding="utf-8"))
-    no_request_time = json.loads(json.dumps(original))
-    del no_request_time["_source"]["transaction"]["time_stamp"]
-    unrecorded = json.loads(json.dumps(original))
-    unrecorded["_source"]["transaction"]["unique_id"] = "synthetic-request-002"
     add_raw(conn, [modsec_alert])
-    ids = add_raw(
-        conn,
-        [
-            {"case": "ok", "original": original},
-            {"case": "partial", "original": no_request_time},
-            {"case": "unrecorded", "original": unrecorded},
-        ],
-        kind="event",
-    )
     run(SETTINGS, conn, "owner-1")
-    # 품질이 기록되지 않은 행은 집계에 넣지 않는다
-    conn.execute(
-        "UPDATE normalize_status SET outcome = NULL, source = NULL, missing_fields = '{}',"
-        " error_code = NULL WHERE raw_id = %s",
-        (ids["unrecorded"],),
-    )
+    add_legacy_event_status(conn, "ok", "ok", [])
+    add_legacy_event_status(conn, "partial", "partial", ["metadata.original_time"])
+    add_legacy_event_status(conn, "unrecorded", None, [])
 
     alerts = report_lines(conn)
     events = report_lines(conn, "event")
@@ -223,7 +220,10 @@ def test_event_report_command_and_empty_message(
     add_raw(conn, [EVENT], kind="event")
     run(SETTINGS, conn, "owner-1")
     assert main(["report", "--kind", "event"]) == 0
-    assert "class_4002 total=1 ok=1 partial=0 fallback=0" in capsys.readouterr().out
+    assert "Event 정규화 결과가 없다" in capsys.readouterr().out
+    add_legacy_event_status(conn, "legacy", "ok", [])
+    assert main(["report", "--kind", "event"]) == 0
+    assert "modsecurity total=1 ok=1 partial=0 fallback=0" in capsys.readouterr().out
     assert main(["report", "--kind", "alert"]) == 0
     assert "Alert 정규화 결과가 없다" in capsys.readouterr().out
     with pytest.raises(SystemExit) as raised:

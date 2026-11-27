@@ -1,65 +1,30 @@
-"""ELK hit 원본을 OCSF 객체와 알럿·이벤트 계약 dict로 바꾼다. DB를 읽지 않는다.
+"""ELK hit 원본을 OCSF 객체와 알럿 계약 dict로 바꾼다. DB를 읽지 않는다.
 
 원본의 알럿 필드(kibana.alert.*)는 평평한 점 키이고 ECS 이벤트 필드는 중첩 객체일 수 있어,
 _value가 평평한 키를 먼저, 없으면 중첩 경로를 읽는다.
 """
 
-import re
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
 from soc.contracts import to_epoch_ms
 from soc.contracts.alert import alert_rule_id, alert_severity, alert_time, alert_title
-from soc.contracts.event import EMPTY_SUMMARY, event_class, event_summary, event_time
+from soc.contracts.event import event_class, event_summary, event_time
 from soc.ids import new_id
 from soc.normalize.errors import NormalizeError
-from soc.normalize.event_tables import load_event_tables, summary_text
 from soc.normalize.mask import mask_headers
 from soc.normalize.paths import read_value as _value
 from soc.normalize.tables import (
     COMMON,
-    Table,
     apply_entities,
     apply_table,
     load_tables,
     matching_source,
 )
-from soc.normalize.transforms import HTTP_ACTIVITY_IDS
 from soc.tools.local_intel import normalize_technique_id
 
 OCSF_VERSION = "1.9.0"
-# 소스 표가 요청 시각을 얻지 못해 클래스 표의 @timestamp를 쓴 경우의 누락 경로와 사유(#351)
-REQUEST_TIME_GAP = "metadata.original_time"
-REQUEST_TIME_CODE = "missing_request_time_used_at_timestamp"
-
-_WEB_INDEX = re.compile(r"^(?:\.ds-)?logs-(?:nginx|apache)\.access-")
-_CLOUD_INDEX = re.compile(r"^(?:\.ds-)?logs-(?:aws\.cloudtrail|azure\.activitylogs|gcp\.audit)-")
-
-API_ACTIVITY_PREFIXES = (
-    ("Create", 1),
-    ("Run", 1),
-    ("Start", 1),
-    ("Launch", 1),
-    ("Add", 1),
-    ("Get", 2),
-    ("List", 2),
-    ("Describe", 2),
-    ("Head", 2),
-    ("Update", 3),
-    ("Modify", 3),
-    ("Delete", 4),
-    ("Remove", 4),
-)
-ENTITY_FIELDS = (
-    ("source.ip", "ip", "src"),
-    ("destination.ip", "ip", "dst"),
-    ("host.name", "host", None),
-    ("user.name", "user", "actor"),
-    ("url.domain", "domain", None),
-    ("url.original", "url", None),
-)
-_ABSENT = object()
 UNKNOWN_ID = 0
 OTHER_ID = 99
 # OCSF observable type_id(1.9.0): Hostname 1, IP Address 2, User Name 4, URL String 6, Hash 8,
@@ -74,7 +39,7 @@ OBSERVABLE_TYPE_IDS = {
     "process": 9,
 }
 ANALYTIC_RULE = 1
-# 이벤트 클래스(D-067)가 속한 OCSF 카테고리 번호
+# 개발용 시드가 사용하는 이벤트 클래스의 OCSF 카테고리 번호
 EVENT_CATEGORIES = {0: 0, 2003: 2, 3002: 3, 4001: 4, 4002: 4, 4003: 4, 6003: 6}
 # common 표에서 값을 얻지 못하면 해석할 수 없는 알럿으로 보고 폴백하는 target과 사유(D-059).
 # 순서대로 본다
@@ -91,7 +56,7 @@ class RawRow:
 
     Attributes:
         id: raw_records.id.
-        kind: 원본 종류. "alert" 또는 "event".
+        kind: 원본 종류. "alert".
         original: ELK 검색 응답의 hit 객체 그대로(_index, _id, _source를 가진다).
         fetched_at: 원본을 가져온 시각(epoch 밀리초). 폴백 Alert의 시각 대체에만 쓴다.
     """
@@ -107,14 +72,12 @@ class Result:
     """정규화 결과 한 건.
 
     Attributes:
-        kind: 결과 종류. "alert"이면 alerts, "event"이면 events 테이블에 저장한다.
+        kind: 결과 종류. "alert"이면 alerts 테이블에 저장한다.
         row: 계약 모양의 dict. assets는 빈 목록이며 자산 조회 뒤에 채운다.
         outcome: 결과 품질. "ok"·"partial"·"fallback".
-        error_code: partial·fallback의 사유 코드(errors의 PARTIAL_REASONS, FALLBACK_REASONS,
-            EVENT_PARTIAL_REASONS, EVENT_FALLBACK_REASONS).
+        error_code: partial·fallback의 사유 코드(errors의 PARTIAL_REASONS, FALLBACK_REASONS).
         missing_fields: 얻지 못한 OCSF 경로 목록.
-        source: 소스 이름. Alert는 suricata·modsecurity·guardduty·unknown. Event는 일치한 소스 표
-            이름, 인덱스 규칙이면 class_4002·class_6003, 지원 매핑이 없으면 unknown.
+        source: 소스 이름. suricata·modsecurity·guardduty·unknown.
     """
 
     kind: str
@@ -135,7 +98,7 @@ class _Fallback(Exception):
 
 
 def normalize(raw: RawRow) -> Result:
-    """원본 종류와 이벤트 소스 표를 보고 변환을 고른다. 소스가 없으면 인덱스를 본다.
+    """알럿 원본을 변환한다.
 
     Args:
         raw: 정규화할 원본 한 행.
@@ -143,28 +106,9 @@ def normalize(raw: RawRow) -> Result:
     Raises:
         NormalizeError: 필수 값이 없거나 시각을 읽을 수 없다(validation_failed).
     """
-    if raw.kind == "alert":
-        return _alert(raw)
-    tables = load_event_tables()
-    name = matching_source(tables.sources, raw.original)
-    if name is not None:
-        class_uid = tables.source_classes[name]
-    else:
-        index = raw.original.get("_index")
-        index = index if isinstance(index, str) else ""
-        if _WEB_INDEX.match(index):
-            class_uid = 4002
-        elif _CLOUD_INDEX.match(index):
-            class_uid = 6003
-        else:
-            class_uid = 0
-    if class_uid == 4002:
-        return _web_event(
-            raw, tables.classes[class_uid], tables.sources.get(name) if name else None, name
-        )
-    if class_uid == 6003:
-        return _cloud_event(raw, name)
-    return _base_event(raw)
+    if raw.kind != "alert":
+        raise NormalizeError("validation_failed")
+    return _alert(raw)
 
 
 def _alert(raw: RawRow) -> Result:
@@ -473,15 +417,8 @@ def derive_event_columns(ocsf: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def with_derived_event_columns(row: dict[str, Any]) -> dict[str, Any]:
-    """ocsf만 가진 events 행(시드 샘플)에 파생 컬럼 time·ocsf_class·summary를 채운다.
-
-    Args:
-        row: ocsf를 가진 events 행.
-    """
-    return {**row, **derive_event_columns(row["ocsf"])}
-
-
+# events 행 생성기. 이벤트 정규화는 없앴지만(#382) 근거 발급과 시드가 이 함수를 쓴다.
+# 매핑표에 기대지 않고 ocsf 문서에서 컬럼만 파생한다.
 def event_row(
     event_id: str,
     raw_id: str,
@@ -511,6 +448,15 @@ def event_row(
     }
 
 
+def with_derived_event_columns(row: dict[str, Any]) -> dict[str, Any]:
+    """ocsf만 가진 events 행(시드 샘플)에 파생 컬럼 time·ocsf_class·summary를 채운다.
+
+    Args:
+        row: ocsf를 가진 events 행.
+    """
+    return {**row, **derive_event_columns(row["ocsf"])}
+
+
 def _optional_time_ms(source: dict[str, Any], path: str) -> int | None:
     """시각 필드를 epoch 밀리초로 바꾼다. 없거나 읽을 수 없으면 None.
 
@@ -522,165 +468,6 @@ def _optional_time_ms(source: dict[str, Any], path: str) -> int | None:
         return _time_ms(source, path)
     except NormalizeError:
         return None
-
-
-def _web_event(raw: RawRow, common: Table, specific: Table | None, name: str | None) -> Result:
-    """HTTP 클래스 표에 소스 표의 값을 더해 4002 이벤트를 만든다.
-
-    소스 표가 시각 항목을 가졌는데 그 필드가 아예 없어 클래스 표의 시각을 쓰면 partial이다.
-    """
-    source = _source(raw)
-    applied = apply_table(common, raw.original)
-    values, missing = applied.values, applied.missing
-    found = apply_entities(common, raw.original)
-    time_fallback = False
-    if specific is not None:
-        overlay = apply_table(specific, raw.original)
-        missing = [*missing, *overlay.missing]
-        for target in overlay.errors:
-            values.pop(target, None)
-        # 명시적인 null·잘못된 값도 원래 시각을 읽지 못한 경우다.
-        # 소스의 시각 필드가 아예 없을 때만 클래스 표 시각을 사용한다.
-        if "time" not in overlay.values:
-            for entry in specific.entries:
-                if entry.target == "time" and any(
-                    _value(source, path, _ABSENT) is not _ABSENT for path in entry.sources
-                ):
-                    raise NormalizeError("validation_failed")
-            time_fallback = any(entry.target == "time" for entry in specific.entries)
-        if "activity_name" in overlay.values:
-            values.pop("http_request.http_method", None)
-        values.update(overlay.values)
-        apply_entities(specific, raw.original, found)
-
-    time_ms = values.pop("time", None)
-    if time_ms is None:
-        raise NormalizeError("validation_failed")
-    method = values.get("http_request.http_method")
-    if method is not None:
-        activity_id = HTTP_ACTIVITY_IDS[method]
-        values.pop("activity_name", None)
-    else:
-        activity_id = OTHER_ID if "activity_name" in values else UNKNOWN_ID
-    # 다른 표가 값을 채운 항목은 누락이 아니다. 시각은 위에서 얻었다
-    gaps = [t for t in dict.fromkeys(missing) if t not in values and t != "time"]
-    if time_fallback:
-        gaps.append(REQUEST_TIME_GAP)
-    return _event(
-        raw,
-        source,
-        4002,
-        4,
-        activity_id,
-        _nested(values),
-        time_ms=time_ms,
-        entities=found.entities,
-        source_name=name or "class_4002",
-        missing=gaps,
-        error_code=REQUEST_TIME_CODE if time_fallback else None,
-    )
-
-
-def _cloud_event(raw: RawRow, name: str | None) -> Result:
-    """클라우드 감사 로그 이벤트를 API Activity(6003)로 바꾼다.
-
-    Args:
-        raw: CloudTrail, Azure 활동 로그, GCP 감사 로그 인덱스의 이벤트 원본.
-        name: 일치한 소스 표 이름. 인덱스 규칙으로 골랐으면 None.
-    """
-    source = _source(raw)
-    operation = _text(source, "event.action")
-    extra = {
-        "api": {
-            "operation": operation,
-            "service": {"name": _text(source, "event.provider")},
-        },
-        "actor": {
-            "user": {
-                "name": _text(source, "user.name"),
-                "uid": _text(source, "user.entity.id"),
-            }
-        },
-        "src_endpoint": {"ip": _text(source, "source.ip")},
-        "dst_endpoint": {"ip": _text(source, "destination.ip")},
-    }
-    activity_id = UNKNOWN_ID
-    if operation:
-        activity_id = next(
-            (id_ for prefix, id_ in API_ACTIVITY_PREFIXES if operation.startswith(prefix)),
-            OTHER_ID,
-        )
-    if activity_id == OTHER_ID:
-        extra["activity_name"] = operation
-    return _event(raw, source, 6003, 6, activity_id, extra, source_name=name or "class_6003")
-
-
-def _base_event(raw: RawRow) -> Result:
-    """지원 클래스가 없는 이벤트를 Base Event(0)로 바꾼다.
-
-    Args:
-        raw: 웹·클라우드 인덱스가 아닌 이벤트 원본.
-    """
-    source = _source(raw)
-    extra: dict[str, Any] = {"unmapped": {"destination": {"ip": _text(source, "destination.ip")}}}
-    action = _text(source, "event.action")
-    activity_id = OTHER_ID if action else UNKNOWN_ID
-    if action:  # 출처의 활동 이름은 OCSF가 정한 자리(activity_id 99와 activity_name)에 둔다
-        extra["activity_name"] = action
-    return _event(
-        raw,
-        source,
-        0,
-        0,
-        activity_id,
-        extra,
-        source_name="unknown",
-        error_code="unsupported_event_mapping",
-        fallback=True,
-    )
-
-
-def _event(
-    raw: RawRow,
-    source: dict[str, Any],
-    class_uid: int,
-    category_uid: int,
-    activity_id: int,
-    extra: dict[str, Any],
-    *,
-    time_ms: int | None = None,
-    entities: list[dict[str, Any]] | None = None,
-    source_name: str,
-    missing: list[str] | None = None,
-    error_code: str | None = None,
-    fallback: bool = False,
-) -> Result:
-    """OCSF 객체를 만들고 events 행으로 감싼다. 요약은 message에 넣는다(D-068).
-
-    Args:
-        raw: 원본 한 행.
-        source: raw.original["_source"].
-        class_uid: OCSF 클래스 번호.
-        category_uid: 클래스가 속한 OCSF 카테고리 번호.
-        activity_id: OCSF activity_id.
-        extra: 클래스별 OCSF 속성. 비어 있는 값은 버린다.
-        source_name: 결과 품질의 소스 이름(소스 표 이름, class_N, unknown).
-        missing: 품질 판정에 필요한데 얻지 못한 OCSF 경로.
-        error_code: partial·fallback의 사유 코드.
-        fallback: 지원 매핑이 없어 Base Event로 만들었는지.
-    """
-    if time_ms is None:
-        time_ms = _time_ms(source, "@timestamp")
-    if entities is None:
-        entities = _entities(source)
-    ocsf = _ocsf(class_uid, category_uid, activity_id, time_ms, 1, extra)
-    # 요약: 1순위 클래스별 정의(mapping_tables/events), 2순위 event.dataset, 3순위 "event"
-    ocsf["message"] = (
-        summary_text(class_uid, ocsf) or _text(source, "event.dataset") or EMPTY_SUMMARY
-    )
-    row = event_row(new_id("evt"), raw.id, ocsf, entities)
-    outcome = "fallback" if fallback else "partial" if missing else "ok"
-    return Result("event", row, outcome, error_code, tuple(missing or ()), source_name)
 
 
 def _ocsf(
@@ -716,35 +503,6 @@ def _ocsf(
             "product": {"name": "Elasticsearch", "vendor_name": "Elastic"},
         },
     }
-
-
-def _entities(source: dict[str, Any]) -> list[dict[str, Any]]:
-    """원본에서 읽을 수 있는 Entity 목록을 만든다.
-
-    Args:
-        source: raw.original["_source"].
-    """
-    entities = []
-    for path, entity_type, role in ENTITY_FIELDS:
-        value = _text(source, path)
-        if value is not None:
-            entities.append({"type": entity_type, "value": value, "role": role})
-    return entities
-
-
-def _source(raw: RawRow) -> dict[str, Any]:
-    """원본의 _source 객체를 돌려준다.
-
-    Args:
-        raw: 원본 한 행.
-
-    Raises:
-        NormalizeError: _source가 객체가 아니다.
-    """
-    source = raw.original.get("_source")
-    if not isinstance(source, dict):
-        raise NormalizeError("validation_failed")
-    return source
 
 
 def _text(source: dict[str, Any], path: str) -> str | None:

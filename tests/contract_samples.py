@@ -34,6 +34,7 @@ CONTRACT_NAMES = (
     "entity",
     "asset",
     "verdict",
+    "l1_verdict",
 )
 
 

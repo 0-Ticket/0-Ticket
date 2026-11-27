@@ -3,6 +3,7 @@
 from pathlib import Path
 
 from soc.agent.config import load_config
+from soc.agent.types import TASK_NAMES
 
 REPO_CONFIG = Path(__file__).resolve().parents[1] / "config"
 
@@ -47,35 +48,46 @@ def test_default_tools_config(default_config_dir: Path) -> None:
         "get_alert",
         "get_event",
         "query_records",
-        "query_http_flow",
-        "summarize_http_flow",
     ]
-    # SIEM 도구(#212): query_siem은 l1·l2·l3, count_siem은 l2·l3. SSH 점검(#213)은 l2·l3
-    # 위협 인텔 조회(#309)는 l1·l2. 로컬 ATT&CK·KEV 조회(#311)는 l2·l3. 유사 사례 검색(#313)은 l1·l2
+    # #382: 발급한 원문을 읽는 도구. query_siem 뒤에 온다
+    with_raw = [*expected, "query_siem", "get_raw"]
+    # 키는 태스크 이름이다(#382, D-086). 단계 키는 두지 않는다 — 등록되지 않은 태스크는 기본 거부다.
+    # query_siem은 근거를 발급하는 태스크에만 있고 l2_classify·l2_report에는 없다.
     local_intel = ["get_attack_technique", "search_attack_techniques", "get_cve"]
-    assert tools["allowed"]["l1"] == [
-        *expected,
-        "query_siem",
-        "lookup_indicator",
+    allowed = tools["allowed"]
+    assert sorted(allowed) == sorted(TASK_NAMES)
+    l1_tools = [*with_raw, "lookup_indicator", "search_similar_cases"]
+    assert allowed["l1_alert_triage"] == l1_tools
+    assert allowed["l1_ticket_judgment"] == l1_tools
+    assert allowed["l2_classify"] == [
+        "get_alert",
+        "get_event",
+        "query_records",
         "search_similar_cases",
     ]
-    assert tools["allowed"]["l2"] == [
+    assert allowed["l2_investigate"] == [
         *expected,
         "query_siem",
         "count_siem",
+        "get_raw",
         "run_host_check",
         "lookup_indicator",
         *local_intel,
         "search_similar_cases",
     ]
-    assert tools["allowed"]["l3"] == [
+    assert allowed["l2_report"] == local_intel
+    # 행위자 조회(#389)는 l3만이다. 단계 키 l3가 태스크 키 둘로 갈렸으므로 둘 다에 있다
+    l3_tools = [
         *expected,
         "query_siem",
         "count_siem",
+        "get_raw",
         "run_host_check",
         *local_intel,
-        "get_attack_actor",  # 행위자 조회(#389)는 l3만이다
+        "get_attack_actor",
     ]
+    assert allowed["l3_hypothesize"] == l3_tools
+    assert allowed["l3_verify"] == l3_tools
     assert tools["local_intel"] == {
         "attack_version": "20.0",
         "description_max_chars": 600,

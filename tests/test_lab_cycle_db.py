@@ -164,6 +164,8 @@ def l1_run(db: str) -> Any:
                 "confidence": 0.9,
                 "reason": "도구로 읽은 Alert가 웹 공격 룰과 맞다",
                 "evidence_ids": [alert_id, parse(outputs[0])["call_id"]],
+                # 모델 출력에는 siem_refs가 있다(#382). 코드가 저장 전에 뗀다
+                "siem_refs": [],
                 "decided_at": NOW_MS,
             }
 
@@ -212,7 +214,14 @@ def analyze_run(task: AgentTask) -> AgentResult:
                 "evidence_ids": [alert_id],
             }
         ]
-        return ok({"timeline": timeline, "entities": [], "evidence_ids": [alert_id]})
+        return ok(
+            {
+                "timeline": timeline,
+                "entities": [],
+                "evidence_ids": [alert_id],
+                "siem_refs": [],
+            }
+        )
     return ok(
         {
             "verdict": "attempted",
@@ -314,23 +323,26 @@ def test_lab_shaped_alert_flows_to_incident_artifact_and_rerun_adds_nothing(
     outcomes = q(conn, "SELECT outcome FROM ingest_runs ORDER BY id").fetchall()
     assert [row["outcome"] for row in outcomes] == ["ok", "ok"]
 
-    # 2 정규화: 실패 0건
+    # 2 정규화: 알럿 4건만. 이벤트는 정규화하지 않는다(#382, D-085)
     normalized = normalize_run(NORMALIZE, conn, "lab-cycle")
-    assert (normalized.succeeded, normalized.failed, normalized.failures) == (9, 0, {})
-    classes = q(
+    assert (normalized.succeeded, normalized.failed) == (4, 5)
+    assert normalized.failures == {"validation_failed": 5}
+    # 이벤트 원본은 남아 있고 Event 행은 생기지 않는다. 근거가 필요하면 조사 중 심에서
+    # 찾아 발급한다(soc.evidence.issue). 수리카타처럼 매핑표가 없던 소스도 그 경로로 쓴다
+    assert q(conn, "SELECT count(*) AS n FROM events").fetchone()["n"] == 0
+    rejected = q(
         conn,
-        "SELECT r.original_text::jsonb ->> '_id' AS source_id, e.ocsf_class"
-        " FROM events e JOIN raw_records r ON r.id = e.raw_id",
+        "SELECT r.original_text::jsonb ->> '_id' AS source_id FROM raw_records r"
+        " JOIN normalize_status s ON s.raw_id = r.id WHERE s.status = 'failed'"
+        " ORDER BY source_id",
     ).fetchall()
-    # 같은 Filebeat 스트림에서도 모듈로 식별한 nginx만 HTTP Activity가 된다.
-    # 이 샘플의 ModSecurity에는 event.module이 없고 Suricata는 아직 매핑 대상이 아니다.
-    assert {row["source_id"]: row["ocsf_class"] for row in classes} == {
-        "lab-nginx-0001": 4002,
-        "lab-nginx-0002": 4002,
-        "lab-modsec-0001": 0,
-        "lab-nginx-0003": 4002,
-        "lab-suricata-0001": 0,
-    }
+    assert [row["source_id"] for row in rejected] == [
+        "lab-modsec-0001",
+        "lab-nginx-0001",
+        "lab-nginx-0002",
+        "lab-nginx-0003",
+        "lab-suricata-0001",
+    ]
 
     query_alert = alert_by_title(conn, QUERY_RULE)
     assert query_alert["rule_id"] == "lab-rule-web-sqli"
@@ -386,7 +398,7 @@ def test_lab_shaped_alert_flows_to_incident_artifact_and_rerun_adds_nothing(
     assert first == {
         "raw_records": 9,
         "alerts": 4,
-        "events": 5,
+        "events": 0,  # 이벤트는 정규화하지 않는다(#382)
         "tickets": 4,
         "incidents": 4,
         "incident_artifacts": 4,

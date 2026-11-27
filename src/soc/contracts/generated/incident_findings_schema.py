@@ -44,3 +44,9 @@ class IncidentFindings(BaseModel):
         list[types_schema.EvidenceId],
         Field(description="어느 항목에도 붙지 않은 근거. 비어도 된다"),
     ]
+    siem_refs: Annotated[
+        list[types_schema.SiemRef],
+        Field(
+            description="근거로 쓰려고 고른 SIEM 문서의 저장 키(#382). evidence_ids와 별개다(아직 ID가 없다). 이 run의 도구 결과에 보인 것만 쓸 수 있고, 워커가 가져와 저장한 뒤 evt_ ID를 발급하면 보고 단계가 그 ID로 인용한다. 중복 없음"
+        ),
+    ]

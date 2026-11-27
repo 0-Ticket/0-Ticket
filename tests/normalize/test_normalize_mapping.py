@@ -1,4 +1,4 @@
-"""원본(ELK hit)을 OCSF 알럿·이벤트로 바꾸는 변환과 OCSF 검사를 손으로 만든 샘플로 확인한다."""
+"""원본(ELK hit)을 OCSF 알럿으로 바꾸는 변환과 OCSF 검사를 손으로 만든 샘플로 확인한다."""
 
 import copy
 import json
@@ -16,9 +16,10 @@ from soc.normalize.mapping import RawRow, Result, normalize
 from soc.normalize.ocsf_schema import validate_ocsf
 
 _FIXTURE = Path(__file__).parent.parent / "fixtures" / "normalize" / "raw.json"
-CASES = json.loads(_FIXTURE.read_text(encoding="utf-8"))
+CASES = [
+    case for case in json.loads(_FIXTURE.read_text(encoding="utf-8")) if case["kind"] == "alert"
+]
 SUCCESS = [case for case in CASES if "error" not in case["expect"]]
-FAILURE = [case for case in CASES if "error" in case["expect"]]
 NOV_4_0100 = int(datetime(2026, 11, 4, 1, 0, tzinfo=UTC).timestamp() * 1000)
 
 
@@ -61,14 +62,6 @@ def test_samples_become_valid_results(case: dict[str, Any]) -> None:
             assert result.row[key] == expect[key]
 
 
-@pytest.mark.parametrize("case", FAILURE, ids=lambda case: case["case"])
-def test_unusable_samples_fail_with_a_code(case: dict[str, Any]) -> None:
-    with pytest.raises(NormalizeError) as raised:
-        normalize_and_check(raw_row(case))
-
-    assert raised.value.code == case["expect"]["error"]
-
-
 def test_result_points_at_its_raw_record() -> None:
     raw = raw_row(SUCCESS[0])
 
@@ -85,14 +78,13 @@ def test_alert_time_prefers_the_original_event_time() -> None:
     assert fallback == NOV_4_0100
 
 
-def test_web_event_keeps_only_listed_http_methods() -> None:
-    by_case = {case["case"]: case for case in CASES}
+def test_event_kind_is_rejected() -> None:
+    raw = RawRow(id=new_id("raw"), kind="event", original={})
 
-    listed = normalize(raw_row(by_case["web_nested_fields"])).row["ocsf"]
-    unlisted = normalize(raw_row(by_case["web_unlisted_method"])).row["ocsf"]
+    with pytest.raises(NormalizeError) as raised:
+        normalize(raw)
 
-    assert listed["http_request"]["http_method"] == "GET"
-    assert "http_method" not in unlisted["http_request"]
+    assert raised.value.code == "validation_failed"
 
 
 def test_original_is_not_modified() -> None:

@@ -228,7 +228,9 @@ def test_hypothesize_logs_written_by_run_task_are_read_after_restart(
     """실제 기록기(PostgresLogSink)가 쓴 줄을 새 워커(재시작)가 마지막 시도로 읽는다."""
     model = FakeModel(scenario("hypothesize_ok"))
     config = copy.deepcopy(load_agent_config())
-    config["tools"]["allowed"]["l3"] = [QUERY_EVENTS.name]
+    # 허용 목록은 태스크별이다(#382, D-086). 단계 키를 덮어써도 태스크 키가 있으면 무시된다
+    for task_name in ("l3_hypothesize", "l3_verify"):
+        config["tools"]["allowed"][task_name] = [QUERY_EVENTS.name]
 
     def run(task: AgentTask) -> AgentResult:
         return run_task(

@@ -18,18 +18,12 @@ pytestmark = pytest.mark.db
 _FIXTURE = Path(__file__).parents[1] / "fixtures" / "normalize" / "destination.json"
 
 
-@pytest.mark.parametrize(
-    ("case_name", "table", "destination", "ocsf_path"),
-    [
-        ("alert_flat_destination", "alerts", "192.0.2.20", "{evidences,1,dst_endpoint,ip}"),
-        ("base_destination", "events", "192.0.2.24", "{unmapped,destination,ip}"),
-    ],
-)
 def test_destination_survives_storage_asset_lookup_and_repeated_run(
-    temp_database: HiddenUrl, case_name: str, table: str, destination: str, ocsf_path: str
+    temp_database: HiddenUrl,
 ) -> None:
     cases = json.loads(_FIXTURE.read_text(encoding="utf-8"))
-    case = next(case for case in cases if case["case"] == case_name)
+    case = next(case for case in cases if case["case"] == "alert_flat_destination")
+    destination = case["destination"]
     migrate(temp_database)
     raw_id = new_id("raw")
     settings = Settings(
@@ -60,23 +54,18 @@ def test_destination_survives_storage_asset_lookup_and_repeated_run(
 
         assert (first.succeeded, first.failed, second.claimed) == (1, 0, 0)
         rows = conn.execute(
-            f"SELECT entities, ocsf, assets, ocsf #>> %s FROM {table} WHERE raw_id = %s",
-            (ocsf_path, raw_id),
+            "SELECT entities, ocsf, assets, ocsf #>> %s FROM alerts WHERE raw_id = %s",
+            ("{evidences,1,dst_endpoint,ip}", raw_id),
         ).fetchall()
         assert len(rows) == 1
         entities, ocsf, assets, stored_destination = rows[0]
         assert {"type": "ip", "value": destination, "role": "dst"} in entities
         assert {"type": "ip", "value": "198.51.100.7", "role": "src"} in entities
         assert stored_destination == destination
-        if table == "events":
-            assert ocsf["class_uid"] == 0
-            assert ocsf["unmapped"] == {"destination": {"ip": "192.0.2.24"}}
-            assert "dst_endpoint" not in ocsf
-        else:
-            assert ocsf["evidences"] == [
-                {"src_endpoint": {"ip": "198.51.100.7"}},
-                {"dst_endpoint": {"ip": "192.0.2.20"}},
-            ]
+        assert ocsf["evidences"] == [
+            {"src_endpoint": {"ip": "198.51.100.7"}},
+            {"dst_endpoint": {"ip": "192.0.2.20"}},
+        ]
         assert assets == [
             {
                 "entity": {"type": "ip", "value": destination},

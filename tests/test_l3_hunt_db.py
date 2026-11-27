@@ -159,6 +159,8 @@ def verification(result: str, confidence: float, evidence: list[str], **extra: A
         "reason": "근거를 확인했다",
         "evidence_ids": evidence,
         "entities": [],
+        # 모델 출력에는 siem_refs가 있다(#382). 코드가 발급하고 Hunt에 남기지 않는다
+        "siem_refs": [],
         **extra,
     }
 
@@ -201,7 +203,9 @@ def with_call_ids(data: dict[str, Any]) -> dict[str, Any]:
 def via_run_task(name: str, sink: MemoryLogSink) -> tuple[Callable[[AgentTask], Any], FakeModel]:
     model = FakeModel(with_call_ids(scenario(name)))
     config = copy.deepcopy(load_agent_config())
-    config["tools"]["allowed"]["l3"] = [QUERY_EVENTS.name]
+    # 허용 목록은 태스크별이다(#382, D-086). 단계 키를 덮어써도 태스크 키가 있으면 무시된다
+    for task_name in ("l3_hypothesize", "l3_verify"):
+        config["tools"]["allowed"][task_name] = [QUERY_EVENTS.name]
 
     def run(task: AgentTask) -> AgentResult:
         return run_task(
@@ -432,7 +436,9 @@ def run_with_actor_tool(db: str, steps: list[dict[str, Any]]) -> tuple[Any, Fake
     """가짜 모델과 가짜 행위자 도구로 run_task를 돌리고 Agent Log를 DB에 쓴다."""
     model = FakeModel({"steps": steps})
     config = copy.deepcopy(load_agent_config())
-    config["tools"]["allowed"]["l3"] = [ACTOR_TOOL]
+    # 배포 설정에는 태스크 키가 있어 단계 키(l3)로 덮으면 무시된다(#382). 쓰는 두 태스크 모두 덮는다
+    for task_name in ("l3_hypothesize", "l3_verify"):
+        config["tools"]["allowed"][task_name] = [ACTOR_TOOL]
     sink = PostgresLogSink(db)
 
     def run(task: AgentTask) -> AgentResult:
