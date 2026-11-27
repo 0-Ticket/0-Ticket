@@ -380,6 +380,28 @@ def test_worker_handle_raises_on_failure_so_the_executor_counts_it(database: str
         worker.handle(CASE["1"])
 
 
+def test_a_failure_to_build_the_embedder_or_store_is_recorded_and_backs_off(
+    database: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """QDRANT_URL이 없는 것처럼 자원을 만들지 못해도 대기 행에 남고 백오프한다."""
+    enqueue_all(database, "1")
+
+    def broken(settings: Any) -> Any:
+        raise StoreError("http://qdrant.example:6333 SECRET-TITLE")
+
+    monkeypatch.setattr(index, "get_embedder", broken)
+    worker = index.CaseIndexWorker(database, SETTINGS)
+
+    with pytest.raises(StoreError):
+        worker.handle(CASE["1"])
+
+    row = job(database, CASE["1"])
+    assert (row["indexed_at"], row["attempts"], row["last_error"]) == (None, 1, "StoreError")
+    assert 25 < row["wait"].total_seconds() <= 30
+    assert worker.poll(10) == []
+    assert "qdrant.example" not in str(row) and "SECRET" not in str(row)
+
+
 # 승인에서 색인까지
 
 

@@ -55,6 +55,22 @@ def read_case(conn: psycopg.Connection, case_id: str) -> tuple[str, str | None, 
     return case["title"], case["summary"], artifact
 
 
+def record_failure(conn: psycopg.Connection, case_id: str, error: Exception) -> None:
+    """대기 행에 시도 횟수·예외 클래스 이름·다음 시도 시각을 남긴다. 메시지는 남기지 않는다."""
+    with conn.transaction():
+        row = conn.execute(
+            "UPDATE case_index_jobs SET attempts = attempts + 1, last_error = %s "
+            "WHERE case_id = %s AND indexed_at IS NULL RETURNING attempts",
+            (type(error).__name__, case_id),
+        ).fetchone()
+        if row is not None:
+            conn.execute(
+                "UPDATE case_index_jobs "
+                "SET next_attempt_at = now() + make_interval(secs => %s) WHERE case_id = %s",
+                (backoff_seconds(row[0]), case_id),
+            )
+
+
 def index_one(conn: psycopg.Connection, case_id: str, embedder: Any, store: Any) -> bool:
     """대기 중인 Case 하나를 색인한다. 색인했으면 True, 할 일이 없으면 False.
 
@@ -84,18 +100,7 @@ def index_one(conn: psycopg.Connection, case_id: str, embedder: Any, store: Any)
         )
         return True
     except Exception as exc:
-        with conn.transaction():
-            row = conn.execute(
-                "UPDATE case_index_jobs SET attempts = attempts + 1, last_error = %s "
-                "WHERE case_id = %s RETURNING attempts",
-                (type(exc).__name__, case_id),
-            ).fetchone()
-            if row is not None:
-                conn.execute(
-                    "UPDATE case_index_jobs "
-                    "SET next_attempt_at = now() + make_interval(secs => %s) WHERE case_id = %s",
-                    (backoff_seconds(row[0]), case_id),
-                )
+        record_failure(conn, case_id, exc)
         raise
 
 
@@ -124,9 +129,17 @@ class CaseIndexWorker:
         return [row[0] for row in rows]
 
     def handle(self, case_id: str) -> None:
-        embedder = self.embedder if self.embedder is not None else get_embedder(self.settings)
-        store = self.store if self.store is not None else get_store(self.settings)
         with psycopg.connect(self.database_url, autocommit=True) as conn:
+            try:
+                embedder = (
+                    self.embedder if self.embedder is not None else get_embedder(self.settings)
+                )
+                store = self.store if self.store is not None else get_store(self.settings)
+            except (
+                Exception
+            ) as exc:  # 자원을 못 만들어도(QDRANT_URL 없음 등) 백오프를 건너뛰지 않는다
+                record_failure(conn, case_id, exc)
+                raise
             index_one(conn, case_id, embedder, store)
 
 

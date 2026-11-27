@@ -52,7 +52,7 @@ supersedes: []
 - 주요 테스트
   - `tests/test_case_index.py`: 텍스트 형식·순서·금지 항목(타임라인·근거 ID·엔티티 값·기법 ID·Artifact 요약 없음)·필드·기법·전체 상한, 백오프 30→600초, point ID 규칙, `source`·`outbox`·`text`가 임베더·Qdrant·L2를 끌어오지 않음(새 프로세스), 워커가 분류 서비스의 임베더를 공유함, 실행기가 `soc.case_index:build_worker`를 풀 수 있음.
   - `tests/test_case_index_command.py`: 건수 출력, 종료 코드(`missing`·`no_job`·`pending`은 1, `no_artifact`는 0, 설정 오류 2), 오류는 예외 이름만.
-  - `tests/test_case_index_db.py`(`db`): 마이그레이션 백필(0310만 뺀 폴더로 먼저 적용), 표 제약·cascade·읽기 역할 권한 없음, 최신 Artifact(1·3차 중 3차)·반려 사유·타임라인·엔티티 값이 텍스트에 없음, 두 번째 실행은 임베딩·쓰기 없음, Artifact 없는 Case는 제목만, 실패 시 예외 이름만 기록하고 30→60초 백오프, 백오프 전에는 `poll`이 안 집음, Qdrant가 돌아오면 색인되고 `last_error`가 지워짐, 승인→대기 행→워커 색인, 대기 행 INSERT 실패 시 승인 롤백, 반려는 대기 행 없음, `check`·`reindex`(잃어버린 point·`--recreate`·실패·백오프 무시).
+  - `tests/test_case_index_db.py`(`db`): 마이그레이션 백필(0310만 뺀 폴더로 먼저 적용), 표 제약·cascade·읽기 역할 권한 없음, 최신 Artifact(1·3차 중 3차)·반려 사유·타임라인·엔티티 값이 텍스트에 없음, 두 번째 실행은 임베딩·쓰기 없음, Artifact 없는 Case는 제목만, 실패 시 예외 이름만 기록하고 30→60초 백오프(임베더·저장소를 못 만든 실패도 같게 기록), 백오프 전에는 `poll`이 안 집음, Qdrant가 돌아오면 색인되고 `last_error`가 지워짐, 승인→대기 행→워커 색인, 대기 행 INSERT 실패 시 승인 롤백, 반려는 대기 행 없음, `check`·`reindex`(잃어버린 point·`--recreate`·실패·백오프 무시).
   - `tests/test_case_index_qdrant.py`(`qdrant`·`db`): 실제 Qdrant에서 빈 payload와 순위, `check`·`reindex`의 복구, 없는 컬렉션 생성, 승인된 Case 검색.
   - 기대값만 고친 기존 테스트: `test_agent_executor.py::test_default_config_executor_values`, `test_pipeline_db.py`의 `l2_resolver`, `test_db_tables.py`(마이그레이션 목록·표 집합), `test_api_review.py`(대기 행 단언 2개 추가), `test_pipeline_main.py`(`make_resolver`·워커 수).
 - 손으로 만든 샘플: `tests/fixtures/case_index/cases.json`(Incident 4개, Artifact 4개, Case 3개 — Artifact가 둘인 Incident, Artifact 없는 Case, 긴 필드 Case, 승인 대기 Incident).
