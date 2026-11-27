@@ -23,11 +23,11 @@ supersedes: []
 - 도구의 `actors` 목록 상한은 새 설정 없이 기존 `[tools.local_intel] list_max_items`(20)를 같이 쓴다.
 - 새 설정 키(`log_data_components`, `actor_techniques_max`)는 `get_attack_actor`의 설정 검사에서만 읽는다. 기존 세 도구의 설정 검사는 그대로라 새 키가 없는 설정도 그 도구들에서는 오류가 아니다.
 - `tests/fixtures/l3_intel/attack.json`은 기존 객체 순서를 그대로 두고(인덱스를 쓰는 기존 테스트 때문에) 가짜 행위자·관계를 뒤에 더했다. 인덱스 5의 `intrusion-set`은 ATT&CK ID(G0001)와 이름("Alpha Group")을 받았다. 다시 저장하면서 줄 모양이 바뀌어 diff가 크다.
-- 실제 모델 확인을 하기 위한 테스트(`tests/test_l3_hunt_actor_llm.py`)와 손으로 만든 샘플 뉴스(`tests/fixtures/l3_hunt/actor_news.json`)를 더했다. 이 환경에는 LLM 설정이 없어 실행하지 못했다(아래).
+- 실제 모델 확인을 하기 위한 테스트(`tests/test_l3_hunt_actor_llm.py`)와 손으로 만든 샘플 뉴스(`tests/fixtures/l3_hunt/actor_news.json`)를 더했다. 개발 환경에는 LLM 설정이 없어 서버에서 돌렸다(아래).
 
 ## 다음 사람이 알아야 할 것
 
-- **실제 모델 확인은 하지 않았다.** 완료 기준의 "손으로 만든 샘플 뉴스로 실제 모델을 한 번 돌려 도구 호출 여부와 검증 run의 호출 여부를 적는다"는 비어 있다. LLM 키와 `config/local.toml`의 `[llm]`이 있는 곳에서 `DATABASE_URL=… LLM_API_KEY=… uv run pytest -m llm -s tests/test_l3_hunt_actor_llm.py`로 돌리면 가설 생성 run의 도구 호출 수와 부른 이름, `attack_basis`, 검증 run의 도구 호출 수가 한 줄씩 나온다. 결과를 이 기록에 건수로 적어야 한다.
+- **실제 모델 확인은 서버에서 한 번 했다**(아래 "확인 방법"). 샘플 한 번이라 모델이 호출 상한(5번)을 지키는지, 이름 없는 뉴스에서 도구를 안 부르는지는 아직 모른다. 다시 돌리려면 `DATABASE_URL=… LLM_API_KEY=… uv run pytest -m llm -s tests/test_l3_hunt_actor_llm.py`(가설 생성 run의 도구 호출 수와 부른 이름, `attack_basis`, 검증 run의 도구 호출 수가 한 줄씩 나온다).
 - **가설 생성 run의 실패 비용.** 도구를 너무 많이 불러 모델 호출이 `[agent.l3] max_turns`(10, 검증 run과 공유)를 넘으면 `budget_exceeded`로 끝나고 Hunt가 하나도 저장되지 않는다. 이 run도 시도로 세어 다음 시도가 `[l3.hunt] generate_interval_seconds`(86400초) 뒤다. 코드 상한은 없고 프롬프트의 "최대 5번"에만 기댄다. 가짜 모델로는 도구 9번+답이 10턴으로 통과했고 도구 12번은 `budget_exceeded`였다. 형식 오류 재요청까지 합치면 여유가 없다.
 - **검증 run에도 보인다.** 도구 허용이 stage로만 정해져 `[tools.allowed].l3`의 `get_attack_actor`가 L3 검증 run에도 붙는다. 이번에는 허용했고 `attack_basis`는 가설 생성 run의 `run_id`만 읽는다. 검증 run이 부르는지는 위 실제 확인에서 센다.
 - **이름은 정확히 같아야 한다.** 실제 20.0 번들에서 "Lazarus Group"은 찾아지지만 "lazarus"는 `not_found`다(별칭에 없다). "ShinyHunters"·"Akira"(그룹 G1024와 악성코드 S1129에 함께 걸림)·"Cobalt Strike"·"Sandworm Team"·"APT28"은 찾아지고, "Page"는 악성코드 Elise(S0081)의 별칭이라 `found`다. 모델이 일반 단어를 부르면 오탐 근거가 생길 수 있다는 점은 프롬프트("뉴스에 이름이 나왔다는 것이 우리 환경에서 일어났다는 뜻은 아니다")로만 막는다.
@@ -43,7 +43,7 @@ supersedes: []
 
 - `uv run ruff format --check .`, `uv run ruff check .`: 통과
 - `uv run pytest`: 2745건 통과
-- `uv run pytest -m db`(임시 PostgreSQL 17.6 컨테이너, 이 작업을 위해 따로 띄우고 끝낸 뒤 지움): 748건 통과, 2건 실패. 실패 2건은 `tests/test_l2_branch_db.py`의 `qdrant` 마커도 붙은 테스트가 `QDRANT_URL`이 없어 실패한 것이다(이 이슈와 무관, Qdrant를 띄우지 않았다).
+- `uv run pytest -m db`(임시 PostgreSQL 17.6 컨테이너, 이 작업을 위해 따로 띄우고 끝낸 뒤 지움): 751건 통과(rebase 뒤), 2건 실패. 실패 2건은 `tests/test_l2_branch_db.py`의 `qdrant` 마커도 붙은 테스트가 `QDRANT_URL`이 없어 실패한 것이다(이 이슈와 무관, Qdrant를 띄우지 않았다).
 - 주요 테스트
   - `tests/test_l3_intel.py`: 폐기·대체 행위자와 폐기된 관계 제외, 별칭에서 이름 자신 제외, 틀린 행위자 모양은 `parse` 실패
   - `tests/test_l3_intel_db.py`: 새 표 저장, 기법만 있던 버전 다시 받기, 두 번째 수집에서 행 교체·중복 없음, 새 버전 누적, 실패 시 그대로, CHECK·외래키
@@ -52,4 +52,9 @@ supersedes: []
   - `tests/test_l3_hunt_db.py`(`db`): `attack_basis`의 `grounded`·`model_only`, 결과 없는 호출도 호출 수에 셈, 도구를 안 부르면 키 없음, 다른 run의 호출은 안 셈, Agent Log를 못 읽으면 Hunt를 저장하고 `unavailable`, 도구를 과하게 부르면 `budget_exceeded`
   - `tests/test_agent_config.py`·`tests/test_tools_registry.py`·`tests/test_db_tables.py`·`tests/test_tools_db.py`: 기대값만 고침(도구 이름, 표 목록, 읽기 권한 목록)
 - 2026-11-27 공개 피드로 코드 이름 일치를 쟀을 때(이 이슈의 방향을 바꾼 측정, 건수만): 보안뉴스 0/50, The Hacker News 3/50(진짜 1), KEV 109/1805(거의 전부 오탐), 가설 생성 입력(최근 5건) 모의 35건에서 일치 0건·KEV 10건.
+- 실제 모델 확인(서버, 손으로 만든 샘플 뉴스 2건, 건수만): `-m llm` 1건 통과(1 passed, 29.76초).
+  - 가설 생성 run: 도구 호출 1번, 부른 이름 `['Alpha Group']`, 가설 1건. `attack_basis`는 `tool_calls` 1, `grounded` T1190(G0001), `model_only` 없음.
+  - 검증 run: 도구 호출 1번, 부른 이름 `['Alpha Group']`. 검증 run도 이 도구를 불렀다(D-052 메모대로 허용한 동작이다). `attack_basis`에는 세지 않는다.
+  - 추가 실행은 없다.
+- main에 rebase하면서 `docs/decisions.md`의 "기록" 맨 위가 #373 기록과 충돌했고 둘 다 남겨 풀었다(#389를 위, #373을 아래). 이후 `ruff`·`uv run pytest`(2745건)·`-m db`(751건 통과, 같은 `qdrant` 마커 2건 실패)를 다시 돌렸다.
 - 실제 ATT&CK 20.0 번들로 손으로 확인(임시 DB, 건수만): 행위자 981개(그룹 178, 악성코드 747, 캠페인 57), `uses` 관계 16767건, 별칭 700개, 기법 706개. 파싱 약 0.7초, 파싱 단계 최대 상주 메모리 약 290MB. `log_data_components` 시작값 5개(Network Traffic Content, Network Traffic Flow, Network Connection Creation, Application Log Content, Response Content)는 모두 저장된 `detection_sources`에 있다. 5개와 겹치는 기법은 706개 중 311개다. 도구 결과는 이름에 따라 약 2700~4100자(한도 8000자 안)이고 호출은 약 0.02~0.03초다.
