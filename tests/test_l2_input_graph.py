@@ -8,7 +8,9 @@ from typing import Any
 from soc.agent.compose import compose_instructions
 from soc.agent.llm import input_chars
 from soc.agent.runner import wrap_data
+from soc.contracts.event import assemble_event, event_model_input
 from soc.entities import normalize_entity_value
+from soc.evidence.issue import evidence_rows
 from soc.l2.analyze.context import (
     MAX_PEER_IDS,
     AnalyzeContext,
@@ -341,3 +343,48 @@ def test_inputs_known_to_exceed_the_limit_are_recorded() -> None:
     # 서버와 같은 구조에서 경로가 늘면 어느 경로 수부터 한도를 넘는가(개발 기록에 값을 적는다)
     first_over = over_limit_from(131)
     assert 131 < first_over < 500
+
+
+def class_zero_event(number: int) -> dict[str, Any]:
+    """#382가 발급한 근거 Event(class 0)가 data.events에 들어가는 모양. 문서는 손으로 만들었다."""
+    document = {
+        "_index": "logs-web-2026.11",
+        "_id": f"doc{number}",
+        "_source": {
+            "@timestamp": "2026-11-27T01:02:03.000Z",
+            "event": {"dataset": "web.access", "module": "nginx"},
+            "source": {"ip": "203.0.113.5"},
+            "destination": {"ip": "198.51.100.7"},
+            "user": {"name": "alice"},
+            "url": {"domain": "example.com", "original": "https://example.com/a?b=1"},
+            "host": {"name": "web-01"},
+        },
+    }
+    made = evidence_rows(document, siem_profile="elk-evidence", now_ms=1_793_764_800_000)
+    assert made is not None
+    item = event_model_input(assemble_event(made[1]))
+    return {**item, "id": uid("evt", 7000 + number)}
+
+
+def class_zero_capacity(*, with_other_events: bool) -> int:
+    """서버 최대 구조에 class 0 Event가 몇 건까지 더해져도 한도 안인가."""
+    data = build_context(server_shape(131)).investigate_data()
+    if not with_other_events:
+        data["events"] = []
+    count = 0
+    while True:
+        data["events"] = [*data["events"], class_zero_event(count)]
+        if total_chars(data) > limit():
+            return count
+        count += 1
+
+
+def test_issued_class_zero_events_are_small_and_their_capacity_is_recorded() -> None:
+    one = class_zero_event(0)
+
+    assert one["ocsf_class"] == 0
+    # 원문은 입력에 없다. 포인터(ocsf)와 엔티티만 있어 한 건이 1,000자 안이다
+    assert len(json.dumps(one, ensure_ascii=False)) < 1_000
+    # 기존 Event 몫(합성 13,000자)에 더하는 경우와 class 0 Event만 있는 경우(값은 기록에 적는다)
+    assert class_zero_capacity(with_other_events=True) >= 10
+    assert class_zero_capacity(with_other_events=False) >= 20
