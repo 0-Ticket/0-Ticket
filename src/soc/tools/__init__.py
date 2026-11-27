@@ -26,7 +26,7 @@ def default_registry() -> ToolRegistry:
     유사 사례 검색 1개(#313).
 
     Web 도구(`query_http_flow`·`summarize_http_flow`)는 #382에서 없앴다. 그 둘은 OCSF
-    4002 Event만 읽었고, 이벤트 정규화가 사라져 4002 행이 더 생기지 않는다(D-083).
+    4002 Event만 읽었고, 이벤트 정규화가 사라져 4002 행이 더 생기지 않는다(D-085).
     """
     from soc.tools.internal import INTERNAL_TOOLS
     from soc.tools.local_intel import LOCAL_INTEL_TOOLS

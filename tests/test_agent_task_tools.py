@@ -1,4 +1,4 @@
-"""도구 허용 목록을 태스크별로 둔다(#382, D-084). 가짜 도구로 돈다(DB·ELK 없음).
+"""도구 허용 목록을 태스크별로 둔다(#382, D-086). 가짜 도구로 돈다(DB·ELK 없음).
 
 `runner.py`가 stage의 목록만 보던 탓에 L2 보고 태스크에도 심 조회가 붙었다. 보고가 siem_ref를
 인용하면 발급할 다음 태스크가 없어 근거가 되지 못한다. 그래서 설정은 태스크별로 두고, 태스크 키가
@@ -62,7 +62,7 @@ def test_shipped_config_is_keyed_by_task_only() -> None:
 
 
 def test_classify_and_report_get_no_siem_lookup() -> None:
-    # 발급할 다음 태스크가 없는 두 태스크다(D-084).
+    # 발급할 다음 태스크가 없는 두 태스크다(D-086).
     allowed = shipped()
     for task in ("l2_classify", "l2_report"):
         assert "query_siem" not in allowed[task], task

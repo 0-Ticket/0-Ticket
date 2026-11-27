@@ -51,7 +51,9 @@ class Worker:
 def make_resolver(workers: dict[str, Worker], built: list[str]) -> Callable[[str], Any]:
     def resolve(path: str) -> Callable[[Any], Worker]:
         built.append(path)
-        stage = next(s for s in ("normalize", "ticketing", "l1", "l2", "l3") if s in path)
+        # 경로에 단계 이름이 없는 워커는 따로 알려 준다(Case 색인 워커는 l2 단계, #391)
+        stage = "l2" if path.startswith("soc.case_index") else None
+        stage = stage or next(s for s in ("normalize", "ticketing", "l1", "l2", "l3") if s in path)
         return lambda _config: workers.setdefault(path, Worker(stage, path))
 
     return resolve
@@ -135,11 +137,12 @@ def test_passing_check_runs_four_stages_and_never_l3(
     code = run_pipeline(
         config_dir,
         make_resolver(workers, built),
-        lambda: len(workers) == 6 and all(w.polls >= 2 for w in workers.values()),
+        lambda: len(workers) == 7 and all(w.polls >= 2 for w in workers.values()),
     )
     assert code == 0
     assert sorted(w.stage for w in workers.values()) == [
         "l1",
+        "l2",
         "l2",
         "l2",
         "l2",
@@ -174,7 +177,7 @@ def test_idle_rounds_neither_handle_nor_log(
         run_pipeline(
             config_dir,
             make_resolver(workers, []),
-            lambda: len(workers) == 6 and all(w.polls >= 5 for w in workers.values()),
+            lambda: len(workers) == 7 and all(w.polls >= 5 for w in workers.values()),
         )
     assert all(w.handled == [] for w in workers.values())
     assert not [r for r in caplog.records if r.getMessage().startswith("round ")]

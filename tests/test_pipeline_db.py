@@ -32,6 +32,7 @@ from test_pipeline_check import ENV, OK_PROBES
 
 from soc.agent import AgentResult
 from soc.agent.executor import resolve_factory
+from soc.case_index.index import CaseIndexWorker
 from soc.db.migrate import MigrationError, find_migrations, migrate, unapplied_migrations
 from soc.ids import new_id
 from soc.l1.judge import L1Worker
@@ -211,6 +212,10 @@ def l2_resolver(db: str, l1: Callable[..., Any]) -> Callable[[str], Any]:
             return lambda _c: L2IndexWorker(db, None, service=service)
         if path == "soc.l2.branch:build_worker":
             return lambda _c: branch_worker(db, service)
+        if path == "soc.case_index:build_worker":
+            return lambda _c: CaseIndexWorker(
+                db, None, embedder=service.embedder, store=service.store
+            )
         if path == "soc.l2.analyze:build_worker":
             return lambda _c: L2AnalyzeWorker(
                 db,
@@ -250,7 +255,7 @@ def test_raw_records_flow_to_an_incident_artifact_without_manual_steps(
     first = counts(conn)
     assert first.pop("incident_artifacts") >= 1
     assert first.pop("incidents") >= 1
-    # 이벤트는 정규화하지 않는다(#382, D-083). 원본 9건 중 알럿 4건만 정규화되고 이벤트
+    # 이벤트는 정규화하지 않는다(#382, D-085). 원본 9건 중 알럿 4건만 정규화되고 이벤트
     # 5건은 validation_failed로 남는다. 근거가 필요하면 조사 중 심에서 찾아 발급한다
     assert first == {"raw_records": 9, "alerts": 4, "events": 0, "tickets": 4}
     rejected = q(

@@ -353,4 +353,4 @@ def test_the_excerpt_is_data_so_a_log_sentence_does_not_change_the_request(
     # 로그의 문장은 <data> 안에만 있고, 지시(system)에는 들어가지 않는다
     assert INJECTION in json.dumps(call["input"], ensure_ascii=False)
     assert INJECTION not in call["system"]
-    assert call["tools"] == []  # 보고 태스크에 도구는 없다(D-084)
+    assert call["tools"] == []  # 보고 태스크에 도구는 없다(D-086)

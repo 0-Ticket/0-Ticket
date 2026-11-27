@@ -1044,7 +1044,7 @@ def test_default_config_has_siem_settings_without_secrets(default_config_dir: Pa
         assert "query_siem" in allowed[task] and "count_siem" not in allowed[task], task
     for task in ("l2_investigate", "l3_hypothesize", "l3_verify"):
         assert {"query_siem", "count_siem"} <= set(allowed[task]), task
-    # 인용해도 발급할 다음 태스크가 없는 두 태스크다(D-084)
+    # 인용해도 발급할 다음 태스크가 없는 두 태스크다(D-086)
     for task in ("l2_classify", "l2_report"):
         assert not {"query_siem", "count_siem"} & set(allowed[task]), task
 

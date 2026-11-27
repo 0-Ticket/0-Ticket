@@ -176,7 +176,7 @@ def run_task(
     try:
         tools = (registry or default_registry()).session(
             stage=task.stage,
-            task=task.task,  # 태스크별 허용 목록(#382, D-084)
+            task=task.task,  # 태스크별 허용 목록(#382, D-086)
             config=config,
             recorder=recorder,
             services=tool_services.snapshot(),  # 실행기가 시작할 때 만든 공유 객체(#313)

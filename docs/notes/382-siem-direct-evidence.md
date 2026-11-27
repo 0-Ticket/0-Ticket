@@ -25,7 +25,7 @@ supersedes: []
 소스를 가리지 않는 심 조회 대상 `evidence`를 더했다(ECS 공통 필터·반환 필드만). `event.module`로
 좁히면 한 소스만, 안 좁히면 전부 걸린다. 수리카타처럼 매핑표가 없던 소스도 이 경로로 근거가 된다.
 
-도구 허용 목록은 단계가 아니라 태스크별이 됐다(D-084). `l2_classify`와 `l2_report`에는 심 조회와
+도구 허용 목록은 단계가 아니라 태스크별이 됐다(D-086). `l2_classify`와 `l2_report`에는 심 조회와
 `get_raw`를 주지 않는다 — 그 태스크가 인용해도 발급할 다음 태스크가 없다.
 
 L1·L2·L3가 모두 발급을 부른다. L1은 판정 뒤, L2는 조사 뒤(보고 태스크의 허용 목록에 발급분을
@@ -62,7 +62,7 @@ L1·L2·L3가 모두 발급을 부른다. L1은 판정 뒤, L2는 조사 뒤(보
 10. **`AgentResult`의 칸 이름은 `cited_siem_refs`다.** 계획은 `siem_refs`라고만 적었다.
     `cited_evidence_ids`와 나란히 두려고 접두사를 붙였고, 담는 값도 세션 맵 전체가 아니라
     **인용이 검증된 것만**이다. 워커가 따로 거를 필요가 없다.
-11. **읽기 역할에 `raw_records` 열 권한을 주는 마이그레이션 0310을 더했다.** 0003이 그 표를 명시적으로
+11. **읽기 역할에 `raw_records` 열 권한을 주는 마이그레이션 0311을 더했다.** 0003이 그 표를 명시적으로
     제외해 놔서 `get_raw`가 읽을 수 없었다. 준 열은 `id`·`kind`·`fetched_at`·`original_text`뿐이고
     `siem_ref`·`siem_profile`은 주지 않았다 — `siem_ref`에 인덱스 이름이 들어 있고, 모델에게 인덱스
     이름을 보이지 않는 것이 이 설계의 전제다. 계획의 "범위 밖"은 `raw_records` **스키마** 개편을
@@ -87,7 +87,7 @@ L1·L2·L3가 모두 발급을 부른다. L1은 판정 뒤, L2는 조사 뒤(보
 
 16. **L2 보고 입력에 발급한 근거의 발췌를 싣는다**(2026-11-27 보완).
     - **왜.** `make_report_task`가 `issued_evidence_ids`를 `allowed_evidence_ids`에만 넣고 `data`에는
-      넣지 않아, 보고 모델은 인용해도 되는 `evt_` ID를 몰랐다. 보고에 도구를 주지 않는 것(D-084)은
+      넣지 않아, 보고 모델은 인용해도 되는 `evt_` ID를 몰랐다. 보고에 도구를 주지 않는 것(D-086)은
       그대로 두고 입력으로 알린다.
     - **무엇을.** `data.evidence`는 발급분마다 `evidence_id`·`siem_ref`·`time`·`fields`(+ 잘린 필드의
       경로 `truncated_fields`)다. `fields`는 `TARGET_FIELDS["evidence"]`의 필드만 `query_siem`과 같은
@@ -122,7 +122,7 @@ L1·L2·L3가 모두 발급을 부른다. L1은 판정 뒤, L2는 조사 뒤(보
       글자(`soc.ids.siem_ref_key`)라 인덱스 이름이 그대로 들어 있고, `query_siem` 결과의 히트마다
       `siem_ref`로 이미 모델에게 보인다. 보고 입력에 `siem_ref`를 넣어도 새로 드러나는 것은 없다.
       "열을 주지 않는다"는 판단은 `get_raw`가 `siem_ref`·`siem_profile` 열을 따로 읽지 못하게 한다는
-      뜻으로만 남는다. 마이그레이션 0310은 고치지 않았다.
+      뜻으로만 남는다. 마이그레이션 0311은 고치지 않았다.
 17. **`tests/test_l3_hunt_db.py`의 `run_with_actor_tool`을 태스크 키로 덮는다.** 배포 설정에 태스크 키가
     있어 `allowed["l3"]`로 덮으면 무시돼 DB 테스트 6건이 실패했다(#389 테스트가 병합으로 들어옴).
     `l3_hypothesize`·`l3_verify` 둘 다 덮는다(`test_attack_basis_ignores_tool_calls_of_other_runs`가
@@ -151,7 +151,7 @@ L1·L2·L3가 모두 발급을 부른다. L1은 판정 뒤, L2는 조사 뒤(보
 - **공통 계약·설정 키 변경에 L1·L2·L3·UI 담당 확인**(원칙 7). 아래 "맞물리는 곳" 목록 그대로다.
 - **`l3_hypothesize`는 발급하지 않는다.** 그 태스크의 출력 계약(`hunt_hypotheses`)에 근거 인용
   칸이 없고 `cited_ids`가 `_no_evidence`다. 심 조회 도구는 계획대로 그대로 뒀지만, 인용할 수
-  없는 태스크에 로그 조회를 주는 것이 맞는지는 다시 볼 만하다(D-084의 논리를 그대로 적용하면
+  없는 태스크에 로그 조회를 주는 것이 맞는지는 다시 볼 만하다(D-086의 논리를 그대로 적용하면
   빼는 쪽이다). 이번 이슈에서는 기존 동작을 바꾸지 않았다.
 - **버린 건수를 남기는 범위.** L2는 보고 입력(`dropped_refs`)과
   `incidents.details.l2_analyze.dropped_refs`에 남긴다. L1·L3는 다음 태스크가 없어 경고 로그만
@@ -172,9 +172,9 @@ L1·L2·L3가 모두 발급을 부른다. L1은 판정 뒤, L2는 조사 뒤(보
 
 | 계획·이슈의 표기 | 실제 |
 |---|---|
-| D-081 (근거 발급 방식) | **D-083** |
-| D-082 (태스크별 허용 목록) | **D-084** |
-| `0307_agent_reader_raw_records.sql` | **`0310_agent_reader_raw_records.sql`** (0308을 거쳐 두 번 옮겼다) |
+| D-081 (근거 발급 방식) | **D-085** |
+| D-082 (태스크별 허용 목록) | **D-086** |
+| `0307_agent_reader_raw_records.sql` | **`0311_agent_reader_raw_records.sql`** (0308, 0310을 거쳐 세 번 옮겼다) |
 
 `src/soc/db/migrate.py:89`가 같은 번호의 마이그레이션 둘을 `MigrationError`로 거부하므로, 옮기지
 않으면 병합한 순간 모든 db 테스트가 깨진다. 참조 46곳을 함께 고쳤다. 계획 파일의 표기도 바꿨다
@@ -187,6 +187,47 @@ L1·L2·L3가 모두 발급을 부른다. L1은 판정 뒤, L2는 조사 뒤(보
 
 **브랜치는 병합 뒤 `origin/main`과 같은 지점에서 앞서 있다**(뒤처짐 0). main의 4커밋이
 `docs/decisions.md`·`tests/test_db_tables.py`에서 충돌했고 둘 다 양쪽을 살려 해결했다.
+
+세 번째로 옮겼다(2026-11-27). `origin/main`을 다시 합칠 때 #373이 **D-083**(화면 자동 갱신)을,
+#391(PR #395)이 **D-084**(승인된 Case 색인)와 **`0310_case_index_jobs.sql`**을 먼저 썼다. 이
+브랜치(#382)의 것만 옮겼다. 다른 이슈의 것을 가리키는 참조는 위치별로 가려서 그대로 뒀다.
+
+| 이슈 | 이전 | 지금 |
+|---|---|---|
+| #382 근거 발급 방식 | D-083 | **D-085** |
+| #382 태스크별 도구 허용 | D-084 | **D-086** |
+| #382 읽기 역할 `raw_records` 열 권한 | `0310_agent_reader_raw_records.sql` | **`0311_agent_reader_raw_records.sql`** |
+| #373 화면 자동 갱신 | D-083 | 그대로 |
+| #391 Case 색인 | D-084, `0310_case_index_jobs.sql` | 그대로 |
+
+D-085·D-086·0311이 `origin/main`에 비어 있는 것을 확인하고 옮겼다. `tests/test_db_tables.py`의
+마이그레이션 목록은 `0310_case_index_jobs.sql`과 `0311_agent_reader_raw_records.sql` 둘 다 남겼다.
+주석 속 번호도 위치별로 바꿨다(`docs/decisions.md`의 #382 행, `config/default.toml`, `src/soc/`의
+근거 발급·허용 목록 주석, 테스트 주석). 마이그레이션 파일은 이름과 주석의 결정 번호만 바뀌었고
+SQL은 그대로다. 위 두 번째 이동 설명(0308 → 0310)과 이 파일의 지난 서술은 그때의 기록이라 고치지
+않았다.
+
+**이미 옛 `0310_agent_reader_raw_records.sql`을 적용한 DB는 정리가 필요하다.** 그 DB의
+`schema_migrations`에는 version 310에 옛 이름이 기록돼 있어, 합친 뒤 `migrate`는 "이미 적용한 번호의
+파일 이름이 기록과 다르다"로 멈춘다(`src/soc/db/migrate.py`). 마이그레이션을 돌리기 전에 그 한 줄을
+지운다.
+
+```sql
+DELETE FROM schema_migrations
+ WHERE version = 310 AND name = '0310_agent_reader_raw_records.sql';
+```
+
+그 뒤 `migrate`가 `0310_case_index_jobs.sql`(#391)과 `0311_agent_reader_raw_records.sql`을 적용한다.
+`GRANT SELECT (...) ON raw_records`는 다시 줘도 같으므로 옛 권한이 이미 있어도 안전하다. 이
+브랜치의 0310을 쓰지 않은 DB(새 DB, main만 쓴 DB)는 정리할 것이 없다. 서버 DB가 이미 옛 0310을
+적용했는지는 사람이 확인한다.
+
+#391이 더한 L2 워커(`soc.case_index:build_worker`)와 설정은 이 브랜치의 태스크별 허용 목록, 파이프
+점검과 부딪히지 않는다. 그 워커는 에이전트를 부르지 않아 `[tools.allowed]`와 무관하고, 파이프 점검은
+`[executor.l2]`에 워커가 하나 더 있어도 `interval_seconds`·`workers`가 비어 있지 않은지만 본다.
+`search_similar_cases`가 허용된 태스크(`l1_alert_triage`·`l1_ticket_judgment`·`l2_classify`)가
+있으면 점검이 Qdrant·임베더를 보므로, #391이 적은 "그 허용을 뺀 설정에서는 이 워커도 점검 없이
+Qdrant가 필요하다"는 틈은 그대로다.
 
 ### 함정
 
@@ -204,7 +245,7 @@ L1·L2·L3가 모두 발급을 부른다. L1은 판정 뒤, L2는 조사 뒤(보
 - **계약을 고치면 세 곳을 같이 고친다.** `contracts/*.json` → `uv run python
   scripts/generate_contracts.py` → `tests/contract_samples.py`의 `CONTRACT_NAMES`(별도 목록)와
   `tests/fixtures/contracts/{valid,invalid}/<이름>.json` 샘플.
-- **열 단위 GRANT는 `count(*)`를 막지 못한다.** 0310을 넣자
+- **열 단위 GRANT는 `count(*)`를 막지 못한다.** 0311을 넣자
   `test_reader_role_is_denied_elsewhere`의 `SELECT count(*) FROM raw_records`가 통과해 버렸다.
   주지 않은 열(`siem_ref`·`siem_profile`)로 단정을 바꿨다.
 - **발급은 `GET /<index>/_doc/<id>`가 요청한 것과 같은 `_index`·`_id`를 돌려준다고 전제한다.**
@@ -223,7 +264,7 @@ L1·L2·L3가 모두 발급을 부른다. L1은 판정 뒤, L2는 조사 뒤(보
   `test_a_failed_issue_drops_only_that_evidence`가 모델이 받은 입력 전체에서 버린 문서의 ref가
   없음을 확인한다.
 - **발급한 근거는 DB에 저장된 원문에서 발췌한다.** `events.raw_id`로 `raw_records`를 잇는다.
-  `get_raw`와 달리 워커의 연결로 읽으므로 읽기 역할 권한(0310)과 무관하다.
+  `get_raw`와 달리 워커의 연결로 읽으므로 읽기 역할 권한(0311)과 무관하다.
 - **테스트 틀.** `tests/fake_model.py`에 `final_from_input` 단계를 더했다. 모델이 받은 입력(필터를
   거친 것)을 읽어 최종 답을 만든다. 시나리오가 실행 중에 정해지는 `evt_` ID를 미리 알 수 없다.
   DB 테스트를 이 작업대에서 돌릴 때는 `DATABASE_URL`이 필요하다(`.env`가 없으면 개발 `.env`를
@@ -237,7 +278,7 @@ L1·L2·L3가 모두 발급을 부른다. L1은 판정 뒤, L2는 조사 뒤(보
 - `CallContext.siem_docs`(호출별)와 `ToolSession.siem_refs`(실행별)가 생겼다.
 - `ToolRegistry.session()`이 `task` 인자를 받는다(선택).
 - 새 도구 `get_raw`와 새 심 조회 대상 `evidence`.
-- 마이그레이션 0310이 읽기 역할에 `raw_records` 네 열을 준다.
+- 마이그레이션 0311이 읽기 역할에 `raw_records` 네 열을 준다.
 - `events`에 class 0 원문 포인터 행이 들어온다. 기존 정규화 행과 섞인다.
 - `normalize_status`에 정규화기가 아닌 코드가 `succeeded` 행을 쓴다.
 - `normalize()`가 이벤트 원본을 거부한다.
@@ -250,9 +291,9 @@ L1·L2·L3가 모두 발급을 부른다. L1은 판정 뒤, L2는 조사 뒤(보
 ```
 uv run ruff format --check .   통과
 uv run ruff check .            통과
-uv run pytest                  2658 passed, 797 deselected
+uv run pytest                  2693 passed, 834 deselected
 uv run python scripts/generate_contracts.py --check   통과
-uv run pytest -m "db or qdrant"  780 passed (아래 참고. postgres·qdrant를 띄우고 돌렸다)
+uv run pytest -m "db or qdrant"  817 passed (아래 참고. postgres·qdrant를 띄우고 돌렸다)
 ```
 
 db 마커는 `docker compose up -d postgres` 뒤에 돌렸다. 주요 테스트:

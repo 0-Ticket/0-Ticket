@@ -203,7 +203,7 @@ def with_call_ids(data: dict[str, Any]) -> dict[str, Any]:
 def via_run_task(name: str, sink: MemoryLogSink) -> tuple[Callable[[AgentTask], Any], FakeModel]:
     model = FakeModel(with_call_ids(scenario(name)))
     config = copy.deepcopy(load_agent_config())
-    # 허용 목록은 태스크별이다(#382, D-084). 단계 키를 덮어써도 태스크 키가 있으면 무시된다
+    # 허용 목록은 태스크별이다(#382, D-086). 단계 키를 덮어써도 태스크 키가 있으면 무시된다
     for task_name in ("l3_hypothesize", "l3_verify"):
         config["tools"]["allowed"][task_name] = [QUERY_EVENTS.name]
 

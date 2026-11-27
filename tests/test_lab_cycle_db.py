@@ -323,7 +323,7 @@ def test_lab_shaped_alert_flows_to_incident_artifact_and_rerun_adds_nothing(
     outcomes = q(conn, "SELECT outcome FROM ingest_runs ORDER BY id").fetchall()
     assert [row["outcome"] for row in outcomes] == ["ok", "ok"]
 
-    # 2 정규화: 알럿 4건만. 이벤트는 정규화하지 않는다(#382, D-083)
+    # 2 정규화: 알럿 4건만. 이벤트는 정규화하지 않는다(#382, D-085)
     normalized = normalize_run(NORMALIZE, conn, "lab-cycle")
     assert (normalized.succeeded, normalized.failed) == (4, 5)
     assert normalized.failures == {"validation_failed": 5}
