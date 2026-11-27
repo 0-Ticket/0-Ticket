@@ -1,7 +1,10 @@
 """[l3.hunt] 설정 읽기. 틀리면 ConfigError."""
 
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 from typing import Any
+
+from soc.contracts import to_epoch_ms
 
 
 class ConfigError(Exception):
@@ -69,3 +72,11 @@ def read_hunt_settings(l3: dict[str, Any]) -> HuntSettings:
         max_attempts=_count(hunt, "max_attempts", minimum=1),
         attack_version=version,
     )
+
+
+def lookback_window(settings: HuntSettings, now: datetime) -> dict[str, int]:
+    """조회 구간(UTC epoch ms). 가설 생성과 검증 run이 같은 값을 모델에 준다(#403)."""
+    return {
+        "from": to_epoch_ms(now - timedelta(days=settings.lookback_days)),
+        "to": to_epoch_ms(now),
+    }

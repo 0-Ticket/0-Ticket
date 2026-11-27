@@ -12,7 +12,7 @@ from soc.contracts import to_epoch_ms, validate_contract
 from soc.ids import new_id
 from soc.l3.hunt import store
 from soc.l3.hunt.prompts import load_prompt
-from soc.l3.hunt.settings import HuntSettings
+from soc.l3.hunt.settings import HuntSettings, lookback_window
 
 Run = Callable[[AgentTask], AgentResult]
 # Agent Log details.task. 생성 워커가 마지막 시도를 이 이름으로 찾는다(#245)
@@ -60,7 +60,12 @@ def hypothesize(
             stage="l3",
             task=TASK,
             prompt=load_prompt("l3_hypothesize"),
-            data={"news": news, "cases": cases, "max_hypotheses": settings.max_hypotheses},
+            data={
+                "news": news,
+                "cases": cases,
+                "max_hypotheses": settings.max_hypotheses,
+                "window": lookback_window(settings, now),
+            },
             output_contract="hunt_hypotheses",
             cited_ids=_no_evidence,
             subject_type="hunt",

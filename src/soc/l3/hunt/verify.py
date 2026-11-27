@@ -9,7 +9,7 @@ pending이 아닌 Hunt는 건드리지 않고, 갱신은 읽은 상태가 그대
 import logging
 import os
 from collections.abc import Callable, Sequence
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from typing import Any
 
 import psycopg
@@ -20,7 +20,7 @@ from soc.evidence import issue
 from soc.ids import new_id
 from soc.l3.hunt import store
 from soc.l3.hunt.prompts import load_prompt
-from soc.l3.hunt.settings import ConfigError, HuntSettings, read_hunt_settings
+from soc.l3.hunt.settings import ConfigError, HuntSettings, lookback_window, read_hunt_settings
 from soc.ticketing import clean_title
 
 logger = logging.getLogger(__name__)
@@ -106,7 +106,6 @@ class HuntVerifier:
                 return
             names = store.attack_names(conn, self._settings.attack_version)
             now = self._clock()
-            window_from = now - timedelta(days=self._settings.lookback_days)
             read_attempts = hunt["attempts"]
             # 모델 실행은 DB 트랜잭션 밖에서 한다
             result = self._run(
@@ -119,7 +118,7 @@ class HuntVerifier:
                         "attack_techniques": [
                             {"id": t, "name": names.get(t)} for t in hunt["attack_techniques"]
                         ],
-                        "window": {"from": to_epoch_ms(window_from), "to": to_epoch_ms(now)},
+                        "window": lookback_window(self._settings, now),
                     },
                     output_contract="hunt_verification",
                     cited_ids=_cited,
