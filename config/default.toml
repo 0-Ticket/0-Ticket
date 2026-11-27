@@ -132,12 +132,16 @@ max_limit = 100
 # 위협 인텔 조회(#309): lookup_indicator는 l1·l2_investigate. l3에 넣지 않는다(무료 키 분당 4건을
 # 헌팅이 쓰지 않게). 환경변수 VT_API_KEY가 없으면 등록되지 않는다
 # 로컬 ATT&CK·KEV 조회(#311): get_attack_technique·search_attack_techniques·get_cve는 l2·l3
+# Web 도구(#211): query_http_flow·summarize_http_flow는 #382에서 없앴다(D-083). OCSF 4002
+# Event만 읽던 도구인데 이벤트 정규화가 사라져 4002 행이 더 생기지 않는다. 발급분은 class 0이라
+# 그 둘로는 영원히 보이지 않았고, 모델은 빈 결과를 "HTTP 활동 없음"으로 읽었다. HTTP 로그는
+# query_siem으로 찾고, 발급된 근거는 get_event·get_raw로 읽는다
 l1_alert_triage = [
-    "get_alert", "get_event", "query_records", "query_http_flow", "summarize_http_flow",
+    "get_alert", "get_event", "query_records",
     "query_siem", "get_raw", "lookup_indicator", "search_similar_cases",
 ]
 l1_ticket_judgment = [
-    "get_alert", "get_event", "query_records", "query_http_flow", "summarize_http_flow",
+    "get_alert", "get_event", "query_records",
     "query_siem", "get_raw", "lookup_indicator", "search_similar_cases",
 ]
 # 그래프 후보와 모델 판단만 하는 단계다. 심을 뒤지면 분류가 느려지고 발급할 다음 태스크도 없다
@@ -145,7 +149,7 @@ l2_classify = [
     "get_alert", "get_event", "query_records", "search_similar_cases",
 ]
 l2_investigate = [
-    "get_alert", "get_event", "query_records", "query_http_flow", "summarize_http_flow",
+    "get_alert", "get_event", "query_records",
     "query_siem", "count_siem", "get_raw", "run_host_check", "lookup_indicator",
     "get_attack_technique", "search_attack_techniques", "get_cve", "search_similar_cases",
 ]
@@ -154,12 +158,12 @@ l2_report = [
     "get_attack_technique", "search_attack_techniques", "get_cve",
 ]
 l3_hypothesize = [
-    "get_alert", "get_event", "query_records", "query_http_flow", "summarize_http_flow",
+    "get_alert", "get_event", "query_records",
     "query_siem", "count_siem", "get_raw", "run_host_check",
     "get_attack_technique", "search_attack_techniques", "get_cve",
 ]
 l3_verify = [
-    "get_alert", "get_event", "query_records", "query_http_flow", "summarize_http_flow",
+    "get_alert", "get_event", "query_records",
     "query_siem", "count_siem", "get_raw", "run_host_check",
     "get_attack_technique", "search_attack_techniques", "get_cve",
 ]

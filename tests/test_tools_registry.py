@@ -583,8 +583,6 @@ PRODUCTION_TOOLS = [
     "get_event",
     "query_records",
     "get_raw",
-    "query_http_flow",
-    "summarize_http_flow",
 ]
 
 

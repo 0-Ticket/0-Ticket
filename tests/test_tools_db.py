@@ -1,4 +1,4 @@
-"""내부 데이터·Web 도구와 에이전트 DB 읽기 역할(db 마커, #211).
+"""내부 데이터 도구와 에이전트 DB 읽기 역할(db 마커, #211).
 
 임시 DB에 마이그레이션을 적용하고 tests/fixtures/tools/records.json의
 손으로 만든 Alert·Event를 넣는다.
@@ -20,7 +20,7 @@ from psycopg import sql
 from psycopg.conninfo import make_conninfo
 from psycopg.types.json import Jsonb
 from test_agent_core import CONFIG
-from tool_helpers import Caller, body_chars, parse
+from tool_helpers import Caller, parse
 
 from soc.contracts import to_datetime, validate_contract
 from soc.contracts.alert import assemble_alert, contract_data
@@ -38,8 +38,6 @@ ALL_TOOLS = [
     "get_alert",
     "get_event",
     "query_records",
-    "query_http_flow",
-    "summarize_http_flow",
     "get_raw",
 ]
 
@@ -258,9 +256,6 @@ def test_get_event_fills_message_from_the_summary_column_for_an_old_row(
         ("query_records", {"kind": "alert", **RANGE, "raw_id": "x"}),  # 계약에 없는 필터
         ("query_records", {"kind": "alert", **RANGE, "order_by": "title"}),
         ("query_records", {"kind": "alert", **RANGE, "sort": "title"}),
-        ("query_http_flow", {**RANGE, "status_code": 99}),
-        ("query_http_flow", {**RANGE, "ocsf_class": 3002}),
-        ("summarize_http_flow", {**RANGE, "limit": 5}),
     ],
 )
 def test_invalid_tool_arguments(reader_url: str, name: str, arguments: dict[str, Any]) -> None:
@@ -320,86 +315,29 @@ def test_query_events_filters(reader_url: str) -> None:
     assert set(ids(every)) <= c.session.evidence_ids
 
 
-# Web 도구
+def test_query_records_reads_legacy_http_events(reader_url: str) -> None:
+    out = call(caller(), "query_records", {"kind": "event", **RANGE, "ocsf_class": 4002})
+    assert ids(out) == [E[4], E[3], E[2], E[1]]
 
 
-def test_query_http_flow_reads_only_4002(reader_url: str) -> None:
+def test_query_records_filters_legacy_http_events(reader_url: str) -> None:
     c = caller()
-    out = call(c, "query_http_flow", RANGE)
-    assert ids(out) == [E[4], E[3], E[2], E[1]]  # 3002와 Base Event(0)는 나오지 않는다
-    first = out["records"][-1]
-    assert first == {
-        "id": E[1],
-        "time": T0 + 1000,
-        "summary": "GET /login.php 500",
-        "entities": [{"type": "ip", "value": "203.0.113.10", "role": "src"}],
-        "path": "/login.php",
-        "method": "GET",
-        "status_code": 500,
-        "user_agent": "sqlmap/1.7",
-        "src_ip": "203.0.113.10",
-    }
+    args = {"kind": "event", **RANGE, "ocsf_class": 4002}
+    assert ids(call(c, "query_records", {**args, "summary_contains": "login.php"})) == [E[2], E[1]]
+    assert ids(
+        call(c, "query_records", {**args, "entity_type": "ip", "entity_value": "203.0.113.10"})
+    ) == [E[4], E[2], E[1]]
 
 
-def test_query_http_flow_filters(reader_url: str) -> None:
-    c = caller()
-    assert ids(call(c, "query_http_flow", {**RANGE, "src_ip": "198.51.100.7"})) == [E[3]]
-    assert ids(call(c, "query_http_flow", {**RANGE, "method": "POST"})) == [E[2]]
-    assert ids(call(c, "query_http_flow", {**RANGE, "status_code": 403})) == [E[4]]
-    assert ids(call(c, "query_http_flow", {**RANGE, "path_contains": "login"})) == [E[2], E[1]]
-    ua = call(c, "query_http_flow", {**RANGE, "user_agent_contains": "mozilla"})
-    assert ids(ua) == [E[3]]
-    # 3002 Event도 src_ip가 같지만 나오지 않는다
-    src = call(c, "query_http_flow", {**RANGE, "src_ip": "203.0.113.10", "sort": "time_asc"})
-    assert ids(src) == [E[1], E[2], E[4]]
+def test_removed_http_tools_are_not_registered() -> None:
+    names = default_registry().names()
+    assert "query_http_flow" not in names
+    assert "summarize_http_flow" not in names
 
 
-def test_summarize_http_flow(reader_url: str) -> None:
-    c = caller()
-    out = call(c, "summarize_http_flow", RANGE)
-    assert out["total"] == 4
-    assert out["truncated"] is False
-    fields = out["fields"]
-    assert fields["method"] == [{"value": "GET", "count": 3}, {"value": "POST", "count": 1}]
-    assert fields["path"][0] == {"value": "/login.php", "count": 2}
-    assert fields["status_code"][0]["count"] == 2  # 200이 두 번
-    assert fields["src_ip"][0] == {"value": "203.0.113.10", "count": 3}
-    assert fields["user_agent"][0] == {"value": "sqlmap/1.7", "count": 3}
-    # 집계는 call_id로만 인용한다
-    assert c.session.evidence_ids == {out["call_id"]}
-
-
-def test_summarize_http_flow_size_is_capped(migrated: str, reader_url: str) -> None:
-    data = load_records()
-    base = data["events"][0]
-    extra = []
-    for i in range(30):
-        event = copy.deepcopy(base)
-        event["id"] = f"evt_01a19f93-1150-7000-8000-0000000f{i:04x}"
-        event["raw_id"] = f"raw_01a19f93-1150-7000-8000-0000000f{i:04x}"
-        event["ocsf"]["http_request"]["user_agent"] = f"{i:02d}" + "A" * 3000
-        event["ocsf"]["http_request"]["url"]["path"] = f"/p{i}/" + "B" * 500
-        extra.append(event)
-    insert_records(migrated, {"alerts": [], "events": extra})
-    c = caller(tools_config())
-    text = call_raw(c, "summarize_http_flow", RANGE)
-    out = parse(text)
-    assert out["total"] == 34
-    for entries in out["fields"].values():
-        assert len(entries) <= 10  # 필드별 상위 10개
-    ua = out["fields"]["user_agent"]
-    long = [e for e in ua if e.get("value_truncated")]
-    assert long and all(len(e["value"]) <= 121 for e in long)  # 120자 + 표시
-    assert body_chars(text) <= CONFIG["agent"]["l1"]["max_tool_result_chars"]
-
-    small = {**CONFIG["agent"]["l1"], "max_tool_result_chars": 1500}
-    tight = {**tools_config(), "agent": {**CONFIG["agent"], "l1": small}}
-    text = call_raw(caller(tight), "summarize_http_flow", RANGE)
-    out = parse(text)
-    assert body_chars(text) <= 1500
-    assert out["truncated"] is True
-    counts = [e["count"] for e in out["fields"]["method"]]
-    assert counts == sorted(counts, reverse=True)
+def test_query_records_reads_class_zero_events(reader_url: str) -> None:
+    out = call(caller(), "query_records", {"kind": "event", **RANGE, "ocsf_class": 0})
+    assert ids(out) == [E[6]]
 
 
 # DB 오류

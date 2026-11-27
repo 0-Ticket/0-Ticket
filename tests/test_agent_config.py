@@ -48,8 +48,6 @@ def test_default_tools_config(default_config_dir: Path) -> None:
         "get_alert",
         "get_event",
         "query_records",
-        "query_http_flow",
-        "summarize_http_flow",
     ]
     # #382: 발급한 원문을 읽는 도구. query_siem 뒤에 온다
     with_raw = [*expected, "query_siem", "get_raw"]

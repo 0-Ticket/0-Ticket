@@ -73,6 +73,17 @@ L1·L2·L3가 모두 발급을 부른다. L1은 판정 뒤, L2는 조사 뒤(보
     표에 있어 목록 조회가 여전히 쓸모 있다. 계획의 그 줄은 발급을 넣기 전 판단이다.
 14. **발급 Event의 `source`는 `issued`다.** `normalize_status.source`는 이벤트 행에서 소문자·숫자·
     밑줄이어야 한다(0305). `outcome`은 비워 둔다 — 정규화 품질을 판단한 값이 아니다.
+15. **`query_http_flow`·`summarize_http_flow`는 계획대로 지웠다**(`src/soc/tools/web.py` 삭제).
+    한 번은 남겼다가 되돌렸다. 남긴 근거가 "검색 풀이 줄어 결과가 적어질 뿐"이었는데 **틀렸다**.
+    그 둘은 `ocsf_class = 4002`로 거르고(`tools/web.py:60`) OCSF 경로 다섯 개를 읽는데, 발급분은
+    class 0 Base Event이고 `evidence_ocsf()`가 쓰는 칸은 `class_uid`·`time`·`severity_id`·
+    `message`·`metadata`뿐이다. 즉 발급된 근거는 그 둘에 **영원히 보이지 않고**, 이벤트 정규화가
+    사라졌으니 4002 행도 더 생기지 않는다. 새 DB에서는 항상 빈 결과이고, 모델은 그것을
+    "HTTP 활동이 없다"로 읽는다. 실제 로컬 실행에서 `query_http_flow`가 135회 불려 두 번째로 많이
+    쓴 도구였고 전부 헛돌았다. HTTP 로그는 `query_siem`으로 찾고 발급된 근거는 `get_event`·
+    `get_raw`로 읽는다. `tests/test_tools_db.py`의 그 도구 테스트 4개는 기존 4002 행과 새 class 0
+    행을 `query_records`로 읽고 제거한 도구가 등록되지 않는지 확인하도록 바꿨다.
+    기존 DB에 남은 4002 행을 읽을 길은 `query_records`의 `kind=event`다.
 
 ## 다음 사람이 알아야 할 것
 
@@ -90,8 +101,8 @@ L1·L2·L3가 모두 발급을 부른다. L1은 판정 뒤, L2는 조사 뒤(보
   남긴다(저장 Verdict·Hunt 모양을 바꾸지 않으려고).
 - **`query_records`의 `kind` enum을 좁히지 않았다.** 계획의 "바꿀 곳"은 `("alert",)`로 줄이라고
   했지만, 발급된 class 0 Event가 `events` 표에 있으므로 목록 조회가 여전히 쓸모 있다. 사람이
-  고른 "조회 도구 셋을 남긴다"와도 맞다. `query_http_flow`·`summarize_http_flow`도 남겼다 —
-  검색 풀이 줄어 결과가 적어질 뿐이고, 기존 `evt_` 근거에는 여전히 값이 있다.
+  고른 "조회 도구 셋을 남긴다"와도 맞다. `query_http_flow`·`summarize_http_flow`와 달리 이쪽은
+  발급분에도 값이 있다(`ocsf_class`·`summary`로 거른다). 그 둘은 계획대로 지웠다(위 15번).
 - **`get_raw`에 `screen_input`이 걸리는지 따로 테스트하지 않았다.** `records` 도구 일반에 대해
   `tests/test_agent_input_redaction.py`가 이미 확인한다(`leak_records`). `get_raw`는 같은 경로를
   타는 또 하나의 `records` 도구라 중복 테스트를 만들지 않았다.
