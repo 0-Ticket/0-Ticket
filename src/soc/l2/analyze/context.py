@@ -1,6 +1,6 @@
 """L2 Incident 분석 문맥과 저장된 분류 그래프를 읽는다."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 import psycopg
@@ -12,6 +12,68 @@ from soc.contracts.alert import alert_model_input
 from soc.contracts.event import event_model_input
 from soc.l2.branch.read import _contract_row, _existing_ids, read_branch_data
 from soc.l2.config import AnalyzeSettings
+
+# 한 연결(출발 Ticket의 엔티티 → 상대 Ticket)이 모델 입력에 싣는 상대 ID의 상한이다(#396).
+MAX_PEER_IDS = 5
+
+
+def summarize_paths(
+    paths: list[dict[str, Any]] | tuple[dict[str, Any], ...],
+    *,
+    max_peer_ids: int = MAX_PEER_IDS,
+) -> tuple[list[dict[str, Any]], dict[str, str]]:
+    """저장된 경로를 엔티티 → 상대 Ticket → 상대 ID 연결로 줄인다. 저장된 경로에 있는 것만 쓴다.
+
+    경로 노드는 branch/graph.py `_path`의 순서(Ticket, 출발, 엔티티, 상대, 상대 Ticket, Incident)다.
+    상대 ID가 상한을 넘으면 앞에서부터 남기고 `omitted`에 생략 건수를 적는다.
+    연결과 `from`은 줄이지 않는다.
+    반환하는 둘째 값은 상대 Ticket → Incident다.
+    """
+    links: dict[str, dict[str, Any]] = {}
+    peers: dict[str, str] = {}
+    for path in paths:
+        source, entity, peer = path["nodes"][1], path["nodes"][2], path["nodes"][3]
+        peers.setdefault(path["ticket_id"], path["incident_id"])
+        link = links.setdefault(entity["id"], {"entity": entity["id"], "from": [], "to": {}})
+        if source["id"] not in link["from"]:
+            link["from"].append(source["id"])
+        ids = link["to"].setdefault(path["ticket_id"], [])
+        if peer["id"] not in ids:
+            ids.append(peer["id"])
+    result = []
+    for link in links.values():
+        omitted = {
+            t: len(ids) - max_peer_ids for t, ids in link["to"].items() if len(ids) > max_peer_ids
+        }
+        link["to"] = {t: ids[:max_peer_ids] for t, ids in link["to"].items()}
+        result.append({**link, "omitted": omitted} if omitted else link)
+    return result, peers
+
+
+def ticket_graph(
+    ticket: dict[str, Any], peers: dict[str, str], *, max_peer_ids: int = MAX_PEER_IDS
+) -> dict[str, Any]:
+    """Ticket의 저장된 분류 결과(details.l2_branch)를 입력용 그래프 항목으로 읽는다.
+
+    peers에 상대 Ticket → Incident를 더한다.
+    """
+    branch = ticket["details"].get("l2_branch")
+    links, found = summarize_paths(
+        [] if branch is None else branch.get("paths", []), max_peer_ids=max_peer_ids
+    )
+    for peer, incident in found.items():
+        peers.setdefault(peer, incident)
+    return {
+        "ticket_id": ticket["id"],
+        "coverage": "legacy" if branch is None else branch.get("coverage", "unknown"),
+        "reason": None if branch is None else branch.get("reason"),
+        "links": links,
+    }
+
+
+def _without_details(row: dict[str, Any]) -> dict[str, Any]:
+    # details는 "계약에 없는 값. 다른 단계는 읽지 않는다"(실행 기록·분류 진행 상태)라 보내지 않는다
+    return {key: value for key, value in row.items() if key != "details"}
 
 
 @dataclass(frozen=True)
@@ -29,16 +91,17 @@ class AnalyzeContext:
     evidence_ids: tuple[str, ...]
     asset_lookup_failed: bool
     max_range_days: int
+    peer_tickets: dict[str, str] = field(default_factory=dict)
 
     def investigate_data(self) -> dict[str, Any]:
         return {
-            "incident": self.incident,
-            "tickets": list(self.tickets),
+            "incident": _without_details(self.incident),
+            "tickets": [_without_details(ticket) for ticket in self.tickets],
             "alerts": list(self.alerts),
             "events": list(self.events),
             "hunts": list(self.hunts),
             "assets": self.assets,
-            "graph": {"tickets": list(self.ticket_graphs)},
+            "graph": {"peer_tickets": self.peer_tickets, "tickets": list(self.ticket_graphs)},
             "window": self.window,
             "max_range_days": self.max_range_days,
             "previous_artifact": self.previous_artifact,
@@ -79,6 +142,7 @@ def read_context(
     events: dict[str, dict[str, Any]] = {}
     hunts: dict[str, dict[str, Any]] = {}
     ticket_graphs = []
+    peer_tickets: dict[str, str] = {}
     evidence: dict[str, None] = {}
     for ticket_id in incident["ticket_ids"]:
         try:
@@ -86,15 +150,7 @@ def read_context(
         except (LookupError, ValueError):
             continue
         tickets.append(rows.ticket)
-        branch = rows.ticket["details"].get("l2_branch")
-        ticket_graphs.append(
-            {
-                "ticket_id": ticket_id,
-                "coverage": "legacy" if branch is None else branch.get("coverage", "unknown"),
-                "reason": None if branch is None else branch.get("reason"),
-                "paths": [] if branch is None else branch.get("paths", []),
-            }
-        )
+        ticket_graphs.append(ticket_graph(rows.ticket, peer_tickets))
         for alert in rows.alerts:
             item = alert_model_input(alert)  # 모델 입력과 시간 창은 이전 모양(start_time 기준)이다
             alerts.setdefault(item["id"], item)
@@ -145,6 +201,7 @@ def read_context(
         evidence_ids=tuple(evidence),
         asset_lookup_failed=asset_failed,
         max_range_days=max_range_days,
+        peer_tickets=peer_tickets,
     )
 
 
