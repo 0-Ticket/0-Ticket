@@ -119,6 +119,8 @@ function Header({
           <ReviewActions
             id={incident.id}
             status={incident.status}
+            reviewRound={incident.review_round}
+            analysisRound={incident.analysis_round}
             onApproved={onApproved}
           />
           {caseId && can("case.read") && (
