@@ -3,7 +3,15 @@
 에이전트 프레임워크는 OpenAI Agents SDK다(D-022). 트레이싱은 진입점에서 끈다.
 """
 
-from soc.agent.runner import run_agent
+from soc.agent.runner import first_call_size, run_agent
 from soc.agent.types import FAILURES, AgentResult, AgentTask, AgentWorker, TaskPrompt
 
-__all__ = ["FAILURES", "AgentResult", "AgentTask", "AgentWorker", "TaskPrompt", "run_agent"]
+__all__ = [
+    "FAILURES",
+    "AgentResult",
+    "AgentTask",
+    "AgentWorker",
+    "TaskPrompt",
+    "first_call_size",
+    "run_agent",
+]

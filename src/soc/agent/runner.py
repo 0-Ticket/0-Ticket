@@ -304,6 +304,19 @@ def _stop_before_start(
     )
 
 
+def first_call_size(task: AgentTask, config: dict[str, Any] | None = None) -> tuple[int, int]:
+    """(첫 모델 호출의 입력 글자 수, 그 단계의 max_input_chars). 호출하지 않고 잰다(#382).
+
+    run_task가 보내기 직전에 검사하는 것과 같은 길이다: system 지시 + 구분자로 감싸고 모델 입력
+    필터(`screen_input`)를 거친 입력 항목. 입력에 더할 값이 예산에 들어가는지 미리 맞출 때 쓴다.
+    """
+    config = load_config() if config is None else config
+    stage = config["agent"][task.stage]
+    instructions = compose_instructions(task, max_turns=int(stage["max_turns"]))
+    item = _screen_item({"role": "user", "content": wrap_data(task.data)}, build_redactor(config))
+    return input_chars(instructions, [item]), int(stage["max_input_chars"])
+
+
 def wrap_data(data: Any) -> str:
     """입력 데이터를 구분자로 감싼다. 데이터 속 '<'는 \\u003c로 바꿔 구분자를 닫지 못하게 한다."""
     payload = json.dumps(data, ensure_ascii=False, sort_keys=True)

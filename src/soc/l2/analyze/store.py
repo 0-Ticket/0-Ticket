@@ -86,6 +86,7 @@ def save_success(
     asset_lookup_failed: bool,
     now_ms: int,
     dropped_refs: int = 0,
+    evidence_omitted: int = 0,
 ) -> SaveResult:
     """상태와 라운드가 읽은 값 그대로일 때 Artifact·Proposal·Incident를 저장한다."""
     with conn.transaction():
@@ -110,6 +111,7 @@ def save_success(
             asset_lookup_failed=asset_lookup_failed,
             dropped_techniques=dropped,
             dropped_refs=dropped_refs,
+            evidence_omitted=evidence_omitted,
         )
         # 제목은 부수 값이라 계약이 아니라 여기서 정리한다. 쓸 수 없으면 이전 제목을 유지한다(D-072)
         title = clean_title(analysis["title"])
@@ -187,6 +189,7 @@ def _diagnostics(
     asset_lookup_failed: bool,
     dropped_techniques: int,
     dropped_refs: int = 0,
+    evidence_omitted: int = 0,
 ) -> dict[str, Any]:
     l2 = dict(details.get("l2_analyze", {}))
     l2.pop("stopped", None)
@@ -196,6 +199,8 @@ def _diagnostics(
         dropped_techniques=dropped_techniques,
         # 조사가 고른 SIEM 문서 중 저장하지 못해 버린 수(#382). 값은 남기지 않는다
         dropped_refs=dropped_refs,
+        # 보고 입력 예산 때문에 발췌를 싣지 못한 발급 근거 수(#382)
+        evidence_omitted=evidence_omitted,
         failure_streak=0,
     )
     return {**details, "l2_analyze": l2}

@@ -8,9 +8,9 @@ from typing import Any
 import psycopg
 from psycopg.types.json import Jsonb
 
-from soc.agent import AgentResult, AgentTask, run_agent
+from soc.agent import AgentResult, AgentTask, first_call_size, run_agent
 from soc.contracts import to_datetime, to_epoch_ms
-from soc.evidence import issue
+from soc.evidence import evidence_excerpts, fit_to_budget, issue
 from soc.l2.analyze.context import read_context
 from soc.l2.analyze.store import save_failure, save_success
 from soc.l2.analyze.tasks import make_investigate_task, make_report_task
@@ -127,18 +127,30 @@ class L2AnalyzeWorker:
                 siem_profile=self._evidence_profile,
                 now_ms=to_epoch_ms(self._clock()),
             )
-            report_task = make_report_task(
-                incident_id,
-                attempt=attempt,
-                findings=investigation.output,
-                incident=context.incident,
-                assets=context.assets,
-                previous_artifact=context.previous_artifact,
-                asset_lookup_failed=context.asset_lookup_failed,
-                context_evidence=context.evidence_ids,
-                issued_evidence_ids=tuple(issued.evidence_ids.values()),
-                dropped_refs=issued.dropped,
-            )
+            issued_ids = list(dict.fromkeys(issued.evidence_ids.values()))
+            excerpts = evidence_excerpts(conn, issued_ids)
+
+            def build(shown: list[dict[str, Any]]) -> AgentTask:
+                return make_report_task(
+                    incident_id,
+                    attempt=attempt,
+                    findings=investigation.output,
+                    incident=context.incident,
+                    assets=context.assets,
+                    previous_artifact=context.previous_artifact,
+                    asset_lookup_failed=context.asset_lookup_failed,
+                    context_evidence=context.evidence_ids,
+                    issued_evidence_ids=tuple(issued_ids),
+                    dropped_refs=issued.dropped,
+                    evidence=shown,
+                    evidence_omitted=len(issued_ids) - len(shown),
+                )
+
+            try:
+                report_task = fit_to_budget(excerpts, build, first_call_size)
+            except Exception:  # 길이를 잴 수 없으면 발췌 없이 보낸다. 설정 오류는 run이 알린다
+                report_task = build([])
+            evidence_omitted = report_task.data["evidence_omitted"]
             report = self._run(report_task)
             if should_retry_report(report.failure):
                 report = self._run(report_task)
@@ -160,6 +172,7 @@ class L2AnalyzeWorker:
                 asset_lookup_failed=context.asset_lookup_failed,
                 now_ms=to_epoch_ms(self._clock()),
                 dropped_refs=issued.dropped,
+                evidence_omitted=evidence_omitted,
             )
 
     def _save_failure(

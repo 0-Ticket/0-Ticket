@@ -74,6 +74,8 @@ def make_report_task(
     context_evidence: tuple[str, ...],
     issued_evidence_ids: tuple[str, ...] = (),
     dropped_refs: int = 0,
+    evidence: list[dict[str, Any]] | None = None,
+    evidence_omitted: int = 0,
 ) -> AgentTask:
     cited = tuple(findings_citations(findings))
     return AgentTask(
@@ -81,7 +83,9 @@ def make_report_task(
         task="l2_report",
         prompt=_prompt("l2_report"),
         data={
-            "findings": findings,
+            # siem_refs는 뗀다(#382). 발급에 실패해 버린 ref 값이 보고 입력에 남지 않게 한다.
+            # 인용할 수 있는 근거는 아래 evidence의 evt_ ID뿐이다. 원본 findings는 그대로다
+            "findings": {k: v for k, v in findings.items() if k != "siem_refs"},
             "incident": {"id": incident["id"], "summary": incident["summary"]},
             "assets": assets,
             "previous_artifact": previous_artifact,
@@ -89,6 +93,10 @@ def make_report_task(
             # 발급하지 못해 버린 근거 수(#382). 값은 넣지 않는다(밖에서 온 문자열).
             # 모델이 왜 그 근거를 인용할 수 없는지 모르면 같은 것을 다시 가리켜 형식 오류로 돈다
             "dropped_refs": dropped_refs,
+            # 발급한 근거의 ID와 짧은 발췌(#382). 보고 모델이 evt_ ID를 이것으로만 안다.
+            # 로그에서 온 문자열이라 데이터로만 읽는다. 예산 때문에 뺀 수는 값 없이 알린다
+            "evidence": evidence or [],
+            "evidence_omitted": evidence_omitted,
         },
         output_contract="incident_analysis",
         cited_ids=analysis_citations,

@@ -185,6 +185,16 @@ L1 판정·L2 조사·L3 헌팅 프롬프트에 "이벤트는 DB에 없다. 알�
 
 ## 바뀐 점
 
+- **2026-11-27** — 보완 두 가지. (1) L2 보고 입력에 발급한 근거의 발췌(`data.evidence`:
+  `evidence_id`·`siem_ref`·시각·`TARGET_FIELDS["evidence"]` 필드)를 싣는다. 이유: 보고 태스크가
+  `issued_evidence_ids`를 `allowed_evidence_ids`에만 넣어 모델이 `evt_` ID를 몰랐다. 도구는
+  더하지 않는다(D-084 유지). 상한은 값 하나 120자(`url.path`·`url.query`·`message`·
+  `user_agent.original`은 300자), 근거 20건, 발췌가 더하는 길이는 24,000자와 `max_input_chars`에서
+  system 지시·나머지 입력·여유분 8,000자를 뺀 값 중 작은 쪽이다. 넘어 싣지 못한 수는
+  `data.evidence_omitted`와 `incidents.details.l2_analyze.evidence_omitted`에 남긴다.
+  `issue()`의 반환 모양은 바꾸지 않았다. 보고 입력의 `findings`에서는 `siem_refs`를 뗀다(버린 ref 값이
+  보고 입력에 남지 않게. 원본 `findings`와 저장은 그대로). (2) 단계 키로 허용 목록을 덮어쓰던 `tests/test_l3_hunt_db.py`의
+  도우미를 태스크 키(`l3_hypothesize`·`l3_verify`)로 고쳤다. 자세한 것은 notes의 16번.
 - **2026-11-27** — 마이그레이션 번호를 한 번 더 옮겼다. `origin/main`을 다시 합칠 때 #389가
   `0308_attack_actors.sql`·`0309_agent_reader_attack_actors.sql`을 써서 `0308`이 또 겹쳤다.
   이 이슈의 것은 **`0310_agent_reader_raw_records.sql`**이다. 결정 번호 D-083·D-084는 그대로다.
