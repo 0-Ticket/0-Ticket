@@ -5,7 +5,7 @@ from datetime import datetime
 
 import psycopg
 
-from soc.l3.intel.parse import KevCatalog, NewsItem, Technique
+from soc.l3.intel.parse import Actor, KevCatalog, NewsItem, Technique
 
 # 처음 보는 항목은 넣고, 이미 있으면 제목·요약·링크·발행 시각 중 하나라도 다를 때만 갱신한다.
 # 넣거나 갱신한 행만 돌아온다. xmax = 0이면 이번에 넣은 행이다(갱신한 행은 xmax가 0이 아니다).
@@ -129,12 +129,13 @@ def has_attack_version(conn: psycopg.Connection, version: str) -> bool:
     """한 버전은 트랜잭션 하나로 모두 넣으므로, 채워 넣은 행이 있으면 그 버전을 다 받은 것이다.
 
     collected_at이 NULL인 행은 설명·탐지 데이터 소스 열이 생기기 전(0301 이전)에 저장한 것이라
-    버전이 있어도 다시 받는다(#311).
+    버전이 있어도 다시 받는다(#311). 행위자 표(0308)가 비어 있어도 다시 받는다(#389).
     """
     row = conn.execute(
         "SELECT EXISTS (SELECT 1 FROM attack_techniques"
-        " WHERE attack_version = %s AND collected_at IS NOT NULL)",
-        (version,),
+        " WHERE attack_version = %(v)s AND collected_at IS NOT NULL)"
+        " AND EXISTS (SELECT 1 FROM attack_actors WHERE attack_version = %(v)s)",
+        {"v": version},
     ).fetchone()
     return bool(row and row[0])
 
@@ -176,3 +177,22 @@ def save_attack(
         else:
             updated += 1
     return inserted, updated
+
+
+def save_attack_actors(
+    conn: psycopg.Connection, version: str, actors: list[Actor], *, now: datetime
+) -> None:
+    """그 버전의 행위자·관계를 지우고 다시 넣는다(D-040). 호출하는 쪽의 트랜잭션 안에서 부른다."""
+    conn.execute("DELETE FROM attack_actors WHERE attack_version = %s", (version,))
+    for a in actors:
+        conn.execute(
+            "INSERT INTO attack_actors (attack_version, actor_id, kind, name, aliases, collected_at)"
+            " VALUES (%s, %s, %s, %s, %s, %s)",
+            (version, a.actor_id, a.kind, a.name, list(a.aliases), now),
+        )
+        for technique_id in a.technique_ids:
+            conn.execute(
+                "INSERT INTO attack_actor_techniques (attack_version, actor_id, technique_id)"
+                " VALUES (%s, %s, %s)",
+                (version, a.actor_id, technique_id),
+            )

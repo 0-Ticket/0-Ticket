@@ -415,3 +415,147 @@ def test_kev_entries_check_rejects_broken_rows(conn: psycopg.Connection) -> None
     for cve_id, name in (("CVE-2026-0009\n", "x"), ("CVE-26-1", "x"), ("CVE-2026-0009", "")):
         with pytest.raises(psycopg.errors.CheckViolation):
             conn.execute(insert, (cve_id, name))
+
+
+# --- 그룹·악성코드·캠페인과 기법의 관계(#389, D-040) ---
+
+
+def actor_rows(conn: psycopg.Connection) -> dict[str, tuple]:
+    rows = conn.execute(
+        "SELECT actor_id, kind, name, aliases, collected_at FROM attack_actors"
+        " WHERE attack_version = '20.0'"
+    ).fetchall()
+    return {r[0]: r[1:] for r in rows}
+
+
+def relations(conn: psycopg.Connection) -> set[tuple[str, str]]:
+    rows = conn.execute(
+        "SELECT actor_id, technique_id FROM attack_actor_techniques WHERE attack_version = '20.0'"
+    ).fetchall()
+    return {(r[0], r[1]) for r in rows}
+
+
+def test_collect_saves_actors_and_live_relations(conn: psycopg.Connection) -> None:
+    run(conn, FakeWeb(all_sources()))
+
+    assert actor_rows(conn) == {
+        "G0001": ("group", "Alpha Group", ["Shared Name"], NOW),
+        "S0001": ("malware", "Beta Loader", ["Shared Name"], NOW),
+        "C0001": ("campaign", "Gamma Campaign", [], NOW),
+        "G0003": ("group", "Quiet Group", [], NOW),
+    }  # 폐기·대체 행위자와 도구는 없다
+    assert relations(conn) == {
+        ("G0001", "T1190"),
+        ("S0001", "T1190"),
+        ("S0001", "T1059.004"),
+        ("C0001", "T1059.004"),
+    }  # 폐기된 관계·기법으로 가는 관계는 없다
+
+
+def test_stored_attack_version_without_actors_is_downloaded_again(
+    conn: psycopg.Connection,
+) -> None:
+    run(conn, FakeWeb(all_sources()))
+    # 새 표를 만들기 전에 저장한 버전처럼 행위자·관계를 비운다
+    conn.execute("DELETE FROM attack_actors")
+    web = FakeWeb(all_sources())
+
+    results = run(conn, web, now=LATER)
+
+    assert ATTACK in web.requested
+    assert not results["attack"].skipped
+    assert counts(results["attack"]) == (2, 0, 2, None)
+    assert actor_rows(conn)["G0001"][3] == LATER
+    assert len(relations(conn)) == 4
+
+
+def test_second_collect_replaces_rows_without_duplicates(conn: psycopg.Connection) -> None:
+    run(conn, FakeWeb(all_sources()))
+    web = FakeWeb(all_sources())
+    run(conn, web, now=LATER)
+    assert ATTACK not in web.requested  # 둘 다 채워져 있으면 다시 받지 않는다
+
+    # 같은 버전을 다시 받으면 그 버전의 행을 지우고 다시 넣는다
+    conn.execute("UPDATE attack_techniques SET collected_at = NULL")
+    bundle = json.loads(fixture("attack.json"))
+    bundle["objects"] = [
+        o
+        for o in bundle["objects"]
+        if o["id"] not in ("relationship--00000000-0000-4000-8000-000000000076",)
+        and o["id"] != "campaign--00000000-0000-4000-8000-000000000022"
+    ]
+    changed = FakeWeb({**all_sources(), ATTACK: json.dumps(bundle).encode()})
+    run(conn, changed, now=LATER)
+
+    assert set(actor_rows(conn)) == {"G0001", "S0001", "G0003"}
+    assert ("C0001", "T1059.004") not in relations(conn)
+    assert len(relations(conn)) == 3
+
+
+def test_new_attack_version_keeps_old_actors(conn: psycopg.Connection) -> None:
+    run(conn, FakeWeb(all_sources()))
+    bundle = json.loads(fixture("attack.json"))
+    bundle["objects"][0]["x_mitre_version"] = "20.1"
+    url = "https://attack.example.com/enterprise-attack-20.1.json"
+    run(conn, FakeWeb({**all_sources(), url: json.dumps(bundle).encode()}), version="20.1", attack_url=url)
+
+    counts_by_version = conn.execute(
+        "SELECT attack_version, count(*) FROM attack_actors GROUP BY 1 ORDER BY 1"
+    ).fetchall()
+    assert counts_by_version == [("20.0", 4), ("20.1", 4)]
+
+
+def test_failed_attack_parse_leaves_actors_untouched(conn: psycopg.Connection) -> None:
+    run(conn, FakeWeb(all_sources()))
+    conn.execute("UPDATE attack_techniques SET collected_at = NULL")
+    broken = json.loads(fixture("attack.json"))
+    broken["objects"][5]["aliases"] = "not a list"
+    web = FakeWeb({**all_sources(), ATTACK: json.dumps(broken).encode()})
+
+    results = run(conn, web, now=LATER)
+
+    assert results["attack"].failure == "parse"
+    assert len(actor_rows(conn)) == 4
+    assert actor_rows(conn)["G0001"][3] == NOW
+
+
+@pytest.mark.parametrize(
+    ("table", "values"),
+    [
+        ("attack_actors", {"actor_id": "G001"}),
+        ("attack_actors", {"actor_id": "G0001\n"}),
+        ("attack_actors", {"kind": "tool"}),
+        ("attack_actors", {"kind": "malware"}),  # G 접두사와 맞지 않는다
+        ("attack_actors", {"name": ""}),
+        ("attack_actors", {"aliases": ["a", None]}),
+        ("attack_actors", {"attack_version": ""}),
+        ("attack_actor_techniques", {"technique_id": "T190"}),
+        ("attack_actor_techniques", {"technique_id": "T1190\n"}),
+        ("attack_actor_techniques", {"actor_id": "G9999"}),  # 없는 행위자
+        ("attack_actor_techniques", {"technique_id": "T1234"}),  # 저장하지 않은 기법
+    ],
+)
+def test_actor_checks_reject_broken_rows(
+    conn: psycopg.Connection, table: str, values: dict
+) -> None:
+    run(conn, FakeWeb(all_sources()))
+    base = {
+        "attack_actors": {
+            "attack_version": "20.0",
+            "actor_id": "G0100",
+            "kind": "group",
+            "name": "New Group",
+            "aliases": [],
+            "collected_at": NOW,
+        },
+        "attack_actor_techniques": {
+            "attack_version": "20.0",
+            "actor_id": "G0001",
+            "technique_id": "T1059.004",
+        },
+    }[table]
+    row = {**base, **values}
+    columns = ", ".join(row)
+    marks = ", ".join(["%s"] * len(row))
+    with pytest.raises((psycopg.errors.CheckViolation, psycopg.errors.ForeignKeyViolation)):
+        conn.execute(f"INSERT INTO {table} ({columns}) VALUES ({marks})", list(row.values()))

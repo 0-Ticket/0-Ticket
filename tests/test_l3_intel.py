@@ -11,7 +11,13 @@ import pytest
 from soc.l3.intel.clean import clean_text
 from soc.l3.intel.errors import IntelError
 from soc.l3.intel.fetch import fetch
-from soc.l3.intel.parse import parse_attack, parse_kev, parse_kev_catalog, parse_rss
+from soc.l3.intel.parse import (
+    parse_attack,
+    parse_attack_bundle,
+    parse_kev,
+    parse_kev_catalog,
+    parse_rss,
+)
 
 FIXTURES = Path(__file__).parent / "fixtures" / "l3_intel"
 URL = "https://feeds.example.com/feed.xml"
@@ -399,6 +405,57 @@ def test_malformed_attack_detail_is_parse_failure(change) -> None:
 
 def test_attack_not_json_is_parse_failure() -> None:
     assert failure_of(lambda: parse_attack(b"<html>", version="20.0")) == "parse"
+
+
+def actors_of(data: bytes) -> dict:
+    return {a.actor_id: a for a in parse_attack_bundle(data, version="20.0")[1]}
+
+
+def test_attack_actors_keep_live_ones_and_live_uses_only() -> None:
+    actors = actors_of(fixture("attack.json"))
+    # 폐기(G0002)·대체(S0002)된 행위자와 도구(S0003)는 뺀다
+    assert sorted(actors) == ["C0001", "G0001", "G0003", "S0001"]
+    assert {i: (a.kind, a.name) for i, a in actors.items()} == {
+        "G0001": ("group", "Alpha Group"),
+        "S0001": ("malware", "Beta Loader"),
+        "C0001": ("campaign", "Gamma Campaign"),
+        "G0003": ("group", "Quiet Group"),
+    }
+    # 폐기된 관계(G0001→T1059.004), 폐기된 기법(T1000)·대체된 기법(T1001)으로 가는 관계,
+    # 기법이 아닌 대상(G0003→악성코드)과 uses가 아닌 관계는 저장하지 않는다
+    assert {i: a.technique_ids for i, a in actors.items()} == {
+        "G0001": ("T1190",),
+        "S0001": ("T1059.004", "T1190"),
+        "C0001": ("T1059.004",),
+        "G0003": (),
+    }
+
+
+def test_attack_actor_aliases_exclude_the_name_itself() -> None:
+    actors = actors_of(fixture("attack.json"))
+    assert actors["G0001"].aliases == ("Shared Name",)  # 그룹은 aliases
+    assert actors["S0001"].aliases == ("Shared Name",)  # 악성코드는 x_mitre_aliases
+    assert actors["C0001"].aliases == ()
+    assert parse_attack(fixture("attack.json"), version="20.0") == parse_attack_bundle(
+        fixture("attack.json"), version="20.0"
+    )[0]
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        lambda objs: objs[5].update(external_references=[]),  # 행위자 ID 없음
+        lambda objs: objs[5]["external_references"][0].update(external_id="S0001"),  # 종류와 접두사 불일치
+        lambda objs: objs[5]["external_references"][0].update(external_id="G001"),
+        lambda objs: objs[5]["external_references"][0].update(external_id="G0003"),  # 중복
+        lambda objs: objs[5].update(aliases="Alpha"),
+        lambda objs: objs[5].update(aliases=["Alpha", 1]),
+        lambda objs: objs[5].update(name=""),
+    ],
+)
+def test_malformed_attack_actor_is_parse_failure(change) -> None:
+    data = mutated_attack(change)
+    assert failure_of(lambda: parse_attack_bundle(data, version="20.0")) == "parse"
 
 
 # --- 문자열 정리 ---
