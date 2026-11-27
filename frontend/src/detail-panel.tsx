@@ -1,14 +1,13 @@
 import { useEffect, useRef, type CSSProperties } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { PanelResizer } from "./components/panel-resizer";
 import { usePanelWidth } from "./components/use-panel-width";
 import { JsonViewer } from "./components/json-viewer";
 import { Button } from "./components/ui/button";
-import { get } from "./api/client";
 import type { Resource, Detail } from "./api/client";
 import { Status } from "./badges";
 import { titles } from "./constants";
 import { ErrorState } from "./error-state";
+import { failure, useLiveQuery } from "./live";
 import { TicketSections } from "./detail-sections";
 import { useLink } from "./links";
 
@@ -79,11 +78,11 @@ export function DetailPanel({
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const [width, setWidth] = usePanelWidth("panel-width:detail", 650);
-  const query = useQuery({
-    queryKey: ["detail", resource, id],
-    queryFn: ({ signal }) =>
-      get<Detail>(`${resource}/${encodeURIComponent(id)}`, signal),
-  });
+  const query = useLiveQuery<Detail>(
+    ["detail", resource, id],
+    `${resource}/${encodeURIComponent(id)}`,
+  );
+  const broken = failure(query);
   useEffect(() => {
     const dialog = ref.current;
     dialog?.showModal();
@@ -117,10 +116,10 @@ export function DetailPanel({
       <div className="detail-content">
         {query.isPending ? (
           <p role="status">불러오는 중…</p>
-        ) : query.error ? (
+        ) : broken || !query.data ? (
           <ErrorState
             inline
-            error={query.error}
+            error={broken ?? new Error("데이터를 불러오지 못했습니다.")}
             retry={() => void query.refetch()}
           />
         ) : (

@@ -1,14 +1,14 @@
 import { useLocation, useNavigate, useSearchParams } from "react-router";
-import { useQuery } from "@tanstack/react-query";
 import { Icon } from "./components/icons";
 import { FilterChips } from "./components/filter-chips";
-import { get, itemId, itemTitle, itemStatus, itemSeverity } from "./api/client";
+import { itemId, itemTitle, itemStatus, itemSeverity } from "./api/client";
 import type { Resource, Page, Item } from "./api/client";
 import type { Dashboard } from "./api/generated/Dashboard";
 import { Severity, Status } from "./badges";
 import { states, statusNames, titles } from "./constants";
 import { DetailPanel } from "./detail-panel";
 import { ErrorState } from "./error-state";
+import { failure, useLiveQuery } from "./live";
 import { usePager } from "./pager";
 import { severityLabel } from "./severity";
 
@@ -61,10 +61,8 @@ export function ListView({
       params.set(key, search.get(key)!);
   if (status) params.set("status", status);
   const path = `${resource}?${params}`;
-  const query = useQuery({
-    queryKey: ["list", path],
-    queryFn: ({ signal }) => get<Page>(path, signal),
-  });
+  const query = useLiveQuery<Page>(["list", path], path);
+  const broken = failure(query);
   const { current, page } = usePager(query.data?.next_cursor);
   function change(key: string, value: string) {
     const next = new URLSearchParams(search);
@@ -157,13 +155,9 @@ export function ListView({
         <p role="status" className="empty">
           불러오는 중…
         </p>
-      ) : query.error ? (
-        <ErrorState
-          inline
-          error={query.error}
-          retry={() => void query.refetch()}
-        />
-      ) : query.data.items.length ? (
+      ) : broken ? (
+        <ErrorState inline error={broken} retry={() => void query.refetch()} />
+      ) : query.data?.items.length ? (
         <>
           <div className="table-scroll">
             <table>
@@ -213,7 +207,7 @@ export function ListView({
         <div className="pagination-controls">
           <button
             aria-label="이전 페이지"
-            disabled={!search.has("cursor") || query.isFetching}
+            disabled={!search.has("cursor") || query.isPending}
             onClick={() => page("previous")}
           >
             <Icon name="left" />
@@ -223,9 +217,7 @@ export function ListView({
           </span>
           <button
             aria-label="다음 페이지"
-            disabled={
-              !query.data?.next_cursor || query.isFetching || !!query.error
-            }
+            disabled={!query.data?.next_cursor || query.isPending || !!broken}
             onClick={() => page("next")}
           >
             <Icon name="right" />

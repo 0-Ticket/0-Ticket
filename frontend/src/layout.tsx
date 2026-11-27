@@ -21,6 +21,8 @@ import { useLogout } from "./auth/session";
 import { resourcePermission, titles } from "./constants";
 import { DashboardView, Overview } from "./dashboard";
 import { ErrorState } from "./error-state";
+import { LastUpdated } from "./last-updated";
+import { failure, useLiveQuery } from "./live";
 import { IncidentPage } from "./incident/page";
 import { INCIDENT_ID } from "./links";
 import { ListView } from "./list-view";
@@ -85,11 +87,10 @@ export function Workspace({ me }: { me: Me }) {
             : null;
   const denied = needed !== null && !can([needed]);
   const mayDashboard = can(["dashboard.read"]);
-  const dashboard = useQuery({
-    queryKey: ["dashboard"],
-    queryFn: ({ signal }) => get<Dashboard>("dashboard", signal),
+  const dashboard = useLiveQuery<Dashboard>(["dashboard"], "dashboard", {
     enabled: !denied && mayDashboard && (isHome || resource !== null),
   });
+  const dashboardError = failure(dashboard);
   // The flow has one more stage in scenario mode. Without policy.read the mode is unknown, so default is shown.
   const policyNeeded = isHome && !denied && can(["policy.read"]);
   const policy = useQuery({
@@ -202,6 +203,7 @@ export function Workspace({ me }: { me: Me }) {
                           : "페이지를 찾을 수 없습니다"}
                 </h1>
               </div>
+              <LastUpdated />
             </header>
           )}
           {incidentId && !denied && <IncidentPage id={incidentId} />}
@@ -222,13 +224,13 @@ export function Workspace({ me }: { me: Me }) {
             !resource ? null : !mayDashboard ? null : dashboard.isPending ||
             (policyNeeded && policy.isPending) ? (
             <p role="status">집계 불러오는 중…</p>
-          ) : dashboard.error ? (
+          ) : dashboardError ? (
             <ErrorState
               needs="dashboard.read"
-              error={dashboard.error}
+              error={dashboardError}
               retry={() => void dashboard.refetch()}
             />
-          ) : isHome ? (
+          ) : !dashboard.data ? null : isHome ? (
             <DashboardView
               data={dashboard.data}
               mode={policy.data?.mode ?? "default"}
