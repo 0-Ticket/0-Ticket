@@ -1147,7 +1147,31 @@ def test_analyze_context_uses_saved_graph_and_does_not_collect_related_records(
         )
 
     assert context is not None
-    assert context.investigate_data()["graph"]["tickets"] == [{"ticket_id": ticket_id, **graph}]
+    data = context.investigate_data()
+    peer_ticket = sample["tickets"][1]["id"]
+    # 저장된 경로는 입력에 연결 요약으로 한 번만 들어가고 details는 입력에 없다(#396)
+    assert data["graph"] == {
+        "peer_tickets": {peer_ticket: incident_id},
+        "tickets": [
+            {
+                "ticket_id": ticket_id,
+                "coverage": "incomplete",
+                "reason": "candidate_limit",
+                "links": [
+                    {
+                        "entity": "host:shared-proxy",
+                        "from": [sample["alerts"][0]["id"]],
+                        "to": {peer_ticket: ["alt_peer"]},
+                    }
+                ],
+            }
+        ],
+    }
+    assert all("details" not in ticket for ticket in data["tickets"])
+    assert "details" not in data["incident"]
+    with psycopg.connect(database_url) as conn:
+        saved = conn.execute("SELECT details FROM tickets WHERE id = %s", (ticket_id,)).fetchone()
+    assert saved[0]["l2_branch"] == graph  # 저장된 Ticket은 바뀌지 않는다
     assert "related" not in context.investigate_data()
     assert sample["events"][1]["id"] not in context.evidence_ids
     task = make_investigate_task(

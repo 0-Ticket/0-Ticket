@@ -1,0 +1,52 @@
+{
+  "ticket_id": "tkt_01a19f93-1150-7000-8000-000000000301",
+  "sources": [
+    {
+      "kind": "alert",
+      "id": "alt_01a19f93-1150-7000-8000-000000000301",
+      "entities": [
+        {"type": "ip", "value": "192.0.2.7", "role": "src"},
+        {"type": "ip", "value": "192.0.2.9", "role": "src"},
+        {"type": "ip", "value": "192.0.2.10", "role": "dst"}
+      ]
+    },
+    {
+      "kind": "hunt",
+      "id": "hnt_01a19f93-1150-7000-8000-000000000301",
+      "entities": [{"type": "ip", "value": "192.0.2.7", "role": "src"}]
+    }
+  ],
+  "matches": [
+    {
+      "incident_id": "inc_01a19f93-1150-7000-8000-0000000003a0",
+      "ticket_id": "tkt_01a19f93-1150-7000-8000-000000000311",
+      "kind": "alert",
+      "id": "alt_01a19f93-1150-7000-8000-000000000311",
+      "entities": [{"type": "ip", "value": "192.0.2.7", "role": "src"}]
+    },
+    {
+      "incident_id": "inc_01a19f93-1150-7000-8000-0000000003a0",
+      "ticket_id": "tkt_01a19f93-1150-7000-8000-000000000311",
+      "kind": "alert",
+      "id": "alt_01a19f93-1150-7000-8000-000000000312",
+      "entities": [
+        {"type": "ip", "value": "192.0.2.7", "role": "src"},
+        {"type": "ip", "value": "192.0.2.9", "role": "src"}
+      ]
+    },
+    {
+      "incident_id": "inc_01a19f93-1150-7000-8000-0000000003b0",
+      "ticket_id": "tkt_01a19f93-1150-7000-8000-000000000312",
+      "kind": "hunt",
+      "id": "hnt_01a19f93-1150-7000-8000-000000000313",
+      "entities": [{"type": "ip", "value": "192.0.2.9", "role": "src"}]
+    },
+    {
+      "incident_id": "inc_01a19f93-1150-7000-8000-0000000003b0",
+      "ticket_id": "tkt_01a19f93-1150-7000-8000-000000000313",
+      "kind": "alert",
+      "id": "alt_01a19f93-1150-7000-8000-000000000314",
+      "entities": [{"type": "ip", "value": "192.0.2.7", "role": "src"}]
+    }
+  ]
+}

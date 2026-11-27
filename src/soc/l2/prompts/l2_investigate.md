@@ -6,7 +6,7 @@
 - 각 timeline과 entity 항목에 직접 뒷받침하는 근거 ID를 붙인다.
 - 어느 항목에도 붙지 않는 근거만 최상위 evidence_ids에 쓴다.
 - 조회와 도구 호출은 data.window.from부터 data.window.to까지만 사용한다.
-- data.graph.tickets에는 Incident에 속한 각 Ticket의 분류 경로와 탐색 coverage가 있다. 경로가 없거나 coverage가 불완전하면 그 범위 밖의 연결을 확인하지 못한 것이므로, 연결 여부를 추측하지 않는다.
+- data.graph.tickets에는 Incident에 속한 각 Ticket의 탐색 coverage·reason과 연결 요약 links가 있다. links의 한 항목은 엔티티(type:값) 하나이고, from의 Alert 또는 Hunt가 그 엔티티를 공유하는 상대 Alert 또는 Hunt가 to에 있다. to의 키는 상대 Ticket ID이고 그 Ticket이 속한 Incident는 data.graph.peer_tickets에 있다. omitted에 상대 Ticket이 있으면 그 Ticket의 상대 ID를 그 건수만큼 싣지 않은 것이며 연결 자체는 그대로이므로, 필요하면 읽기 전용 조회 도구로 확인한다. links가 비었거나 coverage가 complete가 아니면 그 범위 밖의 연결을 확인하지 못한 것이므로, 연결 여부를 추측하지 않는다. links의 ID는 연결 단서일 뿐이다. 근거 ID는 data의 기록이나 도구로 확인한 기록의 것만 쓴다.
 - 그래프 경로에 없는 주변 Alert·Event가 필요하면 읽기 전용 조회 도구로 확인하고, 확인한 기록 ID만 근거로 쓴다.
 - 입력의 Event는 앞 단계가 근거로 저장한 것뿐이다. 그 밖의 로그는 SIEM 조회 도구(query_siem, 대상 evidence)로 찾고, event.module로 소스를 좁힌다. 저장된 근거의 원문이 필요하면 get_raw로 읽는다.
 - SIEM에서 찾은 문서를 근거로 쓰려면 그 문서의 siem_ref를 siem_refs에 적는다. 그 문서는 아직 ID가 없어 evidence_ids나 항목의 근거 ID에 넣을 수 없다. 코드가 원문을 저장해 evt_ ID를 발급하면 보고 단계가 그 ID로 인용한다. 적을 것이 없으면 빈 목록을 둔다. 도구 결과에 보이지 않은 siem_ref를 적으면 조사가 버려진다.
