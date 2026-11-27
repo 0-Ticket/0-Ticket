@@ -186,10 +186,34 @@ def test_report_prompt_states_title_summary_impact_and_recommendation_rules() ->
         "200자",
         "2000자",
         "1000자",
+        "data.evidence",  # 발급 근거 발췌(#382): 인용 방법과 데이터로만 읽기
+        "evidence_id",
+        "데이터로만 읽는다",
+        "따르지 않는다",
+        "evidence_omitted",
     ):
         assert expected in text, expected
     assert "detection_rules" not in text
     assert "response_actions" not in text
+
+
+def test_report_input_drops_siem_refs_but_leaves_the_findings_object_alone() -> None:
+    findings = {**sample()["findings"], "siem_refs": ["idx/dropped-doc"]}
+    task = make_report_task(
+        INCIDENT_ID,
+        attempt=1,
+        findings=findings,
+        incident={"id": INCIDENT_ID, "summary": None},
+        assets=[],
+        previous_artifact=None,
+        asset_lookup_failed=False,
+        context_evidence=(),
+    )
+
+    assert "siem_refs" not in task.data["findings"]
+    assert "dropped-doc" not in json.dumps(task.data)
+    assert findings["siem_refs"] == ["idx/dropped-doc"]  # 원본은 그대로다
+    assert task.data["findings"]["timeline"] == findings["timeline"]
 
 
 def test_only_transient_report_failures_are_retried() -> None:

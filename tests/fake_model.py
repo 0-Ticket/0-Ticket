@@ -76,6 +76,11 @@ class FakeModel(Model):
             # 최종 JSON 값을 만든다. 실행 중에 정해지는 call_id(agl_)를 인용할 때 쓴다.
             value = step["final_fn"](tool_outputs(input))
             items = [assistant_message(json.dumps(value, ensure_ascii=False))]
+        elif "final_from_input" in step:
+            # 모델이 실제로 받은 입력 항목을 읽어 최종 JSON 값을 만든다(#382). 시나리오가 ID를
+            # 미리 알고 있는 식으로 통과하지 못하게 하려는 것이다. 입력 필터를 거친 입력이다
+            value = step["final_from_input"](input)
+            items = [assistant_message(json.dumps(value, ensure_ascii=False))]
         else:
             items = [assistant_message(step["final_text"])]
         usage = step.get("usage", {})

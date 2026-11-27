@@ -1,0 +1,28 @@
+[
+  {
+    "case": "malicious_with_one_siem_ref",
+    "data": {
+      "decision": "malicious",
+      "confidence": 1,
+      "reason": "업로드 경로의 PHP에 명령이 실려 200으로 응답했다",
+      "evidence_ids": [
+        "alt_01a19f93-1150-7000-8000-000000000001"
+      ],
+      "siem_refs": [
+        ".ds-logs-nginx.access-default-2026.11.04-000001/aaa1"
+      ],
+      "decided_at": 1793678700000
+    }
+  },
+  {
+    "case": "undetermined_without_refs",
+    "data": {
+      "decision": "undetermined",
+      "confidence": 0,
+      "reason": "판단할 근거가 부족하다",
+      "evidence_ids": [],
+      "siem_refs": [],
+      "decided_at": 1793678700000
+    }
+  }
+]

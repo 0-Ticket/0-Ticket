@@ -4,7 +4,9 @@
 (ELK_URL·ELK_API_KEY)로 접속한다. SIEM 연결·프로필(D-021)이 생기면 그것으로 바꾼다.
 키는 읽기 전용 API 키다(D-010).
 
-- 부르는 API는 POST /<대상 index>/_search 하나다. PIT·scroll·쓰기 API는 부르지 않는다.
+- 도구가 부르는 API는 POST /<대상 index>/_search 하나다. PIT·scroll·쓰기 API는 부르지 않는다.
+- 근거 발급 워커는 fetch_document로 GET /<index>/_doc/<id>를 하나 더 부른다(#382). 도구가 아니라서
+  모델은 부를 수 없고, 접속·마감·크기 상한 규칙은 _request 한 곳을 도구와 함께 쓴다.
 - 모델은 쿼리를 쓰지 않는다. 대상 이름·필터 인자만 고르고, 도구가 bool.filter(range + term) dict를
   만든다. 필드 이름은 아래 상수에서만 고르고, 모델이 준 값은 term 값 자리에만 들어간다.
 - 대상 이름과 대상별 필터·반환 필드는 코드 상수다(도구 설명과 enum이 정적이라). 설정
@@ -25,6 +27,7 @@ import ssl
 import time
 from collections.abc import Callable, Mapping
 from typing import Any
+from urllib.parse import quote
 
 import httpx
 
@@ -41,7 +44,8 @@ from soc.tools.registry import (
     shorten_record,
 )
 
-TARGET_NAMES = ("alerts", "web_access", "cloudtrail")
+# evidence는 소스를 가리지 않는 대상이다(#382). ECS 공통 필드만 쓰고 event.module로 좁힌다.
+TARGET_NAMES = ("alerts", "web_access", "cloudtrail", "evidence")
 # 필터 인자 이름 → ELK 필드. keyword·숫자·ip 타입 필드만 둔다(term·terms가 그대로 맞는다).
 FILTERS: dict[str, str] = {
     "source_ip": "source.ip",
@@ -56,6 +60,9 @@ FILTERS: dict[str, str] = {
     # Elastic Security 알럿 필드(ECS 아님). 실제 매핑 확정은 #208
     "rule_name": "kibana.alert.rule.name",
     "alert_severity": "kibana.alert.severity",
+    # 소스 구분 없는 대상에서 소스를 좁히는 ECS 필드(#382)
+    "event_module": "event.module",
+    "event_dataset": "event.dataset",
 }
 IP_FILTERS = ("source_ip", "destination_ip")
 TARGET_FILTERS: dict[str, tuple[str, ...]] = {
@@ -77,6 +84,18 @@ TARGET_FILTERS: dict[str, tuple[str, ...]] = {
         "host_name",
     ),
     "cloudtrail": ("source_ip", "user_name", "event_action", "cloud_account_id"),
+    # 소스 고유 필드는 두지 않는다. 소스는 event_module·event_dataset로 좁힌다(#382)
+    "evidence": (
+        "source_ip",
+        "destination_ip",
+        "user_name",
+        "host_name",
+        "url_path",
+        "http_method",
+        "status_code",
+        "event_module",
+        "event_dataset",
+    ),
 }
 # query_siem이 돌려주는 _source 필드(시각 필드는 설정의 time_field를 앞에 더한다)
 TARGET_FIELDS: dict[str, tuple[str, ...]] = {
@@ -114,6 +133,23 @@ TARGET_FIELDS: dict[str, tuple[str, ...]] = {
         "cloud.account.id",
         "cloud.region",
     ),
+    # 소스에 관계없이 ECS에 있는 것만. 소스 고유 필드는 발급한 원문(get_raw)에서 본다(#382)
+    "evidence": (
+        "event.module",
+        "event.dataset",
+        "event.action",
+        "event.outcome",
+        "source.ip",
+        "destination.ip",
+        "user.name",
+        "host.name",
+        "url.path",
+        "url.query",
+        "http.request.method",
+        "http.response.status_code",
+        "user_agent.original",
+        "message",
+    ),
 }
 MAX_FILTERS = 5
 TOP_N = 10
@@ -122,7 +158,7 @@ FIELD_MAX_CHARS = 300
 FIELD_MAX_ITEMS = 10  # query_siem 결과의 목록 값 하나의 원소 수
 # 히트 하나의 몫 = (결과 한도 - 빈 본문) / min(히트 수, HIT_SHARE_MAX). 몫을 넘는 히트는 먼저 줄인다
 HIT_SHARE_MAX = 3
-VALUE_MAX_CHARS = 120  # count_siem 결과의 값 하나(#211 summarize_http_flow와 같다)
+VALUE_MAX_CHARS = 120  # count_siem 결과의 값 하나
 TRACK_TOTAL_HITS = 10_000
 SOURCE_NAME = "siem"
 SCHEMA_NAME = "ecs"
@@ -342,6 +378,23 @@ def _search(
     siem = ctx.tools_config.get("siem", {})
     if not isinstance(siem, Mapping):
         raise ToolError("failed", reason="config")
+    return _request(siem, "POST", f"/{index}/_search", body, transport, clock)
+
+
+def _request(
+    siem: Mapping[str, Any],
+    method: str,
+    path: str,
+    body: dict[str, Any] | None,
+    transport: httpx.BaseTransport | None,
+    clock: Clock,
+) -> dict[str, Any]:
+    """요청 한 번. JSON 객체를 돌려주거나 ToolError를 낸다.
+
+    도구(POST _search)와 근거 발급 워커(GET _doc)가 같이 쓴다(#382). 리다이렉트를 따라가지 않고,
+    요청 단위 timeout과 별도로 전체 마감 시간을 보며, 압축을 푼 바이트가 상한을 넘으면 끊는다.
+    오류 문구와 reason에는 주소·키·응답 본문을 넣지 않는다.
+    """
     connect, read, deadline = (_positive(siem, key) for key in _TIMEOUT_KEYS)
     max_bytes = _positive(siem, "max_bytes")
     url, key = _connection(siem)
@@ -358,9 +411,8 @@ def _search(
             verify=verify,
             transport=transport,
         ) as client:
-            with client.stream(
-                "POST", f"/{index}/_search", json=body, follow_redirects=False
-            ) as response:
+            sent = {} if body is None else {"json": body}
+            with client.stream(method, path, follow_redirects=False, **sent) as response:
                 if response.status_code in (401, 403):
                     raise ToolError("failed", reason="auth")
                 if not 200 <= response.status_code < 300:
@@ -383,6 +435,54 @@ def _search(
     if not isinstance(parsed, dict):
         raise ToolError("failed", reason="response_shape")
     return parsed
+
+
+def fetch_document(
+    siem: Mapping[str, Any],
+    index: str,
+    doc_id: str,
+    *,
+    transport: httpx.BaseTransport | None = None,
+    clock: Clock = time.monotonic,
+) -> dict[str, Any]:
+    """문서 한 건을 통째로 가져온다(#382). 도구가 아니라 근거 발급 워커가 부른다.
+
+    인덱스와 문서 ID는 도구 세션이 모은 맵(`ToolSession.siem_refs`)의 값이다. 저장 키
+    `siem_ref`는 `_index`·`_id`로 되돌릴 수 없어(`soc.ids.siem_ref_key`) 쌍을 받아야 한다.
+
+    도구와 달리 값을 자르지 않는다. 불변 사본을 만드는 것이 목적이다.
+
+    Args:
+        siem: 설정의 [tools.siem].
+        index: 문서가 든 실제 인덱스 이름(별칭·패턴이 아니다).
+        doc_id: ELK가 준 원래 `_id`. 저장 키가 아니다. 경로에 넣을 때 퍼센트 인코딩한다.
+
+    Returns:
+        `{"_index", "_id", "_source"}`. 수집이 `raw_records.original_text`에 넣는 모양과 같아
+        `soc.ingest.quarantine.serialize_original`을 그대로 쓸 수 있다.
+
+    Raises:
+        ToolError: 설정·인자 오류, 접속 실패, 404, `found: false`, 모양이 다른 응답.
+    """
+    if not isinstance(siem, Mapping):
+        raise ToolError("failed", reason="config")
+    # 맵의 값은 히트 하나의 _index라 늘 구체 이름이다. 쉼표·와일드카드는 _doc 경로에 쓸 수 없다.
+    if not index or not _INDEX.fullmatch(index) or index.startswith("_"):
+        raise ToolError("invalid_argument")
+    if "," in index or "*" in index:
+        raise ToolError("invalid_argument")
+    if not doc_id:
+        raise ToolError("invalid_argument")
+    path = f"/{index}/_doc/{quote(doc_id, safe='')}"
+    data = _request(siem, "GET", path, None, transport, clock)
+    if data.get("found") is not True:
+        raise ToolError("failed", reason="not_found")
+    got_index, got_id, source = data.get("_index"), data.get("_id"), data.get("_source")
+    if not isinstance(got_index, str) or not got_index or got_index.startswith("_"):
+        raise _shape_error()
+    if not isinstance(got_id, str) or not got_id or not isinstance(source, dict):
+        raise _shape_error()
+    return {"_index": got_index, "_id": got_id, "_source": source}
 
 
 def _shape_error() -> ToolError:
@@ -457,7 +557,8 @@ def _cap(value: Any, path: str, cut: list[str]) -> Any:
     return value
 
 
-def _hit(hit: Any, fields: tuple[str, ...]) -> dict[str, Any]:
+def _hit(hit: Any, fields: tuple[str, ...]) -> tuple[dict[str, Any], tuple[str, str]]:
+    """(모델에게 보일 히트, (_index, _id)). 쌍은 원문 한 건을 가져올 때 쓴다(#382)."""
     if not isinstance(hit, dict):
         raise _shape_error()
     index, doc_id = hit.get("_index"), hit.get("_id")
@@ -475,7 +576,7 @@ def _hit(hit: Any, fields: tuple[str, ...]) -> dict[str, Any]:
     shaped: dict[str, Any] = {"siem_ref": siem_ref_key(f"{index}/{doc_id}"), "fields": picked}
     if cut:
         shaped["truncated_fields"] = cut
-    return shaped
+    return shaped, (index, doc_id)
 
 
 def _query_siem(
@@ -496,7 +597,10 @@ def _query_siem(
     raw_hits = data["hits"].get("hits")
     if not isinstance(raw_hits, list):
         raise _shape_error()
-    hits = [_hit(hit, fields) for hit in raw_hits]
+    shaped_hits = [_hit(hit, fields) for hit in raw_hits]
+    hits = [shaped for shaped, _ in shaped_hits]
+    # 저장 키 -> (_index, _id). 아래에서 실제로 보인 히트만 ctx.siem_docs에 넣는다.
+    pairs = {shaped["siem_ref"]: pair for shaped, pair in shaped_hits}
     shown: list[dict[str, Any]] = []
     body: dict[str, Any] = {
         "source": SOURCE_NAME,
@@ -529,6 +633,8 @@ def _query_siem(
         if not ctx.fits(body):
             shown.clear()
             body["omitted"] = len(hits)
+    # 모델에게 보인 히트만 적는다. 뒤에서 빠진 히트는 인용할 수 없다.
+    ctx.siem_docs.update({hit["siem_ref"]: pairs[hit["siem_ref"]] for hit in shown})
     return body
 
 

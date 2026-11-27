@@ -17,26 +17,20 @@ def test_default_config_reads_into_settings() -> None:
     assert settings.siem_profile == "elk-default"
     assert (settings.url_env, settings.api_key_env) == ("ELK_URL", "ELK_API_KEY")
     assert settings.page_size == 500
+    # 이벤트는 수집하지 않는다(#382, D-085). 알럿 하나뿐이다
     assert [(s.kind, s.key, s.time_field) for s in settings.sources] == [
         ("alert", ".alerts-security.alerts-default", "@timestamp"),
-        ("event", "logs-nginx.access-*", "@timestamp"),
-        ("event", "logs-apache.access-*", "@timestamp"),
-        ("event", "logs-aws.cloudtrail-*", "@timestamp"),
-        ("event", "logs-azure.activitylogs-*", "@timestamp"),
-        ("event", "logs-gcp.audit-*", "@timestamp"),
     ]
 
 
-def test_default_config_declares_the_event_class_of_web_sources_only() -> None:
-    """class는 선택이고(#340, D-067), 지금은 샘플로 확인한 nginx·apache만 적는다."""
+def test_default_config_declares_no_event_class() -> None:
+    """D-067은 폐기됐다(#382). 이벤트 대상이 없으니 선언할 클래스도 없다.
+
+    설정 읽기는 class를 계속 받는다(검사 코드는 남아 있다). 배포 설정이 쓰지 않을 뿐이다.
+    """
     settings = read_settings(load_config(REPO_CONFIG)["ingest"])
     assert [(s.key, s.ocsf_class) for s in settings.sources] == [
         (".alerts-security.alerts-default", None),
-        ("logs-nginx.access-*", 4002),
-        ("logs-apache.access-*", 4002),
-        ("logs-aws.cloudtrail-*", None),
-        ("logs-azure.activitylogs-*", None),
-        ("logs-gcp.audit-*", None),
     ]
 
 
@@ -55,7 +49,22 @@ def test_missing_ingest_section_gives_empty(tmp_path: Path) -> None:
 
 
 def valid_ingest() -> dict:
-    return load_config(REPO_CONFIG)["ingest"]
+    """배포 설정에 이벤트 대상 하나를 더한 것.
+
+    배포 설정은 이벤트를 수집하지 않지만(#382, D-085) 설정 읽기는 이벤트 대상과 class를
+    계속 받는다. 그 검사 코드를 확인하려면 대상을 테스트가 만들어야 한다.
+    """
+    ingest = load_config(REPO_CONFIG)["ingest"]
+    ingest["sources"] = [
+        *ingest["sources"],
+        {
+            "kind": "event",
+            "key": "logs-nginx.access-*",
+            "time_field": "@timestamp",
+            "class": 4002,
+        },
+    ]
+    return ingest
 
 
 @pytest.mark.parametrize(

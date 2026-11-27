@@ -25,6 +25,7 @@ from soc.agent.config import load_config
 from soc.agent.runner import run_task
 from soc.ids import siem_ref_key
 from soc.tools import (
+    CUT_MARK,
     RESULT_CLOSE,
     ToolConfigError,
     ToolRegistry,
@@ -33,6 +34,7 @@ from soc.tools import (
 )
 from soc.tools import siem as siem_mod
 from soc.tools.siem import (
+    FIELD_MAX_CHARS,
     FILTERS,
     TARGET_FIELDS,
     TARGET_FILTERS,
@@ -49,6 +51,7 @@ TARGETS = [
     {"name": "alerts", "index": ".alerts-security.alerts-default", "time_field": "@timestamp"},
     {"name": "web_access", "index": WEB_INDEX, "time_field": "@timestamp"},
     {"name": "cloudtrail", "index": "logs-aws.cloudtrail-*", "time_field": "@timestamp"},
+    {"name": "evidence", "index": "logs-*,filebeat-*", "time_field": "@timestamp"},
 ]
 SIEM = {
     "url_env": "ELK_URL",
@@ -640,7 +643,7 @@ def test_five_filters_and_cidr_are_allowed(elk: FakeElk) -> None:
 
 
 def test_target_filters_and_fields_are_known_constants() -> None:
-    assert TARGET_NAMES == ("alerts", "web_access", "cloudtrail")
+    assert TARGET_NAMES == ("alerts", "web_access", "cloudtrail", "evidence")
     for name in TARGET_NAMES:
         assert set(TARGET_FILTERS[name]) <= set(FILTERS)
     assert FILTERS["rule_name"] == "kibana.alert.rule.name"
@@ -1035,9 +1038,15 @@ def test_default_config_has_siem_settings_without_secrets(default_config_dir: Pa
     assert by_name["web_access"]["index"] == WEB_INDEX
     assert by_name["cloudtrail"]["index"] == "logs-aws.cloudtrail-*"
     assert all(t["time_field"] == "@timestamp" for t in siem["targets"])
-    assert "query_siem" in tools["allowed"]["l1"] and "count_siem" not in tools["allowed"]["l1"]
-    for stage in ("l2", "l3"):
-        assert {"query_siem", "count_siem"} <= set(tools["allowed"][stage])
+    allowed = tools["allowed"]
+    # 근거를 발급하는 태스크만 심을 본다. l1은 건수 집계를 쓰지 않는다
+    for task in ("l1_alert_triage", "l1_ticket_judgment"):
+        assert "query_siem" in allowed[task] and "count_siem" not in allowed[task], task
+    for task in ("l2_investigate", "l3_hypothesize", "l3_verify"):
+        assert {"query_siem", "count_siem"} <= set(allowed[task]), task
+    # 인용해도 발급할 다음 태스크가 없는 두 태스크다(D-086)
+    for task in ("l2_classify", "l2_report"):
+        assert not {"query_siem", "count_siem"} & set(allowed[task]), task
 
 
 def test_default_config_passes_the_config_check(env: None) -> None:
@@ -1060,3 +1069,289 @@ def test_elk_marker_is_excluded_by_default() -> None:
     options = pytest_config["tool"]["pytest"]["ini_options"]
     assert any(m.startswith("elk:") for m in options["markers"])
     assert "not elk" in options["addopts"]
+
+
+# siem_ref → (_index, _id) 맵 (#382)
+#
+# 워커가 원문 한 건을 가져오려면 인덱스와 문서 ID가 필요한데, siem_ref 저장 키는 되돌릴 수 없다
+# (soc.ids.siem_ref_key: "키는 / 로 나누어 _index와 _id로 되돌리지 않는다"). 그래서 query_siem이
+# 모델에게 보인 히트의 (_index, _id)를 도구 세션이 들고 있는다.
+# 모델에게는 인덱스 이름이 가지 않는다.
+
+
+def siem_hit(index: str, doc_id: str, **source: Any) -> dict[str, Any]:
+    return {"_index": index, "_id": doc_id, "_source": {"@timestamp": START + 1000, **source}}
+
+
+def hits_response(*hits: dict[str, Any]) -> httpx.Response:
+    total = {"value": len(hits), "relation": "eq"}
+    return httpx.Response(200, json={"hits": {"total": total, "hits": list(hits)}})
+
+
+def test_shown_hits_land_in_the_session_siem_refs_map(elk: FakeElk) -> None:
+    index = ".ds-logs-nginx.access-default-2026.11.04-000001"
+    elk.add(hits_response(siem_hit(index, "aaa1"), siem_hit(index, "bbb2")))
+    c = caller(elk)
+    body = parse(call(c, "query_siem", query()))
+
+    assert [h["siem_ref"] for h in body["hits"]] == [
+        siem_ref_key(f"{index}/aaa1"),
+        siem_ref_key(f"{index}/bbb2"),
+    ]
+    assert c.session.siem_refs == {
+        siem_ref_key(f"{index}/aaa1"): (index, "aaa1"),
+        siem_ref_key(f"{index}/bbb2"): (index, "bbb2"),
+    }
+
+
+def test_map_value_keeps_the_original_id_not_the_stored_key(elk: FakeElk) -> None:
+    # 저장 키는 JSON 이스케이프된 값이라 그대로 URL 경로에 쓰면 다른 문서를 가리킨다.
+    # 맵의 값은 ELK가 준 원래 _id여야 한다.
+    index = ".ds-logs-web-default-2026.11.04-000001"
+    doc_id = 'q"b\\s\x01z한글'
+    elk.add(hits_response(siem_hit(index, doc_id)))
+    c = caller(elk)
+    body = parse(call(c, "query_siem", query()))
+
+    ref = body["hits"][0]["siem_ref"]
+    assert ref == siem_ref_key(f"{index}/{doc_id}")
+    assert ref != f"{index}/{doc_id}"  # 이스케이프가 실제로 일어났다
+    assert c.session.siem_refs[ref] == (index, doc_id)
+
+
+def test_hits_dropped_to_fit_are_not_in_the_map(elk: FakeElk) -> None:
+    # 뒤에서 빠진 히트는 모델이 보지 못했으므로 인용할 수 없고, 맵에도 없어야 한다.
+    index = ".ds-logs-web-default-2026.11.04-000001"
+    big = "x" * 400
+    elk.add(hits_response(*[siem_hit(index, f"id{n}", **{"url.path": big}) for n in range(8)]))
+    c = caller(elk, config(chars=900))
+    body = parse(call(c, "query_siem", query()))
+
+    assert body["omitted"] > 0
+    shown = {h["siem_ref"] for h in body["hits"]}
+    assert shown
+    assert set(c.session.siem_refs) == shown
+
+
+def test_a_failed_call_leaves_the_map_untouched(elk: FakeElk) -> None:
+    index = ".ds-logs-web-default-2026.11.04-000001"
+    elk.add(hits_response(siem_hit(index, "kept")))
+    elk.add(status(500))
+    c = caller(elk)
+    call(c, "query_siem", query())
+    before = dict(c.session.siem_refs)
+    call(c, "query_siem", query(source_ip="203.0.113.9"))
+
+    assert c.session.siem_refs == before == {siem_ref_key(f"{index}/kept"): (index, "kept")}
+
+
+def test_count_siem_adds_nothing_to_the_map(elk: FakeElk) -> None:
+    elk.add(ok("terms.json"))
+    c = caller(elk)
+    call(c, "count_siem", count())
+
+    assert c.session.siem_refs == {}
+
+
+# 원문 한 건 가져오기 (#382)
+#
+# 도구가 아니라 근거 발급 워커가 부른다. GET /<index>/_doc/<id> 하나이고, 접속·마감·상한 규칙은
+# query_siem과 같은 함수를 쓴다. 돌려주는 모양은 수집이 raw_records.original_text에 넣는 것과 같은
+# 세 칸(_index, _id, _source)이다.
+
+
+def siem_config() -> dict[str, Any]:
+    return config()["tools"]["siem"]
+
+
+def fetch(fake: FakeElk, index: str, doc_id: str, clock: Any = None) -> dict[str, Any]:
+    return siem_mod.fetch_document(
+        siem_config(),
+        index,
+        doc_id,
+        transport=fake.transport(),
+        clock=clock or itertools.count(0.0, 0.1).__next__,
+    )
+
+
+def doc_response(index: str, doc_id: str, source: dict[str, Any]) -> httpx.Response:
+    return httpx.Response(
+        200,
+        json={"_index": index, "_id": doc_id, "_version": 3, "found": True, "_source": source},
+    )
+
+
+def test_fetch_returns_the_three_columns_ingest_stores(elk: FakeElk) -> None:
+    index = ".ds-logs-nginx.access-default-2026.11.04-000001"
+    source = {"@timestamp": "2026-11-04T00:00:01Z", "event": {"module": "suricata"}}
+    elk.add(doc_response(index, "abc1", source))
+
+    got = fetch(elk, index, "abc1")
+
+    assert got == {"_index": index, "_id": "abc1", "_source": source}
+    assert elk.requests[-1].method == "GET"
+
+
+def test_fetch_percent_encodes_an_odd_doc_id(elk: FakeElk) -> None:
+    # _id를 경로에 그대로 넣으면 다른 문서를 가리키거나 경로가 깨진다.
+    index = ".ds-logs-web-default-2026.11.04-000001"
+    doc_id = 'q"b\\s\x01z한글'
+    elk.add(doc_response(index, doc_id, {"a": 1}))
+
+    got = fetch(elk, index, doc_id)
+
+    raw_path = elk.requests[-1].url.raw_path.decode("ascii")
+    assert raw_path.startswith(f"/{index}/_doc/")
+    assert "/" not in raw_path[len(f"/{index}/_doc/") :]
+    assert elk.requests[-1].url.path == f"/{index}/_doc/{doc_id}"
+    assert got["_id"] == doc_id
+
+
+def test_fetch_does_not_truncate_the_source(elk: FakeElk) -> None:
+    # 불변 사본이 목적이므로 도구의 자르기(FIELD_MAX_CHARS, SEARCH_MAX)가 걸리지 않아야 한다.
+    index = ".ds-logs-web-default-2026.11.04-000001"
+    long_value = "y" * (FIELD_MAX_CHARS * 5)
+    elk.add(doc_response(index, "big", {"message": long_value}))
+
+    got = fetch(elk, index, "big")
+
+    assert got["_source"]["message"] == long_value
+    assert CUT_MARK not in got["_source"]["message"]
+
+
+def test_fetch_of_a_missing_document_is_an_error(elk: FakeElk) -> None:
+    index = ".ds-logs-web-default-2026.11.04-000001"
+    elk.add(httpx.Response(404, json={"_index": index, "_id": "gone", "found": False}))
+
+    with pytest.raises(siem_mod.ToolError) as exc:
+        fetch(elk, index, "gone")
+    assert exc.value.code == "failed"
+
+
+def test_fetch_with_found_false_is_an_error(elk: FakeElk) -> None:
+    index = ".ds-logs-web-default-2026.11.04-000001"
+    elk.add(httpx.Response(200, json={"_index": index, "_id": "gone", "found": False}))
+
+    with pytest.raises(siem_mod.ToolError):
+        fetch(elk, index, "gone")
+
+
+def test_fetch_auth_failure_is_reported_as_auth(elk: FakeElk) -> None:
+    elk.add(status(401, "error_401.json"))
+
+    with pytest.raises(siem_mod.ToolError) as exc:
+        fetch(elk, ".ds-x-000001", "a")
+    assert exc.value.reason == "auth"
+
+
+def test_fetch_stops_over_the_size_cap(elk: FakeElk) -> None:
+    cfg = {**siem_config(), "max_bytes": 64}
+    elk.add(doc_response(".ds-x-000001", "a", {"m": "z" * 500}))
+
+    with pytest.raises(siem_mod.ToolError) as exc:
+        siem_mod.fetch_document(
+            cfg,
+            ".ds-x-000001",
+            "a",
+            transport=elk.transport(),
+            clock=itertools.count(0.0, 0.1).__next__,
+        )
+    assert exc.value.reason == "too_large"
+
+
+def test_fetch_error_text_leaks_no_address_or_key(elk: FakeElk) -> None:
+    elk.add(status(500, "error_500.json"))
+
+    with pytest.raises(siem_mod.ToolError) as exc:
+        fetch(elk, ".ds-x-000001", "a")
+    assert leaked(f"{exc.value.code} {exc.value.reason}") == []
+
+
+def test_fetch_rejects_a_pattern_or_multi_index(elk: FakeElk) -> None:
+    # 맵의 값은 히트 하나의 _index라 늘 구체 이름이다. 패턴을 받으면 엉뚱한 문서를 가리킨다.
+    for index in ("logs-nginx.access-*", "logs-a-000001,logs-b-000001"):
+        with pytest.raises(siem_mod.ToolError) as exc:
+            siem_mod.fetch_document(siem_config(), index, "a", transport=elk.transport())
+        assert exc.value.code == "invalid_argument", index
+    assert elk.requests == []
+
+
+# 소스 구분 없는 대상 (#382)
+#
+# 이벤트 정규화를 없애면서 수리카타처럼 매핑표가 없는 소스도 근거로 써야 한다. 대상 하나에 ECS
+# 공통 필터·반환 필드만 두고 event.module로 좁힌다. 안 좁히면 여러 소스가 함께 걸린다.
+
+EVIDENCE = "evidence"
+
+
+def evidence_query(**kwargs: Any) -> dict[str, Any]:
+    return {"target": EVIDENCE, "start_ms": START, "end_ms": END, **kwargs}
+
+
+def test_evidence_target_exists_with_ecs_common_filters_only() -> None:
+    assert EVIDENCE in TARGET_NAMES
+    assert set(TARGET_FILTERS[EVIDENCE]) == {
+        "source_ip",
+        "destination_ip",
+        "user_name",
+        "host_name",
+        "url_path",
+        "http_method",
+        "status_code",
+        "event_module",
+        "event_dataset",
+    }
+    # 소스 고유 필드는 쓰지 않는다. 알럿 전용 필터도 없다
+    assert "rule_name" not in TARGET_FILTERS[EVIDENCE]
+    assert "alert_severity" not in TARGET_FILTERS[EVIDENCE]
+    assert "cloud_account_id" not in TARGET_FILTERS[EVIDENCE]
+
+
+def test_evidence_target_returns_ecs_common_fields() -> None:
+    fields = set(TARGET_FIELDS[EVIDENCE])
+    assert {"event.module", "event.dataset", "source.ip", "url.path"} <= fields
+    assert not any(f.startswith("kibana.") for f in fields)
+
+
+def test_event_module_filter_narrows_to_one_source(elk: FakeElk) -> None:
+    elk.add(ok("empty.json"))
+    c = caller(elk)
+    call(c, "query_siem", evidence_query(event_module="suricata"))
+
+    body = elk.bodies()[-1]
+    terms = [f for f in body["query"]["bool"]["filter"] if "term" in f]
+    assert {"term": {"event.module": "suricata"}} in terms
+
+
+def test_evidence_target_without_a_module_filter_catches_every_source(elk: FakeElk) -> None:
+    index = ".ds-filebeat-9.5.0-2026.11.04-000001"
+    hits = [
+        siem_hit(index, f"id{n}", **{"event.module": module})
+        for n, module in enumerate(("suricata", "modsecurity", "nginx"))
+    ]
+    elk.add(hits_response(*hits))
+    c = caller(elk)
+    body = parse(call(c, "query_siem", evidence_query()))
+
+    modules = [h["fields"]["event.module"] for h in body["hits"]]
+    assert modules == ["suricata", "modsecurity", "nginx"]
+    # 모델에게 보인 히트는 모두 원문을 가져올 수 있다
+    assert set(c.session.siem_refs) == {h["siem_ref"] for h in body["hits"]}
+
+
+def test_alert_only_filters_are_rejected_on_the_evidence_target(elk: FakeElk) -> None:
+    c = caller(elk)
+    text = call(c, "query_siem", evidence_query(rule_name="IRLAB"))
+
+    assert text.startswith("TOOL_ERROR tool=query_siem code=invalid_argument")
+    assert elk.requests == []
+
+
+def test_default_config_has_the_evidence_target(env: None) -> None:
+    targets = load_config(REPO / "config")["tools"]["siem"]["targets"]
+    by_name = {t["name"]: t for t in targets}
+    assert EVIDENCE in by_name
+    index = by_name[EVIDENCE]["index"]
+    # 소스를 가리지 않도록 넓게 두고 실제 값은 config/local.toml에서 좁힌다
+    assert "filebeat" in index and "logs-" in index
+    assert by_name[EVIDENCE]["time_field"] == "@timestamp"

@@ -615,9 +615,12 @@ def default_tools() -> dict[str, Any]:
 
 def test_default_config_allows_l1_and_l2_only() -> None:
     tools = default_tools()
-    assert "lookup_indicator" in tools["allowed"]["l1"]
-    assert "lookup_indicator" in tools["allowed"]["l2"]
-    assert "lookup_indicator" not in tools["allowed"]["l3"]
+    allowed = tools["allowed"]
+    assert "lookup_indicator" in allowed["l1_alert_triage"]
+    assert "lookup_indicator" in allowed["l1_ticket_judgment"]
+    assert "lookup_indicator" in allowed["l2_investigate"]
+    for task in ("l3_hypothesize", "l3_verify"):
+        assert "lookup_indicator" not in allowed[task], task
     ti = tools["threat_intel"]
     assert ti["api_key_env"] == "VT_API_KEY"
     assert (ti["per_minute"], ti["per_day"]) == (4, 500)
@@ -629,14 +632,22 @@ def test_l3_cannot_call_it_and_l1_l2_can(env: None) -> None:
     cfg = {**CONFIG, "tools": default_tools()}
     registry = default_registry()
     assert "lookup_indicator" in registry.names()
-    for stage, shown in (("l1", True), ("l2", True), ("l3", False)):
+    cases = (
+        ("l1", "l1_alert_triage", True),
+        ("l2", "l2_investigate", True),
+        ("l3", "l3_verify", False),
+    )
+    for stage, task, shown in cases:
         names = [
             t.name
             for t in registry.session(
-                stage=stage, config=cfg, recorder=Caller(registry, cfg, stage).recorder
+                stage=stage,
+                task=task,
+                config=cfg,
+                recorder=Caller(registry, cfg, stage).recorder,
             ).function_tools()
         ]
-        assert ("lookup_indicator" in names) is shown, stage
+        assert ("lookup_indicator" in names) is shown, task
     c = Caller(registry, cfg, "l3")
     text = call(c, "ip", "198.51.100.7")
     assert text.startswith("TOOL_ERROR tool=lookup_indicator code=not_allowed")

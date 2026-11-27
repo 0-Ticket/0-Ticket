@@ -6,6 +6,7 @@ pending이 아닌 Hunt는 건드리지 않고, 갱신은 읽은 상태가 그대
 (failure = "cancelled")은 시도로 세지 않는다.
 """
 
+import logging
 import os
 from collections.abc import Callable, Sequence
 from datetime import UTC, datetime, timedelta
@@ -15,11 +16,14 @@ import psycopg
 
 from soc.agent import AgentResult, AgentTask, run_agent
 from soc.contracts import to_epoch_ms, validate_contract
+from soc.evidence import issue
 from soc.ids import new_id
 from soc.l3.hunt import store
 from soc.l3.hunt.prompts import load_prompt
 from soc.l3.hunt.settings import ConfigError, HuntSettings, read_hunt_settings
 from soc.ticketing import clean_title
+
+logger = logging.getLogger(__name__)
 
 Run = Callable[[AgentTask], AgentResult]
 RECORD_PREFIXES = ("alt_", "evt_")
@@ -79,9 +83,14 @@ class HuntVerifier:
         *,
         run: Run = run_agent,
         clock: Callable[[], datetime] = _utcnow,
+        siem_config: dict[str, Any] | None = None,
+        evidence_profile: str = "",
     ) -> None:
         self._database_url = database_url
         self._settings = settings
+        # 근거 발급(#382). 인용된 문서가 없으면 쓰이지 않는다
+        self._siem_config = siem_config or {}
+        self._evidence_profile = evidence_profile
         self._run = run
         self._clock = clock
 
@@ -114,6 +123,7 @@ class HuntVerifier:
                     },
                     output_contract="hunt_verification",
                     cited_ids=_cited,
+                    cited_refs=lambda output: output["siem_refs"],
                     subject_type="hunt",
                     subject_id=subject_id,
                     attempt=read_attempts + 1,
@@ -126,7 +136,10 @@ class HuntVerifier:
             now_ms = to_epoch_ms(self._clock())
             hunt = {**hunt, "attempts": read_attempts + 1, "updated_at": now_ms}
             if result.ok:
-                hunt = self._verified(conn, hunt, result.output, now_ms)
+                # 인용한 SIEM 문서를 먼저 발급한다(#382). 그 evt_ ID의 엔티티를 아래
+                # record_entities가 읽는다. 발급 실패는 그 근거만 버리고 계속한다
+                output = self._issue(conn, result, now_ms)
+                hunt = self._verified(conn, hunt, output, now_ms)
             else:
                 hunt = self._failed(hunt, result)
             validate_contract("hunt", hunt)
@@ -138,6 +151,28 @@ class HuntVerifier:
                     return  # 다른 실행이 먼저 처리했다
                 if ticket is not None:
                     store.insert_ticket(conn, ticket)  # 이미 있으면 그 Ticket을 쓴다
+
+    def _issue(self, conn: psycopg.Connection, result: AgentResult, now_ms: int) -> dict[str, Any]:
+        """발급한 evt_ ID를 evidence_ids에 더하고 siem_refs를 뗀 출력(#382).
+
+        발급 전 문서는 ID가 없어 Hunt에 남기면 되돌릴 수 없는 포인터가 된다.
+        """
+        output = {k: v for k, v in result.output.items() if k != "siem_refs"}
+        if not result.cited_siem_refs:
+            return output
+        issued = issue(
+            conn,
+            result.cited_siem_refs,
+            siem_config=self._siem_config,
+            siem_profile=self._evidence_profile,
+            now_ms=now_ms,
+        )
+        if issued.dropped:
+            logger.warning("L3 근거 발급 실패 %d건", issued.dropped)
+        existing = output["evidence_ids"]
+        added = [i for i in issued.evidence_ids.values() if i not in existing]
+        output["evidence_ids"] = [*existing, *added]
+        return output
 
     def _verified(
         self, conn: psycopg.Connection, hunt: dict[str, Any], output: dict[str, Any], now_ms: int
@@ -185,8 +220,17 @@ def database_url_from_env() -> str:
 
 
 def build_worker(config: dict[str, Any]) -> HuntVerifier:
-    """실행기 등록 함수(#215). config는 설정 전체이고 [l3]만 읽는다."""
-    return HuntVerifier(database_url_from_env(), read_hunt_settings(config.get("l3", {})))
+    """실행기 등록 함수(#215). config는 설정 전체이고 [l3]와 [tools.siem]을 읽는다."""
+    siem = config.get("tools", {}).get("siem", {})
+    evidence_profile = siem.get("evidence_siem_profile", "")
+    if not isinstance(evidence_profile, str) or not evidence_profile:
+        raise ConfigError("[tools.siem] evidence_siem_profile이 필요하다")
+    return HuntVerifier(
+        database_url_from_env(),
+        read_hunt_settings(config.get("l3", {})),
+        siem_config=dict(siem),
+        evidence_profile=evidence_profile,
+    )
 
 
 def _ticket(hunt: dict[str, Any], now_ms: int) -> dict[str, Any]:

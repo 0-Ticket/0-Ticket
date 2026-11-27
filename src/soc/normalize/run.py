@@ -123,10 +123,9 @@ def _normalize_and_save(
         row = _checked_row(settings, conn, mapped)
     except (NormalizeError, ContractError) as error:
         # 우리 매핑 결과가 검증에서 떨어지면 재시도해도 같으므로 Alert는 폴백으로 남긴다(#326)
-        if (
-            mapped.kind != "alert"
-            or mapped.outcome == "fallback"
-            or _failure_code(error) not in ("schema_failed", "validation_failed")
+        if mapped.outcome == "fallback" or _failure_code(error) not in (
+            "schema_failed",
+            "validation_failed",
         ):
             raise
         mapped = fallback_alert(raw, "validation_failed")

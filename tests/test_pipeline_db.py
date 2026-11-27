@@ -255,7 +255,15 @@ def test_raw_records_flow_to_an_incident_artifact_without_manual_steps(
     first = counts(conn)
     assert first.pop("incident_artifacts") >= 1
     assert first.pop("incidents") >= 1
-    assert first == {"raw_records": 9, "alerts": 4, "events": 5, "tickets": 4}
+    # 이벤트는 정규화하지 않는다(#382, D-085). 원본 9건 중 알럿 4건만 정규화되고 이벤트
+    # 5건은 validation_failed로 남는다. 근거가 필요하면 조사 중 심에서 찾아 발급한다
+    assert first == {"raw_records": 9, "alerts": 4, "events": 0, "tickets": 4}
+    rejected = q(
+        conn,
+        "SELECT count(*) AS n FROM normalize_status WHERE status = 'failed'"
+        " AND error_code = 'validation_failed'",
+    ).fetchone()["n"]
+    assert rejected == 5
     first = counts(conn)
     logs = q(conn, "SELECT count(*) AS n FROM agent_logs").fetchone()["n"]
 

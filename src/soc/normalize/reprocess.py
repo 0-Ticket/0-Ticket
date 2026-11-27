@@ -1,9 +1,9 @@
-"""이미 정규화된 알럿·이벤트를 id를 유지한 채 다시 정규화한다(#334, D-063, #347, D-068).
+"""이미 정규화된 알럿을 id를 유지한 채 다시 정규화한다(#334, D-063).
 
-alerts(또는 events)와 normalize_status를 직접 읽는다(임대 경로 claim_*_batch는 쓰지 않는다). id·
+alerts와 normalize_status를 직접 읽는다(임대 경로 claim_*_batch는 쓰지 않는다). id·
 raw_id·triage와 status·result_id·result_kind는 바꾸지 않고, 정규화가 만드는 값 중 달라진 것만
-UPDATE한다. 이벤트도 알럿과 같이 outcome·source·missing_fields·error_code를 비교해 한 트랜잭션에서
-함께 갱신하고(#351), 품질이 하락하면 기존 결과를 보존한다. 출력에는 건수와 항목 종류만 있고
+UPDATE한다. outcome·source·missing_fields·error_code를 한 트랜잭션에서
+함께 갱신하고, 품질이 하락하면 기존 결과를 보존한다. 출력에는 건수와 항목 종류만 있고
 원문 값은 없다.
 """
 
@@ -20,7 +20,6 @@ from soc.asset_lookup import AssetLookupError
 from soc.contracts import ContractError, to_datetime, to_epoch_ms
 from soc.normalize.config import Settings
 from soc.normalize.errors import NormalizeError
-from soc.normalize.event_tables import load_event_summaries
 from soc.normalize.mapping import RawRow, normalize
 from soc.normalize.run import _checked_row, _failure_code
 from soc.normalize.store import _db_value
@@ -28,8 +27,6 @@ from soc.normalize.tables import load_tables
 
 _RANK = {"fallback": 0, "partial": 1, "ok": 2}
 _ALERT_COLUMNS = ("time", "severity", "title", "rule_id", "entities", "assets", "ocsf", "details")
-_EVENT_COLUMNS = ("time", "ocsf_class", "summary", "entities", "assets", "ocsf", "details")
-KINDS = ("alert", "event")
 
 _CANDIDATES = """
 SELECT s.raw_id FROM normalize_status s JOIN alerts a ON a.id = s.result_id
@@ -38,22 +35,6 @@ WHERE s.result_kind = 'alert' AND s.status = 'succeeded'
   AND (%s::timestamptz IS NULL OR a.time >= %s)
 ORDER BY a.time, a.id
 LIMIT %s
-"""
-
-# 이벤트는 품질이 비어 있는 행도 갱신 대상이라 정규화된 행 전부가 대상이다. since·limit만 건다
-_EVENT_CANDIDATES = """
-SELECT s.raw_id FROM normalize_status s JOIN events e ON e.id = s.result_id
-WHERE s.result_kind = 'event' AND s.status = 'succeeded'
-  AND (%s::timestamptz IS NULL OR e.time >= %s)
-ORDER BY e.time, e.id
-LIMIT %s
-"""
-
-_EVENT_CURRENT = """
-SELECT e.id, e.time, e.ocsf_class, e.summary, e.entities, e.assets, e.ocsf, e.details,
-       s.outcome, s.source, s.missing_fields, s.error_code
-FROM normalize_status s JOIN events e ON e.id = s.result_id
-WHERE s.raw_id = %s AND s.result_kind = 'event' AND s.status = 'succeeded'
 """
 
 _CURRENT = """
@@ -70,14 +51,14 @@ class ReprocessResult:
 
     Attributes:
         dry_run: 쓰지 않고 센 결과인지.
-        kind: 다시 정규화한 종류. "alert" 또는 "event".
+        kind: 다시 정규화한 종류. "alert".
         read: 읽어 다시 정규화한 행 수.
         changed: 달라져서 갱신한(dry_run이면 갱신할) 행 수.
         unchanged: 새 결과가 기존과 같은 행 수.
         other_source: `--source`와 새 결과의 소스가 달라 건드리지 않은 행 수.
         skipped: 건너뛴 사유별 건수. fallback, worse, 또는 정규화 실패 코드.
         errors: DB 오류로 그 행만 되돌린 건수.
-        duplicates: 같은 raw_id에서 result_id가 아니라서 건드리지 않은 알럿(또는 이벤트) 수.
+        duplicates: 같은 raw_id에서 result_id가 아니라서 건드리지 않은 알럿 수.
         by_source: 새 결과의 소스별 changed·unchanged·skipped 건수.
         columns: 바뀌는 컬럼 이름별 행 수.
         entity_changes: 엔티티 type·role 추가(`+ip/dst`)·제거(`-ip/dst`) 건수.
@@ -108,41 +89,32 @@ def reprocess(
     all_rows: bool = False,
     kind: str = "alert",
 ) -> ReprocessResult:
-    """대상 알럿(또는 이벤트)을 새 로직으로 다시 정규화해 달라진 행만 갱신한다.
+    """대상 알럿을 새 로직으로 다시 정규화해 달라진 행만 갱신한다.
 
     Args:
         settings: 정규화 설정.
         conn: DB 연결(autocommit).
         source: 새 결과의 소스가 이것인 알럿만. 주면 outcome과 관계없이 모든 알럿을 읽는다.
-            알럿 소스 이름이라 이벤트(`kind="event"`)에는 쓸 수 없다.
         since: alerts.time이 이 시각 이후인 알럿만.
         limit: 읽을(정규화할) 최대 행 수. alerts.time, id 오름차순.
         dry_run: 어떤 테이블에도 쓰지 않고 잠그지도 않는다.
         all_rows: outcome과 관계없이 기존 알럿 전체를 읽는다. 폴백·outcome 하락은 그대로 건너뛴다.
-            이벤트는 품질이 빈 행도 갱신하므로 늘 전체를 읽는다.
-        kind: 다시 정규화할 종류. "alert"(기본) 또는 "event".
+        kind: 다시 정규화할 종류. "alert"만 허용한다.
 
     Raises:
-        ValueError: kind가 틀렸거나 이벤트에 source를 줬다.
+        ValueError: kind가 틀렸다.
         MappingTableError: 매핑표가 틀렸다. 읽기 전에 난다.
     """
-    if kind not in KINDS or (kind == "event" and source is not None):
-        raise ValueError("재처리 종류나 source가 맞지 않는다")
+    if kind != "alert":
+        raise ValueError("재처리 종류가 맞지 않는다")
     load_tables()
-    load_event_summaries()
     result = ReprocessResult(dry_run=dry_run, kind=kind)
-    if kind == "event":
-        rows = conn.execute(_EVENT_CANDIDATES, (since, since, limit)).fetchall()
-    else:
-        rows = conn.execute(_CANDIDATES, (all_rows, source, since, since, limit)).fetchall()
+    rows = conn.execute(_CANDIDATES, (all_rows, source, since, since, limit)).fetchall()
     for (raw_id,) in rows:
         result.read += 1
         try:
             with conn.transaction():
-                if kind == "event":
-                    _one_event(settings, conn, raw_id, dry_run, result)
-                else:
-                    _one(settings, conn, raw_id, source, dry_run, result)
+                _one(settings, conn, raw_id, source, dry_run, result)
         except (NormalizeError, AssetLookupError, ContractError) as error:
             _count_skip(result, None, _failure_code(error))
         except psycopg.Error:
@@ -214,69 +186,6 @@ def _one(
         _update(conn, raw_id, "alerts", alert_id, changed_alert, changed_status)
 
 
-def _one_event(
-    settings: Settings,
-    conn: psycopg.Connection,
-    raw_id: str,
-    dry_run: bool,
-    result: ReprocessResult,
-) -> None:
-    """이벤트 원본 한 건을 다시 정규화해 기존 행과 비교하고, 달라졌으면 갱신한다.
-
-    새 품질이 기존보다 낮으면 건너뛴다(worse). 새 결과가 fallback인데 기존 이벤트가 Base Event(0)가
-    아니면 기존 outcome이 비어 있어도 보존한다. 열린 트랜잭션 안이다.
-    """
-    lock = sql.SQL("" if dry_run else " FOR UPDATE OF e, s")
-    current = conn.execute(sql.SQL(_EVENT_CURRENT) + lock, (raw_id,)).fetchone()
-    raw = _read_raw(conn, raw_id)
-    if current is None or raw is None:
-        return  # 읽은 뒤 다른 곳에서 바뀌었다. 다음 실행이 다시 본다
-    (event_id, *old_event, old_outcome, old_source, old_missing, old_code) = current
-    old = dict(zip(_EVENT_COLUMNS, old_event, strict=True))
-    mapped = normalize(raw)
-    new_source = mapped.source or "unknown"
-    base_downgrade = mapped.outcome == "fallback" and old["ocsf_class"] != 0
-    lower = old_outcome is not None and _RANK[mapped.outcome or "ok"] < _RANK[old_outcome]
-    if base_downgrade or lower:
-        _count_skip(result, new_source, "worse")
-        return
-    row = _checked_row(settings, conn, mapped, (old["entities"], old["assets"]))
-    changed_event = {
-        column: row[column]
-        for column in _EVENT_COLUMNS
-        if _differs(column, old[column], row[column])
-    }
-    new_status = {
-        "outcome": mapped.outcome,
-        "source": mapped.source,
-        "missing_fields": list(mapped.missing_fields),
-        "error_code": mapped.error_code,
-    }
-    old_status = {
-        "outcome": old_outcome,
-        "source": old_source,
-        "missing_fields": list(old_missing),
-        "error_code": old_code,
-    }
-    changed_status = {c: v for c, v in new_status.items() if v != old_status[c]}
-    result.duplicates += conn.execute(
-        "SELECT count(*) FROM events WHERE raw_id = %s AND id <> %s", (raw_id, event_id)
-    ).fetchone()[0]
-    counts = result.by_source.setdefault(new_source, {"changed": 0, "unchanged": 0, "skipped": 0})
-    if not changed_event and not changed_status:
-        result.unchanged += 1
-        counts["unchanged"] += 1
-        return
-    result.changed += 1
-    counts["changed"] += 1
-    for column in (*changed_event, *changed_status):
-        result.columns[column] = result.columns.get(column, 0) + 1
-    if "entities" in changed_event:
-        _count_entities(result, old["entities"], row["entities"])
-    if not dry_run:
-        _update(conn, raw_id, "events", event_id, changed_event, changed_status)
-
-
 def _read_raw(conn: psycopg.Connection, raw_id: str) -> RawRow | None:
     """원본 한 건을 읽는다. 저장된 JSON 글자를 그대로 되살린다(D-049)."""
     row = conn.execute(
@@ -324,7 +233,7 @@ def _update(
     Args:
         conn: 열린 트랜잭션 안의 연결.
         raw_id: normalize_status의 raw_id.
-        table: 결과 테이블. "alerts" 또는 "events".
+        table: 결과 테이블. "alerts".
         row_id: 결과 행의 id.
         result_changes: 결과 행에서 달라진 컬럼.
         status: normalize_status에서 달라진 컬럼.

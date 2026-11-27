@@ -26,6 +26,12 @@ class HuntVerification(BaseModel):
         list[types_schema.EvidenceId],
         Field(description="근거가 된 Alert·Event ID와 도구 호출 기록 ID. 중복 없음"),
     ]
+    siem_refs: Annotated[
+        list[types_schema.SiemRef],
+        Field(
+            description="검증 근거로 쓰려고 고른 SIEM 문서의 저장 키(#382). evidence_ids와 별개다(아직 ID가 없다). 이 run의 도구 결과에 보인 것만 쓸 수 있고, 워커가 가져와 저장한 뒤 evt_ ID를 발급해 evidence_ids에 더한다. 중복 없음"
+        ),
+    ]
     entities: Annotated[
         list[entity_schema.Entity],
         Field(description="모델이 확인한 엔티티. L3 코드가 근거 레코드의 엔티티와 합친다"),

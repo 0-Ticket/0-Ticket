@@ -2,9 +2,9 @@
 
     uv run python -m soc.normalize
     uv run python -m soc.normalize report [--kind alert|event]   # 소스별 채움률(읽기 전용, 건수만)
-    uv run python -m soc.normalize reprocess [--kind alert|event] [--source S] [--since T]
+    uv run python -m soc.normalize reprocess [--kind alert] [--source S] [--since T]
         [--limit N] [--dry-run]
-    # 이미 정규화된 알럿(기본) 또는 이벤트를 id를 유지한 채 다시 정규화한다(#334, #347)
+    # 이미 정규화된 알럿을 id를 유지한 채 다시 정규화한다(#334)
 
 종료 코드: 0 실패 없음, 1 실패한 건이 있거나 DB에 접속·조회하지 못함, 2 설정·환경변수 오류.
 """
@@ -68,14 +68,9 @@ def _report_command(argv: list[str]) -> int:
 
 
 def _reprocess_command(argv: list[str]) -> int:
-    """재처리 옵션을 읽어 알럿(또는 이벤트)을 다시 정규화한다. 옵션이 틀리면 종료 코드 2다."""
+    """재처리 옵션을 읽어 알럿을 다시 정규화한다. 옵션이 틀리면 종료 코드 2다."""
     parser = argparse.ArgumentParser(prog="python -m soc.normalize reprocess")
-    parser.add_argument(
-        "--kind",
-        choices=("alert", "event"),
-        default="alert",
-        help="다시 정규화할 종류. 기본은 alert",
-    )
+    parser.add_argument("--kind", choices=("alert",), default="alert")
     parser.add_argument(
         "--source", help="새 결과의 소스(modsecurity, suricata 등)가 같은 알럿만(--kind alert 전용)"
     )
@@ -88,8 +83,6 @@ def _reprocess_command(argv: list[str]) -> int:
     parser.add_argument("--limit", type=_positive, help="읽을(정규화할) 최대 행 수")
     parser.add_argument("--dry-run", action="store_true", help="쓰지 않고 건수만 낸다")
     args = parser.parse_args(argv)
-    if args.kind == "event" and args.source is not None:
-        parser.error("--source는 알럿 소스 이름이라 --kind event에서는 쓸 수 없다")
 
     def action(settings: Settings, conn: psycopg.Connection, _owner: str) -> Any:
         return reprocess(

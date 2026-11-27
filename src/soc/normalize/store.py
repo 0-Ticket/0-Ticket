@@ -14,7 +14,7 @@ from psycopg.types.json import Jsonb
 from soc.contracts import to_datetime, to_epoch_ms
 from soc.normalize.mapping import RawRow, Result
 
-_TABLES = {"alert": "alerts", "event": "events"}
+_TABLES = {"alert": "alerts"}
 _COLUMNS = {
     "alert": (
         "id",
@@ -26,17 +26,6 @@ _COLUMNS = {
         "entities",
         "assets",
         "triage",
-        "ocsf",
-        "details",
-    ),
-    "event": (
-        "id",
-        "raw_id",
-        "time",
-        "ocsf_class",
-        "summary",
-        "entities",
-        "assets",
         "ocsf",
         "details",
     ),
@@ -160,8 +149,8 @@ def save_success(
         conn: 쓰기 연결(autocommit).
         owner: 이번 실행의 임대 소유자 값.
         raw_id: 정규화한 원본의 raw_records.id.
-        kind: 결과 종류. "alert" 또는 "event".
-        row: 계약 검증을 통과한 alerts 또는 events 행.
+        kind: 결과 종류. "alert".
+        row: 계약 검증을 통과한 alerts 행.
         result: 결과 품질(outcome, error_code, missing_fields, source)을 가진 정규화 결과.
             없으면 모두 비운다.
 
@@ -204,11 +193,11 @@ def save_failure(conn: psycopg.Connection, owner: str, raw_id: str, code: str) -
 
 
 def _insert_result(conn: psycopg.Connection, kind: str, row: dict[str, Any]) -> None:
-    """alerts 또는 events에 결과 행 하나를 넣는다.
+    """alerts에 결과 행 하나를 넣는다.
 
     Args:
         conn: 열린 트랜잭션 안의 연결.
-        kind: 결과 종류. "alert" 또는 "event".
+        kind: 결과 종류. "alert".
         row: 계약 모양의 행. time은 epoch 밀리초, JSON 칸은 dict나 list.
     """
     columns = _COLUMNS[kind]

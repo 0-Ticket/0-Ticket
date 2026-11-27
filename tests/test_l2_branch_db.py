@@ -1221,6 +1221,9 @@ def test_analyze_worker_saves_artifact_proposals_and_incident_atomically(
     assert incident["details"]["l2_analyze"] == {
         "asset_lookup_failed": False,
         "dropped_techniques": 1,
+        # 조사가 고른 SIEM 문서 중 저장하지 못해 버린 수(#382). 이 사례는 0건이다
+        "dropped_refs": 0,
+        "evidence_omitted": 0,
         "failure_streak": 0,
     }
     assert {item["value"] for item in incident["entities"]} >= {"203.0.113.55"}

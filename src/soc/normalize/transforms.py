@@ -9,33 +9,13 @@ import math
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Any
 
 from soc.contracts import to_epoch_ms
 from soc.normalize.errors import NormalizeError
 
 SEVERITY_IDS = {"low": 2, "medium": 3, "high": 4, "critical": 5}
-HTTP_ACTIVITY_IDS = {
-    "CONNECT": 1,
-    "DELETE": 2,
-    "GET": 3,
-    "HEAD": 4,
-    "OPTIONS": 5,
-    "POST": 6,
-    "PUT": 7,
-    "TRACE": 8,
-    "PATCH": 9,
-}
-_MAX_DIGITS = 9
-_MONTHS = {
-    name: number
-    for number, name in enumerate("Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split(), 1)
-}
-_CTIME = re.compile(
-    r"(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun) ([A-Za-z]{3}) ( ?[0-9]|[0-9]{2}) "
-    r"([0-9]{2}):([0-9]{2}):([0-9]{2}) ([0-9]{4})"
-)
 
 
 def is_text(value: Any) -> bool:
@@ -73,62 +53,6 @@ def _round_int(value: Any) -> int | None:
     return round(value)
 
 
-def _http_method(value: str) -> str | None:
-    method = value.upper()
-    return method if method in HTTP_ACTIVITY_IDS else None
-
-
-def _to_int(value: Any) -> int | None:
-    if isinstance(value, bool):
-        return None
-    if isinstance(value, int):
-        return value
-    if isinstance(value, str) and value.isascii() and value.isdigit() and len(value) <= _MAX_DIGITS:
-        return int(value)
-    return None
-
-
-def _finite_number(value: Any) -> bool:
-    if isinstance(value, bool) or not isinstance(value, int | float):
-        return False
-    try:
-        return math.isfinite(value)
-    except OverflowError:
-        return False
-
-
-def _geo_coordinates(value: Any) -> list[float] | None:
-    if not isinstance(value, dict):
-        return None
-    lon, lat = value.get("lon"), value.get("lat")
-    return [lon, lat] if _finite_number(lon) and _finite_number(lat) else None
-
-
-def _ctime_utc(value: Any) -> int:
-    match = _CTIME.fullmatch(value) if isinstance(value, str) else None
-    if match is None:
-        raise NormalizeError("validation_failed")
-    month_name, day, hour, minute, second, year = match.groups()
-    try:
-        return to_epoch_ms(
-            datetime(
-                int(year),
-                _MONTHS[month_name],
-                int(day),
-                int(hour),
-                int(minute),
-                int(second),
-                tzinfo=UTC,
-            )
-        )
-    except (KeyError, ValueError):
-        raise NormalizeError("validation_failed") from None
-
-
-def _present(value: Any) -> bool:
-    return value is not None
-
-
 # 변환을 정하지 않은 항목이 쓴다. 문자열을 그대로 옮긴다
 COPY = Transform(lambda value: value)
 
@@ -138,11 +62,6 @@ TRANSFORMS: dict[str, Transform] = {
         SEVERITY_IDS.get, values=frozenset(str(value) for value in SEVERITY_IDS.values())
     ),
     "round_int": Transform(_round_int, accepts=lambda value: value is not None),
-    "http_method": Transform(_http_method, values=frozenset(HTTP_ACTIVITY_IDS)),
-    "method_name": Transform(str.upper),
-    "to_int": Transform(_to_int, accepts=_present),
-    "geo_coordinates": Transform(_geo_coordinates, accepts=_present),
-    "ctime_utc": Transform(_ctime_utc, accepts=_present),
 }
 
 

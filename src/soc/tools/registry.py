@@ -98,6 +98,9 @@ class CallContext:
     fits: Callable[[dict[str, Any]], bool]  # aggregate 결과가 한도 안인지(call_id 포함해 셈)
     # 실행기가 시작 때 한 번 만든 공유 객체(예: 임베더). 핸들러는 전역 대신 여기서 꺼낸다
     services: Mapping[str, Any] = field(default_factory=dict)
+    # 이 호출이 모델에게 보인 SIEM 문서: 저장 키 -> (_index, _id)(#382). 핸들러가 채우고
+    # 레지스트리가 호출이 성공했을 때만 세션 맵에 합친다. 실패한 호출의 값은 버린다.
+    siem_docs: dict[str, tuple[str, str]] = field(default_factory=dict)
 
 
 # 핸들러는 결과를 돌려주거나, 결과를 내는 awaitable(async def)을 돌려준다(#213)
@@ -188,10 +191,20 @@ class ToolRegistry:
         config: Mapping[str, Any],
         recorder: ToolRecorder,
         services: Mapping[str, Any] | None = None,
+        task: str | None = None,
     ) -> "ToolSession":
-        """stage의 허용 목록으로 실행 하나의 도구 묶음을 만든다. 설정이 잘못되면 ToolConfigError."""
+        """허용 목록으로 실행 하나의 도구 묶음을 만든다. 설정이 잘못되면 ToolConfigError.
+
+        목록은 task의 키를 먼저 보고, 그 키가 없으면 stage의 키를 본다(#382, D-086). 배포 설정은
+        태스크 이름만 키로 두므로(`soc.agent.types.TASK_NAMES`) 등록되지 않은 태스크는 도구가
+        하나도 붙지 않는다. 단계 키만 둔 설정은 그대로 동작한다.
+
+        결과 길이 한도와 strict_mode는 태스크가 아니라 stage의 값을 쓴다.
+        """
         tools = config.get("tools", {})
-        allowed = list(tools.get("allowed", {}).get(stage, []))
+        table = tools.get("allowed", {})
+        key = task if task is not None and task in table else stage
+        allowed = list(table.get(key, []))
         unknown = [name for name in allowed if name not in self._specs]
         if unknown:
             raise ToolConfigError("허용 목록에 등록되지 않은 도구 이름이 있다")
@@ -228,7 +241,7 @@ class ToolRegistry:
 
 
 class ToolSession:
-    """실행 하나의 도구 묶음. 연속 실패 수와 근거 장부(evidence_ids)를 가진다."""
+    """실행 하나의 도구 묶음. 연속 실패 수와 근거 장부(evidence_ids), SIEM 문서 맵을 가진다."""
 
     def __init__(
         self,
@@ -248,6 +261,10 @@ class ToolSession:
         self._recorder = recorder
         self._failures: dict[str, int] = {}
         self.evidence_ids: set[str] = set()
+        # 성공한 조회가 모델에게 보인 SIEM 문서: 저장 키 -> (_index, _id)(#382).
+        # 저장 키는 _index/_id로 되돌릴 수 없어(soc.ids.siem_ref_key) 쌍을 따로 들고 있는다.
+        # 모델이 적은 siem_ref를 이 키 집합과 대조하고, 워커가 값으로 원문을 가져온다.
+        self.siem_refs: dict[str, tuple[str, str]] = {}
 
     def function_tools(self) -> list[FunctionTool]:
         """허용 목록의 도구만 SDK 함수 도구로 감싼다. 목록 밖 도구는 모델에게 보이지 않는다."""
@@ -300,6 +317,7 @@ class ToolSession:
         self._failures[name] = 0
         self.evidence_ids.add(call_id)
         self.evidence_ids.update(shown_ids)
+        self.siem_refs.update(ctx.siem_docs)
         # Agent Log에는 모델에게 보인 결과를 남긴다. records는 본문(뺀 건수 포함, #278)이고,
         # aggregate는 핸들러가 이미 줄인 결과다.
         self._recorder.report_tool(

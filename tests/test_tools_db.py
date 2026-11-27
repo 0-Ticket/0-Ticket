@@ -1,4 +1,4 @@
-"""내부 데이터·Web 도구와 에이전트 DB 읽기 역할(db 마커, #211).
+"""내부 데이터 도구와 에이전트 DB 읽기 역할(db 마커, #211).
 
 임시 DB에 마이그레이션을 적용하고 tests/fixtures/tools/records.json의
 손으로 만든 Alert·Event를 넣는다.
@@ -20,7 +20,7 @@ from psycopg import sql
 from psycopg.conninfo import make_conninfo
 from psycopg.types.json import Jsonb
 from test_agent_core import CONFIG
-from tool_helpers import Caller, body_chars, parse
+from tool_helpers import Caller, parse
 
 from soc.contracts import to_datetime, validate_contract
 from soc.contracts.alert import assemble_alert, contract_data
@@ -34,7 +34,12 @@ FIXTURE = Path(__file__).parent / "fixtures" / "tools" / "records.json"
 T0 = 1793678578000
 DAY = 86_400_000
 READER = "soc_agent_reader"
-ALL_TOOLS = ["get_alert", "get_event", "query_records", "query_http_flow", "summarize_http_flow"]
+ALL_TOOLS = [
+    "get_alert",
+    "get_event",
+    "query_records",
+    "get_raw",
+]
 
 
 def load_records() -> dict[str, list[dict[str, Any]]]:
@@ -133,7 +138,10 @@ def test_reader_role_can_read_alerts_and_events(reader_url: str) -> None:
 @pytest.mark.parametrize(
     "statement",
     [
-        "SELECT count(*) FROM raw_records",
+        # raw_records는 0311(#382)부터 지정 열만 읽는다. 열 권한이면 count(*)는 허용되므로
+        # 주지 않은 열로 본다. siem_ref에는 인덱스 이름이 들어 있어 모델에게 보이지 않는다
+        "SELECT siem_ref FROM raw_records",
+        "SELECT siem_profile FROM raw_records",
         "SELECT count(*) FROM agent_logs",
         # tickets는 0007(#313)부터 지정 열만 읽는다. 열 권한이면 count(*)는 허용돼 details로 본다
         "SELECT details FROM tickets",
@@ -151,6 +159,12 @@ def test_reader_role_is_denied_elsewhere(reader_url: str, statement: str) -> Non
     # 도구의 read-only 세션 설정이 아니라 역할 권한이 막는지 본다(일반 연결)
     with psycopg.connect(reader_url) as conn, pytest.raises(psycopg.errors.InsufficientPrivilege):
         conn.execute(statement)
+
+
+def test_reader_role_reads_only_the_granted_raw_columns(reader_url: str) -> None:
+    # 0311(#382)이 준 네 열은 읽고 그 밖은 못 읽는다. get_raw가 읽는 범위와 같다
+    with psycopg.connect(reader_url) as conn:
+        conn.execute("SELECT id, kind, fetched_at, original_text FROM raw_records")
 
 
 def test_reader_role_migration_applies_to_another_database(
@@ -244,9 +258,6 @@ def test_get_event_fills_message_from_the_summary_column_for_an_old_row(
         ("query_records", {"kind": "alert", **RANGE, "raw_id": "x"}),  # 계약에 없는 필터
         ("query_records", {"kind": "alert", **RANGE, "order_by": "title"}),
         ("query_records", {"kind": "alert", **RANGE, "sort": "title"}),
-        ("query_http_flow", {**RANGE, "status_code": 99}),
-        ("query_http_flow", {**RANGE, "ocsf_class": 3002}),
-        ("summarize_http_flow", {**RANGE, "limit": 5}),
     ],
 )
 def test_invalid_tool_arguments(reader_url: str, name: str, arguments: dict[str, Any]) -> None:
@@ -306,86 +317,29 @@ def test_query_events_filters(reader_url: str) -> None:
     assert set(ids(every)) <= c.session.evidence_ids
 
 
-# Web 도구
+def test_query_records_reads_legacy_http_events(reader_url: str) -> None:
+    out = call(caller(), "query_records", {"kind": "event", **RANGE, "ocsf_class": 4002})
+    assert ids(out) == [E[4], E[3], E[2], E[1]]
 
 
-def test_query_http_flow_reads_only_4002(reader_url: str) -> None:
+def test_query_records_filters_legacy_http_events(reader_url: str) -> None:
     c = caller()
-    out = call(c, "query_http_flow", RANGE)
-    assert ids(out) == [E[4], E[3], E[2], E[1]]  # 3002와 Base Event(0)는 나오지 않는다
-    first = out["records"][-1]
-    assert first == {
-        "id": E[1],
-        "time": T0 + 1000,
-        "summary": "GET /login.php 500",
-        "entities": [{"type": "ip", "value": "203.0.113.10", "role": "src"}],
-        "path": "/login.php",
-        "method": "GET",
-        "status_code": 500,
-        "user_agent": "sqlmap/1.7",
-        "src_ip": "203.0.113.10",
-    }
+    args = {"kind": "event", **RANGE, "ocsf_class": 4002}
+    assert ids(call(c, "query_records", {**args, "summary_contains": "login.php"})) == [E[2], E[1]]
+    assert ids(
+        call(c, "query_records", {**args, "entity_type": "ip", "entity_value": "203.0.113.10"})
+    ) == [E[4], E[2], E[1]]
 
 
-def test_query_http_flow_filters(reader_url: str) -> None:
-    c = caller()
-    assert ids(call(c, "query_http_flow", {**RANGE, "src_ip": "198.51.100.7"})) == [E[3]]
-    assert ids(call(c, "query_http_flow", {**RANGE, "method": "POST"})) == [E[2]]
-    assert ids(call(c, "query_http_flow", {**RANGE, "status_code": 403})) == [E[4]]
-    assert ids(call(c, "query_http_flow", {**RANGE, "path_contains": "login"})) == [E[2], E[1]]
-    ua = call(c, "query_http_flow", {**RANGE, "user_agent_contains": "mozilla"})
-    assert ids(ua) == [E[3]]
-    # 3002 Event도 src_ip가 같지만 나오지 않는다
-    src = call(c, "query_http_flow", {**RANGE, "src_ip": "203.0.113.10", "sort": "time_asc"})
-    assert ids(src) == [E[1], E[2], E[4]]
+def test_removed_http_tools_are_not_registered() -> None:
+    names = default_registry().names()
+    assert "query_http_flow" not in names
+    assert "summarize_http_flow" not in names
 
 
-def test_summarize_http_flow(reader_url: str) -> None:
-    c = caller()
-    out = call(c, "summarize_http_flow", RANGE)
-    assert out["total"] == 4
-    assert out["truncated"] is False
-    fields = out["fields"]
-    assert fields["method"] == [{"value": "GET", "count": 3}, {"value": "POST", "count": 1}]
-    assert fields["path"][0] == {"value": "/login.php", "count": 2}
-    assert fields["status_code"][0]["count"] == 2  # 200이 두 번
-    assert fields["src_ip"][0] == {"value": "203.0.113.10", "count": 3}
-    assert fields["user_agent"][0] == {"value": "sqlmap/1.7", "count": 3}
-    # 집계는 call_id로만 인용한다
-    assert c.session.evidence_ids == {out["call_id"]}
-
-
-def test_summarize_http_flow_size_is_capped(migrated: str, reader_url: str) -> None:
-    data = load_records()
-    base = data["events"][0]
-    extra = []
-    for i in range(30):
-        event = copy.deepcopy(base)
-        event["id"] = f"evt_01a19f93-1150-7000-8000-0000000f{i:04x}"
-        event["raw_id"] = f"raw_01a19f93-1150-7000-8000-0000000f{i:04x}"
-        event["ocsf"]["http_request"]["user_agent"] = f"{i:02d}" + "A" * 3000
-        event["ocsf"]["http_request"]["url"]["path"] = f"/p{i}/" + "B" * 500
-        extra.append(event)
-    insert_records(migrated, {"alerts": [], "events": extra})
-    c = caller(tools_config())
-    text = call_raw(c, "summarize_http_flow", RANGE)
-    out = parse(text)
-    assert out["total"] == 34
-    for entries in out["fields"].values():
-        assert len(entries) <= 10  # 필드별 상위 10개
-    ua = out["fields"]["user_agent"]
-    long = [e for e in ua if e.get("value_truncated")]
-    assert long and all(len(e["value"]) <= 121 for e in long)  # 120자 + 표시
-    assert body_chars(text) <= CONFIG["agent"]["l1"]["max_tool_result_chars"]
-
-    small = {**CONFIG["agent"]["l1"], "max_tool_result_chars": 1500}
-    tight = {**tools_config(), "agent": {**CONFIG["agent"], "l1": small}}
-    text = call_raw(caller(tight), "summarize_http_flow", RANGE)
-    out = parse(text)
-    assert body_chars(text) <= 1500
-    assert out["truncated"] is True
-    counts = [e["count"] for e in out["fields"]["method"]]
-    assert counts == sorted(counts, reverse=True)
+def test_query_records_reads_class_zero_events(reader_url: str) -> None:
+    out = call(caller(), "query_records", {"kind": "event", **RANGE, "ocsf_class": 0})
+    assert ids(out) == [E[6]]
 
 
 # DB 오류
@@ -438,3 +392,90 @@ def test_tool_session_is_read_only(reader_url: str, migrated: str) -> None:
     assert out.startswith("TOOL_ERROR tool=write code=failed")
     with psycopg.connect(migrated) as conn:
         assert conn.execute("SELECT count(*) FROM scratch").fetchone() == (0,)
+
+
+# 원문 읽기 (#382)
+#
+# 이벤트를 정규화하지 않으므로 events 행은 class 0 포인터이고 원문은 raw_records.original_text에
+# 있다. get_raw가 그것을 돌려준다. 읽기 역할의 권한은 마이그레이션 0311이 준다.
+
+RAW_ID = "raw_01a19f93-1150-7000-8000-0000000000ff"
+ORIGINAL = json.dumps(
+    {
+        "_index": ".ds-logs-nginx.access-default-2026.11.04-000001",
+        "_id": "aaa1",
+        "_source": {
+            "@timestamp": "2026-11-04T00:00:01Z",
+            "event": {"module": "suricata", "dataset": "suricata.eve"},
+            "source": {"ip": "198.51.100.7"},
+            "url": {"path": "/files/x.php"},
+        },
+    },
+    ensure_ascii=True,
+)
+
+
+def insert_issued_original(admin: str, *, event_id: str | None = None) -> None:
+    """근거 발급이 만드는 모양을 넣는다. 원문 한 건과, 원하면 그것을 가리키는 class 0 Event다."""
+    with psycopg.connect(admin) as conn:
+        conn.execute(
+            "INSERT INTO raw_records (id, kind, siem_profile, siem_ref, fetched_at,"
+            " original_text) VALUES (%s, 'event', 'test-evidence', %s, %s, %s)"
+            " ON CONFLICT DO NOTHING",
+            (RAW_ID, f"issued/{RAW_ID}", to_datetime(T0), ORIGINAL),
+        )
+        if event_id is not None:
+            conn.execute(
+                "INSERT INTO events (id, raw_id, time, ocsf_class, summary, entities, assets,"
+                " ocsf, details) VALUES (%s, %s, %s, 0, '', %s, %s, %s, %s)",
+                (
+                    event_id,
+                    RAW_ID,
+                    to_datetime(T0),
+                    Jsonb([]),
+                    Jsonb([]),
+                    Jsonb(
+                        {
+                            "class_uid": 0,
+                            "time": T0,
+                            "severity_id": 1,
+                            "message": "suricata.eve",
+                        }
+                    ),
+                    Jsonb({}),
+                ),
+            )
+
+
+def test_get_raw_returns_the_original_by_raw_id(migrated: str, reader_url: str) -> None:
+    insert_issued_original(migrated)
+    c = caller()
+    out = call(c, "get_raw", {"id": RAW_ID})
+
+    [record] = out["records"]
+    assert record["id"] == RAW_ID
+    assert record["kind"] == "event"
+    assert record["fetched_at"] == T0
+    assert json.loads(record["original_text"])["_source"]["event"]["module"] == "suricata"
+    # siem_ref는 읽지 않는다(인덱스 이름이 들어 있다)
+    assert "siem_ref" not in record and "siem_profile" not in record
+    assert RAW_ID in c.session.evidence_ids
+
+
+def test_get_raw_follows_an_event_id_to_its_original(migrated: str, reader_url: str) -> None:
+    event_id = "evt_01a19f93-1150-7000-8000-0000000000fe"
+    insert_issued_original(migrated, event_id=event_id)
+    out = call(caller(), "get_raw", {"id": event_id})
+
+    [record] = out["records"]
+    assert record["id"] == RAW_ID
+
+
+def test_get_raw_of_an_unknown_id_returns_no_records(reader_url: str) -> None:
+    out = call(caller(), "get_raw", {"id": "raw_01a19f93-1150-7000-8000-0000000000aa"})
+    assert out["records"] == []
+
+
+def test_get_raw_rejects_a_ticket_id(reader_url: str) -> None:
+    text = call_raw(caller(), "get_raw", {"id": "tkt_01a19f93-1150-7000-8000-000000000001"})
+    assert text.startswith("TOOL_ERROR tool=get_raw code=invalid_argument")
