@@ -30,7 +30,7 @@ supersedes: []
   ```
 
 - 조회 도구 허용 목록은 이제 단계가 아니라 태스크 이름 키다(`[tools.allowed] l3_hypothesize` 등, `config/default.toml`). `docs/notes/224-l3-real-model.md`의 `local.toml` 예시(`l3 = [...]`)를 그대로 쓰지 않는다. `config/local.toml`에서 `l3_hypothesize`를 덮어쓰지 않으면 기본 목록을 쓴다.
-- 이 개발 PC의 `uv run pytest`에서 `test_agent_task_tools.py` 2건, `test_tools_get_raw.py`, `test_tools_siem.py`, `test_tools_ssh.py` 각 1건이 실패한다. `main`에서도 같은 5건이 실패해 이 변경과 무관하다. 원인은 따로 보지 않았다.
+- 이 개발 PC의 `uv run pytest`에서 5건(`test_agent_task_tools.py` 2건, `test_tools_get_raw.py`, `test_tools_siem.py`, `test_tools_ssh.py` 각 1건)이 실패한다. 원인은 git에 올리지 않는 `config/local.toml`에 옛 단계 키(`l1 = [...]`)가 남아 기본 설정과 합쳐지는 것이다. `local.toml`이 없는 작업본(`git worktree`)에서는 2,702개가 모두 통과한다. `main`에서도 같고 이 변경과 무관하다. `local.toml`의 `[tools.allowed]`를 태스크 이름 키로 고치면 없어진다.
 - 아래 조회 SQL은 가짜 행으로만 실행해 봤다. 실제 Agent Log 행에서 `input`의 모양이 다르면(예: `window`가 `<data>` 안에 다른 공백으로 직렬화) `window_in_input` 열이 비어 나올 수 있다. 그때는 모델 줄의 `input`을 직접 읽어 `window`를 확인한다.
 
 ## 확인 방법
@@ -38,7 +38,7 @@ supersedes: []
 실행한 명령과 테스트(구현 결과):
 
 - `uv run ruff format --check .`, `uv run ruff check .` 통과
-- `uv run pytest`: 2,697개 통과, 5개 실패(위의 기존 실패), 835개 제외
+- `uv run pytest`: 이 PC에서는 2,697개 통과, 5개 실패(위의 `local.toml` 때문), 835개 제외. `local.toml` 없는 작업본에서는 2,702개 통과
 - `DATABASE_URL`을 지정해 `uv run pytest -m db tests/test_l3_hunt_db.py tests/test_l3_hunt_worker_db.py tests/test_l3_attempts_db.py`: 57개 통과
 - 주요 테스트: `test_lookback_window_counts_back_lookback_days_from_now`(DB 없음), `test_hypothesize_task_reads_recent_news_and_cases`의 `window` 단언, 기존 `test_verify_task_has_hypothesis_techniques_and_window`(검증 입력 불변)
 
