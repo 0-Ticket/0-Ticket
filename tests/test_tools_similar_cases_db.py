@@ -116,7 +116,6 @@ def test_reader_reads_only_the_granted_columns(reader_url: str) -> None:
     [
         "SELECT details FROM tickets",
         "SELECT * FROM tickets",
-        "SELECT origin FROM tickets",
         "SELECT hunt_id FROM tickets",
         "SELECT title FROM incidents",
         "SELECT summary FROM incidents",

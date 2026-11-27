@@ -23,11 +23,12 @@ from soc.tools.registry import (
 def default_registry() -> ToolRegistry:
     """운영 레지스트리: 내부 데이터 4개, SIEM 2개(#212), SSH 점검 1개(#213),
     위협 인텔 조회 1개(#309), 로컬 ATT&CK·KEV 조회 3개(#311),
-    유사 사례 검색 1개(#313).
+    유사 사례 검색 1개(#313), 확정 Case 검색 1개(#392).
 
     Web 도구(`query_http_flow`·`summarize_http_flow`)는 #382에서 없앴다. 그 둘은 OCSF
     4002 Event만 읽었고, 이벤트 정규화가 사라져 4002 행이 더 생기지 않는다(D-085).
     """
+    from soc.tools.confirmed_cases import SEARCH_CONFIRMED_CASES
     from soc.tools.internal import INTERNAL_TOOLS
     from soc.tools.local_intel import LOCAL_INTEL_TOOLS
     from soc.tools.siem import siem_tools
@@ -43,6 +44,7 @@ def default_registry() -> ToolRegistry:
             lookup_indicator_tool(),
             *LOCAL_INTEL_TOOLS,
             SEARCH_SIMILAR_CASES,
+            SEARCH_CONFIRMED_CASES,
         ]
     )
 

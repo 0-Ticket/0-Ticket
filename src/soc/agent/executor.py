@@ -42,6 +42,7 @@ from agents import set_tracing_disabled
 
 from soc.agent.config import load_full_config
 from soc.agent.types import STAGES, AgentWorker
+from soc.case_index.runtime import install_service as install_case_service
 from soc.similar.runtime import install_service
 
 logger = logging.getLogger("soc.agent.executor")
@@ -317,6 +318,9 @@ def main(
     try:
         config = load_full_config(config_dir)
         install_service(config)  # 워커가 만들어지기 전에: L1 워커가 색인 함수를 받아 간다(#313)
+        install_case_service(
+            config
+        )  # L3 Case 검색 도구의 공유 객체(#392). 색인 워커와 임베더를 나눈다
         executor = Executor(config, resolve=resolve)
     except ExecutorConfigError as exc:
         err(f"실행기 설정 오류: {exc}")

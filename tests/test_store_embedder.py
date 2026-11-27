@@ -144,6 +144,43 @@ def test_real_embedder_is_deterministic() -> None:
 
 
 @pytest.mark.embedder
+def test_real_embedder_gives_the_same_vectors_when_threads_embed_together() -> None:
+    """l2 색인 워커와 l3 도구가 같은 임베더를 동시에 쓴다(#392). 겹쳐도 값이 같아야 한다."""
+    import threading
+
+    embedder = BgeM3Embedder(SETTINGS)
+    texts = [
+        "같은 계정으로 SSH 로그인 실패가 반복됐다",
+        "title: Web shell on example web server",
+        "내부 호스트가 외부로 큰 파일을 올렸다",
+    ]
+    expected = {text: embedder.embed(text) for text in texts}
+    start = threading.Barrier(4)
+    mismatches: list[str] = []
+    errors: list[BaseException] = []
+
+    def work() -> None:
+        start.wait()
+        try:
+            for _ in range(5):
+                for text in texts:
+                    vector = embedder.embed(text)
+                    if any(abs(a - b) > 1e-6 for a, b in zip(vector, expected[text], strict=True)):
+                        mismatches.append(text)
+        except BaseException as error:  # noqa: BLE001
+            errors.append(error)
+
+    threads = [threading.Thread(target=work) for _ in range(4)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    assert errors == []
+    assert mismatches == []
+
+
+@pytest.mark.embedder
 def test_real_embedder_separates_unrelated_text() -> None:
     embedder = BgeM3Embedder(SETTINGS)
 

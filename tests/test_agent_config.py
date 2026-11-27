@@ -85,6 +85,7 @@ def test_default_tools_config(default_config_dir: Path) -> None:
         "run_host_check",
         *local_intel,
         "get_attack_actor",
+        "search_confirmed_cases",  # Case 검색(#392)도 둘 다에 있다
     ]
     assert allowed["l3_hypothesize"] == l3_tools
     assert allowed["l3_verify"] == l3_tools
@@ -108,6 +109,16 @@ def test_default_tools_config(default_config_dir: Path) -> None:
         "query_max_chars": 200,
         "reason_max_chars": 300,
         "entities_max": 5,
+    }
+    # 모두 초안값이다(#392, D-087). min_score는 실모델로 재지 못했다
+    assert tools["confirmed_cases"] == {
+        "limit_default": 2,
+        "limit_max": 3,
+        "min_score": 0.5,
+        "query_max_chars": 200,
+        "text_max_chars": 600,
+        "list_max_items": 10,
+        "result_max_chars": 4000,
     }
 
 

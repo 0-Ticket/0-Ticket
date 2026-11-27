@@ -103,11 +103,15 @@ def conn(migrated_database: HiddenUrl) -> Iterator[psycopg.Connection]:
 
 @pytest.fixture
 def legacy_database(temp_database: HiddenUrl, tmp_path: Path) -> HiddenUrl:
-    """0109만 빼고 적용한 DB. 마이그레이션 전 데이터를 넣는 데 쓴다."""
+    """0109 앞 번호만 적용한 DB. 마이그레이션 전 데이터를 넣는 데 쓴다.
+
+    뒤 번호는 0109이 만드는 칸을 쓸 수 있다(0312의 열 권한). 0109 없이 먼저 적용하면 실패하므로
+    0109과 그 뒤는 함께 나중에 적용한다.
+    """
     legacy_dir = tmp_path / "legacy_migrations"
     legacy_dir.mkdir()
     for migration in MIGRATIONS_DIR.glob("*.sql"):
-        if migration.name != MIGRATION.name:
+        if migration.name < MIGRATION.name:
             shutil.copyfile(migration, legacy_dir / migration.name)
     migrate(temp_database, legacy_dir)
     return temp_database
