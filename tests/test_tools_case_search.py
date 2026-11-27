@@ -116,8 +116,9 @@ def test_one_case_comes_with_its_artifact_recommendations_tickets_and_alerts(
         "rationale": None,
         "priority": None,
     }
-    assert [set(t) for t in first["tickets"]] == [{"id", "origin", "title", "created_at"}] * 2
-    assert [t["origin"] for t in first["tickets"]] == ["auto", "auto"]
+    # Ticket은 Alert 하나씩이다(0104). Alert가 셋인 Incident 1은 Ticket 셋이다
+    assert [set(t) for t in first["tickets"]] == [{"id", "origin", "title", "created_at"}] * 3
+    assert [t["origin"] for t in first["tickets"]] == ["auto"] * 3
     # 알럿은 심각도 내림차순
     assert [a["id"][-1] for a in first["alerts"]] == ["2", "1", "3"]
     assert [set(a) for a in first["alerts"]] == [{"id", "title", "time"}] * 3
@@ -369,8 +370,9 @@ def search_only(
 
 
 # Case 4(긴 Case)의 결과 길이를 단계 0~4로 재 보면(call_id 포함, 문자열 직렬화 길이)
-# [6672, 6672, 5904, 5649, 4640]이다. 단계 5(권고 조치 근거·Ticket 제목 빼기)와 6(Case·개수만)이
-# 그 뒤에 있어 기본 한도 4000에도 들어간다. 값은 docs/notes/392-case-search-tool.md의 실측과 같다.
+# [7236, 7236, 6468, 6045, 4660]이다. 단계 5(권고 조치 근거·Ticket 제목 빼기, 4009)는 4000을
+# 11자 넘어서 기본 한도 4000에서는 단계 6(경위 우선, 3304)이 된다. 값은
+# docs/notes/392-case-search-tool.md의 실측과 같다.
 
 
 def test_a_long_case_goes_down_the_levels_as_the_limit_shrinks(
@@ -381,9 +383,9 @@ def test_a_long_case_goes_down_the_levels_as_the_limit_shrinks(
     assert len(full["artifact"]["timeline"]) == 4 and len(full["alerts"]) == 3 * 2
     assert 290 <= len(full["artifact"]["cause"]) <= 300
 
-    out = search_only(monkeypatch, 4, 6_000)[2]  # 단계 2: 문장 상한 150
+    out = search_only(monkeypatch, 4, 6_500)[2]  # 단계 2: 문장 상한 150(6,468자)
     text_cut = parse(out)["results"][0]
-    assert body_chars(out) <= 6_000
+    assert body_chars(out) <= 6_500
     assert text_cut["truncated"] is True and len(text_cut["artifact"]["cause"]) <= 151
     assert len(text_cut["alerts"]) == 6  # 목록은 그대로
 
@@ -404,7 +406,7 @@ def test_the_huge_case_needs_a_deep_level_and_keeps_its_totals(
     only = parse(out)["results"][0]
     assert body_chars(out) <= 8_000
     assert only["case"]["id"] == cid(5)
-    assert (only["tickets_total"], len(only["tickets"])) == (12, 5)
+    assert (only["tickets_total"], len(only["tickets"])) == (24, 5)
     assert (only["alerts_total"], len(only["alerts"])) == (24, 5)
     assert (only["artifact"]["timeline_total"], len(only["artifact"]["timeline"])) == (12, 5)
     assert len(only["artifact"]["cause"]) <= 151
@@ -434,11 +436,14 @@ def test_the_default_limit_never_gives_too_large_and_keeps_the_case_id(
         assert body_chars(out) <= SECTION["result_max_chars"]
 
 
-def test_the_default_limit_gives_the_long_case_without_rationales_and_ticket_titles(
+def test_stage_5_gives_the_long_case_without_rationales_and_ticket_titles(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """긴 Case(4)는 단계 4가 4,640자라 한도 4000에서는 단계 5로 들어간다(근거·Ticket 제목 뺌)."""
-    out = search_only(monkeypatch, 4, SECTION["result_max_chars"])[2]
+    """긴 Case(4)는 단계 4가 4,660자라 한도 4,600~4,100에서 단계 5(4,009자)로 들어간다.
+
+    기본 한도 4000에서는 단계 5가 11자 넘어 단계 6이 된다(아래 경위 우선 테스트).
+    """
+    out = search_only(monkeypatch, 4, 4_500)[2]
 
     only = parse(out)["results"][0]
     assert "detail_omitted" not in only and only["truncated"] is True
@@ -451,8 +456,12 @@ def test_the_default_limit_gives_the_long_case_without_rationales_and_ticket_tit
 def test_the_story_first_level_drops_the_recommendations_but_keeps_the_artifact(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """경위 우선 단계: 권고 조치를 통째로 빼고 개수만 남긴다(Case 5는 한도 4000, 4는 3,500)."""
-    for n, limit in ((5, SECTION["result_max_chars"]), (4, 3_500)):
+    """경위 우선 단계: 권고 조치를 통째로 빼고 개수만 남긴다(Case 4·5는 한도 4000, 4는 3,500도)."""
+    for n, limit in (
+        (5, SECTION["result_max_chars"]),
+        (4, SECTION["result_max_chars"]),
+        (4, 3_500),
+    ):
         out = search_only(monkeypatch, n, limit)[2]
 
         only = parse(out)["results"][0]
@@ -483,7 +492,7 @@ def test_the_story_first_level_drops_the_recommendations_but_keeps_the_artifact(
 def test_a_level_with_recommendations_never_says_they_were_omitted(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    out = search_only(monkeypatch, 4, SECTION["result_max_chars"])[2]  # 단계 5: 근거만 뺀 권고 조치
+    out = search_only(monkeypatch, 4, 4_500)[2]  # 단계 5: 근거만 뺀 권고 조치
 
     only = parse(out)["results"][0]
     assert only["recommendations"] and "recommendations_omitted" not in only
@@ -497,13 +506,13 @@ def test_the_last_level_keeps_only_ids_titles_and_counts(monkeypatch: pytest.Mon
     assert only["detail_omitted"] is True
     assert set(only["case"]) == {"id", "incident_id", "title", "severity", "confirmed_at", "status"}
     assert only["case"]["id"] == cid(5)
-    # 개수는 샘플 Case 5의 것이다(Artifact 1, 권고 조치 12, Ticket 12, Alert 24)
+    # 개수는 샘플 Case 5의 것이다(Artifact 1, 권고 조치 12, Ticket 24, Alert 24)
     assert (
         only["artifact_total"],
         only["recommendations_total"],
         only["tickets_total"],
         only["alerts_total"],
-    ) == (1, 12, 12, 24)
+    ) == (1, 12, 24, 24)
     assert body_chars(out) < 1_500 // 2  # 한도보다 충분히 작다
 
 

@@ -1123,8 +1123,7 @@
    "origin": "auto",
    "status": "escalated",
    "alert_ids": [
-    "alt_01a19f93-1392-7000-8000-000000000001",
-    "alt_01a19f93-1392-7000-8000-000000000002"
+    "alt_01a19f93-1392-7000-8000-000000000001"
    ],
    "hunt_id": null,
    "entities": [
@@ -1137,6 +1136,29 @@
    "verdict": null,
    "created_at": 1793764001000,
    "updated_at": 1793764001000,
+   "details": {
+    "l1_note": "계약 밖 값. 에이전트 읽기 역할은 읽지 못한다"
+   }
+  },
+  {
+   "id": "tkt_01a19f93-1392-7000-8000-000000001001",
+   "title": "Web shell upload request on example web server",
+   "origin": "auto",
+   "status": "escalated",
+   "alert_ids": [
+    "alt_01a19f93-1392-7000-8000-000000000002"
+   ],
+   "hunt_id": null,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.2",
+     "role": "src"
+    }
+   ],
+   "verdict": null,
+   "created_at": 1793764001500,
+   "updated_at": 1793764001500,
    "details": {
     "l1_note": "계약 밖 값. 에이전트 읽기 역할은 읽지 못한다"
    }
@@ -1237,8 +1259,7 @@
    "origin": "auto",
    "status": "escalated",
    "alert_ids": [
-    "alt_01a19f93-1392-7000-8000-000000000100",
-    "alt_01a19f93-1392-7000-8000-000000000101"
+    "alt_01a19f93-1392-7000-8000-000000000100"
    ],
    "hunt_id": null,
    "entities": [
@@ -1256,13 +1277,35 @@
    }
   },
   {
+   "id": "tkt_01a19f93-1392-7000-8000-000000001100",
+   "title": "Long case ticket 1: upload endpoint probe from one external address",
+   "origin": "auto",
+   "status": "escalated",
+   "alert_ids": [
+    "alt_01a19f93-1392-7000-8000-000000000101"
+   ],
+   "hunt_id": null,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.101",
+     "role": "src"
+    }
+   ],
+   "verdict": null,
+   "created_at": 1793764100500,
+   "updated_at": 1793764100500,
+   "details": {
+    "l1_note": "계약 밖 값. 에이전트 읽기 역할은 읽지 못한다"
+   }
+  },
+  {
    "id": "tkt_01a19f93-1392-7000-8000-000000000101",
    "title": "Long case ticket 2: upload endpoint probe from one external address",
    "origin": "auto",
    "status": "escalated",
    "alert_ids": [
-    "alt_01a19f93-1392-7000-8000-000000000102",
-    "alt_01a19f93-1392-7000-8000-000000000103"
+    "alt_01a19f93-1392-7000-8000-000000000102"
    ],
    "hunt_id": null,
    "entities": [
@@ -1280,13 +1323,35 @@
    }
   },
   {
+   "id": "tkt_01a19f93-1392-7000-8000-000000001101",
+   "title": "Long case ticket 2: upload endpoint probe from one external address",
+   "origin": "auto",
+   "status": "escalated",
+   "alert_ids": [
+    "alt_01a19f93-1392-7000-8000-000000000103"
+   ],
+   "hunt_id": null,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.102",
+     "role": "src"
+    }
+   ],
+   "verdict": null,
+   "created_at": 1793764101500,
+   "updated_at": 1793764101500,
+   "details": {
+    "l1_note": "계약 밖 값. 에이전트 읽기 역할은 읽지 못한다"
+   }
+  },
+  {
    "id": "tkt_01a19f93-1392-7000-8000-000000000102",
    "title": "Long case ticket 3: upload endpoint probe from one external address",
    "origin": "auto",
    "status": "escalated",
    "alert_ids": [
-    "alt_01a19f93-1392-7000-8000-000000000104",
-    "alt_01a19f93-1392-7000-8000-000000000105"
+    "alt_01a19f93-1392-7000-8000-000000000104"
    ],
    "hunt_id": null,
    "entities": [
@@ -1304,13 +1369,35 @@
    }
   },
   {
+   "id": "tkt_01a19f93-1392-7000-8000-000000001102",
+   "title": "Long case ticket 3: upload endpoint probe from one external address",
+   "origin": "auto",
+   "status": "escalated",
+   "alert_ids": [
+    "alt_01a19f93-1392-7000-8000-000000000105"
+   ],
+   "hunt_id": null,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.103",
+     "role": "src"
+    }
+   ],
+   "verdict": null,
+   "created_at": 1793764102500,
+   "updated_at": 1793764102500,
+   "details": {
+    "l1_note": "계약 밖 값. 에이전트 읽기 역할은 읽지 못한다"
+   }
+  },
+  {
    "id": "tkt_01a19f93-1392-7000-8000-000000000300",
    "title": "Huge case ticket 1: upload endpoint probe from one external address",
    "origin": "auto",
    "status": "escalated",
    "alert_ids": [
-    "alt_01a19f93-1392-7000-8000-000000000300",
-    "alt_01a19f93-1392-7000-8000-000000000301"
+    "alt_01a19f93-1392-7000-8000-000000000300"
    ],
    "hunt_id": null,
    "entities": [
@@ -1328,13 +1415,35 @@
    }
   },
   {
+   "id": "tkt_01a19f93-1392-7000-8000-000000001300",
+   "title": "Huge case ticket 1: upload endpoint probe from one external address",
+   "origin": "auto",
+   "status": "escalated",
+   "alert_ids": [
+    "alt_01a19f93-1392-7000-8000-000000000301"
+   ],
+   "hunt_id": null,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.101",
+     "role": "src"
+    }
+   ],
+   "verdict": null,
+   "created_at": 1793764300500,
+   "updated_at": 1793764300500,
+   "details": {
+    "l1_note": "계약 밖 값. 에이전트 읽기 역할은 읽지 못한다"
+   }
+  },
+  {
    "id": "tkt_01a19f93-1392-7000-8000-000000000301",
    "title": "Huge case ticket 2: upload endpoint probe from one external address",
    "origin": "auto",
    "status": "escalated",
    "alert_ids": [
-    "alt_01a19f93-1392-7000-8000-000000000302",
-    "alt_01a19f93-1392-7000-8000-000000000303"
+    "alt_01a19f93-1392-7000-8000-000000000302"
    ],
    "hunt_id": null,
    "entities": [
@@ -1352,13 +1461,35 @@
    }
   },
   {
+   "id": "tkt_01a19f93-1392-7000-8000-000000001301",
+   "title": "Huge case ticket 2: upload endpoint probe from one external address",
+   "origin": "auto",
+   "status": "escalated",
+   "alert_ids": [
+    "alt_01a19f93-1392-7000-8000-000000000303"
+   ],
+   "hunt_id": null,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.102",
+     "role": "src"
+    }
+   ],
+   "verdict": null,
+   "created_at": 1793764301500,
+   "updated_at": 1793764301500,
+   "details": {
+    "l1_note": "계약 밖 값. 에이전트 읽기 역할은 읽지 못한다"
+   }
+  },
+  {
    "id": "tkt_01a19f93-1392-7000-8000-000000000302",
    "title": "Huge case ticket 3: upload endpoint probe from one external address",
    "origin": "auto",
    "status": "escalated",
    "alert_ids": [
-    "alt_01a19f93-1392-7000-8000-000000000304",
-    "alt_01a19f93-1392-7000-8000-000000000305"
+    "alt_01a19f93-1392-7000-8000-000000000304"
    ],
    "hunt_id": null,
    "entities": [
@@ -1376,13 +1507,35 @@
    }
   },
   {
+   "id": "tkt_01a19f93-1392-7000-8000-000000001302",
+   "title": "Huge case ticket 3: upload endpoint probe from one external address",
+   "origin": "auto",
+   "status": "escalated",
+   "alert_ids": [
+    "alt_01a19f93-1392-7000-8000-000000000305"
+   ],
+   "hunt_id": null,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.103",
+     "role": "src"
+    }
+   ],
+   "verdict": null,
+   "created_at": 1793764302500,
+   "updated_at": 1793764302500,
+   "details": {
+    "l1_note": "계약 밖 값. 에이전트 읽기 역할은 읽지 못한다"
+   }
+  },
+  {
    "id": "tkt_01a19f93-1392-7000-8000-000000000303",
    "title": "Huge case ticket 4: upload endpoint probe from one external address",
    "origin": "auto",
    "status": "escalated",
    "alert_ids": [
-    "alt_01a19f93-1392-7000-8000-000000000306",
-    "alt_01a19f93-1392-7000-8000-000000000307"
+    "alt_01a19f93-1392-7000-8000-000000000306"
    ],
    "hunt_id": null,
    "entities": [
@@ -1400,13 +1553,35 @@
    }
   },
   {
+   "id": "tkt_01a19f93-1392-7000-8000-000000001303",
+   "title": "Huge case ticket 4: upload endpoint probe from one external address",
+   "origin": "auto",
+   "status": "escalated",
+   "alert_ids": [
+    "alt_01a19f93-1392-7000-8000-000000000307"
+   ],
+   "hunt_id": null,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.104",
+     "role": "src"
+    }
+   ],
+   "verdict": null,
+   "created_at": 1793764303500,
+   "updated_at": 1793764303500,
+   "details": {
+    "l1_note": "계약 밖 값. 에이전트 읽기 역할은 읽지 못한다"
+   }
+  },
+  {
    "id": "tkt_01a19f93-1392-7000-8000-000000000304",
    "title": "Huge case ticket 5: upload endpoint probe from one external address",
    "origin": "auto",
    "status": "escalated",
    "alert_ids": [
-    "alt_01a19f93-1392-7000-8000-000000000308",
-    "alt_01a19f93-1392-7000-8000-000000000309"
+    "alt_01a19f93-1392-7000-8000-000000000308"
    ],
    "hunt_id": null,
    "entities": [
@@ -1424,13 +1599,35 @@
    }
   },
   {
+   "id": "tkt_01a19f93-1392-7000-8000-000000001304",
+   "title": "Huge case ticket 5: upload endpoint probe from one external address",
+   "origin": "auto",
+   "status": "escalated",
+   "alert_ids": [
+    "alt_01a19f93-1392-7000-8000-000000000309"
+   ],
+   "hunt_id": null,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.105",
+     "role": "src"
+    }
+   ],
+   "verdict": null,
+   "created_at": 1793764304500,
+   "updated_at": 1793764304500,
+   "details": {
+    "l1_note": "계약 밖 값. 에이전트 읽기 역할은 읽지 못한다"
+   }
+  },
+  {
    "id": "tkt_01a19f93-1392-7000-8000-000000000305",
    "title": "Huge case ticket 6: upload endpoint probe from one external address",
    "origin": "auto",
    "status": "escalated",
    "alert_ids": [
-    "alt_01a19f93-1392-7000-8000-000000000310",
-    "alt_01a19f93-1392-7000-8000-000000000311"
+    "alt_01a19f93-1392-7000-8000-000000000310"
    ],
    "hunt_id": null,
    "entities": [
@@ -1448,13 +1645,35 @@
    }
   },
   {
+   "id": "tkt_01a19f93-1392-7000-8000-000000001305",
+   "title": "Huge case ticket 6: upload endpoint probe from one external address",
+   "origin": "auto",
+   "status": "escalated",
+   "alert_ids": [
+    "alt_01a19f93-1392-7000-8000-000000000311"
+   ],
+   "hunt_id": null,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.106",
+     "role": "src"
+    }
+   ],
+   "verdict": null,
+   "created_at": 1793764305500,
+   "updated_at": 1793764305500,
+   "details": {
+    "l1_note": "계약 밖 값. 에이전트 읽기 역할은 읽지 못한다"
+   }
+  },
+  {
    "id": "tkt_01a19f93-1392-7000-8000-000000000306",
    "title": "Huge case ticket 7: upload endpoint probe from one external address",
    "origin": "auto",
    "status": "escalated",
    "alert_ids": [
-    "alt_01a19f93-1392-7000-8000-000000000312",
-    "alt_01a19f93-1392-7000-8000-000000000313"
+    "alt_01a19f93-1392-7000-8000-000000000312"
    ],
    "hunt_id": null,
    "entities": [
@@ -1472,13 +1691,35 @@
    }
   },
   {
+   "id": "tkt_01a19f93-1392-7000-8000-000000001306",
+   "title": "Huge case ticket 7: upload endpoint probe from one external address",
+   "origin": "auto",
+   "status": "escalated",
+   "alert_ids": [
+    "alt_01a19f93-1392-7000-8000-000000000313"
+   ],
+   "hunt_id": null,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.107",
+     "role": "src"
+    }
+   ],
+   "verdict": null,
+   "created_at": 1793764306500,
+   "updated_at": 1793764306500,
+   "details": {
+    "l1_note": "계약 밖 값. 에이전트 읽기 역할은 읽지 못한다"
+   }
+  },
+  {
    "id": "tkt_01a19f93-1392-7000-8000-000000000307",
    "title": "Huge case ticket 8: upload endpoint probe from one external address",
    "origin": "auto",
    "status": "escalated",
    "alert_ids": [
-    "alt_01a19f93-1392-7000-8000-000000000314",
-    "alt_01a19f93-1392-7000-8000-000000000315"
+    "alt_01a19f93-1392-7000-8000-000000000314"
    ],
    "hunt_id": null,
    "entities": [
@@ -1496,13 +1737,35 @@
    }
   },
   {
+   "id": "tkt_01a19f93-1392-7000-8000-000000001307",
+   "title": "Huge case ticket 8: upload endpoint probe from one external address",
+   "origin": "auto",
+   "status": "escalated",
+   "alert_ids": [
+    "alt_01a19f93-1392-7000-8000-000000000315"
+   ],
+   "hunt_id": null,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.108",
+     "role": "src"
+    }
+   ],
+   "verdict": null,
+   "created_at": 1793764307500,
+   "updated_at": 1793764307500,
+   "details": {
+    "l1_note": "계약 밖 값. 에이전트 읽기 역할은 읽지 못한다"
+   }
+  },
+  {
    "id": "tkt_01a19f93-1392-7000-8000-000000000308",
    "title": "Huge case ticket 9: upload endpoint probe from one external address",
    "origin": "auto",
    "status": "escalated",
    "alert_ids": [
-    "alt_01a19f93-1392-7000-8000-000000000316",
-    "alt_01a19f93-1392-7000-8000-000000000317"
+    "alt_01a19f93-1392-7000-8000-000000000316"
    ],
    "hunt_id": null,
    "entities": [
@@ -1520,13 +1783,35 @@
    }
   },
   {
+   "id": "tkt_01a19f93-1392-7000-8000-000000001308",
+   "title": "Huge case ticket 9: upload endpoint probe from one external address",
+   "origin": "auto",
+   "status": "escalated",
+   "alert_ids": [
+    "alt_01a19f93-1392-7000-8000-000000000317"
+   ],
+   "hunt_id": null,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.109",
+     "role": "src"
+    }
+   ],
+   "verdict": null,
+   "created_at": 1793764308500,
+   "updated_at": 1793764308500,
+   "details": {
+    "l1_note": "계약 밖 값. 에이전트 읽기 역할은 읽지 못한다"
+   }
+  },
+  {
    "id": "tkt_01a19f93-1392-7000-8000-000000000309",
    "title": "Huge case ticket 10: upload endpoint probe from one external address",
    "origin": "auto",
    "status": "escalated",
    "alert_ids": [
-    "alt_01a19f93-1392-7000-8000-000000000318",
-    "alt_01a19f93-1392-7000-8000-000000000319"
+    "alt_01a19f93-1392-7000-8000-000000000318"
    ],
    "hunt_id": null,
    "entities": [
@@ -1544,13 +1829,35 @@
    }
   },
   {
+   "id": "tkt_01a19f93-1392-7000-8000-000000001309",
+   "title": "Huge case ticket 10: upload endpoint probe from one external address",
+   "origin": "auto",
+   "status": "escalated",
+   "alert_ids": [
+    "alt_01a19f93-1392-7000-8000-000000000319"
+   ],
+   "hunt_id": null,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.110",
+     "role": "src"
+    }
+   ],
+   "verdict": null,
+   "created_at": 1793764309500,
+   "updated_at": 1793764309500,
+   "details": {
+    "l1_note": "계약 밖 값. 에이전트 읽기 역할은 읽지 못한다"
+   }
+  },
+  {
    "id": "tkt_01a19f93-1392-7000-8000-000000000310",
    "title": "Huge case ticket 11: upload endpoint probe from one external address",
    "origin": "auto",
    "status": "escalated",
    "alert_ids": [
-    "alt_01a19f93-1392-7000-8000-000000000320",
-    "alt_01a19f93-1392-7000-8000-000000000321"
+    "alt_01a19f93-1392-7000-8000-000000000320"
    ],
    "hunt_id": null,
    "entities": [
@@ -1568,13 +1875,35 @@
    }
   },
   {
+   "id": "tkt_01a19f93-1392-7000-8000-000000001310",
+   "title": "Huge case ticket 11: upload endpoint probe from one external address",
+   "origin": "auto",
+   "status": "escalated",
+   "alert_ids": [
+    "alt_01a19f93-1392-7000-8000-000000000321"
+   ],
+   "hunt_id": null,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.111",
+     "role": "src"
+    }
+   ],
+   "verdict": null,
+   "created_at": 1793764310500,
+   "updated_at": 1793764310500,
+   "details": {
+    "l1_note": "계약 밖 값. 에이전트 읽기 역할은 읽지 못한다"
+   }
+  },
+  {
    "id": "tkt_01a19f93-1392-7000-8000-000000000311",
    "title": "Huge case ticket 12: upload endpoint probe from one external address",
    "origin": "auto",
    "status": "escalated",
    "alert_ids": [
-    "alt_01a19f93-1392-7000-8000-000000000322",
-    "alt_01a19f93-1392-7000-8000-000000000323"
+    "alt_01a19f93-1392-7000-8000-000000000322"
    ],
    "hunt_id": null,
    "entities": [
@@ -1590,6 +1919,29 @@
    "details": {
     "l1_note": "계약 밖 값. 에이전트 읽기 역할은 읽지 못한다"
    }
+  },
+  {
+   "id": "tkt_01a19f93-1392-7000-8000-000000001311",
+   "title": "Huge case ticket 12: upload endpoint probe from one external address",
+   "origin": "auto",
+   "status": "escalated",
+   "alert_ids": [
+    "alt_01a19f93-1392-7000-8000-000000000323"
+   ],
+   "hunt_id": null,
+   "entities": [
+    {
+     "type": "ip",
+     "value": "203.0.113.112",
+     "role": "src"
+    }
+   ],
+   "verdict": null,
+   "created_at": 1793764311500,
+   "updated_at": 1793764311500,
+   "details": {
+    "l1_note": "계약 밖 값. 에이전트 읽기 역할은 읽지 못한다"
+   }
   }
  ],
  "incidents": [
@@ -1600,6 +1952,7 @@
    "status": "confirmed",
    "ticket_ids": [
     "tkt_01a19f93-1392-7000-8000-000000000001",
+    "tkt_01a19f93-1392-7000-8000-000000001001",
     "tkt_01a19f93-1392-7000-8000-000000000002"
    ],
    "entities": [
@@ -1671,8 +2024,11 @@
    "status": "confirmed",
    "ticket_ids": [
     "tkt_01a19f93-1392-7000-8000-000000000100",
+    "tkt_01a19f93-1392-7000-8000-000000001100",
     "tkt_01a19f93-1392-7000-8000-000000000101",
-    "tkt_01a19f93-1392-7000-8000-000000000102"
+    "tkt_01a19f93-1392-7000-8000-000000001101",
+    "tkt_01a19f93-1392-7000-8000-000000000102",
+    "tkt_01a19f93-1392-7000-8000-000000001102"
    ],
    "entities": [
     {
@@ -1696,17 +2052,29 @@
    "status": "confirmed",
    "ticket_ids": [
     "tkt_01a19f93-1392-7000-8000-000000000300",
+    "tkt_01a19f93-1392-7000-8000-000000001300",
     "tkt_01a19f93-1392-7000-8000-000000000301",
+    "tkt_01a19f93-1392-7000-8000-000000001301",
     "tkt_01a19f93-1392-7000-8000-000000000302",
+    "tkt_01a19f93-1392-7000-8000-000000001302",
     "tkt_01a19f93-1392-7000-8000-000000000303",
+    "tkt_01a19f93-1392-7000-8000-000000001303",
     "tkt_01a19f93-1392-7000-8000-000000000304",
+    "tkt_01a19f93-1392-7000-8000-000000001304",
     "tkt_01a19f93-1392-7000-8000-000000000305",
+    "tkt_01a19f93-1392-7000-8000-000000001305",
     "tkt_01a19f93-1392-7000-8000-000000000306",
+    "tkt_01a19f93-1392-7000-8000-000000001306",
     "tkt_01a19f93-1392-7000-8000-000000000307",
+    "tkt_01a19f93-1392-7000-8000-000000001307",
     "tkt_01a19f93-1392-7000-8000-000000000308",
+    "tkt_01a19f93-1392-7000-8000-000000001308",
     "tkt_01a19f93-1392-7000-8000-000000000309",
+    "tkt_01a19f93-1392-7000-8000-000000001309",
     "tkt_01a19f93-1392-7000-8000-000000000310",
-    "tkt_01a19f93-1392-7000-8000-000000000311"
+    "tkt_01a19f93-1392-7000-8000-000000001310",
+    "tkt_01a19f93-1392-7000-8000-000000000311",
+    "tkt_01a19f93-1392-7000-8000-000000001311"
    ],
    "entities": [
     {

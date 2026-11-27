@@ -230,7 +230,7 @@ def test_long_case_lists_are_capped_in_sql_and_the_totals_come_from_the_tables(
     )
 
     [only] = result["results"]
-    assert (only["tickets_total"], len(only["tickets"])) == (12, 4)
+    assert (only["tickets_total"], len(only["tickets"])) == (24, 4)
     assert (only["alerts_total"], len(only["alerts"])) == (24, 4)
     # 알럿은 심각도 내림차순이라 가장 높은 것부터 보인다
     long_alerts = [a for a in SAMPLE["alerts"] if 300 <= int(a["id"][-12:]) < 400]  # Case 5의 알럿
