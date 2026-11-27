@@ -39,13 +39,14 @@ supersedes: []
 - **포기 상태가 없다.** 오래 실패하는 Case는 `check`의 `pending`과 `case_index_jobs.last_error`로 본다. 실행기 로그에는 예외 클래스 이름만 남는다. 설정이 틀려(`CollectionMismatch` 등) 계속 실패하면 10분마다 다시 시도한다.
 - **dev_seed·직접 INSERT한 Case는 대기 행이 없다**(마이그레이션 뒤에 넣으면). `check`가 `no_job`으로 보이고 `reindex`가 채운다.
 - **`config/local.toml`이 `[executor.l2] workers`를 따로 정의했으면** `soc.case_index:build_worker`를 직접 더해야 한다.
-- **파이프 준비 점검의 틈.** `pipeline/check.py`는 `search_similar_cases`가 l1·l2에 허용될 때만 Qdrant·임베더를 점검한다(`check.py:118`). 그 허용을 빼면 점검은 SKIP인데 분류 색인과 이 워커는 Qdrant가 필요하다. #370부터 있던 틈이고 이번에는 고치지 않았다(기술 부채).
-- **기술 부채.** 분류·유사 사례 임베더 인스턴스가 둘로 따로 있다(합치는 일은 범위 밖). 쓰지 않게 된 옛 `confirmed_cases__…` 컬렉션은 사람이 Qdrant에서 지운다.
+- **기술 부채 1: 파이프 준비 점검의 틈.** `pipeline/check.py`는 `search_similar_cases`가 l1·l2에 허용될 때만 Qdrant·임베더를 점검한다(`check.py:118`). 그 허용을 빼면 점검은 SKIP인데 분류 색인과 이 워커는 Qdrant가 필요하다. #370부터 있던 틈이고 이번에는 고치지 않았다.
+- **기술 부채 2: 임베더 인스턴스가 둘로 따로 있다.** 분류 색인 워커(와 이 워커)가 쓰는 것과 유사 사례 서비스(`similar/runtime.py`)가 쓰는 것이다. 하나로 합치는 일은 범위 밖이다.
+- 쓰지 않게 된 옛 `confirmed_cases__…` 컬렉션은 사람이 Qdrant에서 지운다(자동으로 찾거나 지우는 명령은 없다).
 - **Windows에서 테스트를 돌릴 때** `PYTHONUTF8=1`이 필요하다(`test_api_ui.py`가 `read_text()`로 `ui_seed.json`을 읽어 cp949에서 실패한다. 이 이슈와 무관한 기존 문제). `DATABASE_URL`·`QDRANT_URL`의 호스트는 `127.0.0.1`로 둔다.
 - **`poll` 순서 테스트가 부하 중 드물게 실패했다(조사함, 원인은 못 찾음).**
   - 증상: 전체 `-m db` 실행(약 800건)에서 `test_worker_polls_pending_jobs_in_order_up_to_the_limit`가 한 번 실패했다. `poll(2)`는 맞게 돌려준 직후 `poll(10)`이 빈 목록이었다. 다른 pytest를 같이 돌리며 poll 관련 테스트 4개를 병렬로 반복했을 때 100회 중 1회 실패했다(어느 테스트인지는 잡지 못했다). 나머지 99회와 단독 반복 8회는 통과했다.
   - 가설("파이썬 시각이 `next_attempt_at`·`created_at`에 들어가 DB 시계와 어긋난다")은 맞지 않았다. 두 열의 값은 코드에서 DB `now()`뿐이다(`index.py`의 백오프 `now() + make_interval`, `poll`의 `next_attempt_at <= now()`·`ORDER BY created_at`, `reindex`의 `next_attempt_at = now()`, 마이그레이션의 `DEFAULT now()`). 테스트도 `now()`뿐이고, 파이썬 시각(`to_datetime`)은 Incident·Artifact·Case 샘플 행에만 쓰인다. 호스트 시계를 ±약 10년 어긋나게 해도 poll·백오프가 같다는 테스트(`test_due_time_and_backoff_come_only_from_the_database_clock`)를 더했다.
-  - 남은 후보(확인하지 못한 추정): 막 INSERT한 연결과 `poll`하는 연결이 같은 DB에서 읽는 `now()`가 아주 조금(1초보다 훨씬 작게) 어긋나 `next_attempt_at <= now()`에서 행이 빠지는 경우다. VM의 CPU 사이 시계 차이나 시계가 잠깐 되돌아가는 일이 부하 때 나올 수 있다. 증거는 부하가 있을 때만 드물게 나왔다는 것뿐이다.
+  - 남은 후보(확인하지 못한 추정): PostgreSQL의 `now()`는 트랜잭션(자동 커밋 연결이면 문장) 시작 시각이라 연결마다 값이 다르다. 막 INSERT한 연결과 `poll`하는 연결의 `now()`가 아주 조금(1초보다 훨씬 작게) 어긋나면 `next_attempt_at <= now()`에서 행이 빠질 수 있다. VM의 CPU 사이 시계 차이나 시계가 잠깐 되돌아가는 일이 부하 때 나올 수 있다. 증거는 부하가 있을 때만 드물게 나왔다는 것뿐이다.
   - 한 일: 막 넣은 행을 바로 집는다고 가정한 테스트에 `make_due`(DB 시각의 1초 전으로 설정)를 넣고, `now()`로 "지금"을 정하던 곳을 `now() - interval '1 second'`로 바꿨다. 운영 코드는 바꾸지 않았다. 행을 한 번 놓쳐도 다음 라운드(기본 10초)에 집힌다.
   - 다시 나오면: 실패한 테스트 이름과 `poll` 전후의 `SELECT now(), next_attempt_at FROM case_index_jobs` 값을 먼저 본다.
 
@@ -53,8 +54,7 @@ supersedes: []
 
 - `uv run ruff format --check .`, `uv run ruff check .`: 통과.
 - `uv run pytest`: 2780건 통과(832건은 마커로 제외).
-- `uv run pytest -m db`(임시 PostgreSQL 16 컨테이너, 이 작업을 위해 따로 띄우고 끝낸 뒤 지움): 780건 통과, 실패 3건, 오류 4건. 오류 4건은 `QDRANT_URL`이 없어 나는 `tests/test_case_index_qdrant.py`의 fixture 오류이고, 실패 2건은 `tests/test_l2_branch_db.py`의 `qdrant` 마커가 붙은 기존 테스트가 같은 이유로 실패한 것이다(#375·#389 기록과 같은 기존 실패). 나머지 1건은 위의 `poll` 순서 테스트다. 영향받는 DB 테스트(`test_case_index_db.py`·`test_db_tables.py`·`test_api_review.py`·`test_pipeline_db.py`·`test_incident_reviews_db.py`·`test_similar_db.py`, `qdrant` 제외)는 따로 한 번 더 돌려 189건 통과했다.
-- 상한(6,000자)·기법 이름 80자·시계 테스트를 고친 뒤에는 기본 `pytest` 2780건, `test_case_index_db.py` 31건, 메모리 모드 `qdrant` 4건을 다시 돌려 모두 통과했다. 전체 `-m db`는 다시 돌리지 않았다(바뀐 곳은 `case_index` 테스트와 문서뿐이다).
+- `uv run pytest -m db`(임시 PostgreSQL 16 컨테이너, 이 작업을 위해 따로 띄우고 끝낸 뒤 지움, 마지막 커밋 `c27d64c` 기준 전체): 784건 통과, 실패 2건, 오류 4건. **모두 `QDRANT_URL`이 없어서 난 것이다.** 오류 4건은 `tests/test_case_index_qdrant.py`의 fixture(`qdrant 테스트에는 QDRANT_URL이 필요하다`)이고, 실패 2건은 `tests/test_l2_branch_db.py`의 `qdrant` 마커가 붙은 기존 테스트(`test_branch_reindex_detects_missing_point_and_recovers`, `test_vector_candidate_uses_current_incident_and_rejects_stale_payload`)가 `StoreError: 환경변수 QDRANT_URL이 없다`로 실패한 것이다(#375·#389 기록과 같은 기존 실패). 그 밖의 실패는 없고, 부하 중 한 번 실패했던 `poll` 순서 테스트도 통과했다. CI에는 Qdrant 서비스가 있다.
 - **`uv run pytest -m qdrant`는 돌리지 못했다.** 이 PC에 Qdrant가 떠 있지 않았고 이미지도 없었다. 대신 `tests/test_case_index_qdrant.py` 4건을 클라이언트만 메모리 모드(`QdrantClient(":memory:")`)로 바꾸는 임시 플러그인(커밋 안 함)으로 돌려 4건 통과했다. 실제 Qdrant 서버의 빈 payload 저장·Cosine 점수·없는 컬렉션 오류 해석은 CI에서 처음 확인된다.
 - 주요 테스트
   - `tests/test_case_index.py`: 텍스트 형식·순서·금지 항목(타임라인·근거 ID·엔티티 값·기법 ID·Artifact 요약 없음)·필드·기법 이름·기법 줄 수 상한, 최악의 길이가 전체 상한(6,000자) 아래임, 다섯 필드와 기법 10줄이 가득 찬 샘플에서 아무것도 안 잘림, 전체 상한이 안전장치로 남음, 백오프 30→600초, point ID 규칙, `source`·`outbox`·`text`가 임베더·Qdrant·L2를 끌어오지 않음(새 프로세스), 워커가 분류 서비스의 임베더를 공유함, 실행기가 `soc.case_index:build_worker`를 풀 수 있음.
