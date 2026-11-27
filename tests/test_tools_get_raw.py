@@ -77,7 +77,7 @@ def test_every_task_key_is_known() -> None:
 
 
 def test_the_reader_role_is_granted_only_the_columns_the_tool_reads() -> None:
-    sql = (REPO / "src/soc/db/migrations/0308_agent_reader_raw_records.sql").read_text(
+    sql = (REPO / "src/soc/db/migrations/0310_agent_reader_raw_records.sql").read_text(
         encoding="utf-8"
     )
     assert "GRANT SELECT (id, kind, fetched_at, original_text) ON raw_records" in sql

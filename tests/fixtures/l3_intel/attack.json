@@ -94,7 +94,18 @@
     {
       "type": "intrusion-set",
       "id": "intrusion-set--00000000-0000-4000-8000-000000000020",
-      "name": "Not A Technique"
+      "name": "Alpha Group",
+      "external_references": [
+        {
+          "source_name": "mitre-attack",
+          "external_id": "G0001",
+          "url": "https://attack.example.com/x"
+        }
+      ],
+      "aliases": [
+        "Alpha Group",
+        "Shared Name"
+      ]
     },
     {
       "type": "x-mitre-data-component",
@@ -209,6 +220,158 @@
       "relationship_type": "uses",
       "source_ref": "x-mitre-detection-strategy--00000000-0000-4000-8000-000000000050",
       "target_ref": "attack-pattern--00000000-0000-4000-8000-000000000010"
+    },
+    {
+      "type": "malware",
+      "id": "malware--00000000-0000-4000-8000-000000000021",
+      "name": "Beta Loader",
+      "external_references": [
+        {
+          "source_name": "mitre-attack",
+          "external_id": "S0001",
+          "url": "https://attack.example.com/x"
+        }
+      ],
+      "x_mitre_aliases": [
+        "Beta Loader",
+        "Shared Name"
+      ]
+    },
+    {
+      "type": "campaign",
+      "id": "campaign--00000000-0000-4000-8000-000000000022",
+      "name": "Gamma Campaign",
+      "external_references": [
+        {
+          "source_name": "mitre-attack",
+          "external_id": "C0001",
+          "url": "https://attack.example.com/x"
+        }
+      ],
+      "aliases": [
+        "Gamma Campaign"
+      ]
+    },
+    {
+      "type": "intrusion-set",
+      "id": "intrusion-set--00000000-0000-4000-8000-000000000023",
+      "name": "Old Group",
+      "external_references": [
+        {
+          "source_name": "mitre-attack",
+          "external_id": "G0002",
+          "url": "https://attack.example.com/x"
+        }
+      ],
+      "revoked": true
+    },
+    {
+      "type": "malware",
+      "id": "malware--00000000-0000-4000-8000-000000000024",
+      "name": "Dead Malware",
+      "external_references": [
+        {
+          "source_name": "mitre-attack",
+          "external_id": "S0002",
+          "url": "https://attack.example.com/x"
+        }
+      ],
+      "x_mitre_deprecated": true
+    },
+    {
+      "type": "tool",
+      "id": "tool--00000000-0000-4000-8000-000000000025",
+      "name": "Some Tool",
+      "external_references": [
+        {
+          "source_name": "mitre-attack",
+          "external_id": "S0003",
+          "url": "https://attack.example.com/x"
+        }
+      ]
+    },
+    {
+      "type": "intrusion-set",
+      "id": "intrusion-set--00000000-0000-4000-8000-000000000026",
+      "name": "Quiet Group",
+      "external_references": [
+        {
+          "source_name": "mitre-attack",
+          "external_id": "G0003",
+          "url": "https://attack.example.com/x"
+        }
+      ]
+    },
+    {
+      "type": "relationship",
+      "id": "relationship--00000000-0000-4000-8000-000000000070",
+      "relationship_type": "uses",
+      "source_ref": "intrusion-set--00000000-0000-4000-8000-000000000020",
+      "target_ref": "attack-pattern--00000000-0000-4000-8000-000000000010"
+    },
+    {
+      "type": "relationship",
+      "id": "relationship--00000000-0000-4000-8000-000000000071",
+      "relationship_type": "uses",
+      "source_ref": "intrusion-set--00000000-0000-4000-8000-000000000020",
+      "target_ref": "attack-pattern--00000000-0000-4000-8000-000000000011",
+      "revoked": true
+    },
+    {
+      "type": "relationship",
+      "id": "relationship--00000000-0000-4000-8000-000000000072",
+      "relationship_type": "uses",
+      "source_ref": "intrusion-set--00000000-0000-4000-8000-000000000020",
+      "target_ref": "attack-pattern--00000000-0000-4000-8000-000000000012"
+    },
+    {
+      "type": "relationship",
+      "id": "relationship--00000000-0000-4000-8000-000000000073",
+      "relationship_type": "uses",
+      "source_ref": "intrusion-set--00000000-0000-4000-8000-000000000020",
+      "target_ref": "attack-pattern--00000000-0000-4000-8000-000000000013"
+    },
+    {
+      "type": "relationship",
+      "id": "relationship--00000000-0000-4000-8000-000000000074",
+      "relationship_type": "uses",
+      "source_ref": "malware--00000000-0000-4000-8000-000000000021",
+      "target_ref": "attack-pattern--00000000-0000-4000-8000-000000000010"
+    },
+    {
+      "type": "relationship",
+      "id": "relationship--00000000-0000-4000-8000-000000000075",
+      "relationship_type": "uses",
+      "source_ref": "malware--00000000-0000-4000-8000-000000000021",
+      "target_ref": "attack-pattern--00000000-0000-4000-8000-000000000011"
+    },
+    {
+      "type": "relationship",
+      "id": "relationship--00000000-0000-4000-8000-000000000076",
+      "relationship_type": "uses",
+      "source_ref": "campaign--00000000-0000-4000-8000-000000000022",
+      "target_ref": "attack-pattern--00000000-0000-4000-8000-000000000011"
+    },
+    {
+      "type": "relationship",
+      "id": "relationship--00000000-0000-4000-8000-000000000077",
+      "relationship_type": "uses",
+      "source_ref": "intrusion-set--00000000-0000-4000-8000-000000000023",
+      "target_ref": "attack-pattern--00000000-0000-4000-8000-000000000010"
+    },
+    {
+      "type": "relationship",
+      "id": "relationship--00000000-0000-4000-8000-000000000078",
+      "relationship_type": "uses",
+      "source_ref": "intrusion-set--00000000-0000-4000-8000-000000000026",
+      "target_ref": "malware--00000000-0000-4000-8000-000000000021"
+    },
+    {
+      "type": "relationship",
+      "id": "relationship--00000000-0000-4000-8000-000000000079",
+      "relationship_type": "attributed-to",
+      "source_ref": "campaign--00000000-0000-4000-8000-000000000022",
+      "target_ref": "intrusion-set--00000000-0000-4000-8000-000000000020"
     }
   ]
 }

@@ -76,13 +76,30 @@ def test_default_tools_config(default_config_dir: Path) -> None:
         "search_similar_cases",
     ]
     assert allowed["l2_report"] == local_intel
-    l3_tools = [*expected, "query_siem", "count_siem", "get_raw", "run_host_check", *local_intel]
+    # 행위자 조회(#389)는 l3만이다. 단계 키 l3가 태스크 키 둘로 갈렸으므로 둘 다에 있다
+    l3_tools = [
+        *expected,
+        "query_siem",
+        "count_siem",
+        "get_raw",
+        "run_host_check",
+        *local_intel,
+        "get_attack_actor",
+    ]
     assert allowed["l3_hypothesize"] == l3_tools
     assert allowed["l3_verify"] == l3_tools
     assert tools["local_intel"] == {
         "attack_version": "20.0",
         "description_max_chars": 600,
         "list_max_items": 20,
+        "log_data_components": [
+            "Network Traffic Content",
+            "Network Traffic Flow",
+            "Network Connection Creation",
+            "Application Log Content",
+            "Response Content",
+        ],
+        "actor_techniques_max": 20,
     }
     assert tools["similar_cases"] == {
         "limit_default": 5,

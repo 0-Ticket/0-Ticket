@@ -62,7 +62,7 @@ L1·L2·L3가 모두 발급을 부른다. L1은 판정 뒤, L2는 조사 뒤(보
 10. **`AgentResult`의 칸 이름은 `cited_siem_refs`다.** 계획은 `siem_refs`라고만 적었다.
     `cited_evidence_ids`와 나란히 두려고 접두사를 붙였고, 담는 값도 세션 맵 전체가 아니라
     **인용이 검증된 것만**이다. 워커가 따로 거를 필요가 없다.
-11. **읽기 역할에 `raw_records` 열 권한을 주는 마이그레이션 0308을 더했다.** 0003이 그 표를 명시적으로
+11. **읽기 역할에 `raw_records` 열 권한을 주는 마이그레이션 0310을 더했다.** 0003이 그 표를 명시적으로
     제외해 놔서 `get_raw`가 읽을 수 없었다. 준 열은 `id`·`kind`·`fetched_at`·`original_text`뿐이고
     `siem_ref`·`siem_profile`은 주지 않았다 — `siem_ref`에 인덱스 이름이 들어 있고, 모델에게 인덱스
     이름을 보이지 않는 것이 이 설계의 전제다. 계획의 "범위 밖"은 `raw_records` **스키마** 개편을
@@ -117,11 +117,16 @@ L1·L2·L3가 모두 발급을 부른다. L1은 판정 뒤, L2는 조사 뒤(보
 |---|---|
 | D-081 (근거 발급 방식) | **D-083** |
 | D-082 (태스크별 허용 목록) | **D-084** |
-| `0307_agent_reader_raw_records.sql` | **`0308_agent_reader_raw_records.sql`** |
+| `0307_agent_reader_raw_records.sql` | **`0310_agent_reader_raw_records.sql`** (0308을 거쳐 두 번 옮겼다) |
 
 `src/soc/db/migrate.py:89`가 같은 번호의 마이그레이션 둘을 `MigrationError`로 거부하므로, 옮기지
 않으면 병합한 순간 모든 db 테스트가 깨진다. 참조 46곳을 함께 고쳤다. 계획 파일의 표기도 바꿨다
 (원칙 8의 "고쳐 쓰지 않는다"는 내용 변경을 말하고, 이것은 같은 결정의 번호를 맞춘 것이다).
+
+두 번째로 옮겼다. `origin/main`을 다시 합칠 때 #389가 `0308_attack_actors.sql`과
+`0309_agent_reader_attack_actors.sql`을 이미 써서 `0308`이 또 겹쳤다. 이 이슈의 것을
+**`0310_agent_reader_raw_records.sql`**으로 옮겼다. D-083·D-084는 그대로다(#389는 D 번호를
+쓰지 않았다). 번호만 바꿨고 내용은 그대로다.
 
 **브랜치는 병합 뒤 `origin/main`과 같은 지점에서 앞서 있다**(뒤처짐 0). main의 4커밋이
 `docs/decisions.md`·`tests/test_db_tables.py`에서 충돌했고 둘 다 양쪽을 살려 해결했다.
@@ -142,7 +147,7 @@ L1·L2·L3가 모두 발급을 부른다. L1은 판정 뒤, L2는 조사 뒤(보
 - **계약을 고치면 세 곳을 같이 고친다.** `contracts/*.json` → `uv run python
   scripts/generate_contracts.py` → `tests/contract_samples.py`의 `CONTRACT_NAMES`(별도 목록)와
   `tests/fixtures/contracts/{valid,invalid}/<이름>.json` 샘플.
-- **열 단위 GRANT는 `count(*)`를 막지 못한다.** 0308을 넣자
+- **열 단위 GRANT는 `count(*)`를 막지 못한다.** 0310을 넣자
   `test_reader_role_is_denied_elsewhere`의 `SELECT count(*) FROM raw_records`가 통과해 버렸다.
   주지 않은 열(`siem_ref`·`siem_profile`)로 단정을 바꿨다.
 - **발급은 `GET /<index>/_doc/<id>`가 요청한 것과 같은 `_index`·`_id`를 돌려준다고 전제한다.**
@@ -161,7 +166,7 @@ L1·L2·L3가 모두 발급을 부른다. L1은 판정 뒤, L2는 조사 뒤(보
 - `CallContext.siem_docs`(호출별)와 `ToolSession.siem_refs`(실행별)가 생겼다.
 - `ToolRegistry.session()`이 `task` 인자를 받는다(선택).
 - 새 도구 `get_raw`와 새 심 조회 대상 `evidence`.
-- 마이그레이션 0308이 읽기 역할에 `raw_records` 네 열을 준다.
+- 마이그레이션 0310이 읽기 역할에 `raw_records` 네 열을 준다.
 - `events`에 class 0 원문 포인터 행이 들어온다. 기존 정규화 행과 섞인다.
 - `normalize_status`에 정규화기가 아닌 코드가 `succeeded` 행을 쓴다.
 - `normalize()`가 이벤트 원본을 거부한다.

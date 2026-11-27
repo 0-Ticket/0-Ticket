@@ -136,6 +136,9 @@ max_limit = 100
 # Event만 읽던 도구인데 이벤트 정규화가 사라져 4002 행이 더 생기지 않는다. 발급분은 class 0이라
 # 그 둘로는 영원히 보이지 않았고, 모델은 빈 결과를 "HTTP 활동 없음"으로 읽었다. HTTP 로그는
 # query_siem으로 찾고, 발급된 근거는 get_event·get_raw로 읽는다
+# ATT&CK 행위자 조회(#389): get_attack_actor는 l3만이다. #389가 쓴 단계 키 l3는 가설 생성과
+# 검증 둘 다였고 "검증 run에도 보인다(D-052)"를 받아들인 한계였다. 태스크 키로는 가설 생성만
+# 줄 수 있지만 그 판단은 #389 담당의 것이라 동작을 그대로 두고 둘 다에 넣는다(원칙 7)
 l1_alert_triage = [
     "get_alert", "get_event", "query_records",
     "query_siem", "get_raw", "lookup_indicator", "search_similar_cases",
@@ -160,12 +163,12 @@ l2_report = [
 l3_hypothesize = [
     "get_alert", "get_event", "query_records",
     "query_siem", "count_siem", "get_raw", "run_host_check",
-    "get_attack_technique", "search_attack_techniques", "get_cve",
+    "get_attack_technique", "search_attack_techniques", "get_cve", "get_attack_actor",
 ]
 l3_verify = [
     "get_alert", "get_event", "query_records",
     "query_siem", "count_siem", "get_raw", "run_host_check",
-    "get_attack_technique", "search_attack_techniques", "get_cve",
+    "get_attack_technique", "search_attack_techniques", "get_cve", "get_attack_actor",
 ]
 
 # SIEM 조회 도구(#212). 수집(#218)과 같은 ELK에 같은 환경변수로 접속한다.
@@ -324,8 +327,17 @@ exclude_domains = []
 attack_version = "20.0"
 # 설명·KEV 요약·필수 조치 문구 하나의 글자 수 상한
 description_max_chars = 600
-# 하위 기법·탐지 데이터 소스 목록의 항목 수 상한
+# 하위 기법·탐지 데이터 소스·get_attack_actor의 행위자 목록의 항목 수 상한
 list_max_items = 20
+# get_attack_actor(#389): 우리 웹·네트워크 로그에 해당하는 ATT&CK data component 이름. 이 이름과 많이
+# 겹치는 탐지 데이터 소스를 가진 기법을 앞에 둔다. 저장된 detection_sources의 이름과 같아야 하고,
+# 다르면 겹치지 않는 것으로 센다(오류가 아니다). 실제 SIEM 로그에 맞게 바꾼다
+log_data_components = [
+    "Network Traffic Content", "Network Traffic Flow", "Network Connection Creation",
+    "Application Log Content", "Response Content",
+]
+# get_attack_actor가 한 호출에 돌려주는 기법 수 상한(합친 전체에서)
+actor_techniques_max = 20
 
 # 유사 사례 검색 도구 search_similar_cases(#313, D-053). 판정이 끝난 Ticket을 임베딩으로 찾는다.
 # 허용 단계는 l1·l2다. Qdrant 주소는 [store.qdrant]의 환경변수, DB는 AGENT_DATABASE_URL을 쓴다.

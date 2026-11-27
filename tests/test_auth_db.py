@@ -316,6 +316,57 @@ def test_idle_and_absolute_expiry_and_sliding(url, admin) -> None:
     assert client.get("/api/auth/me").status_code == 401
 
 
+AUTO = {"X-Auto-Refresh": "1"}
+
+
+def idle_minutes(url) -> float:
+    """alice 세션이 마지막으로 쓰인 뒤 지난 분(#373)."""
+    (minutes,) = sql(
+        url,
+        "SELECT extract(epoch FROM now() - last_seen_at) / 60 FROM user_sessions "
+        "WHERE user_id = (SELECT id FROM users WHERE username = 'alice')",
+    )[0]
+    return float(minutes)
+
+
+def test_auto_refresh_get_checks_the_session_but_does_not_extend_idle(url, admin) -> None:
+    make_user(admin, "alice")
+    client = session_client("alice")
+    sql(url, "UPDATE user_sessions SET last_seen_at = now() - interval '59 minutes'")
+    # 표시 있는 GET은 세션과 권한을 똑같이 검사하고 유휴 시각은 그대로 둔다
+    assert client.get("/api/auth/me", headers=AUTO).status_code == 200
+    assert idle_minutes(url) > 58.5
+    # 권한 검사는 같다(alice는 기본 조회 권한만 있고 사용자 목록은 없다)
+    assert client.get("/api/users", headers=AUTO).status_code == 403
+    assert idle_minutes(url) > 58.5
+    # 표시 없는 GET은 지금처럼 연장한다
+    assert client.get("/api/auth/me").status_code == 200
+    assert idle_minutes(url) < 1
+
+
+def test_auto_refresh_does_not_keep_an_idle_session_alive(url, admin) -> None:
+    make_user(admin, "alice")
+    client = session_client("alice")
+    sql(url, "UPDATE user_sessions SET last_seen_at = now() - interval '61 minutes'")
+    assert client.get("/api/auth/me", headers=AUTO).status_code == 401
+    client = session_client("alice")
+    sql(url, "UPDATE user_sessions SET expires_at = now() - interval '1 second'")
+    assert client.get("/api/auth/me", headers=AUTO).status_code == 401
+
+
+def test_auto_refresh_header_is_ignored_outside_get(url, admin) -> None:
+    make_user(admin, "alice")
+    client = session_client("alice")
+    sql(url, "UPDATE user_sessions SET last_seen_at = now() - interval '59 minutes'")
+    wrong = client.post(
+        "/api/auth/password",
+        json={"current_password": "wrong-password", "new_password": NEW_PW},
+        headers=AUTO,
+    )
+    assert wrong.status_code != 500
+    assert idle_minutes(url) < 1
+
+
 def test_password_change_expires_other_sessions_and_rotates_current(url, admin) -> None:
     make_user(admin, "alice")
     first, second = session_client("alice"), session_client("alice")

@@ -33,14 +33,18 @@ async function request<T>(
   path: string,
   body?: unknown,
   signal?: AbortSignal,
+  auto = false,
 ): Promise<T> {
   const response = await fetch(
     new URL(`/api/${path}`, window.location.origin),
     {
       method,
       signal,
-      headers:
-        body === undefined ? undefined : { "Content-Type": "application/json" },
+      headers: {
+        ...(body === undefined ? {} : { "Content-Type": "application/json" }),
+        // The server keeps the idle time for these (D-083); everything the user starts omits it.
+        ...(auto ? { "X-Auto-Refresh": "1" } : {}),
+      },
       body: body === undefined ? undefined : JSON.stringify(body),
     },
   );
@@ -62,8 +66,12 @@ async function request<T>(
     ? (undefined as T)
     : (response.json() as Promise<T>);
 }
-export function get<T>(path: string, signal?: AbortSignal): Promise<T> {
-  return request<T>("GET", path, undefined, signal);
+export function get<T>(
+  path: string,
+  signal?: AbortSignal,
+  auto = false,
+): Promise<T> {
+  return request<T>("GET", path, undefined, signal, auto);
 }
 export function send<T = void>(
   method: "POST" | "PUT" | "PATCH",

@@ -214,7 +214,7 @@ def _collect_attack(
             deadline_seconds=attack.limit.deadline_seconds,
             clock=clock,
         )
-        techniques = parse.parse_attack(
+        techniques, actors = parse.parse_attack_bundle(
             data, version=attack.version, description_max_chars=settings.summary_max_chars
         )
     except IntelError as exc:
@@ -225,6 +225,7 @@ def _collect_attack(
         result.inserted, result.updated = store.save_attack(
             conn, attack.version, techniques, now=now
         )
+        store.save_attack_actors(conn, attack.version, actors, now=now)
     return result
 
 

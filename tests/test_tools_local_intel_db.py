@@ -33,13 +33,19 @@ FIXTURES = Path(__file__).parent / "fixtures" / "l3_intel"
 NOW = datetime(2026, 11, 13, 1, 0, tzinfo=UTC)
 READER = "soc_agent_reader"
 NAMES = ["get_attack_technique", "search_attack_techniques", "get_cve"]
-LOCAL_INTEL = {"attack_version": "20.0", "description_max_chars": 600, "list_max_items": 20}
+LOCAL_INTEL = {
+    "attack_version": "20.0",
+    "description_max_chars": 600,
+    "list_max_items": 20,
+    "log_data_components": ["Network Traffic Content", "Network Traffic Flow"],
+    "actor_techniques_max": 20,
+}
 
 
 def config(**local_intel: Any) -> dict[str, Any]:
     tools = {
         **CONFIG["tools"],
-        "allowed": {"l2": NAMES, "l3": NAMES},
+        "allowed": {"l2": NAMES, "l3": [*NAMES, "get_attack_actor"]},
         "local_intel": {**LOCAL_INTEL, **local_intel},
     }
     return {**CONFIG, "tools": tools}
@@ -51,7 +57,9 @@ def run_tool(name: str, arguments: dict[str, Any], cfg: dict[str, Any] | None = 
 
 
 def collect_fixtures(url: str) -> None:
-    attack = intel_parse.parse_attack((FIXTURES / "attack.json").read_bytes(), version="20.0")
+    attack, actors = intel_parse.parse_attack_bundle(
+        (FIXTURES / "attack.json").read_bytes(), version="20.0"
+    )
     catalog = intel_parse.parse_kev_catalog(
         (FIXTURES / "kev.json").read_bytes(), summary_max_chars=1000
     )
@@ -67,6 +75,7 @@ def collect_fixtures(url: str) -> None:
     ]
     with psycopg.connect(url, autocommit=True) as conn:
         store.save_attack(conn, "20.0", attack, now=NOW)
+        store.save_attack_actors(conn, "20.0", actors, now=NOW)
         store.save_kev(conn, source="cisa_kev", catalog=catalog, now=NOW)
 
 
@@ -110,6 +119,8 @@ def test_reader_can_read_intel_tables_but_not_news(loaded: str) -> None:
         assert conn.execute("SELECT count(*) FROM attack_techniques").fetchone() == (4,)
         assert conn.execute("SELECT count(*) FROM kev_entries").fetchone() == (3,)
         assert conn.execute("SELECT count(*) FROM intel_source_state").fetchone() == (1,)
+        assert conn.execute("SELECT count(*) FROM attack_actors").fetchone() == (4,)
+        assert conn.execute("SELECT count(*) FROM attack_actor_techniques").fetchone() == (4,)
 
 
 @pytest.mark.parametrize(
@@ -118,6 +129,10 @@ def test_reader_can_read_intel_tables_but_not_news(loaded: str) -> None:
         "SELECT count(*) FROM threat_news",
         "UPDATE attack_techniques SET name = 'x'",
         "DELETE FROM kev_entries",
+        "INSERT INTO attack_actors (attack_version, actor_id, kind, name, collected_at)"
+        " VALUES ('20.0', 'G0099', 'group', 'x', now())",
+        "UPDATE attack_actors SET name = 'x'",
+        "DELETE FROM attack_actor_techniques",
         "INSERT INTO intel_source_state (source, catalog_version, collected_at)"
         " VALUES ('x', 'v', now())",
     ],
@@ -236,3 +251,76 @@ def test_tools_work_without_python_network(loaded: str, monkeypatch: pytest.Monk
         assert invoke("get_cve", {"cve_id": "CVE-2026-0001"})["status"] == "found"
     finally:
         loop.close()
+
+
+# get_attack_actor(#389, 읽기 역할 0309)
+
+
+def actor(arguments: dict[str, Any], cfg: dict[str, Any] | None = None) -> dict:
+    caller = Caller(default_registry(), cfg or config(), stage="l3")
+    return parse(asyncio.run(caller("get_attack_actor", arguments)))
+
+
+def test_actor_is_found_by_name_or_alias_ignoring_case_only(loaded: str) -> None:
+    for value in ("Alpha Group", "alpha group", "  ALPHA GROUP  "):
+        body = actor({"name": value})
+        assert body["status"] == "found", value
+        assert body["actors"] == [{"actor_id": "G0001", "kind": "group", "name": "Alpha Group"}]
+        assert body["attack_collected_at"] == "2026-11-13T01:00:00Z"
+    assert actor({"name": "BETA LOADER"})["actors"][0]["actor_id"] == "S0001"
+    # 단어 일부만 같거나 LIKE 와일드카드가 든 이름은 찾지 않는다
+    for value in ("Alpha", "Alph", "Group", "%%", "Alpha%", "Alpha_Group", "Nobody"):
+        assert actor({"name": value})["status"] == "not_found", value
+
+
+def test_actor_techniques_put_log_overlap_first(loaded: str) -> None:
+    body = actor({"name": "Beta Loader"})
+
+    # T1190(Network Traffic Content과 겹침)이 T1059.004(겹침 없음)보다 앞이다
+    assert [(t["technique_id"], t["log_components"]) for t in body["techniques"]] == [
+        ("T1190", ["Network Traffic Content"]),
+        ("T1059.004", []),
+    ]
+    assert (body["technique_total"], body["returned"], body["omitted"]) == (2, 2, 0)
+
+
+def test_name_shared_by_two_actors_merges_techniques_once(loaded: str) -> None:
+    body = actor({"name": "shared name"})
+
+    assert [a["actor_id"] for a in body["actors"]] == ["G0001", "S0001"]
+    assert {t["technique_id"]: t["actors"] for t in body["techniques"]} == {
+        "T1190": ["G0001", "S0001"],
+        "T1059.004": ["S0001"],
+    }
+    assert body["technique_total"] == 2
+
+
+def test_actor_without_techniques_is_found(loaded: str) -> None:
+    body = actor({"name": "Quiet Group"})  # 그룹이 쓰는 악성코드의 기법은 합치지 않는다
+    assert body["status"] == "found"
+    assert body["techniques"] == []
+
+
+def test_actor_without_collected_actors_is_no_data(migrated: str, loaded: str) -> None:
+    with psycopg.connect(migrated, autocommit=True) as conn:
+        conn.execute("DELETE FROM attack_actors")
+
+    body = actor({"name": "Alpha Group"})
+
+    assert (body["status"], body["reason"]) == ("no_data", "attack_actors_not_collected")
+
+
+def test_actor_with_other_attack_version_is_no_data(loaded: str) -> None:
+    other = config(attack_version="19.0")
+
+    body = actor({"name": "Alpha Group"}, other)
+
+    assert (body["status"], body["reason"]) == ("no_data", "attack_version_missing")
+
+
+def test_actor_tool_is_not_given_to_other_stages(loaded: str) -> None:
+    caller = Caller(default_registry(), config(), stage="l2")
+
+    out = asyncio.run(caller("get_attack_actor", {"name": "Alpha Group"}))
+
+    assert out.startswith("TOOL_ERROR tool=get_attack_actor")
