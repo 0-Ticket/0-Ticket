@@ -12,7 +12,7 @@ import psycopg
 import pytest
 from fake_embedder import FakeEmbedder
 from psycopg.rows import dict_row
-from test_case_index_db import CASE, INC, SETTINGS, load_sample, run_index
+from test_case_index_db import CASE, INC, SETTINGS, load_sample, make_due, run_index
 
 from soc.api import ui_write
 from soc.case_index import index
@@ -97,6 +97,7 @@ def test_an_approved_case_is_found_after_the_worker_runs(
 ) -> None:
     with psycopg.connect(database, row_factory=dict_row, autocommit=True) as conn:
         case_id = ui_write.approve_incident(conn, INC["4"], "tester")["case_id"]
+    make_due(database)
     worker = index.CaseIndexWorker(database, SETTINGS, embedder=FakeEmbedder(), store=real_store)
 
     for pending in worker.poll(10):

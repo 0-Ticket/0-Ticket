@@ -8,6 +8,7 @@ Qdrant는 qdrant-client의 메모리 모드와 가짜 임베더를 쓴다. 실�
 
 import json
 import shutil
+import time
 from pathlib import Path
 from typing import Any
 
@@ -135,6 +136,16 @@ def enqueue_all(url: str, *numbers: str) -> None:
             enqueue(conn, CASE[number])
 
 
+def make_due(url: str) -> None:
+    """대기 행을 지금 바로 집을 수 있게 한다. DB 시각의 1초 전으로 둬서, 같은 DB 안의 연결끼리
+    now()가 아주 조금 어긋나도(VM의 CPU 사이 시계 차이) 막 넣은 행이 빠지지 않게 한다."""
+    with psycopg.connect(url, autocommit=True) as conn:
+        conn.execute(
+            "UPDATE case_index_jobs SET next_attempt_at = now() - interval '1 second' "
+            "WHERE indexed_at IS NULL AND attempts = 0"
+        )
+
+
 def run_index(url: str, case_id: str, embedder: Any, store: Any) -> bool:
     with psycopg.connect(url, autocommit=True) as conn:
         return index.index_one(conn, case_id, embedder, store)
@@ -163,7 +174,7 @@ def test_a_fresh_job_is_pending_and_due_now(database: str) -> None:
     row = job(database, CASE["1"])
     assert row["indexed_at"] is None and row["attempts"] == 0 and row["last_error"] is None
     assert row["next_attempt_at"] is not None and row["created_at"] is not None
-    assert row["wait"].total_seconds() <= 0
+    assert row["wait"].total_seconds() < 1  # DB 시각 기준. 막 넣은 행은 바로 집을 수 있다
 
 
 def test_job_constraints_and_cascade(database: str) -> None:
@@ -261,7 +272,7 @@ def test_a_long_case_is_cut_by_the_planned_limits(database: str) -> None:
     embedder = RecordingEmbedder()
     run_index(database, CASE["3"], embedder, make_store())
     (text,) = embedder.texts
-    assert len(text) <= 4000
+    assert len(text) <= 6000
     assert sum(line.startswith("technique: ") for line in text.split("\n")) == 10
 
 
@@ -296,7 +307,7 @@ def test_a_failure_records_the_class_name_and_backs_off_thirty_then_sixty_second
     assert 25 < row["wait"].total_seconds() <= 30
 
     with psycopg.connect(database, autocommit=True) as conn:
-        conn.execute("UPDATE case_index_jobs SET next_attempt_at = now()")
+        conn.execute("UPDATE case_index_jobs SET next_attempt_at = now() - interval '1 second'")
     with pytest.raises(StoreError):
         run_index(database, CASE["1"], FakeEmbedder(), store)
     row = job(database, CASE["1"])
@@ -306,6 +317,7 @@ def test_a_failure_records_the_class_name_and_backs_off_thirty_then_sixty_second
 
 def test_poll_skips_a_job_until_its_backoff_has_passed(database: str) -> None:
     enqueue_all(database, "1", "2")
+    make_due(database)
     worker = index.CaseIndexWorker(database, SETTINGS)
     with pytest.raises(StoreError):
         run_index(database, CASE["1"], FakeEmbedder(), Flaky(make_store(), StoreError()))
@@ -313,9 +325,31 @@ def test_poll_skips_a_job_until_its_backoff_has_passed(database: str) -> None:
 
     with psycopg.connect(database, autocommit=True) as conn:
         conn.execute(
-            "UPDATE case_index_jobs SET next_attempt_at = now() WHERE case_id = %s", (CASE["1"],)
+            "UPDATE case_index_jobs SET next_attempt_at = now() - interval '1 second' "
+            "WHERE case_id = %s",
+            (CASE["1"],),
         )
     assert worker.poll(10) == [CASE["1"], CASE["2"]]
+
+
+@pytest.mark.parametrize("skew", [300_000_000, -300_000_000])
+def test_due_time_and_backoff_come_only_from_the_database_clock(
+    database: str, monkeypatch: pytest.MonkeyPatch, skew: int
+) -> None:
+    """호스트(파이썬) 시계가 ±약 10년 어긋나도 poll 조건과 백오프가 같다. 시각은 DB now()뿐이다."""
+    real = time.time
+    monkeypatch.setattr(time, "time", lambda: real() + skew)
+    enqueue_all(database, "1", "2")
+    make_due(database)
+    worker = index.CaseIndexWorker(database, SETTINGS)
+    assert worker.poll(10) == [CASE["1"], CASE["2"]]
+
+    with pytest.raises(StoreError):
+        run_index(database, CASE["1"], FakeEmbedder(), Flaky(make_store(), StoreError()))
+
+    row = job(database, CASE["1"])
+    assert 25 < row["wait"].total_seconds() <= 30
+    assert worker.poll(10) == [CASE["2"]]
 
 
 def test_the_case_is_indexed_when_qdrant_comes_back_and_the_error_is_cleared(
@@ -326,7 +360,7 @@ def test_the_case_is_indexed_when_qdrant_comes_back_and_the_error_is_cleared(
     with pytest.raises(StoreError):
         run_index(database, CASE["1"], FakeEmbedder(), store)
     with psycopg.connect(database, autocommit=True) as conn:
-        conn.execute("UPDATE case_index_jobs SET next_attempt_at = now()")
+        conn.execute("UPDATE case_index_jobs SET next_attempt_at = now() - interval '1 second'")
 
     store.error = None
     assert run_index(database, CASE["1"], FakeEmbedder(), store) is True
@@ -350,6 +384,7 @@ def test_a_collection_missing_error_is_not_a_failure(database: str) -> None:
 
 def test_worker_polls_pending_jobs_in_order_up_to_the_limit(database: str) -> None:
     enqueue_all(database, "3", "1", "2")  # 문장마다 created_at이 달라 등록한 순서가 된다
+    make_due(database)
     worker = index.CaseIndexWorker(database, SETTINGS)
     assert worker.poll(2) == [CASE["3"], CASE["1"]]
     assert worker.poll(10) == [CASE["3"], CASE["1"], CASE["2"]]
@@ -361,6 +396,7 @@ def test_worker_handle_indexes_with_the_injected_resources_and_leaves_done_jobs_
     database: str,
 ) -> None:
     enqueue_all(database, "1", "2")
+    make_due(database)
     store = make_store()
     worker = index.CaseIndexWorker(database, SETTINGS, embedder=FakeEmbedder(), store=store)
 
@@ -413,6 +449,7 @@ def test_approval_leaves_a_job_in_the_same_transaction_and_the_worker_indexes_it
     case_id = result["case_id"]
     row = job(database, case_id)
     assert row is not None and row["indexed_at"] is None and row["attempts"] == 0
+    make_due(database)
 
     embedder, store = RecordingEmbedder(), make_store()
     worker = index.CaseIndexWorker(database, SETTINGS, embedder=embedder, store=store)

@@ -83,15 +83,61 @@ def test_each_field_and_the_technique_lines_are_capped() -> None:
     assert len(result) <= text.MAX_TEXT_CHARS
 
 
-def test_total_length_is_capped() -> None:
+LABEL_CHARS = {"title": 7, "summary": 9, "cause": 7, "impact": 8, "further_risk": 14}
+
+
+def test_worst_case_length_stays_under_the_total_cap() -> None:
+    """다섯 필드와 기법 줄이 모두 가득 차도 전체 상한에 걸리지 않게 상수를 정한다."""
+    technique = len("technique: ") + text.MAX_TECHNIQUE_CHARS
+    worst = (
+        sum(LABEL_CHARS.values())
+        + 5 * text.MAX_FIELD_CHARS
+        + text.MAX_TECHNIQUES * technique
+        + (5 + text.MAX_TECHNIQUES - 1)  # 줄바꿈
+    )
+    assert worst < text.MAX_TEXT_CHARS
+
+
+def test_a_case_with_every_field_and_all_technique_lines_full_loses_nothing() -> None:
+    full = {
+        "cause": "c" * 2000,
+        "impact": "i" * 2000,
+        "further_risk": "r" * 2000,
+        "techniques": [{"name": "n" * 200} for _ in range(12)],
+    }
+
+    result = text.case_text("t" * 2000, "s" * 2000, full)
+
+    lines = result.split("\n")
+    assert len(lines) == 5 + text.MAX_TECHNIQUES
+    for line, field in zip(lines, LABEL_CHARS, strict=False):
+        assert line == f"{field}: " + field_char(field) * text.MAX_FIELD_CHARS
+    assert lines[4].startswith("further_risk: ") and lines[4].endswith("r")  # 하나도 안 잘린다
+    assert lines[5:] == ["technique: " + "n" * text.MAX_TECHNIQUE_CHARS] * text.MAX_TECHNIQUES
+    assert len(result) < text.MAX_TEXT_CHARS  # 전체 상한이 자른 것이 아니다
+
+
+def field_char(field: str) -> str:
+    return {"title": "t", "summary": "s", "cause": "c", "impact": "i", "further_risk": "r"}[field]
+
+
+def test_a_technique_name_is_cut_to_the_line_limit() -> None:
+    result = text.case_text("T", None, {"techniques": [{"name": "x" * 200}]})
+    assert result == "title: T\ntechnique: " + "x" * text.MAX_TECHNIQUE_CHARS
+
+
+def test_the_total_cap_is_still_a_guard_if_the_field_limit_is_raised(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(text, "MAX_FIELD_CHARS", 3000)
     long = "가" * 5000
-    artifact = {"cause": long, "impact": long, "further_risk": long, "techniques": []}
-    result = text.case_text(long, long, artifact)
+    result = text.case_text(long, long, {"cause": long, "impact": long, "further_risk": long})
     assert len(result) == text.MAX_TEXT_CHARS
 
 
-def test_limits_are_the_planned_draft_values() -> None:
-    assert (text.MAX_FIELD_CHARS, text.MAX_TECHNIQUES, text.MAX_TEXT_CHARS) == (1000, 10, 4000)
+def test_limits_are_the_planned_values() -> None:
+    assert (text.MAX_FIELD_CHARS, text.MAX_TECHNIQUES, text.MAX_TEXT_CHARS) == (1000, 10, 6000)
+    assert text.MAX_TECHNIQUE_CHARS == 80
 
 
 @pytest.mark.parametrize(

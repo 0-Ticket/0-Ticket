@@ -6,7 +6,10 @@
 임베딩에만 쓴다.
 
 상한은 임베더의 8192토큰 절단과 별도다. 임베더는 뒤를 조용히 자르므로, 앞 필드가 길어도 뒤 필드가
-밀려나지 않게 필드마다 먼저 자른다. 값은 초안이다(docs/plans/391-case-index.md).
+밀려나지 않게 필드마다 먼저 자른다. 다섯 필드(1,000자)와 기법 10줄(줄마다 이름 80자)이 모두 가득
+차도 라벨·줄바꿈을 합쳐 6,000자에 못 미치게 상수를 정했다(tests/test_case_index.py가 검사한다).
+그래서 전체 상한은 상수를 키울 때를 위한 안전장치다. 토큰 수는 재지 못했다
+(docs/notes/391-case-index.md).
 """
 
 from collections.abc import Mapping
@@ -14,16 +17,17 @@ from typing import Any
 
 MAX_FIELD_CHARS = 1000
 MAX_TECHNIQUES = 10
-MAX_TEXT_CHARS = 4000
+MAX_TECHNIQUE_CHARS = 80  # 기법 이름은 보통 짧다. 실제 이름 길이는 재지 않았다
+MAX_TEXT_CHARS = 6000
 
 _ARTIFACT_FIELDS = ("cause", "impact", "further_risk")
 
 
-def _clean(value: Any) -> str:
-    """문자열이 아니면 빈 값. 공백을 한 칸으로 접고 필드 상한으로 자른다."""
+def _clean(value: Any, limit: int | None = None) -> str:
+    """문자열이 아니면 빈 값. 공백을 한 칸으로 접고 상한(기본은 필드 상한)으로 자른다."""
     if not isinstance(value, str):
         return ""
-    return " ".join(value.split())[:MAX_FIELD_CHARS]
+    return " ".join(value.split())[: MAX_FIELD_CHARS if limit is None else limit]
 
 
 def case_text(title: str, summary: str | None, artifact: Mapping[str, Any] | None) -> str:
@@ -41,7 +45,7 @@ def case_text(title: str, summary: str | None, artifact: Mapping[str, Any] | Non
         for field in _ARTIFACT_FIELDS:
             add(field, artifact.get(field))
         names = [
-            _clean(item.get("name"))
+            _clean(item.get("name"), MAX_TECHNIQUE_CHARS)
             for item in artifact.get("techniques") or []
             if isinstance(item, Mapping)
         ]
