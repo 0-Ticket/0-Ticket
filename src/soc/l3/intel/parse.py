@@ -14,6 +14,13 @@ from soc.l3.intel.errors import IntelError
 
 # Hunt 계약의 기법 ID 모양과 같다. 끝의 \n을 받지 않도록 fullmatch로 비교한다.
 TECHNIQUE_ID = re.compile(r"T[0-9]{4}(\.[0-9]{3})?")
+# STIX 종류 → (저장할 종류, ATT&CK ID 접두사, 별칭 필드). 도구(tool)는 정상 용도의 이름이 많아 뺀다
+_ACTOR_TYPES = {
+    "intrusion-set": ("group", "G", "aliases"),
+    "malware": ("malware", "S", "x_mitre_aliases"),
+    "campaign": ("campaign", "C", "aliases"),
+}
+_ACTOR_ID = re.compile(r"[GSC][0-9]{4}")
 _CVE_ID = re.compile(r"CVE-[0-9]{4}-[0-9]{4,}")
 _DATE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
 
@@ -36,6 +43,17 @@ class Technique:
     # (중복 없이 이름순)
     description: str = ""
     detection_sources: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class Actor:
+    """그룹·악성코드·캠페인(#389). technique_ids는 살아 있는 기법으로 가는 uses 관계만(ID순)."""
+
+    actor_id: str
+    kind: str
+    name: str
+    aliases: tuple[str, ...]  # 이름 자신은 뺀다
+    technique_ids: tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -245,10 +263,20 @@ def parse_kev(data: bytes, *, summary_max_chars: int) -> list[NewsItem]:
 def parse_attack(
     data: bytes, *, version: str, description_max_chars: int = 1000
 ) -> list[Technique]:
-    """STIX 번들에서 폐기(revoked)·대체(x_mitre_deprecated)되지 않은 attack-pattern만 꺼낸다.
+    """기법만 돌려준다. 행위자까지 필요하면 parse_attack_bundle."""
+    return parse_attack_bundle(data, version=version, description_max_chars=description_max_chars)[
+        0
+    ]
+
+
+def parse_attack_bundle(
+    data: bytes, *, version: str, description_max_chars: int = 1000
+) -> tuple[list[Technique], list[Actor]]:
+    """STIX 번들에서 폐기(revoked)·대체(x_mitre_deprecated)되지 않은 기법과 행위자를 꺼낸다.
 
     컬렉션의 x_mitre_version이 설정 버전과 다르면 version_mismatch다.
-    설명과 탐지 데이터 소스도 함께 꺼낸다(#311).
+    기법은 설명과 탐지 데이터 소스도 함께 꺼낸다(#311). 행위자는 그룹·악성코드·캠페인과
+    기법으로 가는 uses 관계다(#389).
     """
     bundle = _load_json(data)
     if not isinstance(bundle, dict) or not isinstance(bundle.get("objects"), list):
@@ -275,9 +303,62 @@ def parse_attack(
         stix_ids[str(obj.get("id"))] = technique.technique_id
 
     sources = _detection_sources(objects, stix_ids)
-    return [
+    found = [
         replace(t, detection_sources=tuple(sorted(sources.get(t.technique_id, ()))))
         for t in techniques.values()
+    ]
+    return found, _actors(objects, stix_ids)
+
+
+def _actors(objects: list[dict[str, Any]], technique_ids: dict[str, str]) -> list[Actor]:
+    """살아 있는 행위자와, 살아 있는 기법으로 가는 살아 있는 uses 관계."""
+    actors: dict[str, dict[str, Any]] = {}
+    seen: set[str] = set()
+    for obj in objects:
+        spec = _ACTOR_TYPES.get(str(obj.get("type")))
+        if spec is None or _is_dead(obj):
+            continue
+        kind, prefix, alias_key = spec
+        references = obj.get("external_references")
+        if not isinstance(references, list):
+            raise IntelError("parse")
+        ids = [
+            r.get("external_id")
+            for r in references
+            if isinstance(r, dict) and r.get("source_name") == "mitre-attack"
+        ]
+        if len(ids) != 1 or not isinstance(ids[0], str) or not ids[0].startswith(prefix):
+            raise IntelError("parse")
+        if _ACTOR_ID.fullmatch(ids[0]) is None or ids[0] in seen:
+            raise IntelError("parse")
+        name = obj.get("name")
+        if not isinstance(name, str) or not clean_text(name):
+            raise IntelError("parse")
+        raw_aliases = obj.get(alias_key, [])
+        if not isinstance(raw_aliases, list) or not all(isinstance(a, str) for a in raw_aliases):
+            raise IntelError("parse")
+        clean_name = clean_text(name)
+        aliases = dict.fromkeys(a for a in map(clean_text, raw_aliases) if a and a != clean_name)
+        seen.add(ids[0])
+        actors[str(obj.get("id"))] = {
+            "actor_id": ids[0],
+            "kind": kind,
+            "name": clean_name,
+            "aliases": tuple(aliases),
+            "techniques": set(),
+        }
+    for obj in objects:
+        if obj.get("type") != "relationship" or obj.get("relationship_type") != "uses":
+            continue
+        if _is_dead(obj):
+            continue
+        actor = actors.get(str(obj.get("source_ref")))
+        technique_id = technique_ids.get(str(obj.get("target_ref")))
+        if actor is not None and technique_id is not None:
+            actor["techniques"].add(technique_id)
+    return [
+        Actor(a["actor_id"], a["kind"], a["name"], a["aliases"], tuple(sorted(a["techniques"])))
+        for a in sorted(actors.values(), key=lambda a: a["actor_id"])
     ]
 
 

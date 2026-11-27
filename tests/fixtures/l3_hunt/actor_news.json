@@ -1,0 +1,21 @@
+{
+  "description": "손으로 만든 시연·시험용 뉴스(#389). 이름은 tests/fixtures/l3_intel/attack.json의 가짜 행위자(Alpha Group·Beta Loader)다. 실제 기사가 아니다",
+  "news": [
+    {
+      "source": "example_news",
+      "kind": "rss",
+      "source_ref": "https://news.example.com/alpha-group",
+      "title": "Alpha Group targets public web servers",
+      "summary": "Researchers say Alpha Group is exploiting a flaw in public-facing web applications and uploading a loader called Beta Loader to the compromised servers.",
+      "hours_ago": 2
+    },
+    {
+      "source": "example_news",
+      "kind": "rss",
+      "source_ref": "https://news.example.com/no-name",
+      "title": "Phishing emails spread before the holidays",
+      "summary": "Security teams report more phishing emails that ask users to sign in to fake pages.",
+      "hours_ago": 3
+    }
+  ]
+}

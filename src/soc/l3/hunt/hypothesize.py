@@ -17,6 +17,8 @@ from soc.l3.hunt.settings import HuntSettings
 Run = Callable[[AgentTask], AgentResult]
 # Agent Log details.task. 생성 워커가 마지막 시도를 이 이름으로 찾는다(#245)
 TASK = "l3_hypothesize"
+# 행위자 조회 도구(#389). 가설의 기법이 이 도구의 결과에 실렸는지로 관계 근거를 가른다
+ACTOR_TOOL = "get_attack_actor"
 
 
 @dataclass
@@ -70,6 +72,7 @@ def hypothesize(
         result.failure = agent_result.failure
         return result
 
+    basis = _attack_basis(conn, agent_result.run_id)
     hypotheses = agent_result.output["hypotheses"]
     result.over_limit = max(0, len(hypotheses) - settings.max_hypotheses)
     news_by_id = {n["id"]: n for n in news}
@@ -101,6 +104,10 @@ def hypothesize(
             # 뉴스는 다시 받으면 내용이 바뀌므로(#221) 그 시점의 제목·요약을 복사한다
             "details": {"sources": {"news": cited_news, "case_ids": cited_cases}},
         }
+        if basis is not None:
+            hunt["details"]["sources"]["attack_basis"] = _hypothesis_basis(
+                basis, hypothesis["attack_techniques"]
+            )
         validate_contract("hunt", hunt)
         hunts.append(hunt)
     if hunts:
@@ -108,3 +115,29 @@ def hypothesize(
             store.insert_hunts(conn, hunts)
     result.saved = [h["id"] for h in hunts]
     return result
+
+
+def _attack_basis(conn: psycopg.Connection, run_id: str) -> tuple[int, dict[str, list[str]]] | None:
+    """이 가설 생성 run의 도구 호출 수와 결과에 실린 기법. 도구를 안 불렀으면 None이다.
+
+    다른 run(검증 등)의 호출은 읽지 않는다. Agent Log를 읽지 못하면 (-1, {})로 표시한다.
+    """
+    try:
+        calls, found = store.actor_tool_calls(conn, run_id, ACTOR_TOOL)
+    except psycopg.Error:
+        return (-1, {})
+    return (calls, found) if calls else None
+
+
+def _hypothesis_basis(
+    basis: tuple[int, dict[str, list[str]]], techniques: list[str]
+) -> dict[str, Any]:
+    """코드가 도구 결과로 판단한 관계 근거. 모델이 한 말은 쓰지 않는다."""
+    calls, found = basis
+    if calls < 0:
+        return {"unavailable": True}
+    return {
+        "tool_calls": calls,
+        "grounded": [{"technique_id": t, "actors": found[t]} for t in techniques if t in found],
+        "model_only": [t for t in techniques if t not in found],
+    }

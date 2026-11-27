@@ -1,8 +1,10 @@
-"""로컬 ATT&CK·KEV 조회 도구(#311, D-052): get_attack_technique, search_attack_techniques, get_cve.
+"""로컬 ATT&CK·KEV 조회 도구(#311, D-052): get_attack_technique, search_attack_techniques, get_cve,
+get_attack_actor(#389).
 
 네트워크를 쓰지 않고 L3 수집(soc.l3.intel)이 PostgreSQL에 저장한 사본만 읽는다. 읽기 역할
 soc_agent_reader가 읽을 수 있는 표(attack_techniques, kev_entries, intel_source_state, 마이그레이션
-0302)만 쓴다. 결과는 모두 aggregate이고 call_id로 인용한다.
+0302와 attack_actors, attack_actor_techniques, 0309)만 쓴다.
+결과는 모두 aggregate이고 call_id로 인용한다.
 
 status는 오류 코드가 아니라 결과 값이다.
 - found / ok: 찾았다.
@@ -91,6 +93,31 @@ def _settings(tools_config: Mapping[str, Any]) -> _Settings:
 
 def _check_config(tools_config: Mapping[str, Any]) -> None:
     _settings(tools_config)
+
+
+class _ActorSettings:
+    def __init__(self, log_components: frozenset[str], techniques_max: int):
+        self.log_components = log_components
+        self.techniques_max = techniques_max
+
+
+def _actor_settings(tools_config: Mapping[str, Any]) -> _ActorSettings:
+    """get_attack_actor만 읽는 새 키(#389). 다른 도구의 설정 검사에는 넣지 않는다."""
+    raw = tools_config.get("local_intel")
+    if not isinstance(raw, Mapping):
+        raise ToolConfigError("[tools.local_intel]이 표가 아니다")
+    names = raw.get("log_data_components")
+    if not isinstance(names, list) or not names or not all(isinstance(n, str) and n for n in names):
+        raise ToolConfigError("[tools.local_intel] log_data_components가 틀렸다")
+    count = raw.get("actor_techniques_max")
+    if isinstance(count, bool) or not isinstance(count, int) or count <= 0:
+        raise ToolConfigError("[tools.local_intel] actor_techniques_max가 틀렸다")
+    return _ActorSettings(frozenset(names), count)
+
+
+def _check_actor_config(tools_config: Mapping[str, Any]) -> None:
+    _settings(tools_config)
+    _actor_settings(tools_config)
 
 
 def _load(ctx: CallContext) -> _Settings:
@@ -307,6 +334,105 @@ def _get_cve(args: dict[str, Any], ctx: CallContext) -> dict[str, Any]:
     return body
 
 
+# 행위자(그룹·악성코드·캠페인, #389)
+
+_ACTOR_COUNT = "SELECT count(*) AS total FROM attack_actors WHERE attack_version = %s"
+# 이름 또는 별칭이 대소문자만 달라도 같은 것으로 본다(LIKE가 아니라 같음 비교)
+_ACTOR_MATCH = (
+    "attack_version = %s AND (lower(name) = lower(%s)"
+    " OR EXISTS (SELECT 1 FROM unnest(aliases) AS a WHERE lower(a) = lower(%s)))"
+)
+_ACTOR_ROWS = (
+    f"SELECT actor_id, kind, name FROM attack_actors WHERE {_ACTOR_MATCH} ORDER BY actor_id"
+)
+_ACTOR_TECHNIQUES = (
+    "SELECT r.technique_id, t.name, t.detection_sources,"
+    " array_agg(r.actor_id ORDER BY r.actor_id) AS actors"
+    " FROM attack_actor_techniques r JOIN attack_techniques t"
+    " ON t.attack_version = r.attack_version AND t.technique_id = r.technique_id"
+    " WHERE r.attack_version = %s AND r.actor_id IN"
+    f" (SELECT actor_id FROM attack_actors WHERE {_ACTOR_MATCH})"
+    " GROUP BY r.technique_id, t.name, t.detection_sources"
+)
+_NAME_MIN = 2
+_NAME_MAX = 100
+
+
+def _check_actor_name(args: dict[str, Any], tools_config: Mapping[str, Any]) -> None:
+    if len(str(args["name"]).strip()) < _NAME_MIN:
+        raise ToolError("invalid_argument")
+
+
+def _get_attack_actor(args: dict[str, Any], ctx: CallContext) -> dict[str, Any]:
+    settings = _load(ctx)
+    try:
+        actor = _actor_settings(ctx.tools_config)
+    except ToolConfigError:
+        raise ToolError("failed", reason="config") from None
+    version = settings.attack_version
+    name = str(args["name"]).strip()
+    match = (version, name, name)
+    state_rows, count_rows, actor_rows, technique_rows = read_many(
+        ctx,
+        [
+            (_ATTACK_STATE, (version,)),
+            (_ACTOR_COUNT, (version,)),
+            (_ACTOR_ROWS, match),
+            (_ACTOR_TECHNIQUES, (version, *match)),
+        ],
+    )
+    state = state_rows[0]
+    empty = _attack_no_data(version, state)
+    if empty is not None:
+        return empty
+    meta = _attack_meta(version, state)
+    if count_rows[0]["total"] == 0:
+        return {"status": "no_data", "reason": "attack_actors_not_collected", **meta}
+    if not actor_rows:
+        return {"status": "not_found", **meta}
+
+    def overlap(row: dict[str, Any]) -> list[str]:
+        return sorted(actor.log_components & set(row["detection_sources"] or ()))
+
+    # 로그 data component와 많이 겹치는 순, 같으면 기법 ID순. 겹치지 않는 기법이 뒤를 채운다
+    ranked = sorted(technique_rows, key=lambda r: (-len(overlap(r)), r["technique_id"]))
+    total = len(ranked)
+    body: dict[str, Any] = {
+        "status": "found",
+        **meta,
+        "actors": [
+            {"actor_id": r["actor_id"], "kind": r["kind"], "name": _cut(r["name"], 100)[0]}
+            for r in actor_rows[: settings.list_max_items]
+        ],
+        "actors_omitted": max(0, len(actor_rows) - settings.list_max_items),
+        "technique_total": total,
+        "techniques": [
+            {
+                "technique_id": r["technique_id"],
+                "name": _cut(r["name"], 100)[0],
+                "log_components": overlap(r),
+                "actors": list(r["actors"]),
+            }
+            for r in ranked[: actor.techniques_max]
+        ],
+    }
+
+    def count() -> None:
+        body["returned"] = len(body["techniques"])
+        body["omitted"] = total - body["returned"]
+
+    count()
+    # 결과가 한도를 넘으면 기법을 뒤에서부터 빼고, 그래도 넘으면 행위자를 뒤에서부터 뺀다.
+    # 호출은 실패하지 않는다
+    while not ctx.fits(body) and body["techniques"]:
+        body["techniques"].pop()
+        count()
+    while not ctx.fits(body) and body["actors"]:
+        body["actors"].pop()
+        body["actors_omitted"] += 1
+    return body
+
+
 # 도구
 
 _UNTRUSTED = (
@@ -390,4 +516,34 @@ GET_CVE = ToolSpec(
     check_config=_check_config,
 )
 
-LOCAL_INTEL_TOOLS = (GET_ATTACK_TECHNIQUE, SEARCH_ATTACK_TECHNIQUES, GET_CVE)
+GET_ATTACK_ACTOR = ToolSpec(
+    name="get_attack_actor",
+    description=(
+        "ATT&CK 공격 그룹·악성코드·캠페인을 영어 이름이나 별칭으로 찾아(대소문자만 무시하고 "
+        "정확히 같아야 한다. 일부만 같은 이름은 찾지 않는다. 한국어 표기는 영어로 바꿔 "
+        "부른다) 그 행위자가 쓰는 기법을 돌려준다. 기법은 우리 로그로 확인할 수 있는 것"
+        "(log_components가 많이 겹치는 순)을 앞에 두고 한 번에 최대 정해진 수까지다. "
+        "같은 이름이 여러 행위자에 걸리면 기법을 합쳐 각 기법에 근거 행위자 ID(actors)를 "
+        "붙인다. technique_total은 합친 전체 기법 수, returned는 돌려준 수, omitted는 뺀 "
+        "수다. actors_omitted가 0보다 크면 actors 목록도 줄었다. status: found, "
+        "not_found(그 이름이 이 버전에 없음), no_data(저장된 사본이 없음). "
+        "뉴스에서 이름이 나왔다는 것은 우리 환경에서 일어났다는 뜻이 아니다. " + _UNTRUSTED
+    ),
+    handler=_get_attack_actor,
+    bundle=BUNDLE,
+    result_kind="aggregate",
+    args=(
+        Arg(
+            "name",
+            "string",
+            required=True,
+            min_length=_NAME_MIN,
+            max_length=_NAME_MAX,
+            description="영어 이름 또는 별칭 하나. 예: Lazarus Group",
+        ),
+    ),
+    check=_check_actor_name,
+    check_config=_check_actor_config,
+)
+
+LOCAL_INTEL_TOOLS = (GET_ATTACK_TECHNIQUE, SEARCH_ATTACK_TECHNIQUES, GET_CVE, GET_ATTACK_ACTOR)
