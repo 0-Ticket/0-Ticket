@@ -32,6 +32,7 @@ from test_pipeline_check import ENV, OK_PROBES
 
 from soc.agent import AgentResult
 from soc.agent.executor import resolve_factory
+from soc.case_index.index import CaseIndexWorker
 from soc.db.migrate import MigrationError, find_migrations, migrate, unapplied_migrations
 from soc.ids import new_id
 from soc.l1.judge import L1Worker
@@ -211,6 +212,10 @@ def l2_resolver(db: str, l1: Callable[..., Any]) -> Callable[[str], Any]:
             return lambda _c: L2IndexWorker(db, None, service=service)
         if path == "soc.l2.branch:build_worker":
             return lambda _c: branch_worker(db, service)
+        if path == "soc.case_index:build_worker":
+            return lambda _c: CaseIndexWorker(
+                db, None, embedder=service.embedder, store=service.store
+            )
         if path == "soc.l2.analyze:build_worker":
             return lambda _c: L2AnalyzeWorker(
                 db,
