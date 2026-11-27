@@ -264,7 +264,9 @@ def parse_attack(
     data: bytes, *, version: str, description_max_chars: int = 1000
 ) -> list[Technique]:
     """기법만 돌려준다. 행위자까지 필요하면 parse_attack_bundle."""
-    return parse_attack_bundle(data, version=version, description_max_chars=description_max_chars)[0]
+    return parse_attack_bundle(data, version=version, description_max_chars=description_max_chars)[
+        0
+    ]
 
 
 def parse_attack_bundle(
@@ -355,9 +357,7 @@ def _actors(objects: list[dict[str, Any]], technique_ids: dict[str, str]) -> lis
         if actor is not None and technique_id is not None:
             actor["techniques"].add(technique_id)
     return [
-        Actor(
-            a["actor_id"], a["kind"], a["name"], a["aliases"], tuple(sorted(a["techniques"]))
-        )
+        Actor(a["actor_id"], a["kind"], a["name"], a["aliases"], tuple(sorted(a["techniques"])))
         for a in sorted(actors.values(), key=lambda a: a["actor_id"])
     ]
 

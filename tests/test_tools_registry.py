@@ -593,7 +593,8 @@ def production_config() -> dict[str, Any]:
 
 def test_default_registry_has_the_five_tools() -> None:
     # #212에서 SIEM 도구 2개, #213에서 SSH 점검 도구 1개, #309에서 위협 인텔 조회 1개,
-    # #311에서 로컬 ATT&CK·KEV 조회 3개, #313에서 유사 사례 검색 1개가 늘었다
+    # #311에서 로컬 ATT&CK·KEV 조회 3개, #313에서 유사 사례 검색 1개,
+    # #389에서 행위자 조회 1개가 늘었다
     names = default_registry().names()
     assert names == [
         *PRODUCTION_TOOLS,
@@ -604,6 +605,7 @@ def test_default_registry_has_the_five_tools() -> None:
         "get_attack_technique",
         "search_attack_techniques",
         "get_cve",
+        "get_attack_actor",
         "search_similar_cases",
     ]
 

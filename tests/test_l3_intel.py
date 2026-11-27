@@ -436,16 +436,19 @@ def test_attack_actor_aliases_exclude_the_name_itself() -> None:
     assert actors["G0001"].aliases == ("Shared Name",)  # 그룹은 aliases
     assert actors["S0001"].aliases == ("Shared Name",)  # 악성코드는 x_mitre_aliases
     assert actors["C0001"].aliases == ()
-    assert parse_attack(fixture("attack.json"), version="20.0") == parse_attack_bundle(
-        fixture("attack.json"), version="20.0"
-    )[0]
+    assert (
+        parse_attack(fixture("attack.json"), version="20.0")
+        == parse_attack_bundle(fixture("attack.json"), version="20.0")[0]
+    )
 
 
 @pytest.mark.parametrize(
     "change",
     [
         lambda objs: objs[5].update(external_references=[]),  # 행위자 ID 없음
-        lambda objs: objs[5]["external_references"][0].update(external_id="S0001"),  # 종류와 접두사 불일치
+        lambda objs: objs[5]["external_references"][0].update(
+            external_id="S0001"
+        ),  # 종류와 접두사 불일치
         lambda objs: objs[5]["external_references"][0].update(external_id="G001"),
         lambda objs: objs[5]["external_references"][0].update(external_id="G0003"),  # 중복
         lambda objs: objs[5].update(aliases="Alpha"),

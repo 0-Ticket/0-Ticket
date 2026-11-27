@@ -74,11 +74,20 @@ def test_default_tools_config(default_config_dir: Path) -> None:
         "count_siem",
         "run_host_check",
         *local_intel,
+        "get_attack_actor",  # 행위자 조회(#389)는 l3만이다
     ]
     assert tools["local_intel"] == {
         "attack_version": "20.0",
         "description_max_chars": 600,
         "list_max_items": 20,
+        "log_data_components": [
+            "Network Traffic Content",
+            "Network Traffic Flow",
+            "Network Connection Creation",
+            "Application Log Content",
+            "Response Content",
+        ],
+        "actor_techniques_max": 20,
     }
     assert tools["similar_cases"] == {
         "limit_default": 5,

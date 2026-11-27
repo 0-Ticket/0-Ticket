@@ -186,7 +186,8 @@ def save_attack_actors(
     conn.execute("DELETE FROM attack_actors WHERE attack_version = %s", (version,))
     for a in actors:
         conn.execute(
-            "INSERT INTO attack_actors (attack_version, actor_id, kind, name, aliases, collected_at)"
+            "INSERT INTO attack_actors"
+            " (attack_version, actor_id, kind, name, aliases, collected_at)"
             " VALUES (%s, %s, %s, %s, %s, %s)",
             (version, a.actor_id, a.kind, a.name, list(a.aliases), now),
         )

@@ -497,7 +497,12 @@ def test_new_attack_version_keeps_old_actors(conn: psycopg.Connection) -> None:
     bundle = json.loads(fixture("attack.json"))
     bundle["objects"][0]["x_mitre_version"] = "20.1"
     url = "https://attack.example.com/enterprise-attack-20.1.json"
-    run(conn, FakeWeb({**all_sources(), url: json.dumps(bundle).encode()}), version="20.1", attack_url=url)
+    run(
+        conn,
+        FakeWeb({**all_sources(), url: json.dumps(bundle).encode()}),
+        version="20.1",
+        attack_url=url,
+    )
 
     counts_by_version = conn.execute(
         "SELECT attack_version, count(*) FROM attack_actors GROUP BY 1 ORDER BY 1"
