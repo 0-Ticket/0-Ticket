@@ -20,7 +20,7 @@ from psycopg.types.json import Jsonb
 from tool_helpers import parse
 
 from soc.agent import AgentResult, AgentTask
-from soc.agent.agent_log import MemoryLogSink
+from soc.agent.agent_log import MemoryLogSink, PostgresLogSink
 from soc.agent.config import load_config as load_agent_config
 from soc.agent.runner import run_task
 from soc.contracts import to_datetime, validate_contract
@@ -30,6 +30,7 @@ from soc.l3.config import load_config
 from soc.l3.hunt import store
 from soc.l3.hunt.command import run_hunt
 from soc.l3.hunt.hypothesize import hypothesize
+from soc.l3.hunt.prompts import load_prompt
 from soc.l3.hunt.settings import HuntSettings, read_hunt_settings
 from soc.l3.hunt.verify import HuntVerifier
 from soc.normalize.mapping import with_derived_columns, with_derived_event_columns
@@ -383,6 +384,166 @@ def test_hypothesize_via_run_task_keeps_news_in_data_and_logs_hunt_run(
     assert {(r["subject_type"], r["subject_id"]) for r in sink.rows} == {
         ("hunt", result.hunt_run_id)
     }
+
+
+# 가설 생성의 행위자 조회 도구(#389)
+
+ACTOR_TOOL = "get_attack_actor"
+ACTOR_RESULT = {
+    "status": "found",
+    "actors": [{"actor_id": "G0001", "kind": "group", "name": "Alpha Group"}],
+    "techniques": [
+        {"technique_id": "T1190", "name": "x", "log_components": [], "actors": ["G0001"]}
+    ],
+}
+
+
+def _actor_handler(args: dict[str, Any], ctx: Any) -> dict[str, Any]:
+    if args["name"] == "Nobody":
+        return {"status": "not_found"}
+    return ACTOR_RESULT
+
+
+FAKE_ACTOR = ToolSpec(
+    name=ACTOR_TOOL,
+    description="행위자 조회(테스트용).",
+    handler=_actor_handler,
+    bundle="test",
+    result_kind="aggregate",
+    args=(Arg("name", "string", required=True),),
+)
+
+
+def actor_call(name: str = "Alpha Group") -> dict[str, Any]:
+    return {"tool_call": {"name": ACTOR_TOOL, "arguments": json.dumps({"name": name})}}
+
+
+def final(techniques: list[str]) -> dict[str, Any]:
+    hypothesis = {
+        "hypothesis": "웹 서버가 공격받았다",
+        "attack_techniques": techniques,
+        "news_ids": [1],
+        "case_ids": [],
+    }
+    return {"final": {"hypotheses": [hypothesis]}}
+
+
+def run_with_actor_tool(db: str, steps: list[dict[str, Any]]) -> tuple[Any, FakeModel]:
+    """가짜 모델과 가짜 행위자 도구로 run_task를 돌리고 Agent Log를 DB에 쓴다."""
+    model = FakeModel({"steps": steps})
+    config = copy.deepcopy(load_agent_config())
+    config["tools"]["allowed"]["l3"] = [ACTOR_TOOL]
+    sink = PostgresLogSink(db)
+
+    def run(task: AgentTask) -> AgentResult:
+        return run_task(
+            task,
+            model=model,
+            model_name="fake-model",
+            log_sink=sink,
+            config=config,
+            registry=ToolRegistry([FAKE_ACTOR]),
+        )
+
+    return run, model
+
+
+def basis_of(conn: psycopg.Connection, result: Any) -> dict[str, Any] | None:
+    hunt = store.read_hunt(conn, result.saved[0])
+    assert hunt is not None
+    return hunt["details"]["sources"].get("attack_basis")
+
+
+def test_attack_basis_separates_techniques_in_the_tool_result_from_the_rest(
+    db: str, conn: psycopg.Connection
+) -> None:
+    run, model = run_with_actor_tool(db, [actor_call(), final(["T1190", "T1505.003"])])
+
+    result = hypothesize(conn, settings(), run=run, now=NOW)
+
+    assert result.failure is None
+    assert basis_of(conn, result) == {
+        "tool_calls": 1,
+        "grounded": [{"technique_id": "T1190", "actors": ["G0001"]}],
+        "model_only": ["T1505.003"],
+    }
+    # 도구가 모델에게 보이고 프롬프트가 쓰는 법을 안내한다
+    assert model.calls[0]["tools"] == [ACTOR_TOOL]
+    assert ACTOR_TOOL in model.calls[0]["system"]
+
+
+def test_attack_basis_counts_a_call_that_found_nothing(db: str, conn: psycopg.Connection) -> None:
+    run, _ = run_with_actor_tool(db, [actor_call("Nobody"), final(["T1190"])])
+
+    result = hypothesize(conn, settings(), run=run, now=NOW)
+
+    assert basis_of(conn, result) == {"tool_calls": 1, "grounded": [], "model_only": ["T1190"]}
+
+
+def test_without_a_tool_call_the_saved_hunt_is_the_same_as_before(
+    db: str, conn: psycopg.Connection
+) -> None:
+    run, _ = run_with_actor_tool(db, [final(["T1190"])])
+
+    result = hypothesize(conn, settings(), run=run, now=NOW)
+
+    assert len(result.saved) == 1
+    assert basis_of(conn, result) is None  # 도구를 안 불렀으면 details.sources는 예전과 같다
+
+
+def test_attack_basis_ignores_tool_calls_of_other_runs(db: str, conn: psycopg.Connection) -> None:
+    # 다른 run(예: 검증 run)이 이 도구를 불러 T1505.003을 받았다
+    other, _ = run_with_actor_tool(
+        db,
+        [
+            {"tool_call": {"name": ACTOR_TOOL, "arguments": json.dumps({"name": "Alpha Group"})}},
+            {"final": ACTOR_RESULT},
+        ],
+    )
+    other(
+        AgentTask(
+            stage="l3",
+            task="l3_verify",
+            prompt=load_prompt("l3_verify"),
+            data={},
+            output_contract="hunt_verification",
+            cited_ids=lambda output: (),
+            subject_type="hunt",
+            subject_id=new_id("hnt"),
+        )
+    )
+    run, _ = run_with_actor_tool(db, [actor_call("Nobody"), final(["T1190"])])
+
+    result = hypothesize(conn, settings(), run=run, now=NOW)
+
+    # 이 run의 호출 1번만 센다. 다른 run이 받은 T1190은 근거가 아니다
+    assert basis_of(conn, result) == {"tool_calls": 1, "grounded": [], "model_only": ["T1190"]}
+
+
+def test_unreadable_agent_log_keeps_the_hunt_and_marks_the_basis(
+    db: str, conn: psycopg.Connection, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def broken(*_: Any) -> Any:
+        raise psycopg.OperationalError("down")
+
+    monkeypatch.setattr(store, "actor_tool_calls", broken)
+    run, _ = run_with_actor_tool(db, [actor_call(), final(["T1190"])])
+
+    result = hypothesize(conn, settings(), run=run, now=NOW)
+
+    assert len(result.saved) == 1
+    assert basis_of(conn, result) == {"unavailable": True}
+
+
+def test_too_many_tool_calls_end_the_run_without_saving_hunts(
+    db: str, conn: psycopg.Connection
+) -> None:
+    run, _ = run_with_actor_tool(db, [actor_call(f"Name {n}") for n in range(12)])
+
+    result = hypothesize(conn, settings(), run=run, now=NOW)
+
+    assert result.failure == "budget_exceeded"
+    assert result.saved == []
 
 
 # 검증

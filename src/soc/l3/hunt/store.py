@@ -212,6 +212,32 @@ def last_attempt_started_at(conn: psycopg.Connection, task: str) -> datetime | N
     return None if row is None else row[0]
 
 
+def actor_tool_calls(
+    conn: psycopg.Connection, run_id: str, tool: str
+) -> tuple[int, dict[str, list[str]]]:
+    """한 run의 행위자 조회 도구 호출 수와, 성공한 호출의 결과에 실린 기법 → 근거 행위자 ID(#389).
+
+    Agent Log의 tool 줄 output은 모델에게 보인 결과다.
+    오류 줄과 found가 아닌 결과는 호출 수에만 센다.
+    """
+    rows = conn.execute(
+        "SELECT outcome, output FROM agent_logs"
+        " WHERE run_id = %s AND kind = 'tool' AND name = %s ORDER BY seq",
+        (run_id, tool),
+    ).fetchall()
+    found: dict[str, set[str]] = {}
+    for outcome, output in rows:
+        if outcome == "error" or not isinstance(output, dict) or output.get("status") != "found":
+            continue
+        for item in output.get("techniques", []):
+            if isinstance(item, dict) and isinstance(item.get("technique_id"), str):
+                actors = item.get("actors", [])
+                found.setdefault(item["technique_id"], set()).update(
+                    a for a in actors if isinstance(a, str)
+                )
+    return len(rows), {t: sorted(a) for t, a in found.items()}
+
+
 def status_counts(conn: psycopg.Connection, hunt_ids: Sequence[str]) -> dict[str, int]:
     rows = conn.execute(
         "SELECT status, count(*) FROM hunts WHERE id = ANY(%s) GROUP BY status", (list(hunt_ids),)
