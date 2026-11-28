@@ -8,7 +8,9 @@ results[].case.id). DB가 필요한 처리는 test_l3_hunt_db.py가 본다.
 import asyncio
 import contextlib
 import math
+import re
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 import psycopg
@@ -370,3 +372,84 @@ def test_verify_marks_cases_unavailable_when_the_agent_log_cannot_be_read(
     details = verified_details(monkeypatch, psycopg.OperationalError("down"))
 
     assert details["verify_cases"] == {"unavailable": True}
+
+
+# case_search_ids가 읽는 agent_logs의 모양(DB 없이: 마이그레이션 파일과 기록기의 줄을 대조한다)
+
+AGENT_LOGS_MIGRATION = (
+    Path(__file__).parents[1] / "src" / "soc" / "db" / "migrations" / "0001_common_tables.sql"
+)
+
+
+def declared(column: str) -> list[str]:
+    """agent_logs의 `<column> text NOT NULL CHECK (<column> IN (...))`에 적힌 값 목록."""
+    text = AGENT_LOGS_MIGRATION.read_text(encoding="utf-8")
+    table = text[text.index("CREATE TABLE agent_logs") :]
+    match = re.search(rf"{column} text NOT NULL CHECK \({column} IN \(([^)]*)\)\)", table)
+    assert match, column
+    return re.findall(r"'([^']*)'", match.group(1))
+
+
+def test_the_migration_still_declares_the_columns_case_search_ids_reads() -> None:
+    text = AGENT_LOGS_MIGRATION.read_text(encoding="utf-8")
+    table = text[text.index("CREATE TABLE agent_logs") :]
+
+    for snippet in (
+        "run_id text NOT NULL",
+        "seq integer NOT NULL",
+        "name text NOT NULL",
+        "output jsonb CHECK (output IS NULL OR jsonb_typeof(output) <> 'null')",
+    ):
+        assert snippet in table, snippet
+    assert declared("kind") == ["model", "tool"]
+    assert declared("outcome") == ["ok", "error"]
+
+
+def test_a_tool_row_the_recorder_writes_keeps_the_agent_logs_constraints(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    row, _ = tool_row(monkeypatch)
+
+    assert row["kind"] in declared("kind") and row["kind"] == "tool"
+    assert row["outcome"] in declared("outcome")
+    assert row["stage"] in declared("stage") and row["stage"] == "l3"
+    assert row["subject_type"] in declared("subject_type")
+    assert row["name"] == NAME and row["seq"] >= 1
+    assert isinstance(row["output"], dict)  # JSON null이 아니다(output 칸 CHECK)
+
+
+class RecordingConn:
+    def __init__(self, rows: list[tuple[str, Any]]) -> None:
+        self.rows = rows
+        self.calls: list[tuple[str, Any]] = []
+
+    def execute(self, query: str, params: Any) -> Any:
+        self.calls.append((query, params))
+        return self
+
+    def fetchall(self) -> list[tuple[str, Any]]:
+        return self.rows
+
+
+def test_case_search_ids_reads_one_run_tool_rows_in_order_and_skips_error_lines() -> None:
+    first = {"status": "ok", "results": [{"case": {"id": cid(1)}}, {"case": {"id": cid(2)}}]}
+    again = {"status": "ok", "results": [{"case": {"id": cid(2)}}, {"case": {"id": cid(3)}}]}
+    conn = RecordingConn(
+        [
+            ("ok", first),
+            ("error", "TOOL_ERROR tool=search_confirmed_cases code=unavailable"),
+            ("ok", {"status": "no_data", "reason": "no_index"}),
+            ("ok", again),
+        ]
+    )
+
+    calls, ids = store.case_search_ids(conn, "run_x", store.CASE_SEARCH_TOOL)  # type: ignore[arg-type]
+
+    assert (calls, ids) == (4, [cid(1), cid(2), cid(3)])  # 호출 수에는 오류 줄도 센다
+    ((query, params),) = conn.calls
+    assert params == ("run_x", "search_confirmed_cases")
+    # 읽는 열·조건은 모두 agent_logs에 있는 이름이다
+    table = AGENT_LOGS_MIGRATION.read_text(encoding="utf-8")
+    for word in ("agent_logs", "outcome", "output", "run_id", "kind", "name", "seq"):
+        assert word in query and word in table
+    assert "kind = 'tool'" in query and "ORDER BY seq" in query
