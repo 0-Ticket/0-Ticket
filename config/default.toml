@@ -55,9 +55,13 @@ max_input_chars = 64000
 reasoning_effort = "medium"
 max_tool_result_chars = 8000
 
+# l3: 가설 생성·검증이 같이 쓴다. 가설 생성은 행위자 조회 5번(get_attack_actor)·Case 검색 2번
+# (search_confirmed_cases)·SIEM 조회를 함께 쓸 수 있어 10턴·48,000자로는 모자랐다(#382, #393,
+# D-088). 넘으면 run 전체가 budget_exceeded라 Hunt가 저장되지 않는다. 값은 [agent.l2]와 같고
+# 실모델로 잰 것이 아니라 도구 결과 상한과 앞 이슈들의 실측으로 계산했다
 [agent.l3]
-max_turns = 10
-max_input_chars = 48000
+max_turns = 12
+max_input_chars = 64000
 reasoning_effort = "medium"
 max_tool_result_chars = 8000
 
