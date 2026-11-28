@@ -713,6 +713,48 @@
       "llm_expected": "existing"
     },
     {
+      "case": "5d-network-detection-shared-src",
+      "title": "같은 사설 src를 공유하는 Suricata 알럿 두 건 (10.0.0.21은 손으로 만든 가짜 사설 IP, RFC1918 예외 #399)",
+      "input": "B",
+      "peers": [
+        {
+          "name": "peer",
+          "tickets": [
+            {
+              "alerts": [
+                {
+                  "template": "suricata",
+                  "source": {
+                    "event": {"module": "suricata"},
+                    "source": {"ip": "10.0.0.21"},
+                    "destination": {"ip": "192.0.2.10"}
+                  },
+                  "expect_entities": [["ip", "10.0.0.21", "src"], ["ip", "192.0.2.10", "dst"]]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "current": [
+        {
+          "template": "suricata",
+          "source": {
+            "event": {"module": "suricata"},
+            "source": {"ip": "10.0.0.21"},
+            "destination": {"ip": "192.0.2.10"}
+          },
+          "expect_entities": [["ip", "10.0.0.21", "src"], ["ip", "192.0.2.10", "dst"]]
+        }
+      ],
+      "desired": "같은 네트워크 탐지가 연달아 올린 알럿이라 한 Incident로 묶인다",
+      "basis": "#399: 공유 사설 src로 후보 경로가 생긴다. 네트워크 탐지에는 host 엔티티가 없어 양쪽 target host가 비므로, 환경 비교를 하지 못한 것을 겹침 없음으로 읽지 않아야 한다. 수리카타 샘플은 손으로 만든 것이라 이 결과는 정규화기 규칙 기준이다",
+      "expect": {"coverage": "complete", "reason": "paths_found", "candidates": ["peer"], "llm_called": true, "result": "new"},
+      "classification": "불일치(결함)",
+      "llm_manual": true,
+      "llm_expected": "existing"
+    },
+    {
       "case": "6a-full-incident-excluded",
       "title": "Incident당 Ticket 10개가 가득 찼다",
       "input": "A",

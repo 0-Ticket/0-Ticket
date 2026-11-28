@@ -5,7 +5,7 @@
 
 실행: DATABASE_URL=… QDRANT_URL=… LLM_API_KEY=… SCENARIO_LLM_RUNS=10 \
   uv run pytest -m llm -s tests/test_l2_scenarios_llm.py
-- 대상은 cases.json에서 `llm_manual`이 참인 케이스(1a, 1b, 5, 5b, 5c)다.
+- 대상은 cases.json에서 `llm_manual`이 참인 케이스(1a, 1b, 5, 5b, 5c, 5d)다.
   후보가 없는 케이스는 LLM을 부르지 않는다.
 - 케이스마다 SCENARIO_LLM_RUNS(기본 3, #362 기준은 10)번 임시 DB를 새로 채워 워커를 돌리고
   결과(판단, 기대값, 토큰 수)를 한 줄씩 낸다. -s로 보고 notes에 옮긴다.
