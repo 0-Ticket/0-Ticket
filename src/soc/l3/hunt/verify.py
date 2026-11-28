@@ -138,7 +138,7 @@ class HuntVerifier:
                 # 인용한 SIEM 문서를 먼저 발급한다(#382). 그 evt_ ID의 엔티티를 아래
                 # record_entities가 읽는다. 발급 실패는 그 근거만 버리고 계속한다
                 output = self._issue(conn, result, now_ms)
-                hunt = self._verified(conn, hunt, output, now_ms)
+                hunt = self._verified(conn, hunt, output, now_ms, result.run_id)
             else:
                 hunt = self._failed(hunt, result)
             validate_contract("hunt", hunt)
@@ -174,7 +174,12 @@ class HuntVerifier:
         return output
 
     def _verified(
-        self, conn: psycopg.Connection, hunt: dict[str, Any], output: dict[str, Any], now_ms: int
+        self,
+        conn: psycopg.Connection,
+        hunt: dict[str, Any],
+        output: dict[str, Any],
+        now_ms: int,
+        run_id: str,
     ) -> dict[str, Any]:
         status, rules = decide(output, threshold=self._settings.confirm_threshold)
         records, missing = store.record_entities(conn, output["evidence_ids"])
@@ -184,6 +189,9 @@ class HuntVerifier:
             "model_only_entities": model_only,
             "missing_evidence_rows": missing,
         }
+        cases = _read_cases(conn, run_id)
+        if cases is not None:
+            details["verify_cases"] = cases
         if rules:
             details["downgraded"] = {"from": output["result"], "rules": rules}
         return {
@@ -208,6 +216,18 @@ class HuntVerifier:
             "status": "failed" if exhausted else "pending",
             "details": {**hunt["details"], "verify_failures": failures},
         }
+
+
+def _read_cases(conn: psycopg.Connection, run_id: str) -> dict[str, Any] | None:
+    """검증 run이 Case 검색 도구로 읽은 Case(D-088). 도구를 안 불렀으면 None(키를 만들지 않는다).
+
+    Agent Log를 읽지 못하면 {"unavailable": True}다. 판정에는 쓰지 않는 기록이다.
+    """
+    try:
+        calls, case_ids = store.case_search_ids(conn, run_id, store.CASE_SEARCH_TOOL)
+    except psycopg.Error:
+        return {"unavailable": True}
+    return {"tool_calls": calls, "case_ids": case_ids} if calls else None
 
 
 def database_url_from_env() -> str:

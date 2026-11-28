@@ -29,7 +29,7 @@ class HypothesizeResult:
     saved: list[str] = field(default_factory=list)
     unknown_technique: int = 0  # 설정 버전의 attack_techniques에 없는 기법을 낸 가설
     over_limit: int = 0  # max_hypotheses를 넘어 버린 가설
-    dropped_refs: int = 0  # 입력에 없던 뉴스·Case 참조
+    dropped_refs: int = 0  # 입력(뉴스·cases)이나 Case 검색 결과에 없던 참조
     failure: str | None = None  # 가설 생성 run의 failure
     skipped: str | None = None  # run을 하지 않은 이유
 
@@ -81,7 +81,10 @@ def hypothesize(
     hypotheses = agent_result.output["hypotheses"]
     result.over_limit = max(0, len(hypotheses) - settings.max_hypotheses)
     news_by_id = {n["id"]: n for n in news}
-    case_ids = {c["id"] for c in cases}
+    # 인용할 수 있는 Case는 입력(cases)과 이 run이 Case 검색 도구로 찾은 것이다(D-088).
+    # Agent Log를 못 읽으면(None) 입력의 것만 인정하고 Hunt에 표시한다
+    searched = _searched_cases(conn, agent_result.run_id)
+    case_ids = {c["id"] for c in cases} | set(searched or ())
     created = to_epoch_ms(now)
     hunts = []
     for hypothesis in hypotheses[: settings.max_hypotheses]:
@@ -113,6 +116,8 @@ def hypothesize(
             hunt["details"]["sources"]["attack_basis"] = _hypothesis_basis(
                 basis, hypothesis["attack_techniques"]
             )
+        if searched is None:
+            hunt["details"]["sources"]["case_search"] = {"unavailable": True}
         validate_contract("hunt", hunt)
         hunts.append(hunt)
     if hunts:
@@ -132,6 +137,14 @@ def _attack_basis(conn: psycopg.Connection, run_id: str) -> tuple[int, dict[str,
     except psycopg.Error:
         return (-1, {})
     return (calls, found) if calls else None
+
+
+def _searched_cases(conn: psycopg.Connection, run_id: str) -> list[str] | None:
+    """이 가설 생성 run이 Case 검색 도구로 찾은 Case ID. Agent Log를 읽지 못하면 None이다(D-088)."""
+    try:
+        return store.case_search_ids(conn, run_id, store.CASE_SEARCH_TOOL)[1]
+    except psycopg.Error:
+        return None
 
 
 def _hypothesis_basis(

@@ -27,7 +27,7 @@ def test_default_llm_and_budget_values(default_config_dir: Path) -> None:
     assert llm["rate_limit_retries"] == 3
     assert "api_version" not in llm
     agent = config["agent"]
-    assert [agent[s]["max_input_chars"] for s in ("l1", "l2", "l3")] == [32_000, 64_000, 48_000]
+    assert [agent[s]["max_input_chars"] for s in ("l1", "l2", "l3")] == [32_000, 64_000, 64_000]
     assert [agent[s]["reasoning_effort"] for s in ("l1", "l2", "l3")] == ["low", "medium", "medium"]
     tool_chars = [agent[s]["max_tool_result_chars"] for s in ("l1", "l2", "l3")]
     assert tool_chars == [6_000, 8_000, 8_000]  # #211
