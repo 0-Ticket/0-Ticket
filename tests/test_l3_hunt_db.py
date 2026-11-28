@@ -14,6 +14,10 @@ from typing import Any
 import httpx
 import psycopg
 import pytest
+from case_search_helpers import NAME as CASE_TOOL
+from case_search_helpers import QUERY as CASE_QUERY
+from case_search_helpers import SERVICE as CASE_SERVICE
+from case_search_helpers import FakeDb, VectorEmbedder, cid, make_service
 from fake_model import FakeModel
 from psycopg import sql
 from psycopg.types.json import Jsonb
@@ -34,7 +38,10 @@ from soc.l3.hunt.prompts import load_prompt
 from soc.l3.hunt.settings import HuntSettings, read_hunt_settings
 from soc.l3.hunt.verify import HuntVerifier
 from soc.normalize.mapping import with_derived_columns, with_derived_event_columns
+from soc.store import StoreError
 from soc.tools import Arg, ToolRegistry, ToolSpec
+from soc.tools import confirmed_cases as case_module
+from soc.tools import services as tool_services
 
 pytestmark = pytest.mark.db
 
@@ -546,12 +553,185 @@ def test_unreadable_agent_log_keeps_the_hunt_and_marks_the_basis(
 def test_too_many_tool_calls_end_the_run_without_saving_hunts(
     db: str, conn: psycopg.Connection
 ) -> None:
-    run, _ = run_with_actor_tool(db, [actor_call(f"Name {n}") for n in range(12)])
+    # 호출 12번에 최종 답이 못 들어가는 턴 수(max_turns 12, #393)보다 더 부른다
+    run, _ = run_with_actor_tool(db, [actor_call(f"Name {n}") for n in range(14)])
 
     result = hypothesize(conn, settings(), run=run, now=NOW)
 
     assert result.failure == "budget_exceeded"
     assert result.saved == []
+
+
+# 가설 생성의 확정 Case 검색 도구(#393, D-088). 실제 search_confirmed_cases 핸들러를 가짜
+# 임베더·FakeDb로 돌린다. Case ID(cid)는 DB의 Case(CAS_1)와 달라서 어디서 왔는지 구분된다
+
+UNKNOWN_CASE = "cas_01a19f93-1392-7000-8000-000000000777"
+
+
+def install_case_service(monkeypatch: pytest.MonkeyPatch, service: Any = None) -> None:
+    monkeypatch.setattr(case_module, "read_many", FakeDb())
+    monkeypatch.setattr(tool_services, "_services", {CASE_SERVICE: service or make_service()})
+
+
+def run_with_case_tool(
+    db: str, steps: list[dict[str, Any]], extra: tuple[ToolSpec, ...] = ()
+) -> Callable[[AgentTask], AgentResult]:
+    """두 L3 태스크가 Case 검색 도구(와 extra)를 받고 Agent Log를 DB에 쓰는 run_task."""
+    model = FakeModel({"steps": steps})
+    config = copy.deepcopy(load_agent_config())
+    for task_name in ("l3_hypothesize", "l3_verify"):
+        config["tools"]["allowed"][task_name] = [CASE_TOOL, *(s.name for s in extra)]
+    sink = PostgresLogSink(db)
+    registry = ToolRegistry([case_module.SEARCH_CONFIRMED_CASES, *extra])
+
+    def run(task: AgentTask) -> AgentResult:
+        return run_task(
+            task,
+            model=model,
+            model_name="fake-model",
+            log_sink=sink,
+            config=config,
+            registry=registry,
+        )
+
+    return run
+
+
+def search_call(limit: int = 2) -> dict[str, Any]:
+    arguments = json.dumps({"query": CASE_QUERY, "limit": limit})
+    return {"tool_call": {"name": CASE_TOOL, "arguments": arguments}}
+
+
+def final_cases(case_ids: list[str], techniques: list[str] | None = None) -> dict[str, Any]:
+    hypothesis = {
+        "hypothesis": "웹 서버가 공격받았다",
+        "attack_techniques": techniques or ["T1190"],
+        "news_ids": [1],
+        "case_ids": case_ids,
+    }
+    return {"final": {"hypotheses": [hypothesis]}}
+
+
+def sources_of(conn: psycopg.Connection, result: Any) -> dict[str, Any]:
+    hunt = store.read_hunt(conn, result.saved[0])
+    assert hunt is not None
+    return hunt["details"]["sources"]
+
+
+def test_case_ids_from_the_search_result_are_kept_next_to_the_recent_cases(
+    db: str, conn: psycopg.Connection, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    install_case_service(monkeypatch)
+    run = run_with_case_tool(db, [search_call(), final_cases([CAS_1, cid(1), UNKNOWN_CASE])])
+
+    result = hypothesize(conn, settings(), run=run, now=NOW)
+
+    assert result.failure is None
+    sources = sources_of(conn, result)
+    assert sources["case_ids"] == [CAS_1, cid(1)]  # 입력(cases)의 것과 이 run이 찾은 것
+    assert result.dropped_refs == 1  # 둘 어디에도 없던 ID
+    assert "case_search" not in sources  # 읽기에 성공하면 새 키는 없다
+
+
+def test_a_case_seen_only_in_the_search_result_is_dropped_when_the_run_did_not_search(
+    db: str, conn: psycopg.Connection, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    install_case_service(monkeypatch)
+    run = run_with_case_tool(db, [final_cases([CAS_1, cid(1)])])
+
+    result = hypothesize(conn, settings(), run=run, now=NOW)
+
+    sources = sources_of(conn, result)
+    assert sources["case_ids"] == [CAS_1]  # 도구를 안 부르면 예전과 같다
+    assert result.dropped_refs == 1
+    assert "case_search" not in sources and "attack_basis" not in sources
+
+
+def test_no_data_and_error_lines_do_not_allow_a_case_id(
+    db: str, conn: psycopg.Connection, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    class Broken:
+        def search(self, *_: object, **__: object) -> None:
+            raise StoreError("down")
+
+    empty = make_service(points={})
+    empty.store.drop_collection()
+    for service in (empty, make_service(store=Broken())):
+        install_case_service(monkeypatch, service)
+        run = run_with_case_tool(db, [search_call(), final_cases([cid(1)])])
+
+        result = hypothesize(conn, settings(), run=run, now=NOW)
+
+        assert sources_of(conn, result)["case_ids"] == []
+        assert result.dropped_refs == 1
+
+
+def test_case_ids_found_by_another_run_are_not_allowed(
+    db: str, conn: psycopg.Connection, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    install_case_service(monkeypatch)
+    other = run_with_case_tool(
+        db,
+        [search_call(), {"final": verification("inconclusive", 0.5, [])}],
+    )
+    other(
+        AgentTask(
+            stage="l3",
+            task="l3_verify",
+            prompt=load_prompt("l3_verify"),
+            data={},
+            output_contract="hunt_verification",
+            cited_ids=lambda output: (),
+            subject_type="hunt",
+            subject_id=new_id("hnt"),
+        )
+    )
+    run = run_with_case_tool(db, [final_cases([cid(1)])])
+
+    result = hypothesize(conn, settings(), run=run, now=NOW)
+
+    assert sources_of(conn, result)["case_ids"] == []  # 다른 run(검증)이 찾은 Case다
+    assert result.dropped_refs == 1
+
+
+def test_an_unreadable_agent_log_allows_only_the_recent_cases_and_says_so(
+    db: str, conn: psycopg.Connection, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def broken(*_: Any) -> Any:
+        raise psycopg.OperationalError("down")
+
+    install_case_service(monkeypatch)
+    monkeypatch.setattr(store, "case_search_ids", broken)
+    run = run_with_case_tool(db, [search_call(), final_cases([CAS_1, cid(1)])])
+
+    result = hypothesize(conn, settings(), run=run, now=NOW)
+
+    assert len(result.saved) == 1  # Hunt는 저장한다
+    sources = sources_of(conn, result)
+    assert sources["case_ids"] == [CAS_1]
+    assert sources["case_search"] == {"unavailable": True}
+    assert result.dropped_refs == 1
+
+
+def test_attack_basis_and_case_search_work_in_the_same_run(
+    db: str, conn: psycopg.Connection, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    install_case_service(monkeypatch)
+    run = run_with_case_tool(
+        db,
+        [actor_call(), search_call(), final_cases([cid(1)], ["T1190", "T1505.003"])],
+        extra=(FAKE_ACTOR,),
+    )
+
+    result = hypothesize(conn, settings(), run=run, now=NOW)
+
+    sources = sources_of(conn, result)
+    assert sources["case_ids"] == [cid(1)]
+    assert sources["attack_basis"] == {
+        "tool_calls": 1,
+        "grounded": [{"technique_id": "T1190", "actors": ["G0001"]}],
+        "model_only": ["T1505.003"],
+    }
 
 
 # 검증
@@ -964,3 +1144,91 @@ def test_command_db_error_exits_1_without_address(db: str) -> None:
     assert code == 1
     assert "s3cret-value" not in output.text()
     assert "127.0.0.1" not in output.text()
+
+
+# 검증 run이 읽은 Case의 기록(#393, D-088)
+
+
+def verify_details(
+    db: str, run: Callable[[AgentTask], AgentResult], hunt_id: str
+) -> dict[str, Any]:
+    verifier(db, run).handle(hunt_id)
+    with psycopg.connect(db, autocommit=True) as conn:
+        hunt = store.read_hunt(conn, hunt_id)
+    assert hunt is not None
+    return hunt["details"]
+
+
+def test_verify_records_the_cases_the_run_read(
+    db: str, conn: psycopg.Connection, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    install_case_service(monkeypatch)
+    hunt_id = add_hunt(conn)
+    run = run_with_case_tool(db, [search_call(), {"final": verification("inconclusive", 0.5, [])}])
+
+    details = verify_details(db, run, hunt_id)
+
+    assert details["verify_cases"] == {"tool_calls": 1, "case_ids": [cid(1), cid(2)]}
+    assert "sources" not in details  # 가설 생성 쪽 sources.case_ids와 섞지 않는다
+
+
+def test_verify_counts_a_search_that_found_nothing(
+    db: str, conn: psycopg.Connection, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    service = make_service(embedder=VectorEmbedder({CASE_QUERY: [0.0, 0.0, -1.0]}))
+    install_case_service(monkeypatch, service)
+    hunt_id = add_hunt(conn)
+    run = run_with_case_tool(db, [search_call(), {"final": verification("inconclusive", 0.5, [])}])
+
+    details = verify_details(db, run, hunt_id)
+
+    assert details["verify_cases"] == {"tool_calls": 1, "case_ids": []}
+
+
+def test_verify_without_a_search_has_no_verify_cases_key(
+    db: str, conn: psycopg.Connection, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    install_case_service(monkeypatch)
+    hunt_id = add_hunt(conn)
+    run = run_with_case_tool(db, [{"final": verification("inconclusive", 0.5, [])}])
+
+    details = verify_details(db, run, hunt_id)
+
+    assert "verify_cases" not in details
+
+
+def test_a_failed_verify_leaves_no_verify_cases(
+    db: str, conn: psycopg.Connection, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    install_case_service(monkeypatch)
+    hunt_id = add_hunt(conn)
+    # 도구는 불렀지만 최종 답이 없어 실패한다(턴을 다 쓴다)
+    run = run_with_case_tool(db, [search_call() for _ in range(14)])
+
+    details = verify_details(db, run, hunt_id)
+
+    assert "verify_failures" in details
+    assert "verify_cases" not in details
+
+
+def test_verify_marks_cases_unavailable_when_the_agent_log_cannot_be_read(
+    db: str, conn: psycopg.Connection, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def broken(*_: Any) -> Any:
+        raise psycopg.OperationalError("down")
+
+    install_case_service(monkeypatch)
+    monkeypatch.setattr(store, "case_search_ids", broken)
+    hunt_id = add_hunt(conn)
+    run = run_with_case_tool(db, [search_call(), {"final": verification("inconclusive", 0.5, [])}])
+
+    details = verify_details(db, run, hunt_id)
+
+    assert details["verify_cases"] == {"unavailable": True}
+    assert hunt_status(conn, hunt_id) == "inconclusive"  # 검증 결과는 저장한다
+
+
+def hunt_status(conn: psycopg.Connection, hunt_id: str) -> str:
+    hunt = store.read_hunt(conn, hunt_id)
+    assert hunt is not None
+    return hunt["status"]

@@ -238,6 +238,47 @@ def actor_tool_calls(
     return len(rows), {t: sorted(a) for t, a in found.items()}
 
 
+# Case 검색 도구(#392). 도구 결과에 실린 Case ID만 인용할 수 있다(D-088)
+CASE_SEARCH_TOOL = "search_confirmed_cases"
+
+
+def case_ids_in(output: Any) -> list[str]:
+    """Agent Log tool 줄 하나의 output에서 인용할 수 있는 Case ID(#393).
+
+    status가 ok인 결과의 results[].case.id만이다. no_data·오류 줄(고정 문구)과 call_id는 읽지
+    않는다. 결과 모양은 #392가 테스트로 고정한 약속이다.
+    """
+    if not isinstance(output, dict) or output.get("status") != "ok":
+        return []
+    results = output.get("results")
+    if not isinstance(results, list):
+        return []
+    ids = []
+    for item in results:
+        case = item.get("case") if isinstance(item, dict) else None
+        case_id = case.get("id") if isinstance(case, dict) else None
+        if isinstance(case_id, str):
+            ids.append(case_id)
+    return ids
+
+
+def case_search_ids(conn: psycopg.Connection, run_id: str, tool: str) -> tuple[int, list[str]]:
+    """한 run의 Case 검색 호출 수와, 성공한 호출의 결과에 실린 Case ID(중복 없이 호출 순서대로).
+
+    다른 run의 호출은 읽지 않는다. 오류 줄은 호출 수에만 센다(#393).
+    """
+    rows = conn.execute(
+        "SELECT outcome, output FROM agent_logs"
+        " WHERE run_id = %s AND kind = 'tool' AND name = %s ORDER BY seq",
+        (run_id, tool),
+    ).fetchall()
+    ids: dict[str, None] = {}
+    for outcome, output in rows:
+        if outcome != "error":
+            ids.update(dict.fromkeys(case_ids_in(output)))
+    return len(rows), list(ids)
+
+
 def status_counts(conn: psycopg.Connection, hunt_ids: Sequence[str]) -> dict[str, int]:
     rows = conn.execute(
         "SELECT status, count(*) FROM hunts WHERE id = ANY(%s) GROUP BY status", (list(hunt_ids),)
