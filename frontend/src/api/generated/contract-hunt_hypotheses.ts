@@ -25,7 +25,7 @@ export interface HuntHypothesis {
    */
   news_ids: number[];
   /**
-   * 참고한 Case ID. 중복 없음. 입력에 없던 값은 L3 코드가 버린다
+   * 참고한 Case ID. 중복 없음. 입력(cases)이나 같은 run의 Case 검색 결과(case.id)에 없던 값은 L3 코드가 버린다
    */
   case_ids: string[];
 }
