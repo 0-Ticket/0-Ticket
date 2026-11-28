@@ -28,10 +28,17 @@ supersedes: []
 - **픽스처의 사설 IP는 예외다.** `10.0.0.21`은 손으로 만든 가짜 값이고 `docs/security.md` "데이터"의 문서용 대역 규칙에 대한 예외다(5d만, 사람이 승인, 계획 "토론으로 정한 것"). 규칙이 "공유 IP가 사설일 때"만 발동하므로 문서용 대역으로는 시험 자체가 불가능하다. #362가 케이스 5·5b에 같은 예외를 받았다. dst는 문서용 대역이다.
 - `prompt_version`(프롬프트 해시)이 바뀐다. Agent Log `details`에 기록만 되고 비교하는 코드는 없다.
 - **긍정 규칙을 넣을 수 없는 이유**(다시 시도하려는 사람을 위해): 후보 payload의 `summary`는 분기 단계가 만든 Incident에서 빈 문자열이다(`store.py:123`이 열을 `None`으로 두고 `decide.py:103`이 `(... or "")[:500]`으로 바꾼다), `title`은 첫 알럿 제목이라(`store.py:174`) 통과 룰 이름이고 흩어진 Incident들이 전부 동일하다. 그래프 경로는 `role='src'` 엔티티만 씨앗으로 쓰므로 dst 공유는 경로에 실리지 않는다. 쓸 수 있는 근거를 늘리려면 후보 payload를 바꿔야 하고 그것은 별개 안건이다.
+- **과대분류를 막는 장치가 이 환경에는 남아 있지 않다.** 바뀌기 전에는 host 값이 없으면 무조건 new였으므로 같은 사설 IP(NAT·프록시)에서 온 서로 다른 공격이 버그 덕분에 분리됐다. 이제는 4·8행의 일반 판단만 남고, 모델이 받는 구분 재료는 후보 `title`(후보 Incident 첫 알럿 제목)뿐이다. `summary`는 빈 문자열이고 경로에는 공유 src만 실린다. 이 환경의 Elastic 룰 `External Alerts`는 수리카타 알럿을 그대로 감싸 올리는 통과 룰이라 **모든 네트워크 알럿의 제목이 같다.** 따라서 같은 사설 IP에서 온 다른 공격을 구분할 재료가 0이다.
+- **그 반대 방향(과대분류)을 보는 테스트가 없다.** 새 케이스 5d는 "묶여야 한다"는 양성만 본다. 같은 사설 src를 공유하지만 서로 다른 공격인 음성 케이스는 넣지 않았다(계획 완료 기준 밖, 사람이 별도 이슈로 돌리기로 정했다). 실제 모델 측정에서 5d가 `existing`으로 가도 과대분류 위험은 측정되지 않은 상태다.
+- 이 브랜치의 diff를 Codex(`gpt-6-sol`, 읽기 전용)로 리뷰해 위 두 가지를 지적받았다. P1은 "실모델 결과가 비어 있어 자동 검사가 전부 통과해도 운영 모델은 여전히 흩어뜨릴 수 있다"였고, 아래 측정 표를 사람이 채우기 전까지 그대로 열려 있다.
 
 ## 확인 방법
 
-<!-- 개발 마무리에서 채운다 -->
+- `uv run ruff format .`: 바뀐 파일 없음. `uv run ruff check .`: 통과
+- `uv run pytest`: 2,695건 통과(838건은 `db`·`llm` 등 마커로 제외)
+- `uv run pytest -m db`: 795건 통과. `.env`가 pytest 프로세스로 자동 주입되지 않아 `set -a && . ./.env && set +a` 뒤에 실행했다
+- 새·바뀐 테스트: `tests/test_l2_scenarios.py::test_normalizer_makes_the_roles_the_case_assumes[5d-network-detection-shared-src-0/-1]`(수리카타 샘플에 host 엔티티가 없음), `tests/test_l2_scenarios_db.py::test_candidate_input_carries_the_path_alerts_target_hosts[5d-network-detection-shared-src-None]`(그래프 `target_hosts`가 비고 모델 후보 payload에 `target_hosts` 키가 없음)
+- 실제 모델 확인은 하지 않았다(유료, 사람이 실행). 아래 표가 비어 있는 동안 모델 판정 회귀는 미확인이다
 
 ## 실제 모델 확인 (사람이 실행, AI는 실행하지 않는다)
 
